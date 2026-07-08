@@ -3,8 +3,8 @@
   "description": "Token-lean sessions at the harness level, not the prompt level. Ships a forced output style that rewires the system prompt itself — no preamble, no play-by-play, one outcome-first final message at dev-shorthand density (default to fragments, not broken grammar) — plus a PostToolUse hook that mechanically shrinks Bash/PowerShell output before it enters context (ANSI/progress-bar strip, duplicate collapse, line caps that always preserve warning/error/failure lines regardless of position; failures keep ~4x more, verbatim), a dual-mode narration meter (PostToolUse + Stop) that injects one corrective line the moment mid-turn narration crosses budget — inside the offending turn, at most once per turn — and a /hush:hush-compress skill that shrinks a CLAUDE.md/memory file into the same dev-shorthand voice to cut input tokens every session, writing only to a sibling file (never the original) and mechanically verifying nothing structural was lost. Replaces prompt-injection style plugins: same terseness goal, stronger mechanism, and it also cuts the input-token side they never touch. Tune via HUSH_CAP_PASS, HUSH_CAP_FAIL, HUSH_NARRATION_BUDGET; disable the meter alone with HUSH_NARRATION=off, or everything with HUSH_DISABLE=1.",
   "license": "MIT",
   "author": {
-    "name": "Songbird",
-    "email": "songbird@tuta.com"
+    "name": "Victor Villegas",
+    "email": "victor.villegas@tuta.com"
   },
   "homepage": "https://github.com/V-Songbird/hush",
   "repository": "https://github.com/V-Songbird/hush",
