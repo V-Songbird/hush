@@ -56,7 +56,7 @@ And the part that matters most: **nothing broke.** Every job came out correct in
 
 ## Under the hood
 
-If you're curious, hush just works quietly in the background — nothing is re-sent every turn to run up your bill — and it's all there to read in the plugin's files. Pairs naturally with [razor](../razor): razor cuts the code and the cost, hush cuts the noise — and measured together, they add no overhead to each other.
+If you're curious, hush just works quietly in the background — nothing is re-sent every turn to run up your bill — and it's all there to read in the plugin's files. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise — and measured together, they add no overhead to each other.
 
 ## Settings
 
