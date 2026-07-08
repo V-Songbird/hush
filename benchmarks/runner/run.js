@@ -123,10 +123,19 @@ function buildArgs(arm) {
     // it fails closed in -p mode and the agent has to work within the sandbox.
     '--permission-mode', 'acceptEdits',
     // comma-separated, no spaces: survives the shell:true arg join on Windows
+    //
+    // Bash/PowerShell are blanket (not prefix-scoped to node*/ls*/etc) as of
+    // 2026-07-08: a narrow single-command prefix pattern like `PowerShell(node*)`
+    // rejects ANY multi-statement command outright ("contains multiple
+    // operations... requires approval") — confirmed live. That broke hush's
+    // preserve-exit-code.js wrapper (see hooks/preserve-exit-code.js), which
+    // must append trailing statements to preserve a real exit code across the
+    // PostToolUse/PostToolUseFailure split. Real engineering sessions need
+    // multi-statement commands anyway (chained builds, piped output) — a
+    // narrow prefix allowlist was never realistic for any arm, not just hush's.
+    // --disallowedTools below still fails closed on git/Agent/scheduling.
     '--allowedTools',
-    'Read,Edit,Write,Glob,Grep,TodoWrite,' +
-    'Bash(node*),Bash(ls*),Bash(cat*),Bash(grep*),Bash(rg*),Bash(head*),Bash(tail*),Bash(wc*),Bash(find*),Bash(sed*),Bash(dir*),' +
-    'PowerShell(node*),PowerShell(ls*),PowerShell(cat*),PowerShell(Get-Content*),PowerShell(Get-ChildItem*),PowerShell(Select-String*),PowerShell(dir*)',
+    'Read,Edit,Write,Glob,Grep,TodoWrite,Bash,PowerShell',
     // --allowedTools alone does not deny what's unlisted in -p mode (verified:
     // a plain `git log` ran fine with only the allowlist above set). Task
     // fixtures never need git/subagents/scheduling; deny them explicitly so a

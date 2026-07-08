@@ -42,7 +42,7 @@
     "check": {
       "type": "keywords",
       "require": 2,
-      "patterns": ["referen(ce|tial)|new object|identity", "useMemo|React\\.memo|\\bmemo\\b", "shallow"]
+      "patterns": ["referen(ce|tial)|new object|identity", "useMemo|React\\.memo|\\bmemo\\b", "shallow|===|strict(ly)? equal"]
     }
   },
   {
@@ -66,6 +66,27 @@
       "require": 2,
       "patterns": ["def \\w+\\(", "@", "return|re\\.|regex|match"]
     }
+  },
+  {
+    "id": "incident-pool-leak",
+    "category": "tool",
+    "fixture": "incident-pool-leak",
+    "prompt": "Service tipped over around 2am and paged me. I pulled the app and worker logs from that window — something's leaking DB connections under failure and I can't tell where. Tests are red too, can you dig in and fix it?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "coupon-currency-flaky",
+    "category": "tool",
+    "fixture": "coupon-currency-flaky",
+    "prompt": "Finance flagged that some carts are landing a cent or two off when a promo stacks with another discount. Most look fine so it's hard to spot a pattern. Can you dig through the pricing test failures and figure out what's actually wrong?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "dep-bump-warnings",
+    "category": "tool",
+    "fixture": "dep-bump-warnings",
+    "prompt": "Bumped a couple of packages this morning and now the build's spitting out a screen full of warnings. Pretty sure at least one of them isn't just noise. Can you get it building clean again?",
+    "check": { "type": "tests", "cmd": "node build.js" }
   },
   {
     "id": "repo-summary",
