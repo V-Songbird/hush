@@ -23,14 +23,29 @@ function testGlob(root) {
   return path.join(root, "tests", "*.test.js");
 }
 
-// Strip node's own test-runner IPC markers before spawning the nested
-// `node --test` -- inheriting NODE_TEST_CONTEXT (set when this hook's own
-// test runs as an isolated child under `node --test`) makes the nested
-// process misbehave and exit silently instead of reporting real results.
+// Strip env vars before spawning the nested `node --test`:
+//
+// - NODE_TEST_CONTEXT / NODE_CHANNEL_FD: node's own test-runner IPC markers.
+//   Inheriting these (set when this hook's own test runs as an isolated
+//   child under `node --test`) makes the nested process misbehave and exit
+//   silently instead of reporting real results.
+//
+// - GIT_* (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, etc.): git sets these
+//   when invoking a hook so the hook can find the repo without `cd`-ing
+//   there. If a plugin's own tests shell out to `git` against a temp
+//   fixture (a `cwd` override), these inherited vars win over `cwd` for
+//   repo discovery -- so "isolated" git commands in the test suite land in
+//   THIS repo's real .git instead of the fixture, corrupting it. Confirmed
+//   empirically 2026-07-07: foreman's test helper's `initGitRepo()` (cwd
+//   set to a tmpdir) still wrote its config into the real submodule gitdir
+//   when this hook ran through an actual `git commit`.
 function cleanEnv() {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
   delete env.NODE_CHANNEL_FD;
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("GIT_")) delete env[key];
+  }
   return env;
 }
 
@@ -54,4 +69,4 @@ if (require.main === module) {
   process.exit(main());
 }
 
-module.exports = { main, repoRoot, testGlob };
+module.exports = { main, repoRoot, testGlob, cleanEnv };
