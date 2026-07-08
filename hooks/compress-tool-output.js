@@ -139,6 +139,58 @@ function isFileDump(command) {
   return typeof command === "string" && FILE_DUMP_RE.test(command.trim());
 }
 
+// preserve-exit-code.js (a PreToolUse hook) wraps Bash/PowerShell commands so
+// a non-zero exit still reports success to Claude Code — otherwise the call
+// routes through PostToolUseFailure, which this hook never sees at all (see
+// that file's header). The wrapper wants an original single-line command to
+// still test true against FILE_DUMP_RE above; take only the first line so a
+// wrapped multi-statement command doesn't fail that match.
+function firstLine(command) {
+  if (typeof command !== "string") return command;
+  const i = command.indexOf("\n");
+  return i === -1 ? command : command.slice(0, i);
+}
+
+// Matches the trailer preserve-exit-code.js appends. Real output splits the
+// prefix, the number, and the suffix across three separate lines (its
+// wrapper never puts a variable inside a quoted string or parens — see that
+// file's header for why), CRLF or LF — `\s*` bridges the line breaks either
+// way.
+//
+// Two separate patterns, deliberately: MARKER_ANY has no digit requirement,
+// so it also matches a MALFORMED marker (empty capture) — PowerShell only
+// sets $LASTEXITCODE for a native executable, so a pure-cmdlet command
+// (`Get-ChildItem | Select-Object`, a bare `Get-Content`) leaves it
+// null/stale and the wrapper emits `[[hush:exit=\n\n]]` with nothing inside.
+// That text must still be stripped — never leaked to the model raw — even
+// though it carries no usable exit code. Every occurrence gets removed
+// unconditionally (not just the last one): Claude Code's own "output too
+// large, persisted to a sidecar file" mechanism has been observed capturing
+// RAW pre-hook output including an already-well-formed marker, and a later
+// `Get-Content -Tail` on that sidecar file gets wrapped again by this same
+// hook — two markers can legitimately land in one tool result.
+const EXIT_MARKER_ANY_RE = /\[\[hush:exit=[^[\]]*\]\]/g;
+const EXIT_MARKER_VALID_RE = /\[\[hush:exit=\s*(-?\d+)\s*\]\]/g;
+
+// Returns null when no hush marker appears at all (nothing to strip, caller
+// uses the old regex-sniffing heuristic). Otherwise always strips every
+// marker occurrence from cleanText; exitCode is the last WELL-FORMED
+// occurrence's value, or null if every marker found was malformed/empty —
+// callers must treat a null exitCode the same as "no reliable exit code
+// known" (fall back to sniffing cleanText) while still using the stripped
+// cleanText and skipping the `[hush: exit N]` trailer note.
+function extractWrappedExit(text) {
+  if (typeof text !== "string" || !text.includes("[[hush:exit=")) return null;
+
+  EXIT_MARKER_VALID_RE.lastIndex = 0;
+  let match;
+  let lastValid;
+  while ((match = EXIT_MARKER_VALID_RE.exec(text))) lastValid = match;
+
+  const cleanText = text.replace(EXIT_MARKER_ANY_RE, "").replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "");
+  return { exitCode: lastValid ? parseInt(lastValid[1], 10) : null, cleanText };
+}
+
 // When the user's prompt explicitly asks to enumerate EVERY / ALL / EACH of
 // some countable thing (warnings, errors, files, items, ...), a capped slice —
 // even one whose omission markers promise "no signal cut" — still reads as
@@ -231,18 +283,29 @@ function main() {
     return emit(updated);
   }
 
-  const isDump = isFileDump(data.tool_input && data.tool_input.command);
+  const isDump = isFileDump(firstLine(data.tool_input && data.tool_input.command));
 
   if (typeof response === "string") {
-    const out = compress(response, undefined, isDump, enumerate);
+    const wrapped = extractWrappedExit(response);
+    // null exitCode = a marker was found but malformed (no native exe ran,
+    // so $LASTEXITCODE was never set) — still strip it, but compress() gets
+    // undefined so looksLikeFailure falls back to sniffing cleanText, and no
+    // untrustworthy "[hush: exit N]" note gets appended.
+    const exitCode = wrapped ? wrapped.exitCode : undefined;
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate);
+    if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
     if (out !== response) updated = out;
   } else if (response && typeof response === "object") {
-    const exitCode = extractExitCode(response);
+    const wrapped =
+      extractWrappedExit(response.stdout) || extractWrappedExit(response.stderr) || extractWrappedExit(response.output);
+    const exitCode = wrapped ? wrapped.exitCode : extractExitCode(response);
     const next = { ...response };
     let changed = false;
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
-        const out = compress(next[field], exitCode, isDump, enumerate);
+        const fieldWrapped = extractWrappedExit(next[field]);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate);
+        if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
         if (out !== next[field]) {
           next[field] = out;
           changed = true;
@@ -281,4 +344,6 @@ module.exports = {
   isLogPath,
   requestsEnumeration,
   compress,
+  firstLine,
+  extractWrappedExit,
 };

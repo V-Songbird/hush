@@ -16,6 +16,8 @@ const {
   isLogPath,
   requestsEnumeration,
   compress,
+  firstLine,
+  extractWrappedExit,
 } = require('../hooks/compress-tool-output');
 
 describe('unit: transforms', () => {
@@ -167,6 +169,91 @@ describe('unit: transforms', () => {
     assert.doesNotMatch(carved, /lines omitted/, 'nothing should be elided under the enumerate cap');
     assert.ok(carved.includes(lines[41]), 'the warning survives');
   });
+
+  test('firstLine returns the whole string when there is no newline', () => {
+    assert.strictEqual(firstLine('node build.js'), 'node build.js');
+  });
+
+  test('firstLine strips everything after the first newline (survives preserve-exit-code.js wrapping)', () => {
+    const wrapped = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
+    assert.strictEqual(firstLine(wrapped), 'cat src/Foo.kt');
+  });
+
+  test('firstLine passes through non-strings unchanged', () => {
+    assert.strictEqual(firstLine(undefined), undefined);
+  });
+
+  test('isFileDump still recognizes a wrapped file-dump command via firstLine', () => {
+    const wrapped = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
+    assert.ok(isFileDump(firstLine(wrapped)));
+  });
+});
+
+describe('unit: extractWrappedExit', () => {
+  test('extracts the exit code and strips the marker from the end', () => {
+    const text = 'line one\nline two\n[[hush:exit=1]]';
+    const r = extractWrappedExit(text);
+    assert.strictEqual(r.exitCode, 1);
+    assert.strictEqual(r.cleanText, 'line one\nline two');
+  });
+
+  test('extracts a zero exit code correctly (falsy but valid)', () => {
+    const r = extractWrappedExit('all good\n[[hush:exit=0]]');
+    assert.strictEqual(r.exitCode, 0);
+    assert.strictEqual(r.cleanText, 'all good');
+  });
+
+  test('returns null when no marker is present', () => {
+    assert.strictEqual(extractWrappedExit('plain output, no marker'), null);
+  });
+
+  // A malformed marker (PowerShell only sets $LASTEXITCODE for a native exe;
+  // a pure-cmdlet command leaves it null/stale) must still be stripped from
+  // what the model sees — real bug found via the sonnet-showcase-v2 loop run:
+  // 4 of 18 live runs leaked a raw `[[hush:exit=` marker verbatim because the
+  // old code treated "no digits captured" as "nothing to do here."
+  test('strips a malformed/empty marker even though no reliable exit code exists', () => {
+    const r = extractWrappedExit('output\n[[hush:exit=]]');
+    assert.strictEqual(r.exitCode, null);
+    assert.strictEqual(r.cleanText, 'output');
+  });
+
+  test('strips EVERY marker occurrence, using the last well-formed one as authoritative', () => {
+    const text = 'saw a stray [[hush:exit=99]] in some log line\nreal output\n[[hush:exit=1]]';
+    const r = extractWrappedExit(text);
+    assert.strictEqual(r.exitCode, 1);
+    assert.doesNotMatch(r.cleanText, /\[\[hush:exit=/, 'no raw marker of any kind should ever reach the model');
+    assert.strictEqual(r.cleanText, 'saw a stray  in some log line\nreal output');
+  });
+
+  // Confirmed real scenario (sonnet-showcase-v2, dep-bump-warnings/hush):
+  // Claude Code's own "output too large, persisted to a sidecar file"
+  // mechanism captured RAW pre-hook output including an already-well-formed
+  // marker; a later `Get-Content -Tail` on that file got wrapped AGAIN by
+  // this hook, and since that second wrap was a pure cmdlet call (no native
+  // exe), it appended a malformed marker on top of the first, well-formed one.
+  test('a double-wrapped result (well-formed marker + malformed marker) keeps the well-formed exit code and strips both', () => {
+    const text = 'line one\nline two\n[[hush:exit=1]]\n[[hush:exit=\n]]';
+    const r = extractWrappedExit(text);
+    assert.strictEqual(r.exitCode, 1);
+    assert.doesNotMatch(r.cleanText, /\[\[hush:exit=/);
+  });
+
+  test('handles non-string input', () => {
+    assert.strictEqual(extractWrappedExit(undefined), null);
+  });
+
+  // Real shape produced by preserve-exit-code.js's wrapPowerShell: the
+  // prefix, the number, and the suffix are three separate output lines
+  // (never one contiguous string — see that file's header for why), and
+  // Windows PowerShell uses CRLF. Confirmed against a live session's actual
+  // tool_result content.
+  test('parses the real multi-line CRLF shape PowerShell actually produces', () => {
+    const text = 'about to fail\r\n[[hush:exit=\r\n1\r\n]]';
+    const r = extractWrappedExit(text);
+    assert.strictEqual(r.exitCode, 1);
+    assert.strictEqual(r.cleanText, 'about to fail');
+  });
 });
 
 describe('unit: isLogPath', () => {
@@ -257,6 +344,79 @@ describe('hook: end to end', () => {
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.strictEqual(updated.interrupted, false);
     assert.match(updated.stdout, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/);
+  });
+
+  // Reproduces the real gap found via the sonnet-showcase-smoke benchmark: a
+  // failing `node --test` run (real exit code 1) that preserve-exit-code.js
+  // wrapped to report success — without the wrapper, Claude Code would have
+  // routed this through PostToolUseFailure and this hook would never see it
+  // at all (see preserve-exit-code.js's header for the full story).
+  test('a wrapped FAILING command gets the generous cap and an authoritative exit marker', () => {
+    const testLines = Array.from({ length: 320 }, (_, i) =>
+      i % 8 === 0 ? `not ok ${i} - some subtest failed` : `ok ${i} - some subtest`
+    );
+    const raw = testLines.join('\n') + '\n[[hush:exit=1]]';
+    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.doesNotMatch(updated, /\[\[hush:exit=/, 'raw wrapper marker never reaches the model');
+    assert.match(updated, /\[hush: exit 1\]$/, 'clean exit marker is appended at the end');
+    assert.match(updated, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/, 'still compressed');
+    assert.ok(updated.includes('not ok 0'), 'failure lines are signal — always kept');
+  });
+
+  test('a wrapped PASSING command gets the tighter pass cap, not the failure cap', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`);
+    const raw = lines.join('\n') + '\n[[hush:exit=0]]';
+    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(updated, /\[hush: exit 0\]$/);
+    assert.ok(updated.split('\n').length <= 63, 'pass cap (60) should apply, not the fail cap (250)');
+  });
+
+  test('wrapped exit marker on an object response (stdout field) is read and stripped the same way', () => {
+    const lines = Array.from({ length: 320 }, (_, i) => (i % 8 === 0 ? `ERROR item ${i}` : `ok ${i}`));
+    const raw = lines.join('\n') + '\n[[hush:exit=1]]';
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'PowerShell',
+      tool_response: { stdout: raw, stderr: '', interrupted: false },
+    });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.doesNotMatch(updated.stdout, /\[\[hush:exit=/);
+    assert.match(updated.stdout, /\[hush: exit 1\]$/);
+    assert.match(updated.stdout, /\[hush: \d+ lines omitted/);
+  });
+
+  test('a wrapped file-dump command still gets the looser dump cap, not the log cap', () => {
+    const big = Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n');
+    const wrappedCommand = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
+    const raw = big + '\n[[hush:exit=0]]';
+    const asWrappedDump = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      tool_input: { command: wrappedCommand },
+      tool_response: raw,
+    });
+    const asWrappedLog = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      tool_input: { command: 'npm run build\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0' },
+      tool_response: raw,
+    });
+    const dumpLines = hookOutput(asWrappedDump).hookSpecificOutput.updatedToolOutput.split('\n').length;
+    const logLines = hookOutput(asWrappedLog).hookSpecificOutput.updatedToolOutput.split('\n').length;
+    assert.ok(dumpLines > logLines, `wrapped dump (${dumpLines}) should keep more than wrapped log (${logLines})`);
+  });
+
+  // Regression test for the real leak found in the sonnet-showcase-v2 loop
+  // run: a pure-cmdlet PowerShell call (no native exe, so $LASTEXITCODE was
+  // never set) produced a malformed `[[hush:exit=\n\n]]` marker that reached
+  // the model verbatim in 4 of 18 live runs.
+  test('a malformed marker (pure-cmdlet call, $LASTEXITCODE never set) never leaks to the model', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'PowerShell',
+      tool_response: 'Name\n----\nfoo.js\nbar.js\n[[hush:exit=\n\n]]',
+    });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.doesNotMatch(updated, /\[\[hush:exit=/, 'malformed marker must be stripped, not leaked raw');
+    assert.doesNotMatch(updated, /\[hush: exit /, 'no untrustworthy exit-code note should be appended either');
   });
 
   test('a plain file dump keeps more lines than a same-size build log', () => {
