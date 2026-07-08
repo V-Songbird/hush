@@ -1,6 +1,6 @@
 {
   "name": "hush",
-  "description": "Token-lean sessions at the harness level — a terse output style, output-shrinking hooks, and log compression cut both input and output tokens.",
+  "description": "Token-lean sessions at the harness level, measured on real multi-turn coding sessions — a terse output style, output-shrinking hooks, and log compression cut output tokens and narration.",
   "license": "MIT",
   "author": {
     "name": "Victor Villegas",
