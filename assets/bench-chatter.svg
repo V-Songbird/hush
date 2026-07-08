@@ -2,12 +2,12 @@
   <text x="8" y="24" font-size="15" font-weight="600" fill="#8b949e">Play-by-play while Claude fixes a real bug (words per task)</text>
   <rect x="210" y="46" width="380" height="28" rx="3" fill="#94a3b8"/>
   <text x="8" y="64" font-size="12.5" fill="#8b949e">no plugin</text>
-  <text x="596" y="64" font-size="12" fill="#8b949e">108 words</text>
-  <rect x="210" y="84" width="162" height="28" rx="3" fill="#94a3b8"/>
+  <text x="596" y="64" font-size="12" fill="#8b949e">91 words</text>
+  <rect x="210" y="84" width="142" height="28" rx="3" fill="#94a3b8"/>
   <text x="8" y="102" font-size="12.5" fill="#8b949e">Popular "be brief" plugin</text>
-  <text x="378" y="102" font-size="12" fill="#8b949e">46</text>
-  <rect x="210" y="122" width="81" height="28" rx="3" fill="#16a34a"/>
+  <text x="358" y="102" font-size="12" fill="#8b949e">34</text>
+  <rect x="210" y="122" width="121" height="28" rx="3" fill="#16a34a"/>
   <text x="8" y="140" font-size="13" font-weight="700" fill="#16a34a">hush</text>
-  <text x="297" y="140" font-size="13" font-weight="700" fill="#16a34a">23 — a fifth of the chatter</text>
+  <text x="337" y="140" font-size="13" font-weight="700" fill="#16a34a">29 — under a third of the chatter</text>
   <text x="8" y="172" font-size="11" fill="#8b949e">Less to scroll past, and the answer you asked for sits in one clean message</text>
 </svg>
