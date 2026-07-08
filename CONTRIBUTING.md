@@ -1,6 +1,6 @@
 # Contributing
 
-This plugin is part of the [Songbird Collection](https://github.com/V-Songbird/claude-plugins) and is maintained by a single author. Contributions are welcome in the form of bug reports, suggestions, and pull requests.
+This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/foundry) and is maintained by a single author. Contributions are welcome in the form of bug reports, suggestions, and pull requests.
 
 ---
 
@@ -16,7 +16,7 @@ This plugin is part of the [Songbird Collection](https://github.com/V-Songbird/c
 ```
 .claude-plugin/
 └── plugin.json        # name, description, author, keywords — NO version
-                        # field (the version is owned by claude-plugins'
+                        # field (the version is owned by foundry's
                         # .claude-plugin/marketplace.json)
 CHANGELOG.md            # Keep a Changelog format
 LICENSE                 # MIT
@@ -31,7 +31,7 @@ scripts/                # if the plugin has helper CLIs
 └── tests/              # required when the plugin has scripted behavior
 ```
 
-Every README shares one skeleton, tone, and style, defined in claude-plugins' [`.github/PLUGIN_README_TEMPLATE.md`](https://github.com/V-Songbird/claude-plugins/blob/main/.github/PLUGIN_README_TEMPLATE.md).
+Every README shares one skeleton, tone, and style, defined in foundry's [`.github/PLUGIN_README_TEMPLATE.md`](https://github.com/V-Songbird/foundry/blob/main/.github/PLUGIN_README_TEMPLATE.md).
 
 ---
 
@@ -69,7 +69,7 @@ This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blo
 
 ## Changelog
 
-Add an entry to `CHANGELOG.md` under `[Unreleased]` for every user-visible change. Follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Version bumps and marketplace listing changes happen in [claude-plugins](https://github.com/V-Songbird/claude-plugins), not here.
+Add an entry to `CHANGELOG.md` under `[Unreleased]` for every user-visible change. Follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Version bumps and marketplace listing changes happen in [foundry](https://github.com/V-Songbird/foundry), not here.
 
 ---
 

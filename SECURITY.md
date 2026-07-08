@@ -2,7 +2,7 @@
 
 If you believe you have found a security issue in this plugin, please do not open a public GitHub issue.
 
-Instead, email the details to **songbird@tuta.com**.
+Instead, email the details to **victor.villegas@tuta.com**.
 
 Please include:
 

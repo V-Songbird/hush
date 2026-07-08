@@ -24,7 +24,7 @@ hush trims it at the source. Claude works quietly, tidies up noisy command outpu
 Inside Claude Code, run:
 
 ```
-/plugin marketplace add V-Songbird/claude-plugins
+/plugin marketplace add V-Songbird/foundry
 /plugin install hush
 ```
 
