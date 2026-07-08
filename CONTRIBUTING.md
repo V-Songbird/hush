@@ -55,6 +55,18 @@ PRs that change script behavior without updating tests will not be merged.
 
 ---
 
+## Git hooks
+
+Run this once after cloning:
+
+```
+git config core.hooksPath scripts/git-hooks
+```
+
+This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blocks the commit on failure. It no-ops if this plugin has no `tests/` directory.
+
+---
+
 ## Changelog
 
 Add an entry to `CHANGELOG.md` under `[Unreleased]` for every user-visible change. Follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Version bumps and marketplace listing changes happen in [claude-plugins](https://github.com/V-Songbird/claude-plugins), not here.

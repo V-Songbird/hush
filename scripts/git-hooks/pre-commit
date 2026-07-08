@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+"use strict";
+
+// Canonical source for the pre-commit hook installed at
+// scripts/git-hooks/pre-commit in every plugin's own repo (forge, verity,
+// foreman, hush, razor, jetbrains-router). Keep copies in sync with this
+// file -- see CONTRIBUTING.md "Git hooks" in each plugin repo.
+//
+// Blocks a commit if `node --test tests/*.test.js` fails. No-ops when the
+// plugin has no tests/ directory (skill/prompt-only plugins with no
+// scripted behavior aren't required to have one -- see each plugin's
+// CONTRIBUTING.md "Tests" section).
+
+const fs = require("fs");
+const path = require("path");
+const { execSync } = require("child_process");
+
+function repoRoot() {
+  return execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim();
+}
+
+function testGlob(root) {
+  return path.join(root, "tests", "*.test.js");
+}
+
+// Strip node's own test-runner IPC markers before spawning the nested
+// `node --test` -- inheriting NODE_TEST_CONTEXT (set when this hook's own
+// test runs as an isolated child under `node --test`) makes the nested
+// process misbehave and exit silently instead of reporting real results.
+function cleanEnv() {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  delete env.NODE_CHANNEL_FD;
+  return env;
+}
+
+function main() {
+  const root = repoRoot();
+  if (!fs.existsSync(path.join(root, "tests"))) return 0;
+
+  try {
+    execSync(`node --test "${testGlob(root)}"`, { stdio: "inherit", cwd: root, env: cleanEnv() });
+    return 0;
+  } catch {
+    process.stderr.write(
+      "\n[pre-commit] `node --test tests/*.test.js` failed -- fix the failure before committing " +
+        "(or `git commit --no-verify` to override deliberately).\n\n"
+    );
+    return 1;
+  }
+}
+
+if (require.main === module) {
+  process.exit(main());
+}
+
+module.exports = { main, repoRoot, testGlob };
