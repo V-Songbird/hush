@@ -1,0 +1,8 @@
+{
+  "model": "haiku",
+  "reps": 2,
+  "concurrency": 3,
+  "maxTurns": 25,
+  "runTimeoutMs": 480000,
+  "defaultTasks": ["bugfix-expiry", "bugfix-pagination", "checkout-bug", "refactor-rename", "noisy-build", "explain-rerender", "explain-rebase", "write-validator"]
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "bugfix-expiry",
+    "category": "tool",
+    "fixture": "bugfix-expiry",
+    "prompt": "My auth is letting expired tokens slip through and the test suite is red. Can you dig in, fix the bug, and get the tests passing?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "bugfix-pagination",
+    "category": "tool",
+    "fixture": "bugfix-pagination",
+    "prompt": "Pagination is handing back the wrong rows and the tests are failing. Can you figure out what's off and get them green?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "checkout-bug",
+    "category": "tool",
+    "fixture": "checkout-bug",
+    "prompt": "Checkout totals come out wrong when someone stacks a flat-amount coupon with a non-USD currency, and the tests are failing. Can you track down what's causing it and fix it?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "refactor-rename",
+    "category": "tool",
+    "fixture": "refactor-rename",
+    "prompt": "We renamed our public API from calcTotal to computeTotal. Can you update everything that still uses the old name and make sure the tests pass?",
+    "check": { "type": "tests", "cmd": "node --test" }
+  },
+  {
+    "id": "noisy-build",
+    "category": "tool",
+    "fixture": "noisy-build",
+    "prompt": "My build is drowning in warnings and I'm pretty sure there's a real error buried somewhere in there. Can you run it, find what's actually breaking, and get it building clean?",
+    "check": { "type": "tests", "cmd": "node build.js" }
+  },
+  {
+    "id": "explain-rerender",
+    "category": "qa",
+    "fixture": null,
+    "prompt": "Why does my React child component re-render every time even though I'm passing it the same props?",
+    "check": {
+      "type": "keywords",
+      "require": 2,
+      "patterns": ["referen(ce|tial)|new object|identity", "useMemo|React\\.memo|\\bmemo\\b", "shallow"]
+    }
+  },
+  {
+    "id": "explain-rebase",
+    "category": "qa",
+    "fixture": null,
+    "prompt": "What's the actual difference between git rebase and merge, and when should I reach for each?",
+    "check": {
+      "type": "keywords",
+      "require": 2,
+      "patterns": ["linear|rewrit|replay|reapply", "merge commit", "shared|public|pushed|collaborat"]
+    }
+  },
+  {
+    "id": "write-validator",
+    "category": "qa",
+    "fixture": null,
+    "prompt": "Write me a Python function that validates email addresses.",
+    "check": {
+      "type": "keywords",
+      "require": 2,
+      "patterns": ["def \\w+\\(", "@", "return|re\\.|regex|match"]
+    }
+  },
+  {
+    "id": "repo-summary",
+    "category": "tool",
+    "fixture": "repo-summary",
+    "prompt": "I just inherited this repo — can you walk me through how it's put together? The main pieces and how they fit.",
+    "check": {
+      "type": "keywords",
+      "require": 4,
+      "patterns": ["server|http", "route", "store|TTL|in-memory", "cache|LRU", "auth|HMAC|token"]
+    }
+  },
+  {
+    "id": "log-triage",
+    "category": "tool",
+    "fixture": "log-triage",
+    "prompt": "Prod fell over last night and the logs are a mess. Can you dig through logs/app.log and tell me what actually happened?",
+    "check": {
+      "type": "keywords",
+      "require": 2,
+      "patterns": ["redis", "ECONNREFUSED|6379", "cascade|storm|overload|degrad|backlog"]
+    }
+  }
+]
