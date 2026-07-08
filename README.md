@@ -32,7 +32,7 @@ The quiet style takes effect at your next session. There's nothing to invoke —
 
 ## Benchmarks
 
-We put hush up against plain Claude Code and the popular "just be brief" plugin — the same real coding jobs, phrased the way a developer actually types them, three setups, and the real bill read straight from the API.
+We put hush up against plain Claude Code and the popular "just be brief" plugin on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply — the same jobs, phrased the way a developer actually types them, three setups, and the real bill read straight from the API.
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play while fixing a real bug: no plugin 91 words, the brief plugin 34, hush 29" width="540"></p>
 
@@ -44,13 +44,17 @@ We put hush up against plain Claude Code and the popular "just be brief" plugin 
 
 Across the full suite, hush's sessions ran cheaper than plain Claude Code by a wider margin than the brief plugin managed. And the part that matters most: **nothing broke.** Every job passed in every setup.
 
-*One honest note on cost:* on short everyday tasks, no plugin of this kind makes sessions much cheaper — a session's fixed overhead dwarfs what any of them can trim, the brief plugin included. hush's everyday win is what you *read*, not what you pay; the savings show up where noise dominates.
+> [!NOTE]
+> On short everyday tasks, no plugin of this kind makes sessions much cheaper — a session's fixed overhead dwarfs what any of them can trim, the brief plugin included. hush's everyday win is what you *read*, not what you pay; the savings above show up once noise does.
 
-*How we tested: same jobs, three setups, several runs each in fresh throwaway workspaces, on Sonnet; costs from the API, not estimates. Reproduce it yourself — see [benchmarks/](benchmarks/).*
+*How we tested: same jobs, three setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs from the API, not estimates. Reproduce it yourself — see [benchmarks/](benchmarks/).*
 
 ## Compress a memory file
 
-`/hush:hush-compress <path>` shrinks a `CLAUDE.md` or notes file into a tighter form, so every future session that loads it costs a little less. It **never touches your original** — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) for you to review and swap in yourself.
+`/hush:hush-compress <path>` shrinks a `CLAUDE.md` or notes file into a tighter form, so every future session that loads it costs a little less.
+
+> [!IMPORTANT]
+> It never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) for you to review and swap in yourself.
 
 ## Under the hood
 

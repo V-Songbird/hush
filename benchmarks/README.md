@@ -2,7 +2,7 @@
 
 Curious whether the numbers on hush's front page hold up? This is the actual harness — run it yourself.
 
-It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed tasks, once with no plugin and once with hush, and reads the true cost and token counts straight out of the API's own usage blocks. No tokenizer estimates, no hand-waving. Correctness is checked mechanically, so compression that mangles the answer scores as a *failure*, not a win.
+It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed tasks, once with no plugin and once with hush, and reads the true cost and token counts straight out of the API's own usage blocks. No tokenizer estimates, no hand-waving, and no single-shot prompts — a canned reply can't tell you what a plugin costs across a real multi-turn session, so we don't measure it that way. Correctness is checked mechanically, so compression that mangles the answer scores as a *failure*, not a win.
 
 ## Before you start
 
@@ -12,10 +12,13 @@ It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed
 
 ## The honest disclaimer, up front
 
-- **It costs real money.** The cheap default run is roughly **$1–3 on the small model** and takes a few minutes. The full suite, or running on the bigger model, costs more.
-- **The numbers move between runs.** This is a handful of reps against a live model, not a powered experiment. Expect single-digit-percent swings on any given task, and more on the noisy ones.
-- **One task is genuinely bimodal on the bigger model.** `noisy-build` sometimes runs clean and sometimes triggers extra verification turns — averaging a couple of reps there will mislead you. Look at the *per-rep spread*, not just the mean.
-- **What you should see:** hush landing **at or below baseline on cost**, with **far less mid-turn narration** and leaner tool output — the same *shape* as our published charts. You will **not** reproduce our exact figures, and that's expected. If hush is cheaper and quieter with every task still passing, the claim holds.
+> [!WARNING]
+> This costs real money. The cheap default run is roughly **$1–3 on the small model** and takes a few minutes. The full suite, or running on the bigger model, costs more.
+
+> [!NOTE]
+> The numbers move between runs — a handful of reps against a live model, not a powered experiment. Expect single-digit-percent swings on any given task, and more on the noisy ones. `noisy-build` is genuinely bimodal on the bigger model, sometimes running clean and sometimes triggering extra verification turns — judge it by the *per-rep spread*, not just the mean.
+
+**What you should see:** hush landing **at or below baseline on cost**, with **far less mid-turn narration** and leaner tool output — the same *shape* as our published charts. You will **not** reproduce our exact figures, and that's expected. If hush is cheaper and quieter with every task still passing, the claim holds.
 
 ## Run it
 
