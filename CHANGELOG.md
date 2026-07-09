@@ -5,6 +5,13 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.15-alpha — 2026-07-09
+
+### Changed
+
+- A long-running command now gets one status line when it starts; the
+  next thing said about it is its result.
+
 ## 0.3.14-alpha — 2026-07-09
 
 Doc-only: the benchmarks section now opens with a chart of where a real session's tokens actually go — and why trimming replies alone can't cut the bill. No behavior change.
