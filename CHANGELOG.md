@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.11-alpha — 2026-07-08
+
+Doc-only: sharpened two Benchmarks sentences with sharper, still-exact numbers — the narration gap as a multiple ("more than three times as many words") and the noisy-build comparison against the "be brief" plugin directly ("its bill runs about 30% higher than hush's here"). No new numbers, no behavior change.
+
 ## 0.3.10-alpha — 2026-07-08
 
 Doc-only: fixed the plugin listing's description, which claimed input-token savings the numbers don't support — it now describes output and narration only. The Benchmarks section states plainly that every number comes from a real multi-turn agent session, never a single reply. No behavior change.

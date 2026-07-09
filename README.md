@@ -36,11 +36,11 @@ We put hush up against plain Claude Code and the popular "just be brief" plugin 
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play while fixing a real bug: no plugin 91 words, the brief plugin 34, hush 29" width="540"></p>
 
-**Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude says about ninety words of play-by-play before you get the answer. hush cuts that to under a third — quieter than the brief plugin too — and puts everything that matters in one clean final message.
+**Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude spends more than three times as many words on play-by-play as hush does before you get the answer — quieter than the brief plugin too — and everything that matters lands in one clean final message.
 
 <p align="center"><img src="assets/bench-noise.svg" alt="Claude hunts a real error buried in a noisy build: hush is 15% cheaper than no plugin, the brief plugin is pricier than no plugin" width="540"></p>
 
-**Noise gets cheaper — and the brief plugin can backfire on it.** When a job means wading through a noisy build or a bulky log, hush trims the clutter before it lands on your bill, with every warning and error line kept verbatim. The brief plugin actually costs *more* than doing nothing on this kind of job — shorter replies don't help when the bulk was never in the reply to begin with.
+**Noise gets cheaper — and the brief plugin can backfire on it.** When a job means wading through a noisy build or a bulky log, hush trims the clutter before it lands on your bill, with every warning and error line kept verbatim. The brief plugin actually costs more than doing nothing on this kind of job — its bill runs about 30% higher than hush's here — shorter replies don't help when the bulk was never in the reply to begin with.
 
 Across the full suite, hush's sessions ran cheaper than plain Claude Code by a wider margin than the brief plugin managed. And the part that matters most: **nothing broke.** Every job passed in every setup.
 
