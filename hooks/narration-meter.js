@@ -3,8 +3,12 @@
 
 // Mid-turn narration meter. PostToolUse-only: measures narration accumulated
 // so far in the current turn (every text block so far precedes a tool call,
-// so all of it is narration) and injects one corrective line the moment the
-// budget is crossed — at most once per turn.
+// so all of it is narration) and injects a corrective line the moment the
+// budget is crossed. If narration keeps growing after a correction, the
+// meter re-arms: another quarter-budget of fresh narration since the last
+// firing earns another correction, so an ignored nudge repeats instead of
+// going silent for the rest of the turn. No growth, no repeat — a single
+// oversized block is corrected exactly once.
 //
 // Deliberately does NOT run at Stop. A Stop hook can only give feedback by
 // setting hookSpecificOutput.additionalContext, and Claude Code forces the
@@ -84,6 +88,23 @@ function measureCurrentTurn(lines) {
   return { ...tally(texts), turnKey };
 }
 
+// Pure firing decision. First correction of a turn fires when narration
+// crosses the budget; after that, only fresh growth re-arms it — a further
+// quarter-budget of narration since the last firing earns another
+// correction. A new turnKey starts over. Legacy state without a firedAt
+// count is treated as fired-at-current, i.e. once per turn, until growth
+// can be measured again.
+function stepMeter(prevState, turnKey, narration, budget) {
+  const sameTurn = !!(prevState && prevState.turnKey === turnKey);
+  if (!sameTurn) {
+    if (narration <= budget) return { fire: false };
+    return { fire: true, nextState: { turnKey, firedAt: narration } };
+  }
+  const firedAt = typeof prevState.firedAt === 'number' ? prevState.firedAt : narration;
+  if (narration - firedAt < Math.ceil(budget / 4)) return { fire: false };
+  return { fire: true, nextState: { turnKey, firedAt: narration } };
+}
+
 function statePath(sessionId) {
   const safe = String(sessionId || "unknown").replace(/[^a-zA-Z0-9-]/g, "_");
   return path.join(os.tmpdir(), `hush-meter-${safe}.json`);
@@ -114,9 +135,9 @@ function main() {
 
   const lines = readTailLines(data.transcript_path);
   const { narration, blocks, turnKey } = measureCurrentTurn(lines);
-  if (narration <= BUDGET) return;
-  if (readState(data.session_id).turnKey === turnKey) return; // already corrected this turn
-  writeState(data.session_id, { turnKey });
+  const { fire, nextState } = stepMeter(readState(data.session_id), turnKey, narration, BUDGET);
+  if (!fire) return;
+  writeState(data.session_id, nextState);
 
   process.stdout.write(
     JSON.stringify({
@@ -130,4 +151,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { measureCurrentTurn, isRealUserPrompt, wordCount };
+module.exports = { measureCurrentTurn, isRealUserPrompt, wordCount, stepMeter };

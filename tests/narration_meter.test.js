@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { runHook, hookOutput } = require('./helpers');
-const { measureCurrentTurn, wordCount } = require('../hooks/narration-meter');
+const { measureCurrentTurn, wordCount, stepMeter } = require('../hooks/narration-meter');
 
 function userPrompt(text, uuid) {
   return JSON.stringify({ type: 'user', uuid: uuid || 'u1', message: { role: 'user', content: text } });
@@ -142,6 +142,40 @@ describe('unit: measureCurrentTurn', () => {
   });
 });
 
+describe('unit: stepMeter firing decision', () => {
+  test('first crossing of the budget fires and records where', () => {
+    assert.strictEqual(stepMeter(undefined, 't1', 120, 120).fire, false);
+    assert.deepStrictEqual(stepMeter(undefined, 't1', 149, 120), {
+      fire: true,
+      nextState: { turnKey: 't1', firedAt: 149 },
+    });
+  });
+
+  test('after a correction, growth below a quarter-budget stays silent', () => {
+    const state = { turnKey: 't1', firedAt: 149 };
+    assert.strictEqual(stepMeter(state, 't1', 178, 120).fire, false);
+  });
+
+  test('a quarter-budget of fresh narration re-fires and re-anchors', () => {
+    const state = { turnKey: 't1', firedAt: 149 };
+    assert.deepStrictEqual(stepMeter(state, 't1', 179, 120), {
+      fire: true,
+      nextState: { turnKey: 't1', firedAt: 179 },
+    });
+  });
+
+  test('a new turn starts the ladder over at the full budget', () => {
+    const state = { turnKey: 't1', firedAt: 500 };
+    assert.strictEqual(stepMeter(state, 't2', 100, 120).fire, false);
+    assert.strictEqual(stepMeter(state, 't2', 121, 120).fire, true);
+  });
+
+  test('legacy once-per-turn state (no firedAt) anchors at current narration', () => {
+    const state = { turnKey: 't1' };
+    assert.strictEqual(stepMeter(state, 't1', 400, 120).fire, false);
+  });
+});
+
 describe('hook: end to end (PostToolUse)', () => {
   test('under budget stays silent', () => {
     const file = writeTranscript([userPrompt('go', 't1'), assistantText(words(10))]);
@@ -175,12 +209,32 @@ describe('hook: end to end (PostToolUse)', () => {
     assert.match(hookOutput(r).hookSpecificOutput.additionalContext, /30 words/);
   });
 
-  test('fires at most once per turn', () => {
+  test('does not repeat without new narration', () => {
     const file = writeTranscript([userPrompt('go', 't1'), assistantText(words(200))]);
     const session = freshSession();
     const input = { transcript_path: file, session_id: session, hook_event_name: 'PostToolUse' };
     assert.notStrictEqual(hookOutput(runHook('narration-meter.js', input)), null);
     assert.strictEqual(hookOutput(runHook('narration-meter.js', input)), null);
+  });
+
+  test('re-arms after a quarter-budget of fresh narration since the last correction', () => {
+    const session = freshSession();
+    const turn = [userPrompt('go', 't1'), assistantText(words(200))];
+    const first = writeTranscript(turn);
+    assert.notStrictEqual(
+      hookOutput(runHook('narration-meter.js', { transcript_path: first, session_id: session, hook_event_name: 'PostToolUse' })),
+      null
+    );
+    // +20 words since the correction: under the 30-word re-arm step, silent.
+    const under = writeTranscript([...turn, toolResult(), assistantText(words(20))]);
+    assert.strictEqual(
+      hookOutput(runHook('narration-meter.js', { transcript_path: under, session_id: session, hook_event_name: 'PostToolUse' })),
+      null
+    );
+    // +30 words total since the correction: re-arm step reached, fires again.
+    const over = writeTranscript([...turn, toolResult(), assistantText(words(20)), toolResult(), assistantText(words(10))]);
+    const r = hookOutput(runHook('narration-meter.js', { transcript_path: over, session_id: session, hook_event_name: 'PostToolUse' }));
+    assert.match(r.hookSpecificOutput.additionalContext, /230 words/);
   });
 
   test('a new turn re-arms the meter', () => {
