@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.14-alpha — 2026-07-09
+
+Doc-only: the benchmarks section now opens with a chart of where a real session's tokens actually go — and why trimming replies alone can't cut the bill. No behavior change.
+
 ## 0.3.13-alpha — 2026-07-08
 
 Doc-only: Benchmarks charts now display larger (640px instead of 540px). No behavior change.

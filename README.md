@@ -12,6 +12,8 @@ You know the pattern: "Let me start by looking at…", "Now I'll check…", a 40
 
 hush trims it at the source. Claude works quietly, tidies up noisy command output and bulky log files before they pile up, and gives you **one clear answer at the end**. Code, error messages, and anything you ask it to explain stay complete — hush never shortens the parts that matter.
 
+It's built for real engineering sessions — the kind that read logs, run builds, and dig through output — because that's where the noise actually lives.
+
 ## Why you'd want it
 
 - **Cheaper sessions.** It shrinks the two biggest sources of bulk — noisy output and narration — so long sessions cost less.
@@ -34,13 +36,17 @@ The quiet style takes effect at your next session. There's nothing to invoke —
 
 We put hush up against plain Claude Code and the popular "just be brief" plugin on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply — the same jobs, phrased the way a developer actually types them, three setups, and the real bill read straight from the API.
 
+<p align="center"><img src="assets/bench-anatomy.svg" alt="What a real session bills for: 99% is what the session reads — files, logs, command output — and under 1% is the reply; a brief plugin can only trim the sliver, hush works on the rest too" width="640"></p>
+
+**First, why "just be brief" can't be the whole answer.** In a real engineering session, almost everything on the bill is what Claude *reads* — files, logs, command output — not what it writes back. Across our benchmark sessions, Claude read 154× more than it wrote. A plugin that only shortens replies is polishing the sliver; hush spends its effort where the bill actually lives.
+
 <p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play while fixing a real bug: no plugin 91 words, the brief plugin 34, hush 29 — plain Claude narrates over 3x longer" width="640"></p>
 
 **Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude spends more than three times as many words on play-by-play as hush does before you get the answer — quieter than the brief plugin too — and everything that matters lands in one clean final message.
 
 <p align="center"><img src="assets/bench-noise.svg" alt="Claude hunts a real error buried in a noisy build: hush is 15% cheaper than no plugin, the brief plugin runs 30% pricier than hush on this task" width="640"></p>
 
-**Noise gets cheaper — and the brief plugin can backfire on it.** When a job means wading through a noisy build or a bulky log, hush trims the clutter before it lands on your bill, with every warning and error line kept verbatim. The brief plugin actually costs more than doing nothing on this kind of job — its bill runs about 30% higher than hush's here — shorter replies don't help when the bulk was never in the reply to begin with.
+**Noise gets cheaper — and the brief plugin can backfire on it.** When a job means wading through a noisy build or a bulky log, hush trims the clutter before it lands on your bill, with every warning and error line kept verbatim. The brief plugin actually costs more than doing nothing on this kind of job — its bill runs about 30% higher than hush's here.
 
 <p align="center"><img src="assets/bench-debug.svg" alt="Chasing a real connection-pool leak through the logs: no plugin $0.32, the brief plugin $0.25, hush $0.21 — hush's biggest single-task win at 34% cheaper" width="640"></p>
 
