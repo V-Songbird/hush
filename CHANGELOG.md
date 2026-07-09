@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.12-alpha — 2026-07-08
+
+Doc-only: the Benchmarks charts now carry the same sharpened figures as the surrounding text — a "3.1x" badge on the narration chart, a "+30%" badge on the noisy-build chart, and a new chart for hush's single best result (a real connection-pool-leak debugging task, 34% cheaper). No new numbers, no behavior change.
+
 ## 0.3.11-alpha — 2026-07-08
 
 Doc-only: sharpened two Benchmarks sentences with sharper, still-exact numbers — the narration gap as a multiple ("more than three times as many words") and the noisy-build comparison against the "be brief" plugin directly ("its bill runs about 30% higher than hush's here"). No new numbers, no behavior change.
