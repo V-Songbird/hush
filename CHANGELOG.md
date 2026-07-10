@@ -5,6 +5,13 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.17-alpha — 2026-07-09
+
+### Changed
+
+- When Claude settles a diagnosis mid-task, the check-in line now ends
+  at the verdict itself instead of also announcing the next step.
+
 ## 0.3.16-alpha — 2026-07-09
 
 ### Changed

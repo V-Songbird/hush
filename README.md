@@ -42,7 +42,7 @@ We put hush up against plain Claude Code and the popular "just be brief" plugin 
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play while fixing a real bug: no plugin 91 words, the brief plugin 34, hush 29 — plain Claude narrates over 3x longer" width="640"></p>
 
-**Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude spends more than three times as many words on play-by-play as hush does before you get the answer — quieter than the brief plugin too — and everything that matters lands in one clean final message.
+**Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude spends more than three times as many words on play-by-play as hush does before you get the answer — quieter than the brief plugin too — and everything that matters lands in one clean final message. Quieter, not mute: a brief check-in when Claude settles a diagnosis or kicks off a long build is deliberate, and no plugin can hard-silence the model mid-turn.
 
 <p align="center"><img src="assets/bench-noise.svg" alt="Claude hunts a real error buried in a noisy build: hush is 15% cheaper than no plugin, the brief plugin runs 30% pricier than hush on this task" width="640"></p>
 
