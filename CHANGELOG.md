@@ -5,6 +5,16 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.22-alpha — 2026-07-11
+
+### Changed
+
+- Final messages now lead with a bold outcome line and break multiple
+  findings into bullet points with identifiers in code ticks, so reports
+  scan at a glance. Short answers stay a single plain line.
+- Word economy now means selecting what to report, not compressing the
+  wording: complete clauses, no dropped articles, no arrow-chain shorthand.
+
 ## 0.3.21-alpha — 2026-07-11
 
 ### Changed
