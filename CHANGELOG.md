@@ -5,6 +5,13 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.18-alpha — 2026-07-10
+
+### Changed
+
+- Final-message reporting reads more clearly: no packing multiple facts
+  into one line, test summaries no longer list every suite name.
+
 ## 0.3.17-alpha — 2026-07-09
 
 ### Changed
