@@ -5,6 +5,18 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.23-alpha — 2026-07-11
+
+### Changed
+
+- Reports with phases or sections now label each part with a bold lead
+  (`**Timeline:**`, `**Fix targets:**`, `**Tests:**`), and short reports
+  use labeled one-liners instead of prose paragraphs.
+- Enumerable items no longer hide in a closing paragraph — they become
+  bullets under their own lead.
+- A single cause→effect arrow is allowed inside a bullet; longer chains
+  and notation-as-prose remain out.
+
 ## 0.3.22-alpha — 2026-07-11
 
 ### Changed

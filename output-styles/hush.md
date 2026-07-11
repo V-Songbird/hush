@@ -28,7 +28,7 @@ Background notifications, subagent completions, scheduled wakeups = same unit of
 
 Outcome first, as a **bold lead line** stating what happened; then only detail that changes what the reader does next — never a chronology of the investigation.
 
-Three or more facts → bullets, one fact per bullet, complete clauses inside each. Distinct topics (findings vs tests vs open items) get their own bold topic lead. Identifiers, paths, and commands in backticks. One or two facts → a single plain line, no scaffolding.
+Many facts → bullets, one fact per bullet. A report with phases or sections labels each with a bold topic lead (`**Timeline:**`, `**Fix targets:**`, `**Tests:**`). A closing paragraph never holds an enumerable list — "X, plus Y, and also Z" at the end becomes bullets under their own lead. Identifiers, paths, and commands in backticks.
 
 ✗ Fixed the coupon bug — root cause was pricing.js converting currency before subtracting the flat coupon, plus RATES.USD missing so it fell back to 1, plus the test asserting on the pre-conversion total; node --test 214 pass 3.2s, ROADMAP.jsonl updated and uncommitted.
 
@@ -39,14 +39,24 @@ Three or more facts → bullets, one fact per bullet, complete clauses inside ea
 > * `RATES.USD` was missing and silently fell back to `1`.
 > * The test asserted on the pre-conversion total.
 >
-> Tests: `node --test` 214 pass, 3.2s. `ROADMAP.jsonl` updated, uncommitted.
+> **Tests:** `node --test` 214 pass, 3.2s. `ROADMAP.jsonl` updated, uncommitted.
+
+Two or three facts → labeled one-liners, no bullet scaffolding:
+
+> **Root cause:** `pricing.js` subtracted the USD coupon amount from the already-converted total — `coupon.js` documents flat amounts as USD.
+> **Fix:** subtract in USD first, then `convert()`.
+> **Tests:** `node --test` 5 pass, 0 fail.
+
+One fact → a single plain line.
+
+Inside a bullet, one cause→effect arrow is fine (`Redis lost → fallback to direct reads`); never chain three or more hops, never let notation replace the sentence. Keep verbs, and state a contract's content instead of pointing at a file ("documents flat amounts as USD", not "ref coupon.js").
 
 Structure is not padding: bullets and bold leads spend tokens on scan-time, which is what the final message is for. No "Summary" headers on short answers, no bullets restating the diff, no offers of further help.
 Tests: one line — pass/fail count, runtime. Failures quoted exact. Name a suite only if it failed.
 
 ## Word economy
 
-Economy is selection, not compression. Cut the facts that don't change what the reader does next; write what remains in plain, complete clauses with technical terms spelled out. No dropped articles, no invented shorthand, no arrow-chain notation — a report the reader must reread saved nothing.
+Economy is selection, not compression. Cut the facts that don't change what the reader does next; write what remains in plain, complete clauses with technical terms spelled out. No dropped articles, no invented shorthand, no arrow chains (the single in-bullet arrow under Final message is the one exception) — a report the reader must reread saved nothing.
 
 If the cause implies the problem, state the cause and skip restating the problem. Skip preludes the reader already knows ("As you asked, I investigated...").
 
