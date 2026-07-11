@@ -57,7 +57,7 @@ describe('unit: transforms', () => {
     const out = capLines(lines, 10);
     assert.strictEqual(out.length, 11);
     assert.strictEqual(out[0], 'line 0');
-    assert.strictEqual(out[6], '[hush: 90 lines omitted, none with warnings/errors/failures]');
+    assert.strictEqual(out[6], '[hush hook: 90 lines omitted from this view, none with warnings/errors/failures]');
     assert.strictEqual(out[10], 'line 99');
   });
 
@@ -66,7 +66,7 @@ describe('unit: transforms', () => {
     lines[50] = 'WARN W1042 deprecated-api in src/legacy/adapter.js';
     const out = capLines(lines, 10).join('\n');
     // every omission marker carries the no-signal guarantee...
-    for (const m of out.match(/\[hush: \d+ lines omitted[^\]]*\]/g)) {
+    for (const m of out.match(/\[hush hook: \d+ lines omitted[^\]]*\]/g)) {
       assert.match(m, /none with warnings\/errors\/failures/);
     }
     // ...and the guarantee holds: the surviving warning proves signal is kept,
@@ -90,7 +90,7 @@ describe('unit: transforms', () => {
     const out = capLines(lines, 10);
     assert.strictEqual(out.length, 11);
     assert.strictEqual(out[0], 'line 0');
-    assert.strictEqual(out[6], '[hush: 90 lines omitted, none with warnings/errors/failures]');
+    assert.strictEqual(out[6], '[hush hook: 90 lines omitted from this view, none with warnings/errors/failures]');
     assert.strictEqual(out[10], 'line 99');
   });
 
@@ -307,7 +307,7 @@ describe('hook: end to end', () => {
     assert.strictEqual(updated.file.filePath, 'C:\\repo\\logs\\app.log');
     assert.strictEqual(updated.file.totalLines, 900, 'original totalLines preserved');
     assert.ok(updated.file.content.includes('ECONNREFUSED'), 'the error line survives the cap');
-    assert.match(updated.file.content, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/);
+    assert.match(updated.file.content, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
     assert.ok(updated.file.content.length < content.length / 2, 'log at least halves');
     assert.strictEqual(updated.file.numLines, updated.file.content.split('\n').length, 'numLines matches new content');
   });
@@ -332,7 +332,7 @@ describe('hook: end to end', () => {
     const out = hookOutput(r);
     const updated = out.hookSpecificOutput.updatedToolOutput;
     assert.strictEqual(out.hookSpecificOutput.hookEventName, 'PostToolUse');
-    assert.match(updated, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/);
+    assert.match(updated, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
   });
 
   test('object response compresses stdout, preserves shape and other fields', () => {
@@ -343,7 +343,7 @@ describe('hook: end to end', () => {
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.strictEqual(updated.interrupted, false);
-    assert.match(updated.stdout, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/);
+    assert.match(updated.stdout, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
   });
 
   // Reproduces the real gap found via the sonnet-showcase-smoke benchmark: a
@@ -360,7 +360,7 @@ describe('hook: end to end', () => {
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.doesNotMatch(updated, /\[\[hush:exit=/, 'raw wrapper marker never reaches the model');
     assert.match(updated, /\[hush: exit 1\]$/, 'clean exit marker is appended at the end');
-    assert.match(updated, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/, 'still compressed');
+    assert.match(updated, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/, 'still compressed');
     assert.ok(updated.includes('not ok 0'), 'failure lines are signal — always kept');
   });
 
@@ -383,7 +383,7 @@ describe('hook: end to end', () => {
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.doesNotMatch(updated.stdout, /\[\[hush:exit=/);
     assert.match(updated.stdout, /\[hush: exit 1\]$/);
-    assert.match(updated.stdout, /\[hush: \d+ lines omitted/);
+    assert.match(updated.stdout, /\[hush hook: \d+ lines omitted/);
   });
 
   test('a wrapped file-dump command still gets the looser dump cap, not the log cap', () => {
@@ -508,7 +508,7 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
       tool_response: bigLog,
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
-    assert.match(updated, /\[hush: \d+ lines omitted, none with warnings\/errors\/failures\]/);
+    assert.match(updated, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
     assert.ok(updated.split('\n').length <= 61);
   });
 
@@ -520,5 +520,99 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.match(updated, /lines omitted/);
+  });
+});
+
+describe('hook: once-per-session telemetry note', () => {
+  const { claimSessionNote, hasHushNote, NOTE_TEXT } = require('../hooks/compress-tool-output');
+
+  // Unique per test-process so reruns never see a stale sentinel; every id
+  // used gets its sentinel removed in after().
+  const sids = [];
+  function sid(label) {
+    const id = `hush-test-note-${label}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sids.push(id);
+    return id;
+  }
+  after(() => {
+    for (const id of sids) fs.rmSync(path.join(os.tmpdir(), `hush-note-${id}`), { force: true });
+  });
+
+  const noisy = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');
+
+  test('first compressing fire in a session rides the rewrite with the telemetry note', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      session_id: sid('first'),
+      tool_response: noisy,
+    });
+    const out = hookOutput(r).hookSpecificOutput;
+    assert.match(out.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
+    assert.strictEqual(out.additionalContext, NOTE_TEXT);
+  });
+
+  test('second fire in the same session stays note-free — the rewrite alone', () => {
+    const id = sid('dedup');
+    const first = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: id, tool_response: noisy,
+    })).hookSpecificOutput;
+    const second = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: id, tool_response: noisy,
+    })).hookSpecificOutput;
+    assert.strictEqual(first.additionalContext, NOTE_TEXT);
+    assert.strictEqual(second.additionalContext, undefined);
+    assert.match(second.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
+  });
+
+  test('a new session re-arms the note', () => {
+    hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: sid('a'), tool_response: noisy,
+    }));
+    const other = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: sid('b'), tool_response: noisy,
+    })).hookSpecificOutput;
+    assert.strictEqual(other.additionalContext, NOTE_TEXT);
+  });
+
+  test('a rewrite that leaves no [hush note gets no telemetry note either', () => {
+    // ANSI stripping alone changes the text without inserting any marker.
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      session_id: sid('nomarker'),
+      tool_response: '\x1b[32mok\x1b[0m all good',
+    });
+    const out = hookOutput(r).hookSpecificOutput;
+    assert.ok(!out.updatedToolOutput.includes('[hush'));
+    assert.strictEqual(out.additionalContext, undefined);
+  });
+
+  test('no session_id, no note — bare harnesses never share sentinel state', () => {
+    const out = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', tool_response: noisy,
+    })).hookSpecificOutput;
+    assert.strictEqual(out.additionalContext, undefined);
+  });
+
+  test('HUSH_NOTE=off suppresses the note, never the rewrite', () => {
+    const out = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: sid('gated'), tool_response: noisy,
+    }, { HUSH_NOTE: 'off' })).hookSpecificOutput;
+    assert.strictEqual(out.additionalContext, undefined);
+    assert.match(out.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
+  });
+
+  test('unit: claimSessionNote claims exactly once per id; hasHushNote spots markers in any shape', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-note-unit-'));
+    try {
+      assert.strictEqual(claimSessionNote('s1', dir), true);
+      assert.strictEqual(claimSessionNote('s1', dir), false);
+      assert.strictEqual(claimSessionNote('', dir), false);
+      assert.strictEqual(claimSessionNote(undefined, dir), false);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    assert.strictEqual(hasHushNote('x\n[hush hook: 3 lines omitted from this view, none with warnings/errors/failures]'), true);
+    assert.strictEqual(hasHushNote({ file: { content: '[hush: previous line repeated 4x]' } }), true);
+    assert.strictEqual(hasHushNote({ stdout: 'plain text' }), false);
   });
 });

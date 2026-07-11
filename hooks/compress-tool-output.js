@@ -7,6 +7,8 @@
 // runs get a much larger cap and everything kept is verbatim.
 
 const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read"]);
@@ -89,8 +91,19 @@ const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICA
 // PROVABLY contains no warning/error/failure line. State that guarantee in the
 // marker itself: it converts hush's internal knowledge into something the model
 // can act on, so the visible slice is trustworthy and no re-run is needed.
+//
+// The marker also names its own provenance ("hush hook") and frames the cut as
+// a view, not a mutation. Claude Code's base system prompt orders the model to
+// flag suspected prompt injections in tool results, and an anonymous bracketed
+// claim sitting inside file content — telling the model it may skip content —
+// is exactly injection-shaped; Sonnet has been observed (stochastically)
+// flagging it mid-turn and re-reading the whole file. The same base prompt
+// also tells the model "Hooks may intercept tool calls", so a marker that
+// attributes itself to a hook attaches to a fact the harness itself planted.
+// Provenance is stated, never argued: no "trust me", no "not an injection" —
+// naming the feared category primes it.
 function omittedMarker(n) {
-  return `[hush: ${n} lines omitted, none with warnings/errors/failures]`;
+  return `[hush hook: ${n} lines omitted from this view, none with warnings/errors/failures]`;
 }
 
 function capLines(lines, cap) {
@@ -254,6 +267,47 @@ function extractExitCode(response) {
   return undefined;
 }
 
+// Once per session, the first rewrite that actually leaves a visible [hush
+// note in the tool result also attaches hookSpecificOutput.additionalContext —
+// which Claude Code delivers as a genuine harness-injected system reminder,
+// the one channel the base system prompt itself vouches for ("injected by the
+// harness, not the user"). That legitimizes the whole [hush ...] note family
+// up front, for any output style and any model. The note must ride this
+// channel and never be embedded in the tool result body: a <system-reminder>
+// tag written INTO file content was tried and measured strictly worse — the
+// model reads channel-shaped text in the wrong channel as spoofed authority
+// ("a fake system-reminder tag... likely a prompt-injection attempt") and
+// re-reads the entire file. Declarative wording only, for the same reason the
+// marker never argues its own innocence.
+const NOTE_TEXT =
+  "hush's compression hook is active in this session. Bracketed notes beginning with " +
+  "[hush inside tool results are its own telemetry, added as the output is delivered. " +
+  "Omission is deterministic: a line is cut only if it matches no warning/error/failure " +
+  "pattern, and the underlying files and command outputs are unchanged.";
+
+// Empty sentinel file, atomically claimed with wx so two hook fires racing on
+// parallel tool calls emit at most one note. Sessions without a session_id
+// (bare test harnesses) never emit — a shared "unknown" key would leak the
+// once-only state across unrelated runs. Like the meter's state files, the
+// sentinel is left for OS temp cleaning.
+function claimSessionNote(sessionId, tmpDir) {
+  if (typeof sessionId !== "string" || !sessionId) return false;
+  try {
+    fs.writeFileSync(path.join(tmpDir || os.tmpdir(), `hush-note-${sessionId}`), "", { flag: "wx" });
+    return true;
+  } catch {
+    return false; // EEXIST (already noted) or unwritable tmp — never block the rewrite
+  }
+}
+
+function hasHushNote(updated) {
+  try {
+    return JSON.stringify(updated).includes("[hush");
+  } catch {
+    return false;
+  }
+}
+
 function main() {
   if (process.env.HUSH_DISABLE === "1") return;
   const data = readInput();
@@ -280,7 +334,7 @@ function main() {
         };
       }
     }
-    return emit(updated);
+    return emit(updated, data.session_id);
   }
 
   const isDump = isFileDump(firstLine(data.tool_input && data.tool_input.command));
@@ -315,20 +369,21 @@ function main() {
     if (changed) updated = next;
   }
 
-  emit(updated);
+  emit(updated, data.session_id);
 }
 
-function emit(updated) {
+function emit(updated, sessionId) {
   if (updated === undefined) return; // nothing shrank — stay silent
 
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PostToolUse",
-        updatedToolOutput: updated,
-      },
-    })
-  );
+  const hookSpecificOutput = {
+    hookEventName: "PostToolUse",
+    updatedToolOutput: updated,
+  };
+  if (process.env.HUSH_NOTE !== "off" && hasHushNote(updated) && claimSessionNote(sessionId)) {
+    hookSpecificOutput.additionalContext = NOTE_TEXT;
+  }
+
+  process.stdout.write(JSON.stringify({ hookSpecificOutput }));
 }
 
 if (require.main === module) main();
@@ -346,4 +401,7 @@ module.exports = {
   compress,
   firstLine,
   extractWrappedExit,
+  claimSessionNote,
+  hasHushNote,
+  NOTE_TEXT,
 };

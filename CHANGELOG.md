@@ -5,6 +5,20 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## Unreleased
+
+### Changed
+
+- Compression markers now identify themselves as hush's own tooling
+  (`[hush hook: N lines omitted from this view, ...]`), so models treat
+  them as telemetry instead of unexplained content in a file or log.
+
+### Added
+
+- The first compressed result in a session now carries a short provenance
+  note delivered through the harness, telling the model that `[hush ...]`
+  markers are trusted tooling metadata. `HUSH_NOTE=off` disables it.
+
 ## 0.3.20-alpha — 2026-07-11
 
 ### Fixed
