@@ -5,6 +5,14 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.19-alpha — 2026-07-11
+
+### Changed
+
+- Mid-turn narration is tighter: between tool calls the correct output
+  is silence, not a short status line, and check-ins now fire only on
+  task-level events, not step-level ones.
+
 ## 0.3.18-alpha — 2026-07-10
 
 ### Changed
