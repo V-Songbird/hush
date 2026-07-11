@@ -107,7 +107,11 @@ function cleanEnv(armEnv) {
     if (/^(CLAUDECODE|CLAUDE_CODE_|HUSH_)/.test(k)) continue;
     env[k] = v;
   }
-  return Object.assign(env, armEnv);
+  // Exit-code wrapping is permission-gated inside hush (it only survives
+  // permission evaluation under blanket per-tool allow rules, which is
+  // exactly how buildArgs() grants Bash/PowerShell here) — opt in
+  // explicitly so the arms keep their historical wrapping behavior.
+  return Object.assign(env, { HUSH_WRAP: '1' }, armEnv);
 }
 
 function buildArgs(arm) {

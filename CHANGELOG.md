@@ -5,6 +5,19 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.3.20-alpha — 2026-07-11
+
+### Fixed
+
+- Fixed an issue where shell commands could be denied by permission checks
+  or prompt for approval on every run even when an allow rule covered them,
+  most visibly for PowerShell on Windows.
+
+### Added
+
+- `HUSH_WRAP=1` keeps exit-code capture active in permission-checked
+  sessions whose rules grant `Bash`/`PowerShell` outright.
+
 ## 0.3.19-alpha — 2026-07-11
 
 ### Changed

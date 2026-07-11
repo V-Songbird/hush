@@ -5,6 +5,12 @@ const assert = require('node:assert');
 const { runHook, hookOutput } = require('./helpers');
 const { wrapPowerShell, wrapBash, alreadyWrapped, shouldSkip, MARKER_PREFIX } = require('../hooks/preserve-exit-code');
 
+// shouldSkip / end-to-end payloads: wrapping only happens in sessions where
+// the permission engine never evaluates the rewritten command (see the gate
+// comment in the hook), so the "wrapping happens" cases all run as
+// bypassPermissions.
+const BYPASS = 'bypassPermissions';
+
 describe('unit: wrapping', () => {
   test('wrapPowerShell runs the command inside a script block piped through Out-String', () => {
     const out = wrapPowerShell('node build.js');
@@ -67,33 +73,65 @@ describe('unit: wrapping', () => {
 
 describe('unit: shouldSkip', () => {
   test('skips empty or missing commands', () => {
-    assert.strictEqual(shouldSkip({}, undefined), true);
-    assert.strictEqual(shouldSkip({}, '   '), true);
+    assert.strictEqual(shouldSkip({ permission_mode: BYPASS }, undefined), true);
+    assert.strictEqual(shouldSkip({ permission_mode: BYPASS }, '   '), true);
   });
 
   test('skips a command that is already wrapped (idempotency)', () => {
     const wrapped = wrapBash('npm test');
-    assert.strictEqual(shouldSkip({}, wrapped), true);
+    assert.strictEqual(shouldSkip({ permission_mode: BYPASS }, wrapped), true);
   });
 
   test('skips a backgrounded launch', () => {
-    const data = { tool_input: { command: 'npm run dev', run_in_background: true } };
+    const data = { permission_mode: BYPASS, tool_input: { command: 'npm run dev', run_in_background: true } };
     assert.strictEqual(shouldSkip(data, 'npm run dev'), true);
   });
 
-  test('does not skip an ordinary foreground command', () => {
-    assert.strictEqual(shouldSkip({ tool_input: { command: 'node build.js' } }, 'node build.js'), false);
+  test('does not skip an ordinary foreground command under bypassPermissions', () => {
+    const data = { permission_mode: BYPASS, tool_input: { command: 'node build.js' } };
+    assert.strictEqual(shouldSkip(data, 'node build.js'), false);
+  });
+
+  // The permission engine statically analyzes the REWRITTEN command and
+  // splits it into per-statement operations checked against allow rules.
+  // The trailer can never pass that (`$LASTEXITCODE`/`exit 0` on
+  // PowerShell, `$?` expansions on Bash — all verified live), so in any
+  // mode where permissions are evaluated the command must go through
+  // untouched.
+  test('skips every permission mode except bypassPermissions', () => {
+    for (const mode of ['default', 'acceptEdits', 'plan', undefined]) {
+      const data = { permission_mode: mode, tool_input: { command: 'node build.js' } };
+      assert.strictEqual(shouldSkip(data, 'node build.js'), true, `mode: ${mode}`);
+    }
+  });
+
+  test('HUSH_WRAP=1 forces wrapping regardless of permission mode', () => {
+    process.env.HUSH_WRAP = '1';
+    try {
+      const data = { permission_mode: 'acceptEdits', tool_input: { command: 'node build.js' } };
+      assert.strictEqual(shouldSkip(data, 'node build.js'), false);
+    } finally {
+      delete process.env.HUSH_WRAP;
+    }
   });
 });
 
 describe('hook: end to end', () => {
   test('unwatched tool stays silent', () => {
-    const r = runHook('preserve-exit-code.js', { tool_name: 'Read', tool_input: { file_path: 'a.txt' } });
+    const r = runHook('preserve-exit-code.js', {
+      tool_name: 'Read',
+      permission_mode: BYPASS,
+      tool_input: { file_path: 'a.txt' },
+    });
     assert.strictEqual(hookOutput(r), null);
   });
 
   test('Bash command gets wrapped via updatedInput on PreToolUse', () => {
-    const r = runHook('preserve-exit-code.js', { tool_name: 'Bash', tool_input: { command: 'node build.js' } });
+    const r = runHook('preserve-exit-code.js', {
+      tool_name: 'Bash',
+      permission_mode: BYPASS,
+      tool_input: { command: 'node build.js' },
+    });
     const out = hookOutput(r);
     assert.strictEqual(out.hookSpecificOutput.hookEventName, 'PreToolUse');
     assert.match(out.hookSpecificOutput.updatedInput.command, /^node build\.js\n/);
@@ -101,14 +139,47 @@ describe('hook: end to end', () => {
   });
 
   test('PowerShell command gets wrapped with the PowerShell-specific trailer', () => {
-    const r = runHook('preserve-exit-code.js', { tool_name: 'PowerShell', tool_input: { command: 'node --test' } });
+    const r = runHook('preserve-exit-code.js', {
+      tool_name: 'PowerShell',
+      permission_mode: BYPASS,
+      tool_input: { command: 'node --test' },
+    });
     const updatedCommand = hookOutput(r).hookSpecificOutput.updatedInput.command;
     assert.match(updatedCommand, /\$LASTEXITCODE/);
+  });
+
+  test('a session that evaluates permissions leaves the command untouched', () => {
+    for (const mode of ['default', 'acceptEdits']) {
+      const r = runHook('preserve-exit-code.js', {
+        tool_name: 'PowerShell',
+        permission_mode: mode,
+        tool_input: { command: 'node --test' },
+      });
+      assert.strictEqual(hookOutput(r), null, `mode: ${mode}`);
+    }
+  });
+
+  test('a payload with no permission_mode at all is left untouched', () => {
+    const r = runHook('preserve-exit-code.js', {
+      tool_name: 'Bash',
+      tool_input: { command: 'node build.js' },
+    });
+    assert.strictEqual(hookOutput(r), null);
+  });
+
+  test('HUSH_WRAP=1 wraps even when permissions are evaluated', () => {
+    const r = runHook(
+      'preserve-exit-code.js',
+      { tool_name: 'Bash', permission_mode: 'acceptEdits', tool_input: { command: 'node build.js' } },
+      { HUSH_WRAP: '1' }
+    );
+    assert.match(hookOutput(r).hookSpecificOutput.updatedInput.command, /exit 0$/);
   });
 
   test('other tool_input fields survive the rewrite untouched', () => {
     const r = runHook('preserve-exit-code.js', {
       tool_name: 'Bash',
+      permission_mode: BYPASS,
       tool_input: { command: 'node build.js', description: 'Run the build', timeout: 30000 },
     });
     const updatedInput = hookOutput(r).hookSpecificOutput.updatedInput;
@@ -119,16 +190,17 @@ describe('hook: end to end', () => {
   test('a backgrounded command is left alone', () => {
     const r = runHook('preserve-exit-code.js', {
       tool_name: 'Bash',
+      permission_mode: BYPASS,
       tool_input: { command: 'npm run dev', run_in_background: true },
     });
     assert.strictEqual(hookOutput(r), null);
   });
 
-  test('HUSH_DISABLE=1 bypasses wrapping', () => {
+  test('HUSH_DISABLE=1 bypasses wrapping, even with HUSH_WRAP=1', () => {
     const r = runHook(
       'preserve-exit-code.js',
-      { tool_name: 'Bash', tool_input: { command: 'node build.js' } },
-      { HUSH_DISABLE: '1' }
+      { tool_name: 'Bash', permission_mode: BYPASS, tool_input: { command: 'node build.js' } },
+      { HUSH_DISABLE: '1', HUSH_WRAP: '1' }
     );
     assert.strictEqual(hookOutput(r), null);
   });

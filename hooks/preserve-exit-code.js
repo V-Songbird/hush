@@ -81,6 +81,33 @@ function wrapBash(command) {
   return `${command}\n__hush_exit=$?\necho '${MARKER_PREFIX}'\necho $__hush_exit\necho '${MARKER_SUFFIX}'\nexit 0`;
 }
 
+// Wrapping is gated on the session's permission mode. Claude Code applies
+// PreToolUse updatedInput BEFORE permission evaluation, and its permission
+// engine both statically analyzes the rewritten command and splits it into
+// per-statement operations that must each match an allow rule. The trailer
+// cannot survive that under scoped allow rules on either shell — all
+// verified live against cli 2.1.207 with `Bash(node*)`/`PowerShell(node*)`
+// rules:
+//   - PowerShell: a `& {` opening makes the first AST element a script
+//     block ("Command name is a dynamic expression"), and even with it
+//     removed the trailer's `$LASTEXITCODE` and `exit 0` statements are
+//     unapproved operations. No variable-free way to emit an exit code
+//     exists, so no trailer form can pass.
+//   - Bash: the trailer's `$?` / `$__hush_exit` expansions are rejected
+//     outright ("Contains simple_expansion") — and that check runs before
+//     rule matching, so it denied EVERY wrapped command, even ones an
+//     allow rule covered.
+// Under `bypassPermissions` none of that machinery runs (verified live:
+// the full PowerShell wrapper executes and the marker comes back), so
+// wrapping is safe exactly there. `HUSH_WRAP=1` opts back in for sessions
+// whose rules are blanket per-tool grants (plain `Bash` / `PowerShell`,
+// no command pattern) — those match the wrapped command as a whole; the
+// bundled benchmark harness runs that way.
+function permissionsAllowWrapping(data) {
+  if (process.env.HUSH_WRAP === "1") return true;
+  return data.permission_mode === "bypassPermissions";
+}
+
 function shouldSkip(data, command) {
   if (typeof command !== "string" || !command.trim()) return true;
   if (alreadyWrapped(command)) return true;
@@ -90,6 +117,7 @@ function shouldSkip(data, command) {
   // false-negative here just means no wrapping (today's behavior), never
   // breakage.
   if (data.tool_input && data.tool_input.run_in_background) return true;
+  if (!permissionsAllowWrapping(data)) return true;
   return false;
 }
 

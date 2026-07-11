@@ -80,6 +80,7 @@ Most people never touch these, but a few environment variables tune the caps or 
 | `HUSH_CAP_PASS=60` | Lines kept from successful command output |
 | `HUSH_CAP_FAIL=250` | Lines kept from failing output |
 | `HUSH_NARRATION_BUDGET=120` | Words of narration before a gentle nudge |
+| `HUSH_WRAP=1` | Captures real exit codes from shell commands in permission-checked sessions — needs blanket `Bash`/`PowerShell` permission rules (no command pattern); sessions that bypass permissions get this automatically |
 
 ## License
 
