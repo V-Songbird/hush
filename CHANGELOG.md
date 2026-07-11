@@ -5,7 +5,7 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
-## Unreleased
+## 0.3.21-alpha — 2026-07-11
 
 ### Changed
 
