@@ -616,3 +616,79 @@ describe('hook: once-per-session telemetry note', () => {
     assert.strictEqual(hasHushNote({ stdout: 'plain text' }), false);
   });
 });
+
+describe('unit: isGeneratedPath', () => {
+  const { isGeneratedPath } = require('../hooks/compress-tool-output');
+
+  test('matches lockfiles, minified bundles, sourcemaps, and generated dirs', () => {
+    for (const p of [
+      'package-lock.json', 'C:\\repo\\package-lock.json', '/app/yarn.lock',
+      'sub/pnpm-lock.yaml', 'Cargo.lock', 'vendor/Gemfile.lock', 'go.sum',
+      'assets/app.min.js', 'styles/site.min.css', 'dist/app.bundle.js',
+      'build/app.js.map', 'node_modules/lodash/index.js',
+      'C:\\repo\\dist\\index.js', 'pkg/__pycache__/mod.pyc',
+    ]) assert.strictEqual(isGeneratedPath(p), true, p);
+  });
+
+  test('never matches hand-written source or config', () => {
+    for (const p of [
+      'src/pricing.js', 'package.json', 'README.md', 'src/lock.js',
+      'app/locker.lock.ts', 'distribution.md', 'builder/main.go',
+      'C:\repo\src\services\pricing.js', 'config/settings.yaml',
+    ]) assert.strictEqual(isGeneratedPath(p), false, p);
+  });
+});
+
+describe('hook: generated-file Read compression', () => {
+  const lockfile = (() => {
+    const deps = [];
+    for (let i = 0; i < 800; i++) deps.push(
+      `    "node_modules/pkg-${i}": {\n      "version": "1.${i}.0",\n      "resolved": "https://registry.npmjs.org/pkg-${i}/-/pkg-${i}-1.${i}.0.tgz",\n      "integrity": "sha512-${i}abc"\n    },`);
+    return '{\n  "name": "fixture",\n  "lockfileVersion": 3,\n  "packages": {\n' + deps.join('\n') + '\n  }\n}';
+  })();
+
+  test('a big package-lock.json Read gets capped with the provenance marker', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Read',
+      tool_input: { file_path: 'C:\\repo\\package-lock.json' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\package-lock.json', content: lockfile, numLines: lockfile.split('\n').length, startLine: 1, totalLines: lockfile.split('\n').length } },
+    });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(updated.file.content, /\[hush hook: \d+ lines omitted from this view/);
+    assert.ok(updated.file.content.length < lockfile.length / 4, 'lockfile shrinks hard');
+  });
+
+  test('a source file of the same size still passes untouched', () => {
+    const src = Array.from({ length: 3000 }, (_, i) => `export const v${i} = ${i};`).join('\n');
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Read',
+      tool_input: { file_path: 'C:\\repo\\src\\big.ts' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\src\\big.ts', content: src, numLines: 3000, startLine: 1, totalLines: 3000 } },
+    });
+    assert.strictEqual(hookOutput(r), null);
+  });
+});
+
+describe('hook: subagent-brief', () => {
+  const { BRIEF } = require('../hooks/subagent-brief');
+
+  test('injects the report brief on SubagentStart for any agent type', () => {
+    const r = runHook('subagent-brief.js', { session_id: 's1', agent_type: 'Explore' });
+    const out = hookOutput(r).hookSpecificOutput;
+    assert.strictEqual(out.hookEventName, 'SubagentStart');
+    assert.strictEqual(out.additionalContext, BRIEF);
+  });
+
+  test('HUSH_SUBAGENT=off silences it; HUSH_DISABLE=1 too', () => {
+    assert.strictEqual(hookOutput(runHook('subagent-brief.js', { agent_type: 'claude' }, { HUSH_SUBAGENT: 'off' })), null);
+    assert.strictEqual(hookOutput(runHook('subagent-brief.js', { agent_type: 'claude' }, { HUSH_DISABLE: '1' })), null);
+  });
+
+  test('malformed stdin exits cleanly and still injects', () => {
+    const { spawnSync } = require('child_process');
+    const path = require('path');
+    const r = spawnSync('node', [path.join(__dirname, '..', 'hooks', 'subagent-brief.js')], { input: 'not json', encoding: 'utf-8', timeout: 30000 });
+    assert.strictEqual(r.status, 0);
+    assert.ok(r.stdout.includes('SubagentStart'));
+  });
+});

@@ -13,6 +13,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-brief.js\"",
+            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\subagent-brief.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "^(Bash|PowerShell|Read)$",

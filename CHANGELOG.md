@@ -5,6 +5,19 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.4.0-alpha — 2026-07-11
+
+### Added
+
+- Reads of machine-generated files — lockfiles like `package-lock.json`,
+  minified bundles, sourcemaps, anything under `node_modules/` or build
+  output directories — are now compressed the same way logs are, with the
+  usual marker noting what was trimmed. Hand-written source is never
+  touched.
+- Subagents now receive hush's terse-report instruction when they start,
+  so their reports come back as findings instead of padded prose.
+  `HUSH_SUBAGENT=off` disables it.
+
 ## 0.3.23-alpha — 2026-07-11
 
 ### Changed

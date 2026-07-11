@@ -247,6 +247,26 @@ function isLogPath(filePath) {
   return typeof filePath === "string" && LOG_PATH_RE.test(filePath.trim());
 }
 
+// Machine-generated files nobody edits by hand: lockfiles, minified bundles,
+// sourcemaps, and anything under node_modules or a build-output directory. A
+// Read of package-lock.json enters context whole (often thousands of lines)
+// and is re-sent on every later API call, yet the model usually needs one
+// entry — which the omission marker's re-read invitation (or a Grep) still
+// reaches. Path-shaped detection only, mirroring isLogPath's discipline:
+// hand-written source can never match, so a capped Read can never cut lines
+// the model might need to edit byte-exactly.
+const GENERATED_PATH_RE = new RegExp(
+  "(?:^|[\\\\/])(?:package-lock\\.json|yarn\\.lock|pnpm-lock\\.yaml|npm-shrinkwrap\\.json|" +
+    "cargo\\.lock|poetry\\.lock|gemfile\\.lock|composer\\.lock|go\\.sum|uv\\.lock|flake\\.lock)$" +
+    "|\\.(?:min\\.(?:js|css)|bundle\\.js|map)$" +
+    "|(?:^|[\\\\/])(?:node_modules|dist|\\.next|__pycache__)[\\\\/]",
+  "i"
+);
+
+function isGeneratedPath(filePath) {
+  return typeof filePath === "string" && GENERATED_PATH_RE.test(filePath.trim());
+}
+
 function compress(text, exitCode, isDump, enumerate) {
   const cleaned = resolveCarriageReturns(stripAnsi(String(text)));
   const cap = enumerate
@@ -325,7 +345,7 @@ function main() {
     // only; every other Read passes through untouched.
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
-    if (file && typeof file.content === "string" && isLogPath(filePath)) {
+    if (file && typeof file.content === "string" && (isLogPath(filePath) || isGeneratedPath(filePath))) {
       const out = compress(file.content, undefined, true, enumerate);
       if (out !== file.content) {
         updated = {
@@ -397,6 +417,7 @@ module.exports = {
   looksLikeFailure,
   isFileDump,
   isLogPath,
+  isGeneratedPath,
   requestsEnumeration,
   compress,
   firstLine,
