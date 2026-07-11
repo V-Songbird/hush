@@ -692,3 +692,49 @@ describe('hook: subagent-brief', () => {
     assert.ok(r.stdout.includes('SubagentStart'));
   });
 });
+
+describe('unit: relevance preservation + pressure scaling', () => {
+  const { extractRelevanceTokens, pressureScale, compress } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const BT = String.fromCharCode(96);
+  const SQ = String.fromCharCode(39);
+
+  test('extractRelevanceTokens pulls backticked and quoted spans only', () => {
+    const prompt = 'Read ' + BT + 'package-lock.json' + BT + ' and find "ioredis" version, per ' + SQ + 'W1042' + SQ + ' too';
+    assert.deepStrictEqual(extractRelevanceTokens(prompt), ['package-lock.json', 'ioredis', 'w1042']);
+    assert.deepStrictEqual(extractRelevanceTokens('no marked spans here at all'), []);
+    assert.deepStrictEqual(extractRelevanceTokens(undefined), []);
+  });
+
+  test('a prompt-named identifier outside head/tail survives the cap', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => '    "node_modules/pkg-' + i + '": { "version": "1.0.' + i + '" },');
+    lines[200] = '    "node_modules/ioredis": { "version": "5.4.1" },';
+    const withTok = compress(lines.join(NL), 0, true, false, ['ioredis'], 1);
+    const without = compress(lines.join(NL), 0, true, false, [], 1);
+    assert.ok(withTok.includes('5.4.1'), 'ioredis line survives with relevance token');
+    assert.ok(!without.includes('5.4.1'), 'same line is cut without the token');
+  });
+
+  test('a token matching too many lines is ignored (no cap blowout)', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => 'version line ' + i);
+    const out = compress(lines.join(NL), 0, false, false, ['version'], 1);
+    assert.ok(out.split(NL).length <= 62, 'common token must not defeat the cap');
+  });
+
+  test('pressureScale steps at 400KB and 1MB', () => {
+    assert.strictEqual(pressureScale(100 * 1024), 1);
+    assert.strictEqual(pressureScale(500 * 1024), 0.75);
+    assert.strictEqual(pressureScale(2 * 1024 * 1024), 0.5);
+    assert.strictEqual(pressureScale(NaN), 1);
+  });
+
+  test('scale tightens caps but never below the floors; enumerate never scales', () => {
+    const big = Array.from({ length: 3000 }, (_, i) => 'unique ' + i).join(NL);
+    const full = compress(big, 0, false, false, [], 1).split(NL).length;
+    const half = compress(big, 0, false, false, [], 0.5).split(NL).length;
+    assert.ok(half < full, 'scaled cap (' + half + ') tighter than base (' + full + ')');
+    assert.ok(half >= 30, 'pass floor holds');
+    const enumFull = compress(big, 0, false, true, [], 0.5).split(NL).length;
+    assert.ok(enumFull > 2000, 'enumeration carve-out is never scaled');
+  });
+});

@@ -5,6 +5,15 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.4.1-alpha — 2026-07-11
+
+### Added
+
+- Identifiers named in your prompt (backticked or quoted) now survive
+  output compression, so a capped view keeps the entries you asked about.
+- Compression tightens gradually in very long sessions to keep context
+  lean. `HUSH_ADAPTIVE=off` disables the scaling.
+
 ## 0.4.0-alpha — 2026-07-11
 
 ### Added

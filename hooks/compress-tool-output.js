@@ -106,12 +106,41 @@ function omittedMarker(n) {
   return `[hush hook: ${n} lines omitted from this view, none with warnings/errors/failures]`;
 }
 
-function capLines(lines, cap) {
+// Identifiers the user's own prompt names — backticked or quoted spans like
+// `ioredis` or "W1042" — are that turn's signal even when they match no
+// warning/error pattern. A capped view that happens to cut the one entry the
+// prompt asked about forces a second lookup, and every extra tool call
+// re-sends the whole history; keeping prompt-named lines makes the single-
+// read path the common case. High-precision extraction only (explicitly
+// marked spans, never bare words), and a span matching more than
+// RELEVANCE_COMMON lines is dropped as too common to discriminate.
+const RELEVANCE_COMMON = 50;
+const RELEVANCE_MAX_TOKENS = 8;
+
+function extractRelevanceTokens(prompt) {
+  if (typeof prompt !== "string" || !prompt) return [];
+  const spans = [];
+  for (const m of prompt.matchAll(/`([^`\n]{3,80})`|"([^"\n]{3,80})"|'([^'\n]{3,80})'/g)) {
+    const s = (m[1] || m[2] || m[3] || "").trim().toLowerCase();
+    if (s && !spans.includes(s)) spans.push(s);
+  }
+  return spans.slice(0, RELEVANCE_MAX_TOKENS);
+}
+
+function capLines(lines, cap, relevanceTokens) {
   if (lines.length <= cap) return lines;
   const signalIdx = new Set();
   lines.forEach((line, i) => {
     if (SIGNAL_RE.test(line)) signalIdx.add(i);
   });
+  if (relevanceTokens && relevanceTokens.length) {
+    const lower = lines.map((l) => l.toLowerCase());
+    for (const tok of relevanceTokens) {
+      const hits = [];
+      for (let i = 0; i < lower.length; i++) if (lower[i].includes(tok)) hits.push(i);
+      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) signalIdx.add(i);
+    }
+  }
   const budget = Math.max(0, cap - signalIdx.size);
   const head = Math.ceil(budget * 0.6);
   const tail = budget - head;
@@ -267,14 +296,32 @@ function isGeneratedPath(filePath) {
   return typeof filePath === "string" && GENERATED_PATH_RE.test(filePath.trim());
 }
 
-function compress(text, exitCode, isDump, enumerate) {
+// Context-pressure scaling: the transcript file's size is a free, local proxy
+// for how full the context already is. Deep in a long session every kept line
+// is re-sent more times and pushes auto-compaction (an expensive full-context
+// summarization, plus permanent detail loss) closer — so caps tighten as the
+// session grows. Inert below 400KB (every benchmark session and most short
+// real ones), floors keep failing output useful, and the enumeration
+// carve-out is never scaled: its whole point is a completeness promise.
+const PRESSURE_MID_BYTES = 400 * 1024;
+const PRESSURE_HIGH_BYTES = 1024 * 1024;
+const FLOOR_PASS = 30;
+const FLOOR_FAIL = 125;
+
+function pressureScale(transcriptBytes) {
+  if (!Number.isFinite(transcriptBytes) || transcriptBytes < PRESSURE_MID_BYTES) return 1;
+  return transcriptBytes < PRESSURE_HIGH_BYTES ? 0.75 : 0.5;
+}
+
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale) {
   const cleaned = resolveCarriageReturns(stripAnsi(String(text)));
+  const s = typeof scale === "number" ? scale : 1;
   const cap = enumerate
     ? CAP_ENUMERATE
     : isDump || looksLikeFailure(cleaned, exitCode)
-      ? CAP_FAIL
-      : CAP_PASS;
-  const lines = capLines(dedupeConsecutive(cleaned.split("\n")), cap);
+      ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
+      : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
+  const lines = capLines(dedupeConsecutive(cleaned.split("\n")), cap, relevanceTokens);
   return lines.join("\n");
 }
 
@@ -334,9 +381,20 @@ function main() {
   if (!WATCHED_TOOLS.has(data.tool_name)) return;
 
   const response = data.tool_response;
-  // One transcript tail-read per hook fire: does the turn's human prompt ask to
-  // enumerate everything? If so, this output passes uncapped (see compress).
-  const enumerate = requestsEnumeration(lastUserPromptText(data.transcript_path));
+  // One transcript tail-read per hook fire: the turn's human prompt drives the
+  // enumeration carve-out (uncapped) and relevance preservation (prompt-named
+  // identifiers survive the cap); the transcript's size drives pressure scaling.
+  const promptText = lastUserPromptText(data.transcript_path);
+  const enumerate = requestsEnumeration(promptText);
+  const relevance = extractRelevanceTokens(promptText);
+  let scale = 1;
+  if (process.env.HUSH_ADAPTIVE !== "off") {
+    try {
+      scale = pressureScale(fs.statSync(data.transcript_path).size);
+    } catch {
+      /* no transcript (bare harness): stay at 1 */
+    }
+  }
   let updated;
 
   if (data.tool_name === "Read") {
@@ -346,7 +404,7 @@ function main() {
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
     if (file && typeof file.content === "string" && (isLogPath(filePath) || isGeneratedPath(filePath))) {
-      const out = compress(file.content, undefined, true, enumerate);
+      const out = compress(file.content, undefined, true, enumerate, relevance, scale);
       if (out !== file.content) {
         updated = {
           ...response,
@@ -366,7 +424,7 @@ function main() {
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate);
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale);
     if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
     if (out !== response) updated = out;
   } else if (response && typeof response === "object") {
@@ -378,7 +436,7 @@ function main() {
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
         const fieldWrapped = extractWrappedExit(next[field]);
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale);
         if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
         if (out !== next[field]) {
           next[field] = out;
@@ -419,6 +477,8 @@ module.exports = {
   isLogPath,
   isGeneratedPath,
   requestsEnumeration,
+  extractRelevanceTokens,
+  pressureScale,
   compress,
   firstLine,
   extractWrappedExit,

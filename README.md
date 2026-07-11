@@ -83,6 +83,7 @@ Most people never touch these, but a few environment variables tune the caps or 
 | `HUSH_WRAP=1` | Captures real exit codes from shell commands in permission-checked sessions — needs blanket `Bash`/`PowerShell` permission rules (no command pattern); sessions that bypass permissions get this automatically |
 | `HUSH_NOTE=off` | Skips the one-time per-session note that tells the model hush's compression markers are trusted tooling |
 | `HUSH_SUBAGENT=off` | Stops extending the terse-report style to spawned subagents |
+| `HUSH_ADAPTIVE=off` | Keeps compression caps fixed instead of tightening them in very long sessions |
 
 ## License
 
