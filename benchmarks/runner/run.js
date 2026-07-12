@@ -153,58 +153,81 @@ function buildArgs(arm) {
 }
 
 // --- single run -------------------------------------------------------------
-function oneRun(task, arm, rep) {
+function spawnClaude(args, workDir, env, prompt) {
+  return new Promise((resolve) => {
+    const child = spawn('claude', args, {
+      cwd: workDir,
+      env,
+      shell: true, // resolves claude.cmd on Windows; all args are space-free
+    });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; });
+    child.stdin.write(prompt);
+    child.stdin.end();
+    const killer = setTimeout(() => child.kill('SIGKILL'), CONFIG.runTimeoutMs);
+    child.on('close', (code) => {
+      clearTimeout(killer);
+      resolve({ stdout, stderr, code });
+    });
+  });
+}
+
+// A task may carry `prompt` (single turn) or `prompts` (a multi-turn session:
+// the first call plain -p, each later call -p --continue in the same
+// workdir, so real history accumulation and re-send costs show up in
+// contextTraffic the way they do in an actual multi-prompt session). Per-call
+// metrics are summed; finalText/check come from the last turn.
+async function oneRun(task, arm, rep) {
   const key = `${task.id}__${arm}__r${rep}`;
   const workDir = path.join(workRoot, key);
   fs.rmSync(workDir, { recursive: true, force: true });
   fs.mkdirSync(workDir, { recursive: true });
   if (task.fixture) fs.cpSync(path.join(ROOT, 'fixtures', task.fixture), workDir, { recursive: true });
 
-  return new Promise((resolve) => {
-    const started = Date.now();
-    const child = spawn('claude', buildArgs(arm), {
-      cwd: workDir,
-      env: cleanEnv(ARMS[arm].env),
-      shell: true, // resolves claude.cmd on Windows; all args are space-free
-    });
+  const prompts = task.prompts || [task.prompt];
+  const env = cleanEnv(ARMS[arm].env);
+  const started = Date.now();
+  const calls = [];
+  let stderrAll = '';
+  for (let i = 0; i < prompts.length; i++) {
+    const args = buildArgs(arm);
+    if (i > 0) args.push('--continue');
+    const r = await spawnClaude(args, workDir, env, prompts[i]);
+    calls.push(r.stdout);
+    stderrAll += r.stderr;
+    if (r.code !== 0 && !r.stdout.trim()) break; // hard spawn failure: stop the chain
+  }
+  const wallMs = Date.now() - started;
+  fs.writeFileSync(path.join(outDir, 'transcripts', `${key}.jsonl`), calls.join('\n'));
 
-    let stdout = '', stderr = '';
-    child.stdout.on('data', (d) => { stdout += d; });
-    child.stderr.on('data', (d) => { stderr += d; });
-    child.stdin.write(task.prompt);
-    child.stdin.end();
-
-    const killer = setTimeout(() => child.kill('SIGKILL'), CONFIG.runTimeoutMs);
-
-    child.on('close', (code) => {
-      clearTimeout(killer);
-      const wallMs = Date.now() - started;
-      fs.writeFileSync(path.join(outDir, 'transcripts', `${key}.jsonl`), stdout);
-      let record;
-      try {
-        const m = parseTranscript(stdout);
-        const check = runCheck(task.check, m.finalText, workDir);
-        record = {
-          key, task: task.id, category: task.category, arm, rep, model,
-          exitCode: code, wallMs, check,
-          outputStyle: m.outputStyle,
-          costUsd: m.costUsd, numTurns: m.numTurns, durationMs: m.durationMs,
-          resultSubtype: m.resultSubtype,
-          usage: m.usage, contextTraffic: m.contextTraffic, apiCalls: m.apiCalls,
-          toolCalls: m.toolCalls, toolResultChars: m.toolResultChars,
-          narrationWords: m.narrationWords, finalWords: m.finalWords,
-          finalText: m.finalText,
-          stderr: stderr.slice(0, 2000),
-        };
-      } catch (err) {
-        record = { key, task: task.id, arm, rep, exitCode: code, wallMs, error: String(err), stderr: stderr.slice(0, 2000) };
-      }
-      fs.writeFileSync(path.join(outDir, 'runs', `${key}.json`), JSON.stringify(record, null, 2));
-      const ok = record.check ? (record.check.pass ? 'PASS' : 'FAIL') : 'ERR ';
-      console.log(`${ok} ${key}  cost=$${record.costUsd ?? '?'}  out=${record.usage?.output_tokens ?? '?'}tok  traffic=${record.contextTraffic ?? '?'}  ${Math.round(wallMs / 1000)}s`);
-      resolve(record);
-    });
-  });
+  let record;
+  try {
+    const parsed = calls.map((s) => parseTranscript(s));
+    const last = parsed[parsed.length - 1];
+    const sum = (f) => parsed.reduce((n, p) => n + (p[f] || 0), 0);
+    const check = runCheck(task.check, last.finalText, workDir);
+    record = {
+      key, task: task.id, category: task.category, arm, rep, model,
+      turnsRun: calls.length, wallMs, check,
+      outputStyle: parsed[0].outputStyle,
+      costUsd: parsed.reduce((n, p) => n + (p.costUsd || 0), 0),
+      numTurns: sum('numTurns'), durationMs: sum('durationMs'),
+      resultSubtype: last.resultSubtype,
+      usage: { output_tokens: parsed.reduce((n, p) => n + (p.usage?.output_tokens || 0), 0) },
+      contextTraffic: sum('contextTraffic'), apiCalls: sum('apiCalls'),
+      toolCalls: sum('toolCalls'), toolResultChars: sum('toolResultChars'),
+      narrationWords: sum('narrationWords'), finalWords: last.finalWords,
+      finalText: last.finalText,
+      stderr: stderrAll.slice(0, 2000),
+    };
+  } catch (err) {
+    record = { key, task: task.id, arm, rep, wallMs, error: String(err), stderr: stderrAll.slice(0, 2000) };
+  }
+  fs.writeFileSync(path.join(outDir, 'runs', `${key}.json`), JSON.stringify(record, null, 2));
+  const ok = record.check ? (record.check.pass ? 'PASS' : 'FAIL') : 'ERR ';
+  console.log(`${ok} ${key}  cost=$${record.costUsd ?? '?'}  out=${record.usage?.output_tokens ?? '?'}tok  traffic=${record.contextTraffic ?? '?'}  ${Math.round(wallMs / 1000)}s`);
+  return record;
 }
 
 // --- pool -------------------------------------------------------------------

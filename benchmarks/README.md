@@ -71,7 +71,7 @@ node --test hush/tests/*.test.js
 
 Each run records, per session: cost, output tokens, **context traffic** (the sum of input + cache tokens across every API call — where tool-output compression shows up), mid-turn narration words vs. the final answer, characters of tool output that entered context, turns, wall time, and a pass/fail from the task's ground-truth check.
 
-The tasks: two pure Q&A questions (no tools — measuring how much Claude *says*), and tool tasks that fix failing tests, triage a long log, summarize a small codebase, or report every warning from a noisy build. Correctness is a keyword rubric or `node --test` exit code, hand-ground-truthed per task — a degenerate one-word answer fails.
+The tasks: two pure Q&A questions (no tools — measuring how much Claude *says*), tool tasks that fix failing tests, triage a long log, summarize a small codebase, or report every warning from a noisy build, and one multi-turn task (`incident-followup`) that carries a real conversation across several prompts in the same session — the only way to see what a plugin costs once history has accumulated, not just on the first exchange. Correctness is a keyword rubric or `node --test` exit code, hand-ground-truthed per task — a degenerate one-word answer fails.
 
 ### A note on fairness
 
