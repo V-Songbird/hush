@@ -5,6 +5,19 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.5.1-alpha — 2026-07-12
+
+### Changed
+
+- Large outputs are digested more usefully: the digest now leads with the
+  warning and error lines (so they're visible at a glance even when a host
+  only previews the top of a big result), and compound error names like
+  `ReferenceError` and `TypeError` are now recognized as signal.
+- A command's output that the terminal has already truncated and saved
+  itself now stays on the normal inline view instead of being moved behind
+  a second digest. Large file reads are unaffected. `HUSH_SIDECAR_SHELL_MAX`
+  tunes the threshold.
+
 ## 0.5.0-alpha — 2026-07-11
 
 ### Added
