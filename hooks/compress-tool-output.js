@@ -80,7 +80,12 @@ function dedupeConsecutive(lines) {
 // agent re-run the command hunting for what it couldn't see — the cap
 // destroying signal cost more tool calls than the cap ever saved. Deliberately
 // broad regex: over-matching just keeps a few extra lines, never worse.
-const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b/i;
+// The trailing `\w*(?:Error|Warning)\b` catches compound runtime names —
+// ReferenceError, TypeError, SyntaxError, RangeError — that a bare `\bERROR\b`
+// misses because the "Error" suffix sits mid-word (no word boundary before
+// it). Over-matching a stray "NoError"-style token only keeps a few extra
+// lines, never fewer, so the broad form is safe by the same logic as the rest.
+const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|\w*(?:Error|Warning)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
 // this gap." On a completeness task ("report EVERY warning") that distrust is
@@ -343,27 +348,49 @@ function cheapHash(s) {
 function buildSidecarDigest(cleaned, relevanceTokens) {
   const lines = cleaned.split("\n");
   const total = lines.length;
-  const keep = new Set();
-  for (let i = 0; i < Math.min(DIGEST_HEAD, total); i++) keep.add(i);
-  for (let i = Math.max(0, total - DIGEST_TAIL); i < total; i++) keep.add(i);
   const signalIdx = [];
   lines.forEach((l, i) => {
     if (SIGNAL_RE.test(l)) signalIdx.push(i);
   });
-  for (const i of signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE)) keep.add(i);
-  for (const i of signalIdx.slice(-DIGEST_SIGNAL_SAMPLE)) keep.add(i);
+
+  // Signal (and prompt-named) lines lead the digest, ahead of the structural
+  // head/tail. When a raw output is large enough to trip Claude Code's own
+  // large-output persistence (~29KB), the host shows this rewritten digest
+  // only as a truncated "first ~2KB preview" and keeps a pointer to the raw
+  // file — so a head-first digest buries the actual error below the cut and
+  // the model reads the raw file anyway, re-inflating everything it just
+  // saved. Leading with the errors/warnings (and prompt-named lines) keeps
+  // them inside that preview window, so the visible slice answers the question
+  // and no raw re-read is needed. Line numbers stay real (out of order is
+  // fine — they exist for targeted offset/limit reads, not for reading order).
+  const lead = [...new Set([...signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE), ...signalIdx.slice(-DIGEST_SIGNAL_SAMPLE)])];
   if (relevanceTokens && relevanceTokens.length) {
     const lower = lines.map((l) => l.toLowerCase());
     for (const tok of relevanceTokens) {
       const hits = [];
       for (let i = 0; i < lower.length; i++) if (lower[i].includes(tok)) hits.push(i);
-      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) keep.add(i);
+      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) lead.push(i);
     }
   }
-  const sorted = [...keep].sort((a, b) => a - b);
+  const leadSet = new Set(lead);
+  const leadSorted = [...leadSet].sort((a, b) => a - b);
+
+  // Structural context (head + tail) follows, in line order with gap markers,
+  // skipping any line already shown in the lead so nothing is printed twice.
+  const structIdx = new Set();
+  for (let i = 0; i < Math.min(DIGEST_HEAD, total); i++) if (!leadSet.has(i)) structIdx.add(i);
+  for (let i = Math.max(0, total - DIGEST_TAIL); i < total; i++) if (!leadSet.has(i)) structIdx.add(i);
+  const structSorted = [...structIdx].sort((a, b) => a - b);
+
   const out = [];
+  if (leadSorted.length) {
+    out.push(`Signal lines (${signalIdx.length} total in the file):`);
+    for (const i of leadSorted) out.push(`L${i + 1}: ${lines[i]}`);
+    out.push("");
+  }
+  out.push("Structure (head + tail; read the file for the rest):");
   let last = -1;
-  for (const i of sorted) {
+  for (const i of structSorted) {
     if (i - last > 1) out.push(`  ... ${i - last - 1} lines in the file only ...`);
     out.push(`L${i + 1}: ${lines[i]}`);
     last = i;

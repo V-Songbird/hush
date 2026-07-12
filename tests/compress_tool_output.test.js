@@ -866,3 +866,53 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
     } finally { fs.rmSync(f, { force: true }); }
   });
 });
+
+describe('signal-first digest + compound-error signal matching', () => {
+  const { capLines, compress } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const created = [];
+  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  function pathFrom(d) { const m = d.match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+
+  test('capLines keeps a bare ReferenceError line the old regex would miss', () => {
+    const lines = Array.from({ length: 300 }, (_, i) => 'compile mod_' + i + ' ok');
+    lines[150] = 'ReferenceError: retries is not defined';
+    const out = capLines(lines, 20).join(NL);
+    assert.ok(out.includes('ReferenceError: retries is not defined'), 'compound *Error name survives the cap as signal');
+  });
+
+  test('TypeError / SyntaxError / RangeError all register as signal', () => {
+    for (const err of ['TypeError: x is not a function', 'SyntaxError: unexpected token', 'RangeError: invalid array length']) {
+      const lines = Array.from({ length: 200 }, (_, i) => 'ok line ' + i);
+      lines[100] = err;
+      assert.ok(capLines(lines, 20).join(NL).includes(err), err + ' should survive');
+    }
+  });
+
+  test('digest leads with signal lines so the error survives a ~2KB preview truncation', () => {
+    const lines = [];
+    for (let i = 0; i < 700; i++) lines.push('[' + i + '/700] compile mod_' + i + ' ... ok (46ms) with some padding to widen the line');
+    lines[690] = 'ERROR EBUILD01 link-failed: ReferenceError: retries is not defined';
+    const digest = withSidecar(() => compress(lines.join(NL), 1, false, false, [], 1, 'sigfirst'));
+    pathFrom(digest);
+    const errPos = digest.indexOf('ReferenceError');
+    const noisePos = digest.indexOf('compile mod_0 ');
+    assert.ok(errPos > -1, 'error line is in the digest');
+    assert.ok(errPos < noisePos, 'error appears BEFORE the head compile noise');
+    assert.ok(errPos < 2048, 'error is within the first 2KB preview window (was at ' + errPos + ')');
+    assert.ok(digest.includes('Signal lines ('), 'signal section header present');
+    assert.match(digest, /Signal lines \(\d+ total in the file\):/);
+    assert.ok(digest.includes('Structure (head + tail'), 'structural section header present');
+    assert.match(digest, /lines in the file only/, 'structural gap markers preserved');
+  });
+
+  test('a digest with no signal lines still emits the structural section', () => {
+    const lines = Array.from({ length: 700 }, (_, i) => 'plain info line ' + i + ' padded out a bit for width here');
+    const digest = withSidecar(() => compress(lines.join(NL), 0, true, false, [], 1, 'nosig'));
+    pathFrom(digest);
+    assert.ok(!digest.includes('Signal lines ('), 'no signal header when there are none');
+    assert.ok(digest.includes('Structure (head + tail'), 'structural section header present');
+    assert.match(digest, /L1: /, 'head still present');
+  });
+});
