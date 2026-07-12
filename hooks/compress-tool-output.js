@@ -313,8 +313,104 @@ function pressureScale(transcriptBytes) {
   return transcriptBytes < PRESSURE_HIGH_BYTES ? 0.75 : 0.5;
 }
 
-function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale) {
+// Very large outputs don't enter context at all: the full cleaned text goes to
+// a sidecar file and a line-numbered digest goes in its place. Even a capped
+// inline view of a huge log is re-sent with every later API call in the
+// session; the digest is an order of magnitude smaller, and the file is one
+// Read away — with real L<n> line numbers in the digest so a follow-up Read
+// can use offset/limit surgically instead of re-reading the whole thing. The
+// digest keeps the head, the tail, a bounded sample of signal lines with an
+// exact total count, and every prompt-named (relevance) line, so most tasks
+// never need the follow at all. Fail-open: any filesystem trouble falls back
+// to the normal capped view. The enumeration carve-out is exempt — its whole
+// point is that nothing is elided. Files are content-addressed (idempotent on
+// re-fire) and, like the meter's state files, left to OS temp cleaning.
+const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
+const SIDECAR_DIR = path.join(os.tmpdir(), "hush-sidecar");
+const DIGEST_HEAD = 20;
+const DIGEST_TAIL = 15;
+const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
+
+function cheapHash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function buildSidecarDigest(cleaned, relevanceTokens) {
+  const lines = cleaned.split("\n");
+  const total = lines.length;
+  const keep = new Set();
+  for (let i = 0; i < Math.min(DIGEST_HEAD, total); i++) keep.add(i);
+  for (let i = Math.max(0, total - DIGEST_TAIL); i < total; i++) keep.add(i);
+  const signalIdx = [];
+  lines.forEach((l, i) => {
+    if (SIGNAL_RE.test(l)) signalIdx.push(i);
+  });
+  for (const i of signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE)) keep.add(i);
+  for (const i of signalIdx.slice(-DIGEST_SIGNAL_SAMPLE)) keep.add(i);
+  if (relevanceTokens && relevanceTokens.length) {
+    const lower = lines.map((l) => l.toLowerCase());
+    for (const tok of relevanceTokens) {
+      const hits = [];
+      for (let i = 0; i < lower.length; i++) if (lower[i].includes(tok)) hits.push(i);
+      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) keep.add(i);
+    }
+  }
+  const sorted = [...keep].sort((a, b) => a - b);
+  const out = [];
+  let last = -1;
+  for (const i of sorted) {
+    if (i - last > 1) out.push(`  ... ${i - last - 1} lines in the file only ...`);
+    out.push(`L${i + 1}: ${lines[i]}`);
+    last = i;
+  }
+  return { body: out.join("\n"), total, signalCount: signalIdx.length };
+}
+
+function maybeSidecar(cleaned, relevanceTokens, sessionId) {
+  if (process.env.HUSH_SIDECAR === "off") return null;
+  if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
+  try {
+    fs.mkdirSync(SIDECAR_DIR, { recursive: true });
+    const name = (sessionId ? `${String(sessionId).slice(0, 8)}-` : "") + `${cheapHash(cleaned)}.txt`;
+    const file = path.join(SIDECAR_DIR, name);
+    if (!fs.existsSync(file)) fs.writeFileSync(file, cleaned);
+    const d = buildSidecarDigest(cleaned, relevanceTokens);
+    const header =
+      `[hush hook: this output is ${d.total} lines (${d.signalCount} with warnings/errors/failures) ` +
+      `and was saved in full to ${file.replace(/\\/g, "/")}; the digest below keeps the head, tail, ` +
+      `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
+      `For anything else, Read that file with offset/limit around the L<n> numbers you need.]`;
+    return `${header}\n${d.body}`;
+  } catch {
+    return null; // fall back to the normal capped view
+  }
+}
+
+// A full Read of a sidecar file would pull the entire saved output straight
+// back into context — undoing the digest and then re-sending it with every
+// later call. Cap those reads like any log (a full read then yields exactly
+// the capped view the digest replaced — worst case is the old inline
+// behavior, by construction) but never re-sidecar them, or the middle of the
+// file would become unreachable. Range reads (offset/limit) come back small
+// and pass untouched — that's the intended path the digest teaches.
+function isSidecarPath(filePath) {
+  return (
+    typeof filePath === "string" &&
+    path.resolve(path.dirname(filePath.trim())) === path.resolve(SIDECAR_DIR)
+  );
+}
+
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar) {
   const cleaned = resolveCarriageReturns(stripAnsi(String(text)));
+  if (!enumerate && !noSidecar) {
+    const side = maybeSidecar(cleaned, relevanceTokens, sessionId);
+    if (side !== null) return side;
+  }
   const s = typeof scale === "number" ? scale : 1;
   const cap = enumerate
     ? CAP_ENUMERATE
@@ -403,8 +499,9 @@ function main() {
     // only; every other Read passes through untouched.
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
-    if (file && typeof file.content === "string" && (isLogPath(filePath) || isGeneratedPath(filePath))) {
-      const out = compress(file.content, undefined, true, enumerate, relevance, scale);
+    const sideRead = isSidecarPath(filePath);
+    if (file && typeof file.content === "string" && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead)) {
+      const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead);
       if (out !== file.content) {
         updated = {
           ...response,
@@ -424,7 +521,7 @@ function main() {
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale);
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id);
     if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
     if (out !== response) updated = out;
   } else if (response && typeof response === "object") {
@@ -436,7 +533,7 @@ function main() {
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
         const fieldWrapped = extractWrappedExit(next[field]);
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id);
         if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
         if (out !== next[field]) {
           next[field] = out;
@@ -476,6 +573,7 @@ module.exports = {
   isFileDump,
   isLogPath,
   isGeneratedPath,
+  isSidecarPath,
   requestsEnumeration,
   extractRelevanceTokens,
   pressureScale,

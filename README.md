@@ -84,6 +84,8 @@ Most people never touch these, but a few environment variables tune the caps or 
 | `HUSH_NOTE=off` | Skips the one-time per-session note that tells the model hush's compression markers are trusted tooling |
 | `HUSH_SUBAGENT=off` | Stops extending the terse-report style to spawned subagents |
 | `HUSH_ADAPTIVE=off` | Keeps compression caps fixed instead of tightening them in very long sessions |
+| `HUSH_SIDECAR=off` | Keeps very large outputs inline instead of moving them to a local file behind a digest |
+| `HUSH_SIDECAR_MIN=15000` | Size (characters) at which an output moves to a sidecar file |
 
 ## License
 

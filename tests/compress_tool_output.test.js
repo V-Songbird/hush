@@ -6,6 +6,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { runHook, hookOutput } = require('./helpers');
+
+// Sidecar mode defaults ON in the hook; these tests exercise the inline-cap
+// semantics, so pin it off for the whole file (child hooks inherit it via
+// runHook's env spread). The sidecar suite below re-enables it explicitly.
+process.env.HUSH_SIDECAR = 'off';
 const {
   stripAnsi,
   resolveCarriageReturns,
@@ -736,5 +741,128 @@ describe('unit: relevance preservation + pressure scaling', () => {
     assert.ok(half >= 30, 'pass floor holds');
     const enumFull = compress(big, 0, false, true, [], 0.5).split(NL).length;
     assert.ok(enumFull > 2000, 'enumeration carve-out is never scaled');
+  });
+});
+
+describe('unit + e2e: sidecar digests for very large outputs', () => {
+  const { compress: comp } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const created = [];
+  function pathFrom(digest) {
+    const m = digest.match(/saved in full to ([^;]+);/);
+    if (m) created.push(m[1].trim());
+    return m ? m[1].trim() : null;
+  }
+  function withSidecarOn(fn) {
+    const prev = process.env.HUSH_SIDECAR;
+    delete process.env.HUSH_SIDECAR;
+    try { return fn(); } finally { process.env.HUSH_SIDECAR = prev; }
+  }
+  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+
+  const bigLog = (() => {
+    const ls = [];
+    for (let i = 0; i < 2000; i++) ls.push(i % 9 === 0 ? '02:' + String(i % 60).padStart(2, '0') + ' ERROR redis ECONNREFUSED attempt ' + i : '02:00 info handled req ' + i + ' in ' + (i % 90) + 'ms');
+    return ls.join(NL);
+  })();
+
+  test('a huge output becomes a line-numbered digest and the full text lands in the sidecar file', () => {
+    const digest = withSidecarOn(() => comp(bigLog, 0, true, false, ['ioredis'], 1, 'sidetest'));
+    assert.ok(digest.startsWith('[hush hook: this output is'), 'digest opens with the provenance header');
+    assert.match(digest, /this output is \d+ lines \(\d+ with warnings\/errors\/failures\)/);
+    assert.match(digest, /L\d+: /, 'digest lines carry real line numbers');
+    assert.match(digest, /lines in the file only/, 'gaps are counted, not hidden');
+    const file = pathFrom(digest);
+    assert.ok(file && fs.existsSync(file), 'sidecar file exists');
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), bigLog, 'sidecar holds the full cleaned text');
+    assert.ok(digest.length < bigLog.length / 10, 'digest is an order of magnitude smaller');
+  });
+
+  test('below the threshold the normal capped view still applies', () => {
+    const small = Array.from({ length: 300 }, (_, i) => 'l' + i).join(NL);
+    const out = withSidecarOn(() => comp(small, 0, false, false, [], 1, 'sidetest'));
+    assert.doesNotMatch(out, /saved in full to/);
+    assert.match(out, /lines omitted from this view/);
+  });
+
+  test('the enumeration carve-out is exempt — nothing moves to a file', () => {
+    const out = withSidecarOn(() => comp(bigLog, 0, true, true, [], 1, 'sidetest'));
+    assert.doesNotMatch(out, /saved in full to/);
+  });
+
+  test('same content re-fires to the same file (idempotent)', () => {
+    const d1 = withSidecarOn(() => comp(bigLog, 0, true, false, [], 1, 'sidetest'));
+    const d2 = withSidecarOn(() => comp(bigLog, 0, true, false, [], 1, 'sidetest'));
+    assert.strictEqual(pathFrom(d1), pathFrom(d2));
+  });
+
+  test('prompt-named lines join the digest', () => {
+    const ls = Array.from({ length: 2000 }, (_, i) => 'info filler line ' + i + ' padding padding');
+    ls[1000] = '    "node_modules/ioredis": { "version": "5.4.1" },';
+    const digest = withSidecarOn(() => comp(ls.join(NL), 0, true, false, ['ioredis'], 1, 'sidetest'));
+    pathFrom(digest);
+    assert.ok(digest.includes('5.4.1'), 'relevance line is in the digest, not only the file');
+  });
+
+  test('e2e: a big log Read is delivered as a digest and the note still rides once', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Read',
+      session_id: 'hush-test-side-' + Date.now(),
+      tool_input: { file_path: '/var/logs/app.log' },
+      tool_response: { type: 'text', file: { filePath: '/var/logs/app.log', content: bigLog, numLines: 2000, startLine: 1, totalLines: 2000 } },
+    }, { HUSH_SIDECAR: '' });
+    const out = hookOutput(r).hookSpecificOutput;
+    assert.match(out.updatedToolOutput.file.content, /saved in full to/);
+    assert.ok(out.additionalContext, 'telemetry note rides the first sidecar rewrite too');
+    pathFrom(out.updatedToolOutput.file.content);
+  });
+});
+
+describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', () => {
+  const { isSidecarPath } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const os2 = require('os');
+  const sideDir = path.join(os2.tmpdir(), 'hush-sidecar');
+
+  test('isSidecarPath matches only files directly under the sidecar dir', () => {
+    assert.strictEqual(isSidecarPath(path.join(sideDir, 'abc123.txt')), true);
+    assert.strictEqual(isSidecarPath('/var/logs/app.log'), false);
+    assert.strictEqual(isSidecarPath(path.join(os2.tmpdir(), 'other', 'abc.txt')), false);
+    assert.strictEqual(isSidecarPath(undefined), false);
+  });
+
+  test('e2e: a FULL Read of a sidecar file returns the capped view, not another digest', () => {
+    const big = Array.from({ length: 2000 }, (_, i) => (i % 9 === 0 ? 'ERROR item ' + i : 'info line ' + i)).join(NL);
+    const f = path.join(sideDir, 'test-fullread.txt');
+    fs.mkdirSync(sideDir, { recursive: true });
+    fs.writeFileSync(f, big);
+    try {
+      const r = runHook('compress-tool-output.js', {
+        tool_name: 'Read',
+        session_id: 'hush-test-sideread-' + Date.now(),
+        tool_input: { file_path: f },
+        tool_response: { type: 'text', file: { filePath: f, content: big, numLines: 2000, startLine: 1, totalLines: 2000 } },
+      }, { HUSH_SIDECAR: '' });
+      const content = hookOutput(r).hookSpecificOutput.updatedToolOutput.file.content;
+      assert.doesNotMatch(content, /saved in full to/, 'never re-sidecared');
+      assert.match(content, /lines omitted from this view/, 'capped like a log');
+      assert.ok(content.includes('ERROR item 0'), 'signal lines survive');
+    } finally { fs.rmSync(f, { force: true }); }
+  });
+
+  test('e2e: a small range Read of a sidecar file passes untouched', () => {
+    const f = path.join(sideDir, 'test-rangeread.txt');
+    fs.mkdirSync(sideDir, { recursive: true });
+    fs.writeFileSync(f, 'whole file');
+    try {
+      const range = Array.from({ length: 12 }, (_, i) => 'line ' + (500 + i)).join(NL);
+      const r = runHook('compress-tool-output.js', {
+        tool_name: 'Read',
+        session_id: 'hush-test-siderange-' + Date.now(),
+        tool_input: { file_path: f, offset: 500, limit: 12 },
+        tool_response: { type: 'text', file: { filePath: f, content: range, numLines: 12, startLine: 500, totalLines: 2000 } },
+      }, { HUSH_SIDECAR: '' });
+      assert.strictEqual(hookOutput(r), null, 'nothing to shrink, hook stays silent');
+    } finally { fs.rmSync(f, { force: true }); }
   });
 });

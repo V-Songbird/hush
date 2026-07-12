@@ -5,6 +5,18 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.5.0-alpha — 2026-07-11
+
+### Added
+
+- Very large command output and log reads no longer enter the conversation
+  whole: the full text is saved to a local file and a line-numbered digest
+  takes its place — head, tail, a sample of warning/error lines with an
+  exact count, and every line naming something from your prompt. Claude
+  reads the file (by exact line ranges) only when it needs more.
+  `HUSH_SIDECAR=off` disables it; `HUSH_SIDECAR_MIN` tunes the size
+  threshold (default 15000 characters).
+
 ## 0.4.1-alpha — 2026-07-11
 
 ### Added
