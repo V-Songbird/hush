@@ -86,6 +86,7 @@ Most people never touch these, but a few environment variables tune the caps or 
 | `HUSH_ADAPTIVE=off` | Keeps compression caps fixed instead of tightening them in very long sessions |
 | `HUSH_SIDECAR=off` | Keeps very large outputs inline instead of moving them to a local file behind a digest |
 | `HUSH_SIDECAR_MIN=15000` | Size (characters) at which an output moves to a sidecar file |
+| `HUSH_SIDECAR_SHELL_MAX=28000` | Above this size, a command's output stays inline (past here the terminal already keeps its own copy) |
 
 ## License
 

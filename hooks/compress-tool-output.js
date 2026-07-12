@@ -331,6 +331,20 @@ function pressureScale(transcriptBytes) {
 // point is that nothing is elided. Files are content-addressed (idempotent on
 // re-fire) and, like the meter's state files, left to OS temp cleaning.
 const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
+// Upper bound for SHELL outputs only. Claude Code truncates a Bash/PowerShell
+// result to ~29KB for the hook (and the model) once it trips its own
+// large-output persistence, keeping the full text in a native file it points
+// at. So a shell output arriving at ~28KB+ was likely already truncated: its
+// tail — where a build's error or a run's final result usually lives — may be
+// gone before this hook sees it, and sidecaring it both (a) writes a "saved in
+// full" file that is actually the truncated portion, and (b) adds a second
+// "full output elsewhere" pointer competing with Claude Code's own, which just
+// sends the model reading the native raw file. Above this bound, shell outputs
+// fall through to the normal inline cap (no sidecar, no extra pointer) so hush
+// tracks baseline instead of doing worse. Read results are exempt: Read returns
+// the file's full content to the hook (its own limits are far larger), so a big
+// lockfile/log Read is complete and the sidecar is genuinely full and helpful.
+const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 28000);
 const SIDECAR_DIR = path.join(os.tmpdir(), "hush-sidecar");
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
@@ -398,9 +412,13 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   return { body: out.join("\n"), total, signalCount: signalIdx.length };
 }
 
-function maybeSidecar(cleaned, relevanceTokens, sessionId) {
+function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
   if (process.env.HUSH_SIDECAR === "off") return null;
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
+  // A shell output at/above the host-truncation size was likely already cut by
+  // Claude Code (see SIDECAR_SHELL_MAX): step aside to the inline cap so hush
+  // adds no truncated "full" file and no competing pointer.
+  if (hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX) return null;
   try {
     fs.mkdirSync(SIDECAR_DIR, { recursive: true });
     const name = (sessionId ? `${String(sessionId).slice(0, 8)}-` : "") + `${cheapHash(cleaned)}.txt`;
@@ -432,10 +450,10 @@ function isSidecarPath(filePath) {
   );
 }
 
-function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar) {
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate) {
   const cleaned = resolveCarriageReturns(stripAnsi(String(text)));
   if (!enumerate && !noSidecar) {
-    const side = maybeSidecar(cleaned, relevanceTokens, sessionId);
+    const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate);
     if (side !== null) return side;
   }
   const s = typeof scale === "number" ? scale : 1;
@@ -548,7 +566,7 @@ function main() {
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id);
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true);
     if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
     if (out !== response) updated = out;
   } else if (response && typeof response === "object") {
@@ -560,7 +578,7 @@ function main() {
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
         const fieldWrapped = extractWrappedExit(next[field]);
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true);
         if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
         if (out !== next[field]) {
           next[field] = out;

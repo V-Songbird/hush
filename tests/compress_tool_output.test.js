@@ -916,3 +916,48 @@ describe('signal-first digest + compound-error signal matching', () => {
     assert.match(digest, /L1: /, 'head still present');
   });
 });
+
+describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
+  const { compress } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const created = [];
+  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+  function bigText(chars) { const a = []; let n = 0; while (a.join(NL).length < chars) { a.push('info line ' + n + ' padding padding padding padding ' + n); n++; } return a.join(NL); }
+
+  test('a shell output in the 15-28KB window still sidecars', () => {
+    const out = withSidecar(() => compress(bigText(20000), 0, false, false, [], 1, 's', undefined, true));
+    pathFrom(out);
+    assert.match(out, /saved in full to/, 'sidecar active in the sweet spot');
+  });
+
+  test('a shell output at/above the host-truncation size does NOT sidecar (falls to inline cap)', () => {
+    const out = withSidecar(() => compress(bigText(32000), 0, false, false, [], 1, 's', undefined, true));
+    assert.doesNotMatch(out, /saved in full to/, 'no truncated "full" file, no competing pointer');
+    assert.match(out, /lines omitted from this view/, 'normal inline cap applies instead');
+  });
+
+  test('a large Read is exempt — full content reaches the hook, sidecar still helps', () => {
+    const out = withSidecar(() => compress(bigText(36000), 0, true, false, [], 1, 's', false));
+    pathFrom(out);
+    assert.match(out, /saved in full to/, 'Read path keeps sidecaring big files');
+  });
+
+  test('HUSH_SIDECAR_SHELL_MAX tunes the bound', () => {
+    const prev = process.env.HUSH_SIDECAR_SHELL_MAX;
+    process.env.HUSH_SIDECAR_SHELL_MAX = '18000';
+    // constants are read at require-time; re-require a fresh copy
+    const p = require.resolve('../hooks/compress-tool-output');
+    delete require.cache[p];
+    const fresh = require('../hooks/compress-tool-output');
+    try {
+      const out = withSidecar(() => fresh.compress(bigText(20000), 0, false, false, [], 1, 's', undefined, true));
+      assert.doesNotMatch(out, /saved in full to/, '20KB now exceeds the lowered bound');
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_SIDECAR_SHELL_MAX; else process.env.HUSH_SIDECAR_SHELL_MAX = prev;
+      delete require.cache[p];
+      require('../hooks/compress-tool-output');
+    }
+  });
+});
