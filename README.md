@@ -34,30 +34,45 @@ The quiet style takes effect at your next session. There's nothing to invoke —
 
 ## Benchmarks
 
-We put hush up against plain Claude Code and the popular "just be brief" plugin on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply — the same jobs, phrased the way a developer actually types them, three setups, and the real bill read straight from the API.
+We put hush up against plain Claude Code and a popular "just be brief" plugin on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply — the same jobs, phrased the way a developer actually types them, and the real bill read straight from the API.
 
-<p align="center"><img src="assets/bench-anatomy.svg" alt="What a real session bills for: 99% is what the session reads — files, logs, command output — and under 1% is the reply; a brief plugin can only trim the sliver, hush works on the rest too" width="640"></p>
+<p align="center"><img src="assets/bench-hero.svg" alt="Average session cost across the suite: no plugin $0.226, a 'be brief' plugin $0.214, hush $0.169 — hush is about 25% cheaper, roughly 5x what 'just be brief' manages" width="700"></p>
 
-**First, why "just be brief" can't be the whole answer.** In a real engineering session, almost everything on the bill is what Claude *reads* — files, logs, command output — not what it writes back. Across our benchmark sessions, Claude read 154× more than it wrote. A plugin that only shortens replies is polishing the sliver; hush spends its effort where the bill actually lives.
+**Being brief isn't enough.** Across the suite, hush cut the average session about **25%** — while a plugin that just tells Claude to talk less managed only ~5%. The reason is simple:
 
-<p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play while fixing a real bug: no plugin 91 words, the brief plugin 34, hush 29 — plain Claude narrates over 3x longer" width="640"></p>
+<p align="center"><img src="assets/bench-anatomy.svg" alt="Where a real session's money goes: almost the whole bill is what Claude reads — files, logs, command output — and under 5% is the reply. A 'be brief' plugin can only trim that sliver; hush works on the other 95% too" width="700"></p>
 
-**Claude stops narrating and just works.** On real fix-the-bug jobs, plain Claude spends more than three times as many words on play-by-play as hush does before you get the answer — quieter than the brief plugin too — and everything that matters lands in one clean final message. Quieter, not mute: a brief check-in when Claude settles a diagnosis or kicks off a long build is deliberate, and no plugin can hard-silence the model mid-turn.
+**Almost the whole bill is what Claude *reads*** — files, logs, command output — not what it writes back. In our sessions Claude read about 21× more than it wrote. Shortening the reply polishes a sliver; hush trims the noisy output and bulky logs before they hit your bill.
 
-<p align="center"><img src="assets/bench-noise.svg" alt="Claude hunts a real error buried in a noisy build: hush is 15% cheaper than no plugin, the brief plugin runs 30% pricier than hush on this task" width="640"></p>
+<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, look up a version in a huge lockfile, write a handoff: no plugin $0.47, a 'be brief' plugin $0.42, hush $0.29 — about 39% cheaper" width="700"></p>
 
-**Noise gets cheaper — and the brief plugin can backfire on it.** When a job means wading through a noisy build or a bulky log, hush trims the clutter before it lands on your bill, with every warning and error line kept verbatim. The brief plugin actually costs more than doing nothing on this kind of job — its bill runs about 30% higher than hush's here.
+**It shows most in longer sessions.** When a job runs across several turns and drags a huge file into the conversation, that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — so a real multi-turn incident session came in about **39% cheaper**, where being brief barely moved it.
 
-<p align="center"><img src="assets/bench-debug.svg" alt="Chasing a real connection-pool leak through the logs: no plugin $0.32, the brief plugin $0.25, hush $0.21 — hush's biggest single-task win at 34% cheaper" width="640"></p>
+<p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play before the answer, fixing a real bug: no plugin 39 words, a 'be brief' plugin 23, hush 15 — hush is about 2.6x quieter, and the answer lands in one message at the end" width="700"></p>
 
-**Where hush earns its keep most: real log-heavy debugging.** Tracking down a connection-pool leak buried in two log files is hush's single best result — 34% cheaper than plain Claude Code, and cheaper than the brief plugin too. Debugging is exactly where noisy tool output piles up fastest, and exactly where hush's compression pays for itself.
+**And it's quieter.** The answer lands in one clean message at the end instead of a running commentary — a brief check-in only when Claude settles a diagnosis or starts a long build.
 
-Across the full suite, hush's sessions ran cheaper than plain Claude Code by a wider margin than the brief plugin managed. And the part that matters most: **nothing broke.** Every job passed in every setup.
+### The full picture
+
+Every job, every setup — the wins **and** the ties and losses. Cheapest per row in **bold**.
+
+| What Claude did | no plugin | "be brief" | hush |
+| --- | --- | --- | --- |
+| Triage a production outage log | $0.29 | $0.29 | **$0.15** |
+| Multi-turn incident + write the handoff | $0.47 | $0.42 | **$0.29** |
+| Track a pool leak through two logs | $0.25 | $0.23 | **$0.19** |
+| Fix a failing test suite | $0.20 | **$0.13** | $0.15 |
+| Summarize a repo | **$0.12** | **$0.12** | $0.13 |
+| Find the error in a noisy build | **$0.18** | $0.23 | $0.20 |
+| Answer a code question (no tools) | **$0.07** | $0.07 | $0.08 |
+| **Average** | $0.23 | $0.21 | **$0.17** |
+
+Every job passed its correctness check in every setup — compression never bought a cheaper-but-wrong answer.
 
 > [!NOTE]
-> On short everyday tasks, no plugin of this kind makes sessions much cheaper — a session's fixed overhead dwarfs what any of them can trim, the brief plugin included. hush's everyday win is what you *read*, not what you pay; the savings above show up once noise does.
+> hush wins where there's noise to cut — logs, long sessions, debugging — and roughly ties on short or low-output jobs, where a session's fixed overhead dwarfs anything a plugin can trim. On a couple it costs a hair more; that's the honest shape, and it's why the average is what to read.
 
-*How we tested: same jobs, three setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs from the API, not estimates. Reproduce it yourself — see [benchmarks/](benchmarks/).*
+*How we tested: the same jobs, three setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs from the API, not estimates. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
 
 ## Compress a memory file
 

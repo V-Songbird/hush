@@ -14,26 +14,26 @@
       .brief{fill:#768390}.hush{fill:#3fb950}.foot{fill:#9198a1}.em{fill:#3fb950}.badge{fill:#238636}
     }
   </style>
-  <text x="16" y="30" class="title">How much Claude natters while it works</text>
-  <text x="16" y="52" class="sub">Words of play-by-play before the answer, fixing a real bug</text>
+  <text x="16" y="30" class="title">A multi-turn debugging session</text>
+  <text x="16" y="52" class="sub">Triage an outage, dig the version out of a huge lockfile, then write the handoff</text>
 
   <rect x="588" y="12" width="124" height="34" rx="17" class="badge"/>
-  <text x="650" y="35" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">2.6&#215; quieter</text>
+  <text x="650" y="35" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">39% cheaper</text>
 
   <text x="16" y="95" class="lab">no plugin</text>
   <rect x="185" y="78" width="380" height="28" rx="14" class="track"/>
   <rect x="185" y="78" width="380" height="28" rx="14" class="base"/>
-  <text x="575" y="97" class="val">39 words</text>
+  <text x="575" y="97" class="val">$0.47</text>
 
   <text x="16" y="137" class="lab">a &#8220;be brief&#8221; plugin</text>
   <rect x="185" y="120" width="380" height="28" rx="14" class="track"/>
-  <rect x="185" y="120" width="224" height="28" rx="14" class="brief"/>
-  <text x="575" y="139" class="val">23</text>
+  <rect x="185" y="120" width="338" height="28" rx="14" class="brief"/>
+  <text x="575" y="139" class="val">$0.42</text>
 
   <text x="16" y="179" class="hushlab">hush</text>
   <rect x="185" y="162" width="380" height="28" rx="14" class="track"/>
-  <rect x="185" y="162" width="146" height="28" rx="14" class="hush"/>
-  <text x="575" y="181" class="hushval">15 words</text>
+  <rect x="185" y="162" width="231" height="28" rx="14" class="hush"/>
+  <text x="575" y="181" class="hushval">$0.29</text>
 
-  <text x="16" y="206" class="foot">The answer lands in one clean message at the end — not buried in a running commentary.</text>
+  <text x="16" y="206" class="foot">The big lockfile never floods the chat — hush keeps a tidy summary and the full copy one click away.</text>
 </svg>
