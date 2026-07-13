@@ -1,5 +1,8 @@
 <div align="center">
-  <img src="assets/logo.svg" alt="hush" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
+    <img src="assets/logo.svg" alt="hush" width="240" />
+  </picture>
   <h1>hush</h1>
   <p><strong>Makes Claude quieter and your sessions cheaper — less narration, less noise, one clear answer at the end.</strong></p>
 </div>
