@@ -45,7 +45,7 @@ Inside Claude Code, run:
 
 ```
 /plugin marketplace add V-Songbird/foundry
-/plugin install hush
+/plugin install hush@foundry
 ```
 
 Takes effect at your next session. There's nothing to invoke — hush just works in the background.
