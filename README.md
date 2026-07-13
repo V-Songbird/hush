@@ -13,7 +13,7 @@
 
 You know the pattern: "Let me start by looking at…", "Now I'll check…", a 400-line wall of build output, and finally the one thing you actually wanted to know. All of it costs money — every word in a session is billed — and buries the useful part.
 
-hush trims it at the source. Claude works quietly, tidies up noisy command output and bulky log files before they pile up, and gives you **one clear answer at the end**. Code, error messages, and anything you ask it to explain stay complete — hush never shortens the parts that matter.
+hush trims it at the source, so sessions get cheaper and easier to read.
 
 It's built for real engineering sessions — the kind that read logs, run builds, and dig through output — because that's where the noise actually lives.
 
@@ -23,6 +23,13 @@ It's built for real engineering sessions — the kind that read logs, run builds
 - **Easier to read.** The answer sits at the top of one final message, not buried in a play-by-play.
 - **Nothing important is lost.** Failing command output, code, diffs, and security warnings are kept whole.
 - **Zero setup.** Install it and it's on. Tune it later only if you want to.
+
+## How it works
+
+- **Progress narration** gets swapped for a quiet style — the work happens, then one clear summary at the end, not a running commentary.
+- **Command output and log files** get trimmed as they come in — a short tail from a clean run, the whole thing from a failing one.
+- **Mid-turn rambling** gets caught by a running word count and cut off the moment it starts.
+- **Really large output** — a huge log, a giant lockfile — moves to a local file behind a short summary, so it's not re-sent in full every turn.
 
 ## Install
 
@@ -86,7 +93,7 @@ Every job passed its correctness check in every setup — compression never boug
 
 ## Under the hood
 
-If you're curious, hush just works quietly in the background — nothing is re-sent every turn to run up your bill — and it's all there to read in the plugin's files. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise — and measured together, they add no overhead to each other.
+Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise — and measured together, they add no overhead to each other.
 
 ## Settings
 
