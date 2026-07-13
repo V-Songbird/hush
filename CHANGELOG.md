@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.5.2-alpha — 2026-07-12
+
+Doc-only: rebuilt the Benchmarks section — a clearer set of charts, a full per-task table showing every job across all three setups, and current numbers. No behavior change.
+
 ## 0.5.1-alpha — 2026-07-12
 
 ### Changed
