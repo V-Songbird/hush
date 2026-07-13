@@ -4,16 +4,18 @@
     <img src="assets/logo.svg" alt="hush" width="240" />
   </picture>
   <h1>hush</h1>
-  <p><strong>Makes Claude quieter and your sessions cheaper — less narration, less noise, one clear answer at the end.</strong></p>
+  <p><strong>Shuts Claude up so your session stops costing money to read.</strong></p>
 </div>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE) [![Claude Code](https://img.shields.io/badge/Claude_Code-E5582B)](https://docs.anthropic.com/en/docs/claude-code)
 
 ---
 
 ## What is this?
 
-You know the pattern: "Let me start by looking at…", "Now I'll check…", a 400-line wall of build output, and finally the one thing you actually wanted to know. All of it costs money — every word in a session is billed — and buries the useful part.
+You've seen it: "Let me start by looking at the codebase." "Now I'll check the config." Four hundred lines of build output you didn't ask for, followed — eventually — by the one sentence you actually needed. Every word of that is billed. All of it.
 
-hush trims it at the source, so sessions get cheaper and easier to read.
+hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, as it happens, before any of it hits your bill.
 
 It's built for real engineering sessions — the kind that read logs, run builds, and dig through output — because that's where the noise actually lives.
 
@@ -22,14 +24,20 @@ It's built for real engineering sessions — the kind that read logs, run builds
 - **Cheaper sessions.** It shrinks the two biggest sources of bulk — noisy output and narration — so long sessions cost less.
 - **Easier to read.** The answer sits at the top of one final message, not buried in a play-by-play.
 - **Nothing important is lost.** Failing command output, code, diffs, and security warnings are kept whole.
-- **Zero setup.** Install it and it's on. Tune it later only if you want to.
+- **Zero setup.** Install it and it's on. Tune it later only if you feel like it.
 
 ## How it works
 
-- **Progress narration** gets swapped for a quiet style — the work happens, then one clear summary at the end, not a running commentary.
-- **Command output and log files** get trimmed as they come in — a short tail from a clean run, the whole thing from a failing one.
-- **Mid-turn rambling** gets caught by a running word count and cut off the moment it starts.
-- **Really large output** — a huge log, a giant lockfile — moves to a local file behind a short summary, so it's not re-sent in full every turn.
+Four small habits, picked up the moment it's installed:
+
+| Moment | What happens |
+| --- | --- |
+| Progress narration | Swapped for one clean summary at the end, not a running commentary |
+| Command output & log files | Trimmed as it comes in — a short tail from a clean run, the whole thing from a failing one |
+| Mid-turn rambling | Caught by a running word count and cut off the moment it starts |
+| Really large output (a huge log, a giant lockfile) | Moved to a local file behind a short summary, so it's not re-sent in full every turn |
+
+That's the whole list. No workflow to learn, no dial to find first — it's just how Claude behaves now.
 
 ## Install
 
@@ -40,23 +48,23 @@ Inside Claude Code, run:
 /plugin install hush
 ```
 
-The quiet style takes effect at your next session. There's nothing to invoke — hush just works in the background.
+Takes effect at your next session. There's nothing to invoke — hush just works in the background.
 
 ## Benchmarks
 
-We put hush up against plain Claude Code and a popular "just be brief" plugin on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply — the same jobs, phrased the way a developer actually types them, and the real bill read straight from the API.
+We put hush up against plain Claude Code and a plugin that just tells Claude to talk less, on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
 <p align="center"><img src="assets/bench-hero.svg" alt="Average session cost across the suite: no plugin $0.226, a 'be brief' plugin $0.214, hush $0.169 — hush is about 25% cheaper, roughly 5x what 'just be brief' manages" width="700"></p>
 
-**Being brief isn't enough.** Across the suite, hush cut the average session about **25%** — while a plugin that just tells Claude to talk less managed only ~5%. The reason is simple:
+**Being brief isn't enough.** Across the suite, hush cut the average session about **25%**, while a plugin that just tells Claude to talk less managed ~5%. Turns out asking politely and actually doing the work are two different things.
 
 <p align="center"><img src="assets/bench-anatomy.svg" alt="Where a real session's money goes: almost the whole bill is what Claude reads — files, logs, command output — and under 5% is the reply. A 'be brief' plugin can only trim that sliver; hush works on the other 95% too" width="700"></p>
 
-**Almost the whole bill is what Claude *reads*** — files, logs, command output — not what it writes back. In our sessions Claude read about 21× more than it wrote. Shortening the reply polishes a sliver; hush trims the noisy output and bulky logs before they hit your bill.
+**Almost the whole bill is what Claude *reads*,** not what it writes back — about 21x more, in our sessions. Shortening the reply polishes a sliver. hush trims the noisy output and bulky logs before they hit your bill.
 
 <p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, look up a version in a huge lockfile, write a handoff: no plugin $0.47, a 'be brief' plugin $0.42, hush $0.29 — about 39% cheaper" width="700"></p>
 
-**It shows most in longer sessions.** When a job runs across several turns and drags a huge file into the conversation, that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — so a real multi-turn incident session came in about **39% cheaper**, where being brief barely moved it.
+**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — a real multi-turn incident session came in about **39% cheaper**, where being brief barely moved it.
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play before the answer, fixing a real bug: no plugin 39 words, a 'be brief' plugin 23, hush 15 — hush is about 2.6x quieter, and the answer lands in one message at the end" width="700"></p>
 
@@ -93,7 +101,7 @@ Every job passed its correctness check in every setup — compression never boug
 
 ## Under the hood
 
-Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise — and measured together, they add no overhead to each other.
+Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise. Run both and neither notices the other — measured together, they add no overhead of their own.
 
 ## Settings
 
