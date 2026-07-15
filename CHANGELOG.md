@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.2-alpha — 2026-07-15
+
+Final messages are shorter. Each bullet is capped at 15 words and can no longer carry a second fact in via a semicolon or a parenthesis, so a line states one thing and stops. Asking for an explanation still gets the full depth, but as more bullets rather than longer ones.
+
+Reports no longer end with a paragraph that restates the bullets above it.
+
 ## 0.6.1-alpha — 2026-07-15
 
 The output style is quieter between tool calls. It no longer leaves room to read a discovery, a finished step, or an upcoming tool call as a reason to speak, and it now explicitly overrides the built-in instruction to say what you're about to do before a tool call. Text between tool calls is capped at one sentence per turn, and only when the work is about to do something you'd want to stop, is blocked on your answer, or will occupy more than a few minutes.
