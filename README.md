@@ -66,9 +66,9 @@ We put hush up against plain Claude Code and a plugin that just tells Claude to 
 
 **It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — a real multi-turn incident session came in about **39% cheaper**, where being brief barely moved it.
 
-<p align="center"><img src="assets/bench-chatter.svg" alt="Words of play-by-play before the answer, fixing a real bug: no plugin 39 words, a 'be brief' plugin 23, hush 15 — hush is about 2.6x quieter, and the answer lands in one message at the end" width="700"></p>
+<p align="center"><img src="assets/bench-chatter.svg" alt="A multi-turn session — fix a bug, ask a follow-up, write it up. Play-by-play while it works: no plugin 26 words, hush 9. The replies, every turn added up: no plugin 493 words, hush 242 — about half the reading" width="700"></p>
 
-**And it's quieter.** The answer lands in one clean message at the end instead of a running commentary — a brief check-in only when Claude settles a diagnosis or starts a long build.
+**And you read about half as much.** The answer lands in one clean message at the end instead of a running commentary, and that message leads with the outcome — one fact per line, not a wall of prose. Claude speaks up mid-task only to flag something you'd want to stop, or when it's blocked and needs an answer from you.
 
 ### The full picture
 

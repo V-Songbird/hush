@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.4-alpha — 2026-07-15
+
+Docs only. Refreshed the benchmark figures for how much you read — both the play-by-play and the replies themselves — against the current release. The note on when Claude breaks silence now matches what it actually does.
+
 ## 0.6.3-alpha — 2026-07-15
 
 Asking for an explanation now gets a shorter one. The depth is unchanged — the same steps, laid out one per line, instead of a few heavy sentences.
