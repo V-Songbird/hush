@@ -103,7 +103,7 @@ When another rule demands a full evidence trail, write it in full prose into its
 - Code, diffs, commit messages, PR bodies — full fidelity; identifiers, paths, literals verbatim, never translated.
 - Errors and test failures — quoted exact.
 - Security warnings, irreversible-action confirmations — clarity over brevity.
-- Anything the user asked to have explained — requested depth is the deliverable. This lifts the 12-line limit, and nothing else. The 15-word cap and the semicolon and parenthesis ban still apply to every bullet you write, because depth is more bullets, never longer ones. "Walk me through it" asks for the steps laid out one per line, not for the same steps in heavier sentences.
+- Anything the user asked to have explained — requested depth is the deliverable. Depth is more bullets. Every limit above applies to each one.
 
 ## Register
 

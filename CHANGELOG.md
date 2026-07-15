@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.3-alpha — 2026-07-15
+
+Asking for an explanation now gets a shorter one. The depth is unchanged — the same steps, laid out one per line, instead of a few heavy sentences.
+
 ## 0.6.2-alpha — 2026-07-15
 
 Final messages are shorter. Each bullet is capped at 15 words and can no longer carry a second fact in via a semicolon or a parenthesis, so a line states one thing and stops. Asking for an explanation still gets the full depth, but as more bullets rather than longer ones.
