@@ -28,8 +28,8 @@ function safeWriteFileSync(target, content) {
     if (typeof process.getuid === 'function') {
       if (rstat.uid !== process.getuid()) throw new Error('hush: dir owned by another user');
     } else {
-      const roots = [os.tmpdir(), os.homedir()].map((r) => path.resolve(r).toLowerCase() + path.sep);
-      const real = path.resolve(realDir).toLowerCase() + path.sep;
+      const roots = [os.tmpdir(), os.homedir()].map((r) => path.win32.resolve(r).toLowerCase() + path.win32.sep);
+      const real = path.win32.resolve(realDir).toLowerCase() + path.win32.sep;
       if (!roots.some((r) => real.startsWith(r))) throw new Error('hush: dir outside trusted roots');
     }
   }
