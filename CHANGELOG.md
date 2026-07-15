@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.5-alpha — 2026-07-15
+
+Docs only. The benchmark charts are rebuilt out of the sessions they measure: cost is itemised as a bill, the replies are drawn at the size you actually read them, and the play-by-play is a waveform — hush's lane is close to a flat line.
+
 ## 0.6.4-alpha — 2026-07-15
 
 Docs only. Refreshed the benchmark figures for how much you read — both the play-by-play and the replies themselves — against the current release. The note on when Claude breaks silence now matches what it actually does.

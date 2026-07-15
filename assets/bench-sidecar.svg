@@ -1,39 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 214" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 216" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
   <style>
-    .title{fill:#1f2937;font-size:18px;font-weight:700}
-    .sub{fill:#6b7280;font-size:13px}
-    .lab{fill:#4b5563;font-size:13px}
-    .hushlab{fill:#059669;font-size:13.5px;font-weight:700}
-    .val{fill:#374151;font-size:13.5px;font-weight:600}
-    .hushval{fill:#059669;font-size:14.5px;font-weight:700}
-    .track{fill:#eef2f6}.base{fill:#cbd5e1}.brief{fill:#94a3b8}.hush{fill:#10b981}
-    .foot{fill:#6b7280;font-size:12.5px}.em{fill:#059669;font-weight:700}.badge{fill:#10b981}
+    .title{fill:#1f2937;font-size:17px;font-weight:700}
+    .sub{fill:#6b7280;font-size:12.5px}
+    .item{fill:#374151;font-size:13.5px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .hushitem{fill:#059669;font-size:13.5px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .amt{fill:#374151;font-size:13.5px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .hushamt{fill:#059669;font-size:14px;font-weight:700;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .rule{stroke:#d7dde4;stroke-width:1}
+    .foot{fill:#6b7280;font-size:12.5px}.em{fill:#059669;font-weight:700}
     @media (prefers-color-scheme:dark){
-      .title{fill:#e6edf3}.sub{fill:#9198a1}.lab{fill:#b0b8c0}.hushlab{fill:#3fb950}
-      .val{fill:#c9d1d9}.hushval{fill:#3fb950}.track{fill:#1c2128}.base{fill:#444c56}
-      .brief{fill:#768390}.hush{fill:#3fb950}.foot{fill:#9198a1}.em{fill:#3fb950}.badge{fill:#238636}
+      .title{fill:#e6edf3}.sub{fill:#9198a1}.item{fill:#c9d1d9}.hushitem{fill:#3fb950}
+      .amt{fill:#c9d1d9}.hushamt{fill:#3fb950}.rule{stroke:#30363d}.foot{fill:#9198a1}.em{fill:#3fb950}
     }
   </style>
-  <text x="16" y="30" class="title">A multi-turn debugging session</text>
-  <text x="16" y="52" class="sub">Triage an outage, dig the version out of a huge lockfile, then write the handoff</text>
+  <text x="16" y="28" class="title">A multi-turn debugging session</text>
+  <text x="16" y="50" class="sub">Triage an outage, dig the version out of a huge lockfile, then write the handoff</text>
 
-  <rect x="588" y="12" width="124" height="34" rx="17" class="badge"/>
-  <text x="650" y="35" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">39% cheaper</text>
+  <text x="16" y="92" class="item">no plugin</text>
+  <text x="704" y="92" class="amt" text-anchor="end">$0.47</text>
 
-  <text x="16" y="95" class="lab">no plugin</text>
-  <rect x="185" y="78" width="380" height="28" rx="14" class="track"/>
-  <rect x="185" y="78" width="380" height="28" rx="14" class="base"/>
-  <text x="575" y="97" class="val">$0.47</text>
+  <text x="16" y="120" class="item">a &#8220;be brief&#8221; plugin</text>
+  <text x="704" y="120" class="amt" text-anchor="end">$0.42</text>
 
-  <text x="16" y="137" class="lab">a &#8220;be brief&#8221; plugin</text>
-  <rect x="185" y="120" width="380" height="28" rx="14" class="track"/>
-  <rect x="185" y="120" width="338" height="28" rx="14" class="brief"/>
-  <text x="575" y="139" class="val">$0.42</text>
+  <text x="16" y="148" class="hushitem">hush</text>
+  <text x="704" y="148" class="hushamt" text-anchor="end">$0.29</text>
 
-  <text x="16" y="179" class="hushlab">hush</text>
-  <rect x="185" y="162" width="380" height="28" rx="14" class="track"/>
-  <rect x="185" y="162" width="231" height="28" rx="14" class="hush"/>
-  <text x="575" y="181" class="hushval">$0.29</text>
+  <line x1="16" y1="168" x2="704" y2="168" class="rule"/>
 
-  <text x="16" y="206" class="foot">The big lockfile never floods the chat — hush keeps a tidy summary and the full copy one click away.</text>
+  <text x="16" y="192" class="item">what hush takes off the bill</text>
+  <text x="704" y="192" class="hushamt" text-anchor="end">$0.18</text>
+
+  <text x="16" y="212" class="foot">The lockfile never floods the chat — hush keeps a tidy summary and the full copy one click away.</text>
 </svg>

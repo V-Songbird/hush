@@ -1,50 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 588" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
   <style>
-    .title{fill:#1f2937;font-size:18px;font-weight:700}
-    .sub{fill:#6b7280;font-size:13px}
-    .sec{fill:#6b7280;font-size:12px;font-weight:700;letter-spacing:.06em}
-    .lab{fill:#4b5563;font-size:13px}
-    .hushlab{fill:#059669;font-size:13.5px;font-weight:700}
-    .val{fill:#374151;font-size:13.5px;font-weight:600}
-    .hushval{fill:#059669;font-size:14.5px;font-weight:700}
-    .track{fill:#eef2f6}.base{fill:#cbd5e1}.hush{fill:#10b981}
-    .foot{fill:#6b7280;font-size:12.5px}.badge{fill:#10b981}
+    .title{fill:#1f2937;font-size:17px;font-weight:700}
+    .sub{fill:#6b7280;font-size:12.5px}
+    .cap{fill:#6b7280;font-size:12px;font-weight:600}
+    .caph{fill:#059669;font-size:12px;font-weight:700}
+    .ln{fill:#d3dae2}.lead{fill:#aab4c0}.dot{fill:#aab4c0}
+    .foot{fill:#9aa3ad;font-size:11.5px}
     @media (prefers-color-scheme:dark){
-      .title{fill:#e6edf3}.sub{fill:#9198a1}.sec{fill:#768390}.lab{fill:#b0b8c0}
-      .hushlab{fill:#3fb950}.val{fill:#c9d1d9}.hushval{fill:#3fb950}
-      .track{fill:#1c2128}.base{fill:#444c56}.hush{fill:#3fb950}
-      .foot{fill:#9198a1}.badge{fill:#238636}
+      .title{fill:#e6edf3}.sub{fill:#9198a1}.cap{fill:#768390}.caph{fill:#3fb950}
+      .ln{fill:#30363d}.lead{fill:#484f58}.dot{fill:#484f58}.foot{fill:#6e7681}
     }
   </style>
-  <text x="16" y="30" class="title">How much you actually have to read</text>
-  <text x="16" y="52" class="sub">A multi-turn session: fix a bug, ask a follow-up, write it up</text>
+  <text x="16" y="28" class="title">The same job, as much of it as you have to read</text>
+  <text x="16" y="50" class="sub">Fix a currency bug, ask why the order matters, write it up — a typical run of each, every reply at actual size</text>
 
-  <rect x="560" y="12" width="152" height="34" rx="17" class="badge"/>
-  <text x="636" y="35" font-size="15" font-weight="700" fill="#ffffff" text-anchor="middle">half the reading</text>
+  <text x="16" y="72" class="cap">no plugin · 497 words</text>
+  <text x="380" y="72" class="caph">hush · 287 words</text>
 
-  <text x="16" y="86" class="sec">PLAY-BY-PLAY WHILE IT WORKS</text>
-
-  <text x="16" y="111" class="lab">no plugin</text>
-  <rect x="185" y="94" width="380" height="26" rx="13" class="track"/>
-  <rect x="185" y="94" width="380" height="26" rx="13" class="base"/>
-  <text x="575" y="112" class="val">26 words</text>
-
-  <text x="16" y="147" class="hushlab">hush</text>
-  <rect x="185" y="130" width="380" height="26" rx="13" class="track"/>
-  <rect x="185" y="130" width="131" height="26" rx="13" class="hush"/>
-  <text x="575" y="148" class="hushval">9 words</text>
-
-  <text x="16" y="181" class="sec">THE REPLIES, EVERY TURN ADDED UP</text>
-
-  <text x="16" y="206" class="lab">no plugin</text>
-  <rect x="185" y="189" width="380" height="26" rx="13" class="track"/>
-  <rect x="185" y="189" width="380" height="26" rx="13" class="base"/>
-  <text x="575" y="207" class="val">493 words</text>
-
-  <text x="16" y="242" class="hushlab">hush</text>
-  <rect x="185" y="225" width="380" height="26" rx="13" class="track"/>
-  <rect x="185" y="225" width="187" height="26" rx="13" class="hush"/>
-  <text x="575" y="243" class="hushval">242 words</text>
-
-  <text x="16" y="272" class="foot">Outcome first, one fact per line — and every job still passed its correctness check.</text>
+    <rect x="16.0" y="86.0" width="96.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="96.2" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="16.0" y="103.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="110.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="117.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="124.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="131.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="138.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="145.2" width="50.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="155.4" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="16.0" y="162.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="169.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="176.4" width="9.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="186.6" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="193.6" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="200.6" width="174.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="210.8" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="16.0" y="217.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="224.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="231.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="238.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="245.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="252.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="259.8" width="36.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="270.0" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="16.0" y="277.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="284.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="291.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="298.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="305.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="312.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="319.0" width="243.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="329.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="336.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="343.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="350.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="357.2" width="174.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="367.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="374.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="381.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="388.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="395.4" width="36.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="405.6" width="170.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="415.8" width="105.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="426.0" width="13.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="436.2" width="266.8" height="4.4" rx="2.2" class="lead"/>
+    <rect x="16.0" y="446.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="453.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="460.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="467.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="474.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="481.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="488.4" width="128.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="498.6" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="505.6" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="512.6" width="266.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="522.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="529.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="536.8" width="18.4" height="4.4" rx="2.2" class="ln"/>
+    <rect x="16.0" y="547.0" width="147.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="86.0" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="93.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="100.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="107.0" width="119.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="114.0" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="121.0" width="156.4" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="128.0" width="202.4" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="138.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="145.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="152.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="159.2" width="211.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="169.4" width="193.2" height="4.4" rx="2.2" class="ln"/>
+    <circle cx="384.0" cy="181.8" r="1.5" class="dot"/>
+    <rect x="389.0" y="179.6" width="276.0" height="4.4" rx="2.2" class="ln"/>
+    <rect x="389.0" y="186.6" width="276.0" height="4.4" rx="2.2" class="ln"/>
+    <rect x="389.0" y="193.6" width="216.2" height="4.4" rx="2.2" class="ln"/>
+    <circle cx="384.0" cy="202.8" r="1.5" class="dot"/>
+    <rect x="389.0" y="200.6" width="276.0" height="4.4" rx="2.2" class="ln"/>
+    <rect x="389.0" y="207.6" width="276.0" height="4.4" rx="2.2" class="ln"/>
+    <rect x="389.0" y="214.6" width="276.0" height="4.4" rx="2.2" class="ln"/>
+    <rect x="389.0" y="221.6" width="151.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="231.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="238.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="245.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="252.8" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="259.8" width="170.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="270.0" width="36.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="277.0" width="32.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="284.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="291.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="298.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="305.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="312.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="319.0" width="87.4" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="329.2" width="13.8" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="336.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="343.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="350.2" width="82.8" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380.0" y="360.4" width="41.4" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380.0" y="367.4" width="179.4" height="4.4" rx="2.2" class="ln"/>
+  <text x="16" y="576" class="foot">Both fixed the bug and passed the same check. One of them told you about it.</text>
 </svg>

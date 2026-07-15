@@ -5,6 +5,10 @@
   </picture>
   <h1>hush</h1>
   <p><strong>Shuts Claude up so your session stops costing money to read.</strong></p>
+
+  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across most of the suite and peaks at 78 words, silent in 11 of 32 sessions. The hush lane is close to a flat line — silent in 23 of 32, with the remaining spikes on the rename task" width="700" />
+
+  <p><em>This is what a session sounds like.</em></p>
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE) [![Claude Code](https://img.shields.io/badge/Claude_Code-E5582B)](https://docs.anthropic.com/en/docs/claude-code)
@@ -54,21 +58,23 @@ Takes effect at your next session. There's nothing to invoke — hush just works
 
 We put hush up against plain Claude Code and a plugin that just tells Claude to talk less, on real engineering work — full agent sessions that explore, edit, and run code, not a single canned reply. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
-<p align="center"><img src="assets/bench-hero.svg" alt="Average session cost across the suite: no plugin $0.226, a 'be brief' plugin $0.214, hush $0.169 — hush is about 25% cheaper, roughly 5x what 'just be brief' manages" width="700"></p>
+<p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.226, a 'be brief' plugin $0.214, hush $0.169. hush takes $0.057 off the bill; asking Claude to be brief takes off $0.012" width="700"></p>
 
-**Being brief isn't enough.** Across the suite, hush cut the average session about **25%**, while a plugin that just tells Claude to talk less managed ~5%. Turns out asking politely and actually doing the work are two different things.
+**Being brief isn't enough.** Asking Claude to talk less takes about a cent off the bill. hush takes off closer to six. Turns out asking politely and actually doing the work are two different things.
 
-<p align="center"><img src="assets/bench-anatomy.svg" alt="Where a real session's money goes: almost the whole bill is what Claude reads — files, logs, command output — and under 5% is the reply. A 'be brief' plugin can only trim that sliver; hush works on the other 95% too" width="700"></p>
+<p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.216; what Claude wrote back, the reply, $0.010; the session $0.226. A plugin that only shortens the reply is working on the $0.010" width="700"></p>
 
-**Almost the whole bill is what Claude *reads*,** not what it writes back — about 21x more, in our sessions. Shortening the reply polishes a sliver. hush trims the noisy output and bulky logs before they hit your bill.
+**Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on one cent of a twenty-three cent session. hush trims the noisy output and bulky logs before they hit your bill.
 
-<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, look up a version in a huge lockfile, write a handoff: no plugin $0.47, a 'be brief' plugin $0.42, hush $0.29 — about 39% cheaper" width="700"></p>
+<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.47, a 'be brief' plugin $0.42, hush $0.29. hush takes $0.18 off the bill" width="700"></p>
 
-**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — a real multi-turn incident session came in about **39% cheaper**, where being brief barely moved it.
+**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.29 against $0.47, where being brief barely moved it.
 
-<p align="center"><img src="assets/bench-chatter.svg" alt="A multi-turn session — fix a bug, ask a follow-up, write it up. Play-by-play while it works: no plugin 26 words, hush 9. The replies, every turn added up: no plugin 493 words, hush 242 — about half the reading" width="700"></p>
+<p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — fix a currency bug, ask why the conversion order matters, write it up — with every reply drawn at actual size. A typical run with no plugin fills 497 words; a typical hush run fills 287, a visibly shorter column. Both fixed the bug and passed the same check" width="700"></p>
 
-**And you read about half as much.** The answer lands in one clean message at the end instead of a running commentary, and that message leads with the outcome — one fact per line, not a wall of prose. Claude speaks up mid-task only to flag something you'd want to stop, or when it's blocked and needs an answer from you.
+**And you read about half as much.** Across the suite the replies come to 242 words against 493. The answer lands in one message at the end — outcome first, one fact per line, instead of arriving in pieces while Claude works.
+
+**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. Plain Claude Code is already quiet about a third of the time, but when it isn't, it can run to 78 words of commentary first. hush is silent in 23 sessions out of 32. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs an answer from you.
 
 ### The full picture
 
