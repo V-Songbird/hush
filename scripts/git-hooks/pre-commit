@@ -2,9 +2,9 @@
 "use strict";
 
 // Canonical source for the pre-commit hook installed at
-// scripts/git-hooks/pre-commit in every plugin's own repo (forge, verity,
-// foreman, hush, razor, jetbrains-router). Keep copies in sync with this
-// file -- see CONTRIBUTING.md "Git hooks" in each plugin repo.
+// scripts/git-hooks/pre-commit in every plugin's own repo (foreman, hush,
+// razor). Keep copies in sync with this file -- see CONTRIBUTING.md
+// "Git hooks" in each plugin repo.
 //
 // Blocks a commit if `node --test tests/*.test.js` fails. No-ops when the
 // plugin has no tests/ directory (skill/prompt-only plugins with no
