@@ -1,15 +1,14 @@
 'use strict';
 
-// Trio conformance fixture: hush, razor, and plumb each keep their own copy of
-// isRealUserPrompt (turn-boundary detection) because the three plugins are
-// independent submodules with no shared code to import from. The three copies
-// must stay behaviorally identical, so this exact fixture is duplicated
-// verbatim in all three plugins' test suites (see
-// docs/research/razor-plumb-competitor-intel-2026-07-14.md Part 7.1) — a
-// future edit that drifts one copy away from the others fails that plugin's
-// own suite immediately instead of silently desyncing per-turn accounting
-// across the trio. Do not resolve a failure here by editing this fixture;
-// edit the plugin whose isRealUserPrompt actually diverged.
+// Conformance fixture: hush keeps its own copy of isRealUserPrompt
+// (turn-boundary detection) because each plugin that needs it is an
+// independent repo with no shared code to import from. Every copy must stay
+// behaviorally identical, so this exact fixture is duplicated verbatim in
+// each of those plugins' test suites — a future edit that drifts one copy
+// away from the others fails that plugin's own suite immediately instead of
+// silently desyncing per-turn accounting across the set. Do not resolve a
+// failure here by editing this fixture; edit the plugin whose
+// isRealUserPrompt actually diverged.
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
