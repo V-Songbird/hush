@@ -19,7 +19,9 @@ const fs = require("fs");
 const BRIEF =
   "Your final message is consumed by the calling agent as a tool result, not read as chat: " +
   "return the findings themselves — data, paths, identifiers, verbatim errors — in complete " +
-  "clauses, with no preamble, no restating of your instructions, and no offers of further help.";
+  "clauses, with no preamble, no restating of your instructions, and no offers of further help. " +
+  "Emit no text between tool calls either: nobody reads it, so a progress update has no audience. " +
+  "Chain the calls and put everything in that one final message.";
 
 function readInput() {
   try {

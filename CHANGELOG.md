@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.1-alpha — 2026-07-15
+
+The output style is quieter between tool calls. It no longer leaves room to read a discovery, a finished step, or an upcoming tool call as a reason to speak, and it now explicitly overrides the built-in instruction to say what you're about to do before a tool call. Text between tool calls is capped at one sentence per turn, and only when the work is about to do something you'd want to stop, is blocked on your answer, or will occupy more than a few minutes.
+
+Subagents are now told to stay silent between tool calls as well, not just to keep their final message lean.
+
 ## 0.6.0-alpha — 2026-07-14
 
 Added format guidance for Claude Code's own conversation-compaction summaries, so a compacted session keeps a structured list of facts (paths, decisions, open threads) instead of loose prose — and keeps pointers to any large output already moved to a local file, instead of losing track of it.
