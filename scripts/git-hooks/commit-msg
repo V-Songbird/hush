@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+"use strict";
+
+// Installed via: git config core.hooksPath scripts/git-hooks
+// Blocks commit messages containing private reference-project names.
+// See check-reference-names.js (blocklist is gitignored; missing = pass).
+
+process.argv[3] = process.argv[2]; // git passes the message file as argv[2]
+process.argv[2] = "message";
+process.exit(require("./check-reference-names.js").main());

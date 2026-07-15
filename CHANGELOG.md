@@ -5,6 +5,24 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.6.0-alpha — 2026-07-14
+
+Added format guidance for Claude Code's own conversation-compaction summaries, so a compacted session keeps a structured list of facts (paths, decisions, open threads) instead of loose prose — and keeps pointers to any large output already moved to a local file, instead of losing track of it.
+
+Large-output digests now open with a short breakdown of what they found (how many errors, failures, or warnings) instead of just a line count.
+
+Log-shaped output with many similarly-structured lines (repeated build or worker-queue entries, for example) now collapses runs of them into one example line plus a count.
+
+Diagnostics-style results from IDE tooling now compress into a table instead of passing through untouched.
+
+The memory-file compression skill now flags content near the top of a file (timestamps, generated-on stamps) that can quietly make every session more expensive by invalidating Claude Code's prompt cache.
+
+Added an optional debug log (`HUSH_DEBUG=1`) for troubleshooting and benchmarking — off by default.
+
+Fixed an issue where a very large single-line output (e.g. minified JSON) could produce a compressed view larger than the original instead of being left untouched.
+
+Fixed an issue where diagnostics-heavy MCP results were never actually compressed.
+
 ## 0.5.4-alpha — 2026-07-13
 
 Doc-only: added a How it works section summarizing narration, output-trimming, and large-output handling; trimmed the now-redundant mechanism detail out of the opening section. No behavior change.

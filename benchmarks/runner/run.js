@@ -7,6 +7,7 @@
 //   node runner/run.js --tag mine  --reps 2 --model haiku          # default subset
 //   node runner/run.js --tag full  --full --reps 2 --model haiku   # whole suite
 //   node runner/run.js --tag byo   --rival-dir /path/to/other-plugin
+//   node runner/run.js --tag dbg   --hush-debug   # attach hush's decision manifest to each hush-arm record
 //
 // Two arms ship by default: `baseline` (plain Claude Code) and `hush` (this
 // plugin). The hush plugin dir is resolved RELATIVE to this harness — no
@@ -17,7 +18,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { parseTranscript, runCheck } = require('./metrics.js');
+const { parseTranscript, runCheck, readDebugManifest } = require('./metrics.js');
 
 const ROOT = path.resolve(__dirname, '..');            // hush/benchmarks
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
@@ -33,6 +34,11 @@ const tag = flag('tag', 'dev');
 const model = flag('model', CONFIG.model);
 const reps = Number(flag('reps', CONFIG.reps));
 const concurrency = Number(flag('concurrency', CONFIG.concurrency));
+// Opt-in (Probe 9 Spec 1 ingestion): writes hush's per-decision debug
+// manifest for the hush arm and folds a summary into each run's record.
+// Off by default — the extra tmpdir I/O has no business skewing a cost/
+// timing measurement nobody asked for.
+const hushDebug = argv.includes('--hush-debug');
 
 // --- arms -------------------------------------------------------------------
 // The hush plugin lives one directory up from this harness; resolve it there
@@ -101,7 +107,7 @@ fs.mkdirSync(workRoot, { recursive: true });
 // --- environment ------------------------------------------------------------
 // Strip nested-session and hush-tuning vars so each arm starts clean; the
 // arm's own env (including any rival env) is layered on top.
-function cleanEnv(armEnv) {
+function cleanEnv(armEnv, arm) {
   const env = {};
   for (const [k, v] of Object.entries(process.env)) {
     if (/^(CLAUDECODE|CLAUDE_CODE_|HUSH_)/.test(k)) continue;
@@ -111,7 +117,9 @@ function cleanEnv(armEnv) {
   // permission evaluation under blanket per-tool allow rules, which is
   // exactly how buildArgs() grants Bash/PowerShell here) — opt in
   // explicitly so the arms keep their historical wrapping behavior.
-  return Object.assign(env, { HUSH_WRAP: '1' }, armEnv);
+  const extra = { HUSH_WRAP: '1' };
+  if (hushDebug && arm === 'hush') extra.HUSH_DEBUG = '1';
+  return Object.assign(env, extra, armEnv);
 }
 
 function buildArgs(arm) {
@@ -186,7 +194,7 @@ async function oneRun(task, arm, rep) {
   if (task.fixture) fs.cpSync(path.join(ROOT, 'fixtures', task.fixture), workDir, { recursive: true });
 
   const prompts = task.prompts || [task.prompt];
-  const env = cleanEnv(ARMS[arm].env);
+  const env = cleanEnv(ARMS[arm].env, arm);
   const started = Date.now();
   const calls = [];
   let stderrAll = '';
@@ -220,6 +228,9 @@ async function oneRun(task, arm, rep) {
       narrationWords: sum('narrationWords'), finalWords: last.finalWords,
       finalText: last.finalText,
       stderr: stderrAll.slice(0, 2000),
+      // Fail-soft: null unless --hush-debug was passed and hush actually
+      // wrote a manifest for this session (Probe 9 Spec 1 ingestion).
+      debugManifest: hushDebug ? readDebugManifest(last.sessionId) : null,
     };
   } catch (err) {
     record = { key, task: task.id, arm, rep, wallMs, error: String(err), stderr: stderrAll.slice(0, 2000) };

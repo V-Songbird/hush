@@ -120,6 +120,9 @@ Most people never touch these, but a few environment variables tune the caps or 
 | `HUSH_SIDECAR=off` | Keeps very large outputs inline instead of moving them to a local file behind a digest |
 | `HUSH_SIDECAR_MIN=15000` | Size (characters) at which an output moves to a sidecar file |
 | `HUSH_SIDECAR_SHELL_MAX=28000` | Above this size, a command's output stays inline (past here the terminal already keeps its own copy) |
+| `HUSH_COMPACT=off` | Stops shaping the compaction summarizer's format instructions |
+| `HUSH_TEMPLATE=off` | Stops collapsing runs of same-shaped log lines (e.g. repeated worker/job entries) into one example line + a count |
+| `HUSH_DEBUG=1` | Appends a per-decision JSON line to a temp-dir manifest file for every tool output hush looks at — for debugging and benchmark tooling, not everyday use |
 
 ## License
 

@@ -65,11 +65,26 @@ md += `\nDeltas vs baseline — cost: ${others.map((a) => `${a} ${delta(byArm[a]
 md += `output tokens: ${others.map((a) => `${a} ${delta(byArm[a].outTok, byArm.baseline?.outTok)}`).join(', ')}; `;
 md += `context traffic: ${others.map((a) => `${a} ${delta(byArm[a].traffic, byArm.baseline?.traffic)}`).join(', ')}.\n`;
 
+// Probe 9 Spec 1 ingestion: only present when a run used --hush-debug, so
+// this is fail-soft by construction — no debugManifest anywhere, no section.
+function debugSummary(rs) {
+  const totals = {};
+  let any = false;
+  for (const r of rs) {
+    if (!r.debugManifest) continue;
+    any = true;
+    for (const [action, n] of Object.entries(r.debugManifest.byAction)) totals[action] = (totals[action] || 0) + n;
+  }
+  return any ? Object.entries(totals).map(([a, n]) => `${a}:${n}`).join(', ') : null;
+}
+
 for (const t of TASKS) {
   md += `\n## ${t}\n\n| Arm | Pass | Score | Cost USD | Output tok | Traffic tok | Narration w | Final w | Tool-result chars | Turns |\n|---|---|---|---|---|---|---|---|---|---|\n`;
   for (const a of ARMS) {
     const g = byTaskArm[t][a];
     md += `| ${a} | ${fmt(g.passRate * 100)}% | ${fmt(g.score, 2)} | ${fmt(g.cost, 4)} | ${fmt(g.outTok)} (${delta(g.outTok, byTaskArm[t].baseline?.outTok)}) | ${fmt(g.traffic)} (${delta(g.traffic, byTaskArm[t].baseline?.traffic)}) | ${fmt(g.narration)} | ${fmt(g.finalWords)} | ${fmt(g.toolChars)} | ${fmt(g.turns, 1)} |\n`;
+    const dbg = debugSummary(runs.filter((r) => r.task === t && r.arm === a));
+    if (dbg) md += `  - hush decisions (${a}): ${dbg}\n`;
   }
 }
 fs.writeFileSync(path.join(dir, 'report.md'), md);

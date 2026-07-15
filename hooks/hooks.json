@@ -25,9 +25,33 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/precompact-summary.js\"",
+            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\precompact-summary.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/postcompact-rearm.js\"",
+            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\postcompact-rearm.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
-        "matcher": "^(Bash|PowerShell|Read)$",
+        "matcher": "^(Bash|PowerShell|Read|mcp__.+__(get_file_problems|search_regex|search_in_files_by_text|search_in_files_by_regex|build_project|get_run_configurations|search_text))$",
         "hooks": [
           {
             "type": "command",

@@ -10,6 +10,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
+const { safeWriteFileSync } = require("./lib/safe-write");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read"]);
 
@@ -70,6 +71,81 @@ function dedupeConsecutive(lines) {
     run = 0;
     if (i < lines.length) out.push(lines[i]);
   }
+  return out;
+}
+
+// Real logs repeat the same SHAPE far more than they repeat identical lines
+// (dedupeConsecutive only catches the latter) — "INFO worker-3 processing job
+// 8841" x hundreds, each with a different id/timestamp. Collapsing those runs
+// compounds hush's strongest domain. Two lines "share a template" iff: same
+// token count; >=50% of positions token-identical; and >=2 of those identical
+// positions are "anchor" tokens (>=3 chars, no digits) — the anchor floor is
+// what stops two lines merging on a shared timestamp or short flag alone.
+// Comparison is always against the run's first line (its exemplar), so the
+// whole run stays anchored to one shape instead of drifting line to line.
+const TEMPLATE_MIN_RUN = intEnv("HUSH_TEMPLATE_MIN_RUN", 5);
+
+function templateTokens(line) {
+  return line.trim().split(/\s+/).filter(Boolean);
+}
+
+function isAnchorToken(tok) {
+  return tok.length >= 3 && !/\d/.test(tok);
+}
+
+function shareTemplate(aTokens, bTokens) {
+  if (!aTokens.length || aTokens.length !== bTokens.length) return false;
+  let same = 0;
+  let anchors = 0;
+  for (let i = 0; i < aTokens.length; i++) {
+    if (aTokens[i] === bTokens[i]) {
+      same++;
+      if (isAnchorToken(aTokens[i])) anchors++;
+    }
+  }
+  return same / aTokens.length >= 0.5 && anchors >= 2;
+}
+
+// A SIGNAL_RE line never joins a run and always breaks one — over-normalizing
+// distinct errors into one exemplar is the known failure mode this sidesteps
+// entirely, rather than trying to tune around it.
+function collapseTemplates(lines) {
+  if (process.env.HUSH_TEMPLATE === "off") return lines;
+  const out = [];
+  let runStart = -1;
+  let anchorTokens = null;
+  let runLen = 0;
+
+  function flushRun() {
+    if (runLen >= TEMPLATE_MIN_RUN) {
+      out.push(lines[runStart]);
+      out.push(`[hush hook: ${runLen - 1} similar lines collapsed (same shape, varying values)]`);
+    } else {
+      for (let i = runStart; i < runStart + runLen; i++) out.push(lines[i]);
+    }
+    runStart = -1;
+    anchorTokens = null;
+    runLen = 0;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (SIGNAL_RE.test(line)) {
+      if (runLen > 0) flushRun();
+      out.push(line);
+      continue;
+    }
+    const tokens = templateTokens(line);
+    if (runLen > 0 && shareTemplate(anchorTokens, tokens)) {
+      runLen++;
+      continue;
+    }
+    if (runLen > 0) flushRun();
+    runStart = i;
+    anchorTokens = tokens;
+    runLen = 1;
+  }
+  if (runLen > 0) flushRun();
   return out;
 }
 
@@ -267,6 +343,143 @@ function requestsEnumeration(prompt) {
   return ENUM_QUANTIFIED.test(prompt) || ENUM_VERB.test(prompt);
 }
 
+// MCP JSON table-ification (ROADMAP 007 / Probe 7): a measured probe over
+// 6,739 real MCP tool_results on this machine found 429 eligible (>=2KB,
+// homogeneous JSON-record array) payloads with a MEDIAN 27.9% char savings
+// rendering as a schema-header + tab-rows table instead of raw JSON — gate
+// (>=100 eligible, >=15% median) passed. Scoped by MCP METHOD suffix, not
+// server prefix, so it survives whatever alias a user's MCP config gives the
+// JetBrains server (measured as "idea" here, "jetbrains" elsewhere); only
+// methods with >=20 measured eligible payloads are included.
+const MCP_TABLE_MIN_CHARS = 2048;
+const MCP_TABLE_MIN_RECORDS = 5;
+const MCP_TABLE_KEY_SHARE = 0.8;
+const MCP_TABLE_RE =
+  /^mcp__.+__(get_file_problems|search_regex|search_in_files_by_text|search_in_files_by_regex|build_project|get_run_configurations|search_text)$/;
+
+function isMcpTableTool(toolName) {
+  return typeof toolName === "string" && MCP_TABLE_RE.test(toolName);
+}
+
+// JetBrains MCP payloads are usually a bare array of records, or an object
+// wrapping one (`{results:[...]}`); a shallow (depth<=2) search covers both
+// without guessing at every possible field name.
+function findMcpRecordsArray(parsed, depth) {
+  if (Array.isArray(parsed)) return parsed;
+  if (depth >= 2 || !parsed || typeof parsed !== "object") return null;
+  for (const key of Object.keys(parsed)) {
+    const val = parsed[key];
+    if (Array.isArray(val) && val.length >= MCP_TABLE_MIN_RECORDS) return val;
+  }
+  for (const key of Object.keys(parsed)) {
+    const val = parsed[key];
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const found = findMcpRecordsArray(val, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+// Eligibility mirrors the probe exactly: >=2KB text, a JSON-parseable array
+// of >=5 objects whose keys overlap (intersection/union) >=80%.
+function mcpTableCandidate(text) {
+  if (typeof text !== "string" || text.length < MCP_TABLE_MIN_CHARS) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const records = findMcpRecordsArray(parsed, 0);
+  if (!records || records.length < MCP_TABLE_MIN_RECORDS || !records.every(isPlainObject)) return null;
+  const keySets = records.map((r) => new Set(Object.keys(r)));
+  const union = new Set();
+  keySets.forEach((s) => s.forEach((k) => union.add(k)));
+  let intersection = new Set(keySets[0]);
+  for (let i = 1; i < keySets.length; i++) {
+    intersection = new Set([...intersection].filter((k) => keySets[i].has(k)));
+  }
+  if (!union.size || intersection.size / union.size < MCP_TABLE_KEY_SHARE) return null;
+  return { records, columns: [...union] };
+}
+
+function tableCell(v) {
+  if (v === undefined) return "";
+  if (typeof v === "string") return v.replace(/[\t\n\r]+/g, " ");
+  if (typeof v === "object") return JSON.stringify(v).replace(/[\t\n\r]+/g, " ");
+  return String(v);
+}
+
+// Lossless: every record becomes a row, all values present, zero rows
+// dropped. Only the column classification (constant vs variable) is derived;
+// nothing is elided or summarized. The header is count-based, naming its own
+// provenance, matching every other [hush hook: ...] marker in this file.
+function renderMcpTable(records, columns) {
+  const constantCols = [];
+  const variableCols = [];
+  for (const col of columns) {
+    if (!records.length) {
+      variableCols.push(col);
+      continue;
+    }
+    const values = records.map((r) => JSON.stringify(r[col]));
+    if (values.every((v) => v === values[0])) constantCols.push(col);
+    else variableCols.push(col);
+  }
+  const out = [`[hush hook: ${records.length} MCP JSON records rendered as a schema table below.]`];
+  if (records.length) {
+    if (constantCols.length) out.push("constant: " + constantCols.map((c) => `${c}=${tableCell(records[0][c])}`).join(", "));
+    out.push(variableCols.join("\t"));
+    for (const r of records) out.push(variableCols.map((c) => tableCell(r[c])).join("\t"));
+  }
+  return out.join("\n");
+}
+
+// MCP tool_response is a bare array of content blocks (Part 2 fact #6), or
+// occasionally a plain string; nothing else.
+function extractMcpText(response) {
+  if (typeof response === "string") return response;
+  if (Array.isArray(response)) {
+    const text = response
+      .filter((b) => b && b.type === "text" && typeof b.text === "string")
+      .map((b) => b.text)
+      .join("\n");
+    return text || null;
+  }
+  return null;
+}
+
+// `decision` mirrors compress()'s side-channel: mutated with the action token
+// and byte counts, never affecting the return value.
+function compressMcpTable(response, decision) {
+  const text = extractMcpText(response);
+  if (text === null) {
+    if (decision) decision.action = "passthrough";
+    return undefined;
+  }
+  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; }
+  const candidate = mcpTableCandidate(text);
+  if (!candidate) {
+    if (decision) decision.action = "passthrough";
+    return undefined;
+  }
+  const rendered = renderMcpTable(candidate.records, candidate.columns);
+  if (rendered.length >= text.length) {
+    if (decision) decision.action = "rejected-not-smaller";
+    return undefined;
+  }
+  if (decision) { decision.action = "mcp-table"; decision.bytesOut = rendered.length; }
+  // The replacement must be a plain string or that same bare content-block
+  // array — an object wrapper ({content:[...]}) throws harness-side
+  // (`e.reduce is not a function`, Part 2 fact #6). Mirror the arrival shape.
+  return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
+}
+
 // Read results are compressed ONLY for log-shaped files: a `.log` (optionally
 // rotated: `.log.1`) extension anywhere, or a `.log`/`.txt`/`.out` file living
 // under a directory literally named log/logs. Source code never matches, so a
@@ -349,6 +562,38 @@ const SIDECAR_DIR = path.join(os.tmpdir(), "hush-sidecar");
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
+const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
+
+// Subpatterns of SIGNAL_RE's own alternation (never edited independently),
+// so every line that reached signalIdx matches exactly one of these. Priority
+// order when a line matches several (e.g. "ERROR ... ReferenceError"):
+// error > failure > critical > warning > deprecation — each line counts once,
+// under whichever category wins.
+const CENSUS_CATEGORIES = [
+  { singular: "error", plural: "errors", re: /\w*Error\b|\bERR(?:OR)?\b/i },
+  { singular: "failure", plural: "failures", re: /\bFAIL(?:URE|ED)?\b/i },
+  { singular: "critical", plural: "criticals", re: /\bCRITICAL\b/i },
+  { singular: "warning", plural: "warnings", re: /\w*Warning\b|\bWARN(?:ING)?\b/i },
+  { singular: "deprecation", plural: "deprecations", re: /\bDEPRECATED\b/i },
+];
+
+// A bare count ("14 with warnings/errors/failures") makes a model misreport
+// on a completeness task without retrieving — a categorical census with named
+// counts lets it retrieve correctly (eval-proven against live models). Renders like
+// "2 errors, 1 failure, 3 warnings", omitting any category with zero hits.
+function signalCensus(lines, signalIdx) {
+  const counts = CENSUS_CATEGORIES.map(() => 0);
+  for (const i of signalIdx) {
+    const catIdx = CENSUS_CATEGORIES.findIndex((c) => c.re.test(lines[i]));
+    if (catIdx !== -1) counts[catIdx]++;
+  }
+  const parts = [];
+  CENSUS_CATEGORIES.forEach((c, idx) => {
+    const n = counts[idx];
+    if (n > 0) parts.push(`${n} ${n === 1 ? c.singular : c.plural}`);
+  });
+  return parts.join(", ");
+}
 
 function cheapHash(s) {
   let h = 2166136261;
@@ -395,11 +640,24 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   for (let i = 0; i < Math.min(DIGEST_HEAD, total); i++) if (!leadSet.has(i)) structIdx.add(i);
   for (let i = Math.max(0, total - DIGEST_TAIL); i < total; i++) if (!leadSet.has(i)) structIdx.add(i);
   const structSorted = [...structIdx].sort((a, b) => a - b);
+  const census = signalCensus(lines, signalIdx);
 
   const out = [];
   if (leadSorted.length) {
-    out.push(`Signal lines (${signalIdx.length} total in the file):`);
+    out.push(`Signal lines (${signalIdx.length} total: ${census}):`);
     for (const i of leadSorted) out.push(`L${i + 1}: ${lines[i]}`);
+    // The lead sample is provably exhaustive-or-not: signalIdx is every
+    // matching line, so naming exactly which ones weren't shown (with real
+    // L<n> targets for a follow-up offset/limit Read) is a completeness claim
+    // hush can actually prove, not a bare "trust me" count.
+    const unshown = signalIdx.filter((i) => !leadSet.has(i));
+    if (unshown.length) {
+      const shown = unshown.slice(0, OTHER_SIGNAL_CAP);
+      const remaining = unshown.length - shown.length;
+      let line = `Other signal lines (not shown): ${shown.map((i) => `L${i + 1}`).join(", ")}`;
+      if (remaining > 0) line += ` ... (+${remaining} more)`;
+      out.push(line);
+    }
     out.push("");
   }
   out.push("Structure (head + tail; read the file for the rest):");
@@ -409,7 +667,7 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
     out.push(`L${i + 1}: ${lines[i]}`);
     last = i;
   }
-  return { body: out.join("\n"), total, signalCount: signalIdx.length };
+  return { body: out.join("\n"), total, signalCount: signalIdx.length, census };
 }
 
 function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
@@ -420,17 +678,25 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
   // adds no truncated "full" file and no competing pointer.
   if (hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX) return null;
   try {
-    fs.mkdirSync(SIDECAR_DIR, { recursive: true });
     const name = (sessionId ? `${String(sessionId).slice(0, 8)}-` : "") + `${cheapHash(cleaned)}.txt`;
     const file = path.join(SIDECAR_DIR, name);
-    if (!fs.existsSync(file)) fs.writeFileSync(file, cleaned);
     const d = buildSidecarDigest(cleaned, relevanceTokens);
     const header =
-      `[hush hook: this output is ${d.total} lines (${d.signalCount} with warnings/errors/failures) ` +
+      `[hush hook: this output is ${d.total} lines (${d.census || "0 signal lines"}) ` +
       `and was saved in full to ${file.replace(/\\/g, "/")}; the digest below keeps the head, tail, ` +
       `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
-      `For anything else, Read that file with offset/limit around the L<n> numbers you need.]`;
-    return `${header}\n${d.body}`;
+      `For anything else, Read that file with offset/limit around the L<n> numbers you need. ` +
+      `If that file no longer exists, re-run the command instead.]`;
+    const out = `${header}\n${d.body}`;
+    // A near-line-free payload (e.g. one giant minified-JSON line) leaves
+    // buildSidecarDigest's head/tail trim nothing to cut — the digest would
+    // reproduce the whole input plus header overhead, larger than the source.
+    // Bail before ever touching disk and let compress() fall through to the
+    // ordinary inline cap, which is a no-op here too but at least isn't larger.
+    if (out.length >= cleaned.length) return null;
+    fs.mkdirSync(SIDECAR_DIR, { recursive: true });
+    if (!fs.existsSync(file)) safeWriteFileSync(file, cleaned);
+    return out;
   } catch {
     return null; // fall back to the normal capped view
   }
@@ -450,11 +716,25 @@ function isSidecarPath(filePath) {
   );
 }
 
-function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate) {
-  const cleaned = resolveCarriageReturns(stripAnsi(String(text)));
+// `decision`, when passed, is mutated with the single action token that
+// classifies what this call actually did (see HUSH_DEBUG below) — purely an
+// observation side-channel: the return value is identical whether or not a
+// decision object is supplied.
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision) {
+  const original = String(text);
+  const cleaned = resolveCarriageReturns(stripAnsi(original));
   if (!enumerate && !noSidecar) {
     const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate);
-    if (side !== null) return side;
+    if (side !== null) {
+      if (decision) decision.action = "sidecar";
+      return side;
+    }
+    // Sidecar was skipped specifically by the shell-truncation guard (large
+    // enough to qualify, but the host may have already cut the tail) — note
+    // that even though the output falls through to the ordinary cap below.
+    if (decision && hostMayTruncate && cleaned.length >= SIDECAR_MIN_CHARS && cleaned.length >= SIDECAR_SHELL_MAX) {
+      decision.action = "shell-guard-skip";
+    }
   }
   const s = typeof scale === "number" ? scale : 1;
   const cap = enumerate
@@ -462,8 +742,64 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
     : isDump || looksLikeFailure(cleaned, exitCode)
       ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
       : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
-  const lines = capLines(dedupeConsecutive(cleaned.split("\n")), cap, relevanceTokens);
-  return lines.join("\n");
+  // Enumeration carve-out means "nothing is elided" — same reason it skips the
+  // sidecar above; collapsing same-shape runs would remove the very items a
+  // completeness request ("list every compiled module") asked to see.
+  let lines = dedupeConsecutive(cleaned.split("\n"));
+  const dedupedLen = lines.length;
+  if (!enumerate) lines = collapseTemplates(lines);
+  const beforeCapLen = lines.length;
+  lines = capLines(lines, cap, relevanceTokens);
+  const out = lines.join("\n");
+  if (decision && !decision.action) {
+    if (beforeCapLen > cap) decision.action = "cap"; // capLines' own no-op guard is `length <= cap`
+    else if (beforeCapLen < dedupedLen) decision.action = "template-collapse";
+    else if (enumerate) decision.action = "enumerate-passthrough";
+    else if (out === original) decision.action = "passthrough";
+    else decision.action = "scrub-only"; // ansi/CR/dupe/exit-marker cleanup only
+  }
+  return out;
+}
+
+// HUSH_DEBUG=1 manifest: one JSON line per handled tool output, appended to
+// tmpdir/hush-debug-<session_id>.jsonl. "Ran but kept the original" (cap
+// no-op, rejected MCP table, untouched Read) is otherwise invisible to any
+// harness measuring hush — this makes every decision, including the
+// do-nothing ones, observable without changing what any path produces.
+// Same sessionId sanitization as narration-meter.js's statePath.
+function debugManifestPath(sessionId) {
+  const safe = String(sessionId || "unknown").replace(/[^a-zA-Z0-9-]/g, "_");
+  return path.join(os.tmpdir(), `hush-debug-${safe}.jsonl`);
+}
+
+function logDecision(entry, sessionId) {
+  if (process.env.HUSH_DEBUG !== "1") return;
+  try {
+    const file = debugManifestPath(sessionId);
+    // Same residual defense as claimSessionNote: refuse a pre-planted symlink
+    // at the manifest path before appending to it.
+    try {
+      if (fs.lstatSync(file).isSymbolicLink()) return;
+    } catch (e) {
+      if (e.code !== "ENOENT") return;
+    }
+    fs.appendFileSync(file, JSON.stringify(entry) + "\n", { flag: "a" });
+  } catch {
+    /* fail-open: the debug manifest is best-effort observability, never a
+       reason to alter or block the actual compression decision. */
+  }
+}
+
+// One line per multi-field object response (stdout/stderr/output combined)
+// rather than one per field — priority order picks the most significant
+// thing that happened across the fields that were actually processed.
+const ACTION_PRIORITY = [
+  "sidecar", "shell-guard-skip", "cap", "template-collapse",
+  "mcp-table", "rejected-not-smaller", "enumerate-passthrough", "scrub-only", "passthrough",
+];
+function combineActions(actions) {
+  for (const a of ACTION_PRIORITY) if (actions.includes(a)) return a;
+  return actions[0];
 }
 
 function extractExitCode(response) {
@@ -501,7 +837,15 @@ const NOTE_TEXT =
 function claimSessionNote(sessionId, tmpDir) {
   if (typeof sessionId !== "string" || !sessionId) return false;
   try {
-    fs.writeFileSync(path.join(tmpDir || os.tmpdir(), `hush-note-${sessionId}`), "", { flag: "wx" });
+    const notePath = path.join(tmpDir || os.tmpdir(), `hush-note-${sessionId}`);
+    // Refuse a pre-planted symlink at the sentinel path before wx even tries
+    // it — same residual-defense posture as safe-write's lstat gate.
+    try {
+      if (fs.lstatSync(notePath).isSymbolicLink()) return false;
+    } catch (e) {
+      if (e.code !== "ENOENT") return false;
+    }
+    fs.writeFileSync(notePath, "", { flag: "wx" });
     return true;
   } catch {
     return false; // EEXIST (already noted) or unwritable tmp — never block the rewrite
@@ -519,6 +863,17 @@ function hasHushNote(updated) {
 function main() {
   if (process.env.HUSH_DISABLE === "1") return;
   const data = readInput();
+
+  if (isMcpTableTool(data.tool_name)) {
+    const decision = {};
+    const result = compressMcpTable(data.tool_response, decision);
+    logDecision(
+      { tool: data.tool_name, bytesIn: decision.bytesIn || 0, bytesOut: decision.bytesOut ?? decision.bytesIn ?? 0, action: decision.action || "passthrough" },
+      data.session_id
+    );
+    return emit(result, data.session_id);
+  }
+
   if (!WATCHED_TOOLS.has(data.tool_name)) return;
 
   const response = data.tool_response;
@@ -545,13 +900,21 @@ function main() {
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
     const sideRead = isSidecarPath(filePath);
-    if (file && typeof file.content === "string" && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead)) {
-      const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead);
-      if (out !== file.content) {
-        updated = {
-          ...response,
-          file: { ...file, content: out, numLines: out.split("\n").length },
-        };
+    if (file && typeof file.content === "string") {
+      if (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead) {
+        const decision = {};
+        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
+        logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
+        if (out !== file.content) {
+          updated = {
+            ...response,
+            file: { ...file, content: out, numLines: out.split("\n").length },
+          };
+        }
+      } else {
+        // Watched (Read is in WATCHED_TOOLS) but not a shape hush ever
+        // touches — still a handled output, so it still gets one line.
+        logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, action: "passthrough" }, data.session_id);
       }
     }
     return emit(updated, data.session_id);
@@ -566,8 +929,10 @@ function main() {
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true);
+    const decision = {};
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
     if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
+    logDecision({ tool: data.tool_name, bytesIn: response.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
     if (out !== response) updated = out;
   } else if (response && typeof response === "object") {
     const wrapped =
@@ -575,16 +940,26 @@ function main() {
     const exitCode = wrapped ? wrapped.exitCode : extractExitCode(response);
     const next = { ...response };
     let changed = false;
+    let bytesIn = 0;
+    let bytesOut = 0;
+    const actions = [];
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
+        bytesIn += next[field].length;
         const fieldWrapped = extractWrappedExit(next[field]);
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true);
+        const decision = {};
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
         if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
+        actions.push(decision.action || "passthrough");
+        bytesOut += out.length;
         if (out !== next[field]) {
           next[field] = out;
           changed = true;
         }
       }
+    }
+    if (actions.length) {
+      logDecision({ tool: data.tool_name, bytesIn, bytesOut, action: combineActions(actions) }, data.session_id);
     }
     if (changed) updated = next;
   }
@@ -610,8 +985,10 @@ if (require.main === module) main();
 
 module.exports = {
   stripAnsi,
+  signalCensus,
   resolveCarriageReturns,
   dedupeConsecutive,
+  collapseTemplates,
   capLines,
   omittedMarker,
   looksLikeFailure,
@@ -628,4 +1005,10 @@ module.exports = {
   claimSessionNote,
   hasHushNote,
   NOTE_TEXT,
+  isMcpTableTool,
+  mcpTableCandidate,
+  renderMcpTable,
+  extractMcpText,
+  compressMcpTable,
+  debugManifestPath,
 };

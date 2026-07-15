@@ -15,6 +15,7 @@ const {
   stripAnsi,
   resolveCarriageReturns,
   dedupeConsecutive,
+  collapseTemplates,
   capLines,
   looksLikeFailure,
   isFileDump,
@@ -23,6 +24,7 @@ const {
   compress,
   firstLine,
   extractWrappedExit,
+  signalCensus,
 } = require('../hooks/compress-tool-output');
 
 describe('unit: transforms', () => {
@@ -111,11 +113,19 @@ describe('unit: transforms', () => {
   });
 
   test('compress caps failing output more generously than passing output', () => {
-    const big = Array.from({ length: 1000 }, (_, i) => `unique line ${i}`).join('\n');
-    const pass = compress(big, 0).split('\n').length;
-    const fail = compress(big, 1).split('\n').length;
-    assert.ok(pass < fail, `pass cap ${pass} should be tighter than fail cap ${fail}`);
-    assert.ok(pass <= 61);
+    // Template collapse is orthogonal to this cap-size comparison — every line
+    // here happens to share one template, so pin it off to isolate capLines.
+    const prev = process.env.HUSH_TEMPLATE;
+    process.env.HUSH_TEMPLATE = 'off';
+    try {
+      const big = Array.from({ length: 1000 }, (_, i) => `unique line ${i}`).join('\n');
+      const pass = compress(big, 0).split('\n').length;
+      const fail = compress(big, 1).split('\n').length;
+      assert.ok(pass < fail, `pass cap ${pass} should be tighter than fail cap ${fail}`);
+      assert.ok(pass <= 61);
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prev;
+    }
   });
 
   test('isFileDump recognizes plain file-print commands', () => {
@@ -191,6 +201,84 @@ describe('unit: transforms', () => {
   test('isFileDump still recognizes a wrapped file-dump command via firstLine', () => {
     const wrapped = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
     assert.ok(isFileDump(firstLine(wrapped)));
+  });
+});
+
+describe('unit: collapseTemplates', () => {
+  test('a run of same-shape lines (varying ids) collapses to the first line + a count marker', () => {
+    const lines = Array.from({ length: 8 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`);
+    const out = collapseTemplates(lines);
+    assert.deepStrictEqual(out, [
+      'INFO worker-0 processing job 8000',
+      '[hush hook: 7 similar lines collapsed (same shape, varying values)]',
+    ]);
+  });
+
+  test('two different error lines with a similar shape never merge — signal lines are exempt', () => {
+    const lines = [
+      'ERROR redis connection to db1 failed',
+      'ERROR redis connection to db2 failed',
+      'ERROR redis connection to db3 failed',
+      'ERROR redis connection to db4 failed',
+      'ERROR redis connection to db5 failed',
+      'ERROR redis connection to db6 failed',
+    ];
+    assert.deepStrictEqual(collapseTemplates(lines), lines);
+  });
+
+  test('a signal line breaks an in-progress run instead of joining it', () => {
+    const lines = [
+      ...Array.from({ length: 5 }, (_, i) => `INFO worker-${i} processing job ${i}`),
+      'ERROR worker-9 processing job 9999 failed',
+      ...Array.from({ length: 5 }, (_, i) => `INFO worker-${i + 10} processing job ${i + 10}`),
+    ];
+    const out = collapseTemplates(lines);
+    assert.deepStrictEqual(out, [
+      'INFO worker-0 processing job 0',
+      '[hush hook: 4 similar lines collapsed (same shape, varying values)]',
+      'ERROR worker-9 processing job 9999 failed',
+      'INFO worker-10 processing job 10',
+      '[hush hook: 4 similar lines collapsed (same shape, varying values)]',
+    ]);
+  });
+
+  test('an interleaved non-matching line breaks a run into pieces below the minimum', () => {
+    const lines = [
+      'INFO worker-0 processing job 0',
+      'INFO worker-1 processing job 1',
+      'totally unrelated one-off line',
+      'INFO worker-2 processing job 2',
+      'INFO worker-3 processing job 3',
+    ];
+    assert.deepStrictEqual(collapseTemplates(lines), lines);
+  });
+
+  test('a run of 4 (below TEMPLATE_MIN_RUN=5) is left untouched', () => {
+    const lines = Array.from({ length: 4 }, (_, i) => `INFO worker-${i} processing job ${i}`);
+    assert.deepStrictEqual(collapseTemplates(lines), lines);
+  });
+
+  test('collapse is idempotent', () => {
+    const lines = Array.from({ length: 8 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`);
+    const once = collapseTemplates(lines);
+    assert.deepStrictEqual(collapseTemplates(once), once);
+  });
+
+  test('marker text matches the exact provenance format', () => {
+    const lines = Array.from({ length: 6 }, (_, i) => `INFO worker-${i} processing job ${i}`);
+    const out = collapseTemplates(lines);
+    assert.strictEqual(out[1], '[hush hook: 5 similar lines collapsed (same shape, varying values)]');
+  });
+
+  test('HUSH_TEMPLATE=off passes lines through untouched', () => {
+    const prev = process.env.HUSH_TEMPLATE;
+    process.env.HUSH_TEMPLATE = 'off';
+    try {
+      const lines = Array.from({ length: 8 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`);
+      assert.deepStrictEqual(collapseTemplates(lines), lines);
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prev;
+    }
   });
 });
 
@@ -302,11 +390,14 @@ describe('hook: end to end', () => {
     const lines = Array.from({ length: 900 }, (_, i) => `10:0${i % 10} info request handled in ${i}ms`);
     lines[500] = '10:05 ERROR redis ECONNREFUSED 127.0.0.1:6379';
     const content = lines.join('\n');
+    // Fixture's fixed wording ("info request handled in") happens to satisfy
+    // the template-share rule across the whole file — pin the new rung off so
+    // this test keeps isolating capLines' signal-preservation guarantee.
     const r = runHook('compress-tool-output.js', {
       tool_name: 'Read',
       tool_input: { file_path: 'C:\\repo\\logs\\app.log' },
       tool_response: { type: 'text', file: { filePath: 'C:\\repo\\logs\\app.log', content, numLines: 900, startLine: 1, totalLines: 900 } },
-    });
+    }, { HUSH_TEMPLATE: 'off' });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.strictEqual(updated.type, 'text');
     assert.strictEqual(updated.file.filePath, 'C:\\repo\\logs\\app.log');
@@ -361,7 +452,9 @@ describe('hook: end to end', () => {
       i % 8 === 0 ? `not ok ${i} - some subtest failed` : `ok ${i} - some subtest`
     );
     const raw = testLines.join('\n') + '\n[[hush:exit=1]]';
-    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw });
+    // The repeated "ok N - some subtest" shape would otherwise template-
+    // collapse; pin it off so this stays a pure exit-marker/cap-generosity test.
+    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw }, { HUSH_TEMPLATE: 'off' });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.doesNotMatch(updated, /\[\[hush:exit=/, 'raw wrapper marker never reaches the model');
     assert.match(updated, /\[hush: exit 1\]$/, 'clean exit marker is appended at the end');
@@ -769,7 +862,8 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   test('a huge output becomes a line-numbered digest and the full text lands in the sidecar file', () => {
     const digest = withSidecarOn(() => comp(bigLog, 0, true, false, ['ioredis'], 1, 'sidetest'));
     assert.ok(digest.startsWith('[hush hook: this output is'), 'digest opens with the provenance header');
-    assert.match(digest, /this output is \d+ lines \(\d+ with warnings\/errors\/failures\)/);
+    assert.match(digest, /this output is \d+ lines \(\d+ errors?\)/, 'header carries the category census, not a bare count');
+    assert.match(digest, /re-run the command instead/, 'missing-file fallback is present');
     assert.match(digest, /L\d+: /, 'digest lines carry real line numbers');
     assert.match(digest, /lines in the file only/, 'gaps are counted, not hidden');
     const file = pathFrom(digest);
@@ -902,7 +996,7 @@ describe('signal-first digest + compound-error signal matching', () => {
     assert.ok(errPos < noisePos, 'error appears BEFORE the head compile noise');
     assert.ok(errPos < 2048, 'error is within the first 2KB preview window (was at ' + errPos + ')');
     assert.ok(digest.includes('Signal lines ('), 'signal section header present');
-    assert.match(digest, /Signal lines \(\d+ total in the file\):/);
+    assert.match(digest, /Signal lines \(\d+ total: 1 error\):/, 'census names the single error line');
     assert.ok(digest.includes('Structure (head + tail'), 'structural section header present');
     assert.match(digest, /lines in the file only/, 'structural gap markers preserved');
   });
@@ -914,6 +1008,78 @@ describe('signal-first digest + compound-error signal matching', () => {
     assert.ok(!digest.includes('Signal lines ('), 'no signal header when there are none');
     assert.ok(digest.includes('Structure (head + tail'), 'structural section header present');
     assert.match(digest, /L1: /, 'head still present');
+  });
+});
+
+describe('census-grade sidecar digests', () => {
+  const { compress: comp2 } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const created = [];
+  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+
+  test('signalCensus counts each category on a mixed-signal fixture', () => {
+    const lines = [
+      'ERROR one', 'ERROR two', 'FAILURE suite', 'WARNING low disk',
+      'WARNING stale cache', 'WARNING retry limit', 'DEPRECATED old flag', 'ok line',
+    ];
+    const signalIdx = [0, 1, 2, 3, 4, 5, 6];
+    assert.strictEqual(signalCensus(lines, signalIdx), '2 errors, 1 failure, 3 warnings, 1 deprecation');
+  });
+
+  test('signalCensus omits zero-count categories and uses singular for a count of 1', () => {
+    const lines = ['WARNING only one'];
+    assert.strictEqual(signalCensus(lines, [0]), '1 warning');
+  });
+
+  test('a line matching both FAIL and Error counts once, classified as error (priority order)', () => {
+    const lines = ['FAILURE: ReferenceError: retries is not defined'];
+    assert.strictEqual(signalCensus(lines, [0]), '1 error');
+  });
+
+  test('CRITICAL classifies as critical, not warning or error', () => {
+    const lines = ['CRITICAL disk full'];
+    assert.strictEqual(signalCensus(lines, [0]), '1 critical');
+  });
+
+  test('"Other signal lines" is absent when every signal line fits in the lead sample', () => {
+    const lines = [];
+    for (let i = 0; i < 200; i++) lines.push('info ' + i);
+    lines[5] = 'ERROR only one signal line';
+    const digest = withSidecar(() => comp2(lines.join(NL), 0, true, false, [], 1, 'fewsignals'));
+    pathFrom(digest);
+    assert.ok(!digest.includes('Other signal lines'), 'nothing unshown, so no "not shown" line');
+  });
+
+  test('"Other signal lines (not shown)" lists real L<n> targets and caps at 15 with a "+more" tail', () => {
+    const lines = [];
+    for (let i = 0; i < 2000; i++) lines.push('info ' + i + ' padded a bit for width');
+    // 50 ERROR lines spread through the middle: the lead sample only keeps the
+    // first 10 + last 10 signal indices, leaving 30 unshown in the middle —
+    // enough to exceed the 15-entry cap and exercise the "+more" tail.
+    for (let i = 0; i < 50; i++) lines[100 + i * 10] = 'ERROR item ' + i;
+    const digest = withSidecar(() => comp2(lines.join(NL), 0, true, false, [], 1, 'manysignals'));
+    pathFrom(digest);
+    assert.match(digest, /Other signal lines \(not shown\): (L\d+, ){14}L\d+ \.\.\. \(\+\d+ more\)/, 'capped at 15 numbers with a remaining-count tail');
+    const m = digest.match(/Other signal lines \(not shown\): ([^\n]+)/);
+    assert.ok(m, 'the line is present');
+    assert.match(m[1], /^L\d+/, 'entries are real L<n> line numbers');
+  });
+
+  test('header + census + lead signal lines fit within the 2KB host preview budget', () => {
+    const lines = [];
+    for (let i = 0; i < 1500; i++) lines.push('build step ' + i + ' ok, padded a little for width');
+    lines[10] = 'ERROR connection refused';
+    lines[11] = 'WARNING deprecated flag used';
+    lines[12] = 'FAILURE suite red';
+    lines[13] = 'CRITICAL disk full';
+    lines[14] = 'DEPRECATED old api';
+    const digest = withSidecar(() => comp2(lines.join(NL), 1, false, false, [], 1, 'budget2KB'));
+    pathFrom(digest);
+    const structAt = digest.indexOf('Structure (head + tail');
+    assert.ok(structAt > -1, 'structure section present');
+    assert.ok(structAt <= 2048, 'header + census + lead signal lines fit the 2KB preview (was ' + structAt + ' chars)');
   });
 });
 
@@ -933,7 +1099,16 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
   });
 
   test('a shell output at/above the host-truncation size does NOT sidecar (falls to inline cap)', () => {
-    const out = withSidecar(() => compress(bigText(32000), 0, false, false, [], 1, 's', undefined, true));
+    // bigText's fixed "info line N padding..." shape template-collapses on its
+    // own; pin the new rung off so this test isolates the sidecar/cap fallback.
+    const prevTemplate = process.env.HUSH_TEMPLATE;
+    process.env.HUSH_TEMPLATE = 'off';
+    let out;
+    try {
+      out = withSidecar(() => compress(bigText(32000), 0, false, false, [], 1, 's', undefined, true));
+    } finally {
+      if (prevTemplate === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prevTemplate;
+    }
     assert.doesNotMatch(out, /saved in full to/, 'no truncated "full" file, no competing pointer');
     assert.match(out, /lines omitted from this view/, 'normal inline cap applies instead');
   });
@@ -959,5 +1134,139 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
       delete require.cache[p];
       require('../hooks/compress-tool-output');
     }
+  });
+});
+
+describe('MCP JSON table-ification (ROADMAP 007 / Probe 7)', () => {
+  const {
+    isMcpTableTool,
+    mcpTableCandidate,
+    renderMcpTable,
+    extractMcpText,
+    compressMcpTable,
+  } = require('../hooks/compress-tool-output');
+
+  // 30 homogeneous records, one shared constant column (matchType), well
+  // over the 2KB eligibility floor.
+  function records(n = 30) {
+    return Array.from({ length: n }, (_, i) => ({
+      file: `src/main/kotlin/pkg/File${i}.kt`,
+      line: i + 1,
+      column: i % 3,
+      snippet: `val x${i} = compute(${i}) // similar snippet text repeated for width padding`,
+      matchType: 'TEXT',
+    }));
+  }
+
+  test('isMcpTableTool matches only the measured method suffix, any server prefix', () => {
+    assert.ok(isMcpTableTool('mcp__idea__search_regex'));
+    assert.ok(isMcpTableTool('mcp__jetbrains__get_file_problems'));
+    assert.strictEqual(isMcpTableTool('mcp__idea__read_file'), false, 'unmeasured method');
+    assert.strictEqual(isMcpTableTool('Bash'), false);
+    assert.strictEqual(isMcpTableTool(undefined), false);
+  });
+
+  test('mcpTableCandidate accepts a homogeneous >=5-record array over 2KB', () => {
+    const c = mcpTableCandidate(JSON.stringify(records()));
+    assert.ok(c);
+    assert.strictEqual(c.records.length, 30);
+    assert.ok(c.columns.includes('matchType'));
+  });
+
+  test('mcpTableCandidate rejects payloads under the size floor, non-JSON, and non-homogeneous arrays', () => {
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(records(2))), null, 'below 2KB and below 5 records');
+    assert.strictEqual(mcpTableCandidate('not json at all, '.repeat(200)), null);
+    const mixed = [{ a: 1 }, { b: 2 }, { c: 3 }, { d: 4 }, { e: 5 }, { f: 6 }].map((o, i) => ({ ...o, pad: 'x'.repeat(400 + i) }));
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(mixed)), null, 'no shared keys, fails the 80% overlap gate');
+  });
+
+  test('mcpTableCandidate finds a nested {results:[...]} array too', () => {
+    const wrapped = { query: 'foo', results: records() };
+    const c = mcpTableCandidate(JSON.stringify(wrapped));
+    assert.ok(c);
+    assert.strictEqual(c.records.length, 30);
+  });
+
+  test('renderMcpTable hoists the constant column and shrinks the payload', () => {
+    const rs = records();
+    const out = renderMcpTable(rs, Object.keys(rs[0]));
+    assert.match(out, /constant: matchType=TEXT/);
+    assert.ok(out.includes('file\tline\tcolumn\tsnippet'), 'variable columns form the header row');
+    assert.ok(out.length < JSON.stringify(rs).length, 'table rendering is smaller than raw JSON');
+    assert.match(out, /^\[hush hook: 30 MCP JSON records rendered as a schema table below\.\]/);
+  });
+
+  test('a record whose serialized form matches SIGNAL_RE still renders as a table row, losslessly', () => {
+    const rs = records();
+    rs[10] = { ...rs[10], snippet: 'ERROR: unresolved reference to compute' };
+    const out = renderMcpTable(rs, Object.keys(rs[0]));
+    assert.ok(!out.includes(JSON.stringify(rs[10])), 'no record is appended verbatim anymore');
+    assert.ok(out.includes('ERROR: unresolved reference to compute'), 'the signal-bearing value is present, as a row');
+    assert.ok(out.includes('src/main/kotlin/pkg/File10.kt'), 'the rest of that record\'s fields are present too');
+    assert.strictEqual(out.split('\n').length, 1 + 1 + 1 + rs.length, 'header + constant line + column header + one row per record, none dropped');
+  });
+
+  test('extractMcpText reads the bare content-block array, a plain string, or neither', () => {
+    assert.strictEqual(extractMcpText([{ type: 'text', text: 'hello' }]), 'hello');
+    assert.strictEqual(extractMcpText('plain string result'), 'plain string result');
+    assert.strictEqual(extractMcpText({ content: [{ type: 'text', text: 'wrapped' }] }), null, 'object wrapper is not the expected bare-array shape');
+    assert.strictEqual(extractMcpText([{ type: 'image' }]), null);
+  });
+
+  test('compressMcpTable mirrors the response shape: string in, string out; array in, array out', () => {
+    const rs = records();
+    const asString = compressMcpTable(JSON.stringify(rs));
+    assert.strictEqual(typeof asString, 'string');
+    assert.match(asString, /^\[hush hook:/);
+
+    const asArray = compressMcpTable([{ type: 'text', text: JSON.stringify(rs) }]);
+    assert.ok(Array.isArray(asArray));
+    assert.strictEqual(asArray[0].type, 'text');
+    assert.match(asArray[0].text, /^\[hush hook:/);
+  });
+
+  test('compressMcpTable stays silent on ineligible payloads', () => {
+    assert.strictEqual(compressMcpTable(JSON.stringify(records(2))), undefined, 'too few records / under size floor');
+    assert.strictEqual(compressMcpTable('plain text result, not JSON'), undefined);
+  });
+
+  test('e2e: a measured MCP tool with a big homogeneous payload gets table-rendered', () => {
+    const rs = records();
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'mcp__idea__search_regex',
+      tool_response: JSON.stringify(rs),
+    });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(updated, /MCP JSON records rendered as a schema table/);
+    assert.ok(updated.length < JSON.stringify(rs).length);
+  });
+
+  test('e2e: the bare content-block array shape is preserved on the way out', () => {
+    const rs = records();
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'mcp__idea__get_file_problems',
+      tool_response: [{ type: 'text', text: JSON.stringify(rs) }],
+    });
+    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.ok(Array.isArray(updated), 'never an object wrapper — harness throws on {content:[...]}');
+    assert.strictEqual(updated[0].type, 'text');
+    assert.match(updated[0].text, /MCP JSON records rendered as a schema table/);
+  });
+
+  test('e2e: an unmeasured MCP tool (not in the scoped method list) stays untouched', () => {
+    const rs = records();
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'mcp__idea__read_file',
+      tool_response: JSON.stringify(rs),
+    });
+    assert.strictEqual(hookOutput(r), null);
+  });
+
+  test('e2e: a small payload on a measured MCP tool stays silent', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'mcp__idea__search_regex',
+      tool_response: JSON.stringify(records(2)),
+    });
+    assert.strictEqual(hookOutput(r), null);
   });
 });

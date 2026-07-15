@@ -44,7 +44,7 @@ node runner/run.js --tag full --full --model haiku      # all 9 tasks
 node runner/run.js --tag big  --model sonnet            # default subset, bigger model
 ```
 
-Flags: `--tasks a,b` (pick tasks) · `--full` (whole suite) · `--reps N` · `--model haiku|sonnet` · `--arms baseline,hush` · `--concurrency N` · `--tag NAME`.
+Flags: `--tasks a,b` (pick tasks) · `--full` (whole suite) · `--reps N` · `--model haiku|sonnet` · `--arms baseline,hush` · `--concurrency N` · `--tag NAME` · `--hush-debug` (attach hush's per-decision manifest to each hush-arm record, surfaced in `report.md` as a "hush decisions" line per task).
 
 ## Bring your own rival
 

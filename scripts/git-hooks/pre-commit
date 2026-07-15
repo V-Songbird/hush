@@ -66,7 +66,16 @@ function main() {
 }
 
 if (require.main === module) {
-  process.exit(main());
+  const tests = main();
+  if (tests !== 0) process.exit(tests);
 }
 
 module.exports = { main, repoRoot, testGlob, cleanEnv };
+
+// Reference-name scan: private blocklist (gitignored, lives outside this
+// repo); fail-open when absent. See check-reference-names.js.
+if (require.main === module) {
+  process.argv[2] = "staged";
+  const rc = require("./check-reference-names.js").main();
+  if (rc !== 0) process.exit(rc);
+}

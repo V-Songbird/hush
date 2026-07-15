@@ -124,5 +124,16 @@
       "require": 3,
       "patterns": ["redis", "5\\.4\\.1", "02:1[0-9]|02:3[0-9]|impact"]
     }
+  },
+  {
+    "id": "sidecar-follow",
+    "category": "tool",
+    "fixture": "sidecar-follow",
+    "prompt": "There's a logs/test-output.log from last night's CI run sitting in this repo — hundreds of lines and I don't have time to scroll through it all. Can you go through it and give me the rundown: how the run went overall (how many passed), and call out by name anything that didn't?",
+    "check": {
+      "type": "keywords",
+      "require": 3,
+      "patterns": ["refreshToken.*revoked|revoked.*refreshToken", "sessionCleanup.*rollback|rollback.*sessionCleanup", "\\b(698|700|703)\\b"]
+    }
   }
 ]

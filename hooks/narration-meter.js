@@ -27,6 +27,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { readTailLines, isRealUserPrompt } = require("./lib/transcript");
+const { safeWriteFileSync } = require("./lib/safe-write");
 
 const BUDGET = (() => {
   const n = parseInt(process.env.HUSH_NARRATION_BUDGET || "", 10);
@@ -120,7 +121,7 @@ function readState(sessionId) {
 
 function writeState(sessionId, state) {
   try {
-    fs.writeFileSync(statePath(sessionId), JSON.stringify(state));
+    safeWriteFileSync(statePath(sessionId), JSON.stringify(state));
   } catch {
     /* best effort — losing state means one extra reminder, not breakage */
   }

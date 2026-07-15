@@ -1,5 +1,7 @@
 'use strict';
+const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
+const { debugManifestPath } = require('../../hooks/compress-tool-output');
 
 // Parse a stream-json transcript (one JSON event per line) into flat metrics.
 function parseTranscript(jsonl) {
@@ -13,6 +15,7 @@ function parseTranscript(jsonl) {
   const m = {
     outputStyle: null,
     modelUsed: null,
+    sessionId: null,
     assistantTexts: [],        // one entry per assistant message that had text
     toolCalls: 0,
     toolResultChars: 0,
@@ -33,6 +36,7 @@ function parseTranscript(jsonl) {
     if (ev.type === 'system' && ev.subtype === 'init') {
       m.outputStyle = ev.output_style || null;
       m.modelUsed = ev.model || null;
+      m.sessionId = ev.session_id || null;
     } else if (ev.type === 'assistant' && ev.message) {
       const id = ev.message.id || `anon-${usageByMsgId.size}`;
       if (ev.message.usage) usageByMsgId.set(id, ev.message.usage);
@@ -102,4 +106,31 @@ function runCheck(check, finalText, workDir) {
   throw new Error(`unknown check type ${check.type}`);
 }
 
-module.exports = { parseTranscript, runCheck };
+// Probe 9 Spec 1 ingestion: read hush's HUSH_DEBUG=1 per-decision manifest
+// for a session, if one was written. Fail-soft by design — a run with the
+// debug flag off, an arm without hush's hooks loaded, or a baseline run all
+// leave no file, and that's not an error, just nothing to report.
+function readDebugManifest(sessionId) {
+  if (!sessionId) return null;
+  const file = debugManifestPath(sessionId);
+  let lines;
+  try {
+    lines = fs.readFileSync(file, 'utf8').trim().split('\n').filter(Boolean);
+  } catch {
+    return null;
+  }
+  if (!lines.length) return null;
+
+  const byAction = {};
+  let bytesIn = 0, bytesOut = 0;
+  for (const line of lines) {
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; }
+    byAction[entry.action] = (byAction[entry.action] || 0) + 1;
+    bytesIn += entry.bytesIn || 0;
+    bytesOut += entry.bytesOut || 0;
+  }
+  return { entries: lines.length, byAction, bytesIn, bytesOut };
+}
+
+module.exports = { parseTranscript, runCheck, readDebugManifest };
