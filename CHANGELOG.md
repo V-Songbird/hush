@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.7.0-alpha — 2026-07-17
+
+Reports read plainer. Around the exact file and function names, Claude now favors everyday words over engineer shorthand, and a short report is written as plain sentences instead of labeled lines. Bullets appear only when there are enough facts to need them.
+
 ## 0.6.6-alpha — 2026-07-16
 
 Internal housekeeping only — no change to how hush behaves.
