@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.9.1-alpha — 2026-07-18
+
+Docs only. Every benchmark figure — the bill, the honest table, the waveform, the reply silhouette — is remeasured against the current release, now alongside two rival plugins instead of one.
+
 ## 0.9.0-alpha — 2026-07-18
 
 Oversized search results now collapse to a map: each matched file keeps its first few match lines plus a per-file match count, and warning- or error-shaped matches always survive. Searches that asked for surrounding context lines, and results small enough to read whole, pass untouched. `HUSH_GREP=off` disables it.
