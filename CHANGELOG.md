@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.9.2-alpha — 2026-07-18
+
+When Claude Code moves an oversized output aside into its own storage and Claude later reads that file back, the read now returns the trimmed view — warnings, errors, and failures kept verbatim, repeated noise collapsed. A read with an explicit line range still comes back untouched. `HUSH_TOOLRESULTS=off` disables it.
+
 ## 0.9.1-alpha — 2026-07-18
 
 Docs only. Every benchmark figure — the bill, the honest table, the waveform, the reply silhouette — is remeasured against the current release, now alongside two rival plugins instead of one.

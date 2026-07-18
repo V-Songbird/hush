@@ -872,6 +872,23 @@ function isSidecarPath(filePath) {
   );
 }
 
+// Claude Code's own large-output persistence writes the RAW result to
+// .claude/projects/<slug>/<session>/tool-results/<id>.txt and hands the model
+// a pointer. Reading that file back is the host-side twin of reading a hush
+// sidecar — machine-persisted tool output, never user source — so it gets the
+// same treatment: full reads capped with the generous failure-grade cap and
+// every signal line kept; offset/limit range reads pass untouched. Both path
+// segments are required so a project's own "tool-results" folder never matches.
+const HOST_TOOLRESULTS_RE = /[\\/]\.claude[\\/]projects[\\/].+[\\/]tool-results[\\/][^\\/]+\.txt$/i;
+
+function isHostToolResultsPath(filePath) {
+  return (
+    process.env.HUSH_TOOLRESULTS !== "off" &&
+    typeof filePath === "string" &&
+    HOST_TOOLRESULTS_RE.test(filePath.trim())
+  );
+}
+
 // Re-read delta (ROADMAP 066b, corpus-probed): a watched Read path (log or
 // generated — never source, see the isLogPath/isGeneratedPath callers below)
 // whose content changed since this session last read it gets only the
@@ -1215,11 +1232,16 @@ function main() {
     // hashed last time, so there is nothing sound to diff it against. Mirrors
     // exactly the scope the corpus probe measured.
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
+    // Host tool-results files: only a FULL read gets the capped view. An
+    // explicit offset/limit means the model is navigating to a specific slice
+    // (often after the capped view's own marker invited it) — that slice must
+    // come back verbatim or the follow-up loop never resolves.
+    const hostRead = !isRangeRead && isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
-      if (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead) {
+      if (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead) {
         const decision = {};
         let out;
-        if (!sideRead && !isRangeRead && !enumerate) {
+        if (!sideRead && !hostRead && !isRangeRead && !enumerate) {
           const cleaned = resolveCarriageReturns(stripAnsi(file.content));
           const delta = maybeDelta(cleaned, filePath, data.session_id);
           if (delta !== null) {
@@ -1228,7 +1250,7 @@ function main() {
           }
         }
         if (out === undefined) {
-          out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
+          out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead || hostRead, undefined, decision);
         }
         logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
         if (out !== file.content) {
@@ -1367,6 +1389,7 @@ module.exports = {
   isMcpExecTool,
   compressMcpExec,
   compressGrep,
+  isHostToolResultsPath,
   debugManifestPath,
   containsSecret,
   deltaStatePath,
