@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 "use strict";
 
-// PostToolUse hook: mechanically shrinks Bash/PowerShell output — and Read
-// results for log-shaped files — before they enter context. Deterministic
-// text transforms only — no heuristic ever touches failure detail: failing
-// runs get a much larger cap and everything kept is verbatim.
+// PostToolUse hook: mechanically shrinks Bash/PowerShell output — plus Read
+// results for log-shaped files and oversized Grep match lists — before they
+// enter context. Deterministic text transforms only — no heuristic ever
+// touches failure detail: failing runs get a much larger cap and everything
+// kept is verbatim.
 
 const fs = require("fs");
 const os = require("os");
@@ -12,7 +13,7 @@ const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
 
-const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read"]);
+const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
 // Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
 // below) — watched only so a re-read delta on the same path can tell "the
 // session changed this itself" apart from "this changed for some other
@@ -28,6 +29,12 @@ const CAP_FAIL = intEnv("HUSH_CAP_FAIL", 250);
 // asked to report EVERY item has nothing elided to distrust. Still bounded, so
 // a pathological megaline dump can't blow context.
 const CAP_ENUMERATE = intEnv("HUSH_CAP_ENUMERATE", 2000);
+// Grep content-mode results below this size pass whole; above it, each
+// matched file keeps its first few match lines and the rest collapse to a
+// per-file count (compressGrep). Corpus-measured: the mass is in the >=4KB
+// tail, and per-file counts keep the file map intact.
+const GREP_MIN_CHARS = intEnv("HUSH_GREP_MIN", 4000);
+const GREP_KEEP_PER_FILE = intEnv("HUSH_GREP_KEEP", 3);
 
 function intEnv(name, fallback) {
   const n = parseInt(process.env[name] || "", 10);
@@ -348,6 +355,84 @@ function requestsEnumeration(prompt) {
   return ENUM_QUANTIFIED.test(prompt) || ENUM_VERB.test(prompt);
 }
 
+// Grep content-mode results: the matches ARE the deliverable, so nothing
+// disappears silently — each matched file keeps its first few match lines,
+// every SIGNAL_RE or prompt-named line survives regardless, the rest collapse
+// to one per-file count line, and the marker states the rule. Lines that
+// don't parse as matches (multiline-match continuations, separators) are kept
+// verbatim. Two line formats exist: `path:line:` for directory searches and
+// bare `line:` when a single explicit file was searched — whichever parses
+// more lines wins, decided once per result so an ambiguous line can't flip
+// mid-list. The non-greedy prefix backtracks across Windows drive-letter
+// colons (`C:\x.js:12:` parses as path `C:\x.js`).
+const GREP_MATCH_RE = /^(.*?):(\d+):/;
+const GREP_SINGLE_RE = /^\d+:/;
+
+function compressGrep(content, relevanceTokens, fileLabel) {
+  const lines = content.split("\n");
+  // Same too-common guard capLines applies: a prompt-named span that matches
+  // more than RELEVANCE_COMMON lines can't discriminate — and for Grep the
+  // quoted SEARCH PATTERN itself sits in every match line by definition, so
+  // without this guard relevance-forcing would exempt the whole result.
+  let tokens = [];
+  if (relevanceTokens && relevanceTokens.length) {
+    const lower = lines.map((l) => l.toLowerCase());
+    tokens = relevanceTokens.filter((tok) => {
+      let hits = 0;
+      for (const l of lower) if (l.includes(tok)) hits++;
+      return hits > 0 && hits <= RELEVANCE_COMMON;
+    });
+  }
+  let multiHits = 0;
+  let singleHits = 0;
+  for (const l of lines) {
+    if (GREP_MATCH_RE.test(l)) multiHits++;
+    if (GREP_SINGLE_RE.test(l)) singleHits++;
+  }
+  const singleMode = singleHits > multiHits;
+  const label = fileLabel || "searched file";
+  const perFile = new Map(); // path -> { total, shown }
+  const kept = [];
+  let omitted = 0;
+  for (const line of lines) {
+    let key = null;
+    if (singleMode) {
+      if (GREP_SINGLE_RE.test(line)) key = label;
+    } else {
+      const m = GREP_MATCH_RE.exec(line);
+      if (m) key = m[1];
+    }
+    if (key === null) {
+      kept.push(line);
+      continue;
+    }
+    let s = perFile.get(key);
+    if (!s) {
+      s = { total: 0, shown: 0 };
+      perFile.set(key, s);
+    }
+    s.total++;
+    const lowerLine = line.toLowerCase();
+    const forced = SIGNAL_RE.test(line) || tokens.some((t) => lowerLine.includes(t));
+    if (forced || s.shown < GREP_KEEP_PER_FILE) {
+      s.shown++;
+      kept.push(line);
+    } else {
+      omitted++;
+    }
+  }
+  if (!omitted) return content;
+  const summary = [...perFile.entries()]
+    .filter(([, s]) => s.total > s.shown)
+    .map(([file, s]) => `${file}: ${s.total} matches, ${s.shown} shown`);
+  const out = [
+    ...kept,
+    `[hush hook: ${omitted} match lines omitted; every matched file is counted below, and every warning/error-shaped match was kept. Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`,
+    ...summary,
+  ].join("\n");
+  return out.length < content.length ? out : content;
+}
+
 // MCP JSON table-ification (ROADMAP 007 / Probe 7): a measured probe over
 // 6,739 real MCP tool_results on this machine found 429 eligible (>=2KB,
 // homogeneous JSON-record array) payloads with a MEDIAN 27.9% char savings
@@ -482,6 +567,44 @@ function compressMcpTable(response, decision) {
   // The replacement must be a plain string or that same bare content-block
   // array — an object wrapper ({content:[...]}) throws harness-side
   // (`e.reduce is not a function`, Part 2 fact #6). Mirror the arrival shape.
+  return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
+}
+
+// JetBrains-style exec results arrive as one JSON blob {exitCode, output}
+// with the whole run's console inside the output string. The wrapper is
+// noise-free; the inner text is ordinary shell output, so it gets exactly the
+// treatment shell output gets — exit-code-aware caps, dedupe, signal kept —
+// and is re-embedded in the same JSON shape it arrived in.
+const MCP_EXEC_RE = /^mcp__.+__(execute_run_configuration|execute_terminal_command)$/;
+
+function isMcpExecTool(toolName) {
+  return typeof toolName === "string" && MCP_EXEC_RE.test(toolName);
+}
+
+function compressMcpExec(response, decision) {
+  const text = extractMcpText(response);
+  if (text === null) {
+    if (decision) decision.action = "passthrough";
+    return undefined;
+  }
+  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; decision.action = "passthrough"; }
+  if (text.length < MCP_TABLE_MIN_CHARS) return undefined;
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isPlainObject(parsed) || typeof parsed.output !== "string") return undefined;
+  const exitCode = typeof parsed.exitCode === "number" ? parsed.exitCode : undefined;
+  const out = compress(parsed.output, exitCode, false, false, [], 1, null, true, false);
+  if (out.length >= parsed.output.length) return undefined;
+  const rendered = JSON.stringify({ ...parsed, output: out });
+  if (rendered.length >= text.length) {
+    if (decision) decision.action = "rejected-not-smaller";
+    return undefined;
+  }
+  if (decision) { decision.action = "mcp-exec"; decision.bytesOut = rendered.length; }
   return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
 }
 
@@ -1046,6 +1169,16 @@ function main() {
     return emit(result, data.session_id);
   }
 
+  if (isMcpExecTool(data.tool_name) && process.env.HUSH_MCP_EXEC !== "off") {
+    const decision = {};
+    const result = compressMcpExec(data.tool_response, decision);
+    logDecision(
+      { tool: data.tool_name, bytesIn: decision.bytesIn || 0, bytesOut: decision.bytesOut ?? decision.bytesIn ?? 0, action: decision.action || "passthrough" },
+      data.session_id
+    );
+    return emit(result, data.session_id);
+  }
+
   if (EDIT_TOOLS.has(data.tool_name)) {
     invalidateDeltaPath(data.tool_input && data.tool_input.file_path, data.session_id);
     return; // Edit/Write/MultiEdit output is never compressed — this is a state side effect only
@@ -1109,6 +1242,34 @@ function main() {
         // touches — still a handled output, so it still gets one line.
         logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, action: "passthrough" }, data.session_id);
       }
+    }
+    return emit(updated, data.session_id);
+  }
+
+  if (data.tool_name === "Grep") {
+    // Only content-mode results carry match text; files_with_matches and
+    // count modes are already terse and pass whole. Context-flagged (-A/-B/-C)
+    // and multiline searches asked for surrounding code — collapsing match
+    // lines away from their context would orphan it, so those pass whole too.
+    const content = response && typeof response === "object" && typeof response.content === "string" ? response.content : null;
+    if (content === null) return;
+    const ti = data.tool_input || {};
+    const contextual =
+      ti["-A"] !== undefined || ti["-B"] !== undefined || ti["-C"] !== undefined || ti.context !== undefined || ti.multiline === true;
+    let out = content;
+    if (process.env.HUSH_GREP !== "off" && !enumerate && !contextual && content.length >= GREP_MIN_CHARS) {
+      const label =
+        (typeof ti.path === "string" && ti.path) ||
+        (response.filenames && response.filenames[0]) ||
+        undefined;
+      out = compressGrep(content, relevance, label);
+    }
+    logDecision(
+      { tool: "Grep", bytesIn: content.length, bytesOut: out.length, action: out === content ? "passthrough" : "grep-collapse" },
+      data.session_id
+    );
+    if (out !== content) {
+      updated = { ...response, content: out, numLines: out.split("\n").length };
     }
     return emit(updated, data.session_id);
   }
@@ -1203,6 +1364,9 @@ module.exports = {
   renderMcpTable,
   extractMcpText,
   compressMcpTable,
+  isMcpExecTool,
+  compressMcpExec,
+  compressGrep,
   debugManifestPath,
   containsSecret,
   deltaStatePath,

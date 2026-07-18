@@ -1506,3 +1506,164 @@ describe('re-read delta (ROADMAP 066b): only the corpus-probed half of the cross
     });
   });
 });
+
+describe('grep match-list compression', () => {
+  const H = require('../hooks/compress-tool-output.js');
+
+  function grepContent(files, per) {
+    const lines = [];
+    for (const f of files)
+      for (let i = 1; i <= per; i++) lines.push(`${f}:${i}: const value_${i} = ${'x'.repeat(60)};`);
+    return lines.join('\n');
+  }
+
+  test('collapses beyond the per-file keep, appends counts and the marker', () => {
+    const content = grepContent(['src/a.js', 'src/b.js'], 40);
+    const out = H.compressGrep(content, []);
+    assert.ok(out.length < content.length);
+    assert.ok(out.includes('src/a.js: 40 matches, 3 shown'));
+    assert.ok(out.includes('src/b.js: 40 matches, 3 shown'));
+    assert.ok(out.includes('match lines omitted'));
+    assert.ok(out.includes('src/a.js:3:'));
+    assert.ok(!out.includes('src/a.js:4:'));
+  });
+
+  test('signal-shaped and prompt-named match lines survive past the keep limit', () => {
+    const lines = [];
+    for (let i = 1; i <= 30; i++) lines.push(`app.js:${i}: plain line ${'x'.repeat(50)}`);
+    lines.push('app.js:31: throw new TypeError("boom")');
+    lines.push('app.js:32: requires ioredis here');
+    const out = H.compressGrep(lines.join('\n'), ['ioredis']);
+    assert.ok(out.includes('app.js:31:'));
+    assert.ok(out.includes('app.js:32:'));
+    assert.ok(!out.includes('app.js:17:'));
+  });
+
+  test('drive-letter paths group as one file; unparseable lines pass verbatim', () => {
+    const lines = [];
+    for (let i = 1; i <= 10; i++) lines.push(`C:\\proj\\x.js:${i}: item ${'y'.repeat(40)}`);
+    lines.push('-- a separator line that is not a match --');
+    const out = H.compressGrep(lines.join('\n'), []);
+    assert.ok(out.includes('C:\\proj\\x.js: 10 matches, 3 shown'));
+    assert.ok(out.includes('-- a separator line that is not a match --'));
+  });
+
+  test('returns content unchanged when nothing collapses', () => {
+    const content = grepContent(['a.js'], 3);
+    assert.strictEqual(H.compressGrep(content, []), content);
+  });
+
+  test('single-file searches (bare line: prefix) collapse under the given label', () => {
+    const lines = [];
+    for (let i = 1; i <= 40; i++) lines.push(`${i}: const handler_${i} = wrap(${'r'.repeat(40)})`);
+    const out = H.compressGrep(lines.join('\n'), [], 'big.js');
+    assert.ok(out.length < lines.join('\n').length);
+    assert.ok(out.includes('big.js: 40 matches, 3 shown'));
+    assert.ok(out.includes('1: const handler_1'));
+    assert.ok(!out.includes('4: const handler_4'));
+  });
+
+  test('too-common relevance tokens (the search pattern itself) do not defeat the collapse', () => {
+    const lines = [];
+    for (let i = 1; i <= 60; i++) lines.push(`app.js:${i}: uses redis pool ${'p'.repeat(40)}`);
+    const out = H.compressGrep(lines.join('\n'), ['redis']);
+    assert.ok(out.includes('app.js: 60 matches, 3 shown'), 'redis hits every line, so the token is dropped as too common');
+  });
+
+  test('hook rewrites an oversized Grep content result and mirrors the shape', () => {
+    const content = grepContent(['src/a.js', 'src/b.js'], 40);
+    const res = runHook('compress-tool-output.js', {
+      tool_name: 'Grep',
+      tool_input: { pattern: 'value', output_mode: 'content' },
+      tool_response: { mode: 'content', numFiles: 2, filenames: [], content, numLines: 80, totalLines: 80 },
+    });
+    const out = hookOutput(res);
+    assert.ok(out, 'expected a rewrite');
+    const updated = out.hookSpecificOutput.updatedToolOutput;
+    assert.strictEqual(updated.mode, 'content');
+    assert.strictEqual(updated.totalLines, 80);
+    assert.ok(updated.content.includes('match lines omitted'));
+    assert.strictEqual(updated.numLines, updated.content.split('\n').length);
+  });
+
+  test('context-flagged, small, and disabled Grep results pass through silently', () => {
+    const content = grepContent(['src/a.js'], 40);
+    const base = {
+      tool_name: 'Grep',
+      tool_input: { pattern: 'value', output_mode: 'content', '-C': 2 },
+      tool_response: { mode: 'content', numFiles: 1, filenames: [], content, numLines: 40, totalLines: 40 },
+    };
+    assert.strictEqual(hookOutput(runHook('compress-tool-output.js', base)), null, 'context flag');
+    assert.strictEqual(
+      hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' }, tool_response: { ...base.tool_response, content: 'a.js:1: tiny' } })),
+      null,
+      'small result'
+    );
+    assert.strictEqual(
+      hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' } }, { HUSH_GREP: 'off' })),
+      null,
+      'HUSH_GREP=off'
+    );
+  });
+});
+
+describe('mcp exec-output compression', () => {
+  const H = require('../hooks/compress-tool-output.js');
+
+  function execText(exitCode, lines) {
+    const output = Array.from({ length: lines }, (_, i) => `build step ${i}: copying module ${'z'.repeat(30)}`).join('\n');
+    return JSON.stringify({ exitCode, output });
+  }
+
+  test('isMcpExecTool matches execute methods on any server alias', () => {
+    assert.ok(H.isMcpExecTool('mcp__idea__execute_run_configuration'));
+    assert.ok(H.isMcpExecTool('mcp__jetbrains__execute_terminal_command'));
+    assert.ok(!H.isMcpExecTool('mcp__idea__read_file'));
+    assert.ok(!H.isMcpExecTool('Bash'));
+  });
+
+  test('compresses the inner output field, preserves exitCode and the arrival shape', () => {
+    const text = execText(0, 400);
+    const res = H.compressMcpExec([{ type: 'text', text }], {});
+    assert.ok(Array.isArray(res), 'array in, array out');
+    const parsed = JSON.parse(res[0].text);
+    assert.strictEqual(parsed.exitCode, 0);
+    assert.ok(parsed.output.includes('[hush hook:'));
+    assert.ok(res[0].text.length < text.length);
+    const strRes = H.compressMcpExec(text, {});
+    assert.strictEqual(typeof strRes, 'string', 'string in, string out');
+  });
+
+  test('failing exec keeps error lines under the larger failure cap', () => {
+    const output = Array.from({ length: 300 }, (_, i) => `noise ${i} ${'q'.repeat(30)}`);
+    output[298] = 'ERROR: compilation failed at module X';
+    const text = JSON.stringify({ exitCode: 1, output: output.join('\n') });
+    const res = H.compressMcpExec(text, {});
+    assert.strictEqual(JSON.parse(res).exitCode, 1);
+    assert.ok(JSON.parse(res).output.includes('ERROR: compilation failed at module X'));
+  });
+
+  test('passthrough on non-JSON, missing output field, and small payloads', () => {
+    assert.strictEqual(H.compressMcpExec('not json '.repeat(300), {}), undefined);
+    assert.strictEqual(H.compressMcpExec(JSON.stringify({ exitCode: 0, result: 'x'.repeat(3000) }), {}), undefined);
+    assert.strictEqual(H.compressMcpExec(JSON.stringify({ exitCode: 0, output: 'short' }), {}), undefined);
+  });
+
+  test('hook routes exec tools and emits the rewritten envelope', () => {
+    const text = execText(0, 400);
+    const res = runHook('compress-tool-output.js', {
+      tool_name: 'mcp__idea__execute_run_configuration',
+      tool_response: [{ type: 'text', text }],
+    });
+    const out = hookOutput(res);
+    assert.ok(out, 'expected a rewrite');
+    const updated = out.hookSpecificOutput.updatedToolOutput;
+    assert.ok(Array.isArray(updated));
+    assert.ok(JSON.parse(updated[0].text).output.includes('[hush hook:'));
+    assert.strictEqual(
+      hookOutput(runHook('compress-tool-output.js', { tool_name: 'mcp__idea__execute_run_configuration', tool_response: [{ type: 'text', text }] }, { HUSH_MCP_EXEC: 'off' })),
+      null,
+      'HUSH_MCP_EXEC=off'
+    );
+  });
+});
