@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.9.0-alpha — 2026-07-18
+
+Oversized search results now collapse to a map: each matched file keeps its first few match lines plus a per-file match count, and warning- or error-shaped matches always survive. Searches that asked for surrounding context lines, and results small enough to read whole, pass untouched. `HUSH_GREP=off` disables it.
+
+Long console output from an IDE-run build or terminal command (delivered over MCP) now gets the same trim ordinary shell output gets — noise capped, warnings, errors, and failures kept verbatim. `HUSH_MCP_EXEC=off` disables it.
+
 ## 0.8.0-alpha — 2026-07-17
 
 Added `/hush:stats` — reports how much a session's output actually shrank, broken down by what kind of trim did it, plus a per-model read/write summary. Needs `HUSH_DEBUG=1` set beforehand; without it there's nothing to report.
