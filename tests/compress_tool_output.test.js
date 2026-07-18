@@ -912,6 +912,74 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   });
 });
 
+describe('secrets guard: credential-shaped content is never persisted to a sidecar', () => {
+  const { compress: comp, containsSecret } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const sideDir = path.join(os.tmpdir(), 'hush-sidecar');
+  function withSidecarOn(fn) {
+    const prev = process.env.HUSH_SIDECAR;
+    delete process.env.HUSH_SIDECAR;
+    try { return fn(); } finally { process.env.HUSH_SIDECAR = prev; }
+  }
+  // Every line here shares one shape (only the counter/duration vary), so
+  // collapseTemplates alone would shrink 2000 lines under the cap and hide
+  // whether capLines' own "lines omitted" marker fired — pin templating off
+  // so the skip-sidecar case demonstrably reaches the ordinary line cap.
+  function withTemplateOff(fn) {
+    const prev = process.env.HUSH_TEMPLATE;
+    process.env.HUSH_TEMPLATE = 'off';
+    try { return fn(); } finally { if (prev === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prev; }
+  }
+  function sidecarFileCount() {
+    try { return fs.readdirSync(sideDir).length; } catch { return 0; }
+  }
+  // Same size/shape as the sidecar suite's own bigLog fixture, minus the
+  // synthetic ERROR lines (irrelevant here) — clears SIDECAR_MIN_CHARS on its
+  // own so every case in this block is genuinely sidecar-eligible by size.
+  function bigLog(extraLine) {
+    const ls = Array.from({ length: 2000 }, (_, i) => '02:00 info handled req ' + i + ' in ' + (i % 90) + 'ms');
+    if (extraLine) ls[1000] = extraLine;
+    return ls.join(NL);
+  }
+
+  test('unit: containsSecret flags one representative of every pattern class', () => {
+    const hits = [
+      'sk-abcd1234EFGH5678ijklMNOPqrst',
+      'ghp_ABCDEFGHIJ0123456789klmnopqrst',
+      'AKIAABCDEFGHIJKLMNOP',
+      'xoxb-not-a-real-slack-token-fixture-value',
+      '-----BEGIN RSA PRIVATE KEY-----\nMIIEow==\n-----END RSA PRIVATE KEY-----',
+      'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+      'postgres://dbuser:s3cr3tpass@db.internal:5432/prod',
+    ];
+    for (const h of hits) assert.strictEqual(containsSecret(h), true, h);
+  });
+
+  test('unit: containsSecret leaves ordinary text and near-miss lookalikes alone', () => {
+    assert.strictEqual(containsSecret('plain build log line with no credentials'), false);
+    assert.strictEqual(containsSecret('sk8ers gonna sk8, ghost town, akin to xoxo hugs'), false);
+  });
+
+  test('a secret buried in an otherwise sidecar-eligible output skips the sidecar entirely', () => {
+    const before = sidecarFileCount();
+    const out = withSidecarOn(() => withTemplateOff(() =>
+      comp(bigLog('leaked key: sk-abcd1234EFGH5678ijklMNOPqrst'), 0, true, false, [], 1, 'secrettest')
+    ));
+    assert.doesNotMatch(out, /saved in full to/, 'no sidecar pointer emitted');
+    assert.match(out, /lines omitted from this view/, 'falls through to the ordinary inline cap');
+    assert.strictEqual(sidecarFileCount(), before, 'no new sidecar file was written');
+  });
+
+  test('control: the identical shape without a secret still sidecars', () => {
+    const before = sidecarFileCount();
+    const out = withSidecarOn(() => comp(bigLog(null), 0, true, false, [], 1, 'secrettest'));
+    assert.match(out, /saved in full to/, 'clean content still gets the sidecar treatment');
+    assert.strictEqual(sidecarFileCount(), before + 1, 'exactly one new sidecar file appeared');
+    const m = out.match(/saved in full to ([^;]+);/);
+    if (m) fs.rmSync(m[1].trim(), { force: true });
+  });
+});
+
 describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', () => {
   const { isSidecarPath } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
@@ -1268,5 +1336,173 @@ describe('MCP JSON table-ification (ROADMAP 007 / Probe 7)', () => {
       tool_response: JSON.stringify(records(2)),
     });
     assert.strictEqual(hookOutput(r), null);
+  });
+});
+
+describe('re-read delta (ROADMAP 066b): only the corpus-probed half of the cross-turn delta idea', () => {
+  const DELTA_HEADER_RE = /\[hush hook: this file changed since your last read/;
+  let counter = 0;
+  function freshSession() {
+    counter += 1;
+    return `hush-test-delta-${Date.now()}-${counter}`;
+  }
+
+  function readLog(filePath, content, sessionId, extraInput, env) {
+    return runHook('compress-tool-output.js', {
+      tool_name: 'Read',
+      session_id: sessionId,
+      tool_input: { file_path: filePath, ...(extraInput || {}) },
+      tool_response: { type: 'text', file: { filePath, content, numLines: content.split('\n').length, startLine: 1, totalLines: content.split('\n').length } },
+    }, env);
+  }
+
+  function editFile(filePath, sessionId) {
+    return runHook('compress-tool-output.js', {
+      tool_name: 'Edit',
+      session_id: sessionId,
+      tool_input: { file_path: filePath, old_string: 'x', new_string: 'y' },
+      tool_response: { filePath },
+    });
+  }
+
+  function steadyLines(n) {
+    return Array.from({ length: n }, (_, i) => `10:${String(i % 60).padStart(2, '0')} info steady worker handled job ${i}`);
+  }
+
+  test('first read of a watched path is a baseline — never a delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc1.log';
+    const sessionId = freshSession();
+    const r = readLog(filePath, steadyLines(80).join('\n'), sessionId);
+    const out = hookOutput(r);
+    if (out) assert.doesNotMatch(out.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
+  });
+
+  test('an unchanged re-read stays a routine view — no delta marker', () => {
+    const filePath = 'C:\\repo\\logs\\svc2.log';
+    const sessionId = freshSession();
+    const content = steadyLines(80).join('\n');
+    readLog(filePath, content, sessionId);
+    const r2 = readLog(filePath, content, sessionId);
+    const out2 = hookOutput(r2);
+    if (out2) assert.doesNotMatch(out2.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
+  });
+
+  test('a re-read after an external change (no self-edit) gets a delta with the changed/signal line', () => {
+    const filePath = 'C:\\repo\\logs\\svc3.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId);
+
+    const lines2 = steadyLines(80);
+    lines2[40] = 'ERROR worker-4 crashed: connection reset';
+    const r2 = readLog(filePath, lines2.join('\n'), sessionId);
+    const updated = hookOutput(r2).hookSpecificOutput.updatedToolOutput;
+    assert.match(updated.file.content, DELTA_HEADER_RE);
+    assert.ok(updated.file.content.includes('ERROR worker-4 crashed: connection reset'), 'the changed signal line is shown');
+    assert.ok(updated.file.content.length < lines2.join('\n').length, 'a delta of one changed line is far smaller than the whole file');
+  });
+
+  test('every 3rd changed re-read of the same path goes out full again, not delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc4.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId); // baseline
+
+    function changed(i) {
+      const ls = steadyLines(80);
+      ls[i] = `WARN drift ${i}`;
+      return ls.join('\n');
+    }
+
+    const c1 = hookOutput(readLog(filePath, changed(1), sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+    const c2 = hookOutput(readLog(filePath, changed(2), sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+    const out3 = hookOutput(readLog(filePath, changed(3), sessionId));
+    const c4 = hookOutput(readLog(filePath, changed(4), sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+
+    assert.match(c1, DELTA_HEADER_RE, '1st changed re-read is a delta');
+    assert.match(c2, DELTA_HEADER_RE, '2nd changed re-read is a delta');
+    if (out3) assert.doesNotMatch(out3.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE, '3rd changed re-read forces a full view');
+    assert.match(c4, DELTA_HEADER_RE, 'the cycle restarts on the next changed re-read');
+  });
+
+  test('an Edit on the path resets the baseline — the next read is full, not a delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc5.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId);
+    editFile(filePath, sessionId);
+
+    const lines2 = steadyLines(80);
+    lines2[10] = 'this is the self-edited version of the line, not an external change';
+    const r2 = readLog(filePath, lines2.join('\n'), sessionId);
+    const out2 = hookOutput(r2);
+    if (out2) assert.doesNotMatch(out2.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
+  });
+
+  test('a source file is never delta-tracked, whatever changes between reads', () => {
+    const filePath = 'C:\\repo\\src\\services\\worker.js';
+    const sessionId = freshSession();
+    const src1 = Array.from({ length: 80 }, (_, i) => `const x${i} = ${i};`).join('\n');
+    assert.strictEqual(hookOutput(readLog(filePath, src1, sessionId)), null);
+
+    const src2 = Array.from({ length: 80 }, (_, i) => `const x${i} = ${i + 1};`).join('\n');
+    assert.strictEqual(hookOutput(readLog(filePath, src2, sessionId)), null, 'no delta marker ever appears for a source path');
+  });
+
+  test('a range read (offset/limit) never engages the delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc6.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId);
+
+    const lines2 = steadyLines(80);
+    lines2[5] = 'ERROR range read target';
+    const range = lines2.slice(0, 10).join('\n');
+    const r2 = readLog(filePath, range, sessionId, { offset: 1, limit: 10 });
+    const out2 = hookOutput(r2);
+    if (out2) assert.doesNotMatch(out2.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
+  });
+
+  test('rejected-not-smaller: a near-total rewrite falls back to the ordinary view, not an oversized delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc7.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId);
+
+    const lines2 = Array.from({ length: 80 }, (_, i) => `totally different content on line ${i} with unique wording`);
+    const r2 = readLog(filePath, lines2.join('\n'), sessionId);
+    const out2 = hookOutput(r2);
+    if (out2) {
+      assert.doesNotMatch(
+        out2.hookSpecificOutput.updatedToolOutput.file.content,
+        DELTA_HEADER_RE,
+        'a near-total rewrite is not smaller as a delta, so it falls back to the normal view'
+      );
+    }
+  });
+
+  test('HUSH_DELTA=off disables the feature — a changed re-read stays a routine full view', () => {
+    const filePath = 'C:\\repo\\logs\\svc8.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(80).join('\n'), sessionId, undefined, { HUSH_DELTA: 'off' });
+    const lines2 = steadyLines(80);
+    lines2[40] = 'ERROR toggled off';
+    const r2 = readLog(filePath, lines2.join('\n'), sessionId, undefined, { HUSH_DELTA: 'off' });
+    const out2 = hookOutput(r2);
+    if (out2) assert.doesNotMatch(out2.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
+  });
+
+  describe('unit: pure delta helpers', () => {
+    const { changedLineIndexes, renderDelta } = require('../hooks/compress-tool-output');
+
+    test('changedLineIndexes finds only differing positions', () => {
+      assert.deepStrictEqual(changedLineIndexes(['a', 'b', 'c'], ['a', 'x', 'c']), [1]);
+    });
+
+    test('changedLineIndexes treats an appended (longer) file as a change at the new positions', () => {
+      assert.deepStrictEqual(changedLineIndexes(['a', 'b'], ['a', 'b', 'c']), [2]);
+    });
+
+    test('renderDelta always includes SIGNAL_RE lines even when hash-unchanged', () => {
+      const lines = ['ok one', 'ERROR two', 'ok three'];
+      const out = renderDelta(lines, []);
+      assert.ok(out.includes('L2: ERROR two'));
+      assert.ok(!out.includes('L1: ok one'));
+    });
   });
 });

@@ -34,17 +34,24 @@ function meterPath(sessionId) {
   return path.join(os.tmpdir(), `hush-meter-${safe}.json`);
 }
 
+function deltaPath(sessionId) {
+  const safe = String(sessionId).replace(/[^a-zA-Z0-9-]/g, '_');
+  return path.join(os.tmpdir(), `hush-delta-${safe}.json`);
+}
+
 describe('postcompact-rearm hook', () => {
-  test('removes both sentinel and meter state when present', () => {
+  test('removes sentinel, meter, and re-read-delta state when present', () => {
     const sessionId = freshSessionId();
     fs.writeFileSync(notePath(sessionId), '');
     fs.writeFileSync(meterPath(sessionId), '{}');
+    fs.writeFileSync(deltaPath(sessionId), '{}');
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: sessionId });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout, '');
     assert.strictEqual(fs.existsSync(notePath(sessionId)), false);
     assert.strictEqual(fs.existsSync(meterPath(sessionId)), false);
+    assert.strictEqual(fs.existsSync(deltaPath(sessionId)), false);
   });
 
   test('absent files -> silent success', () => {
@@ -54,6 +61,7 @@ describe('postcompact-rearm hook', () => {
     assert.strictEqual(r.stdout, '');
     assert.strictEqual(fs.existsSync(notePath(sessionId)), false);
     assert.strictEqual(fs.existsSync(meterPath(sessionId)), false);
+    assert.strictEqual(fs.existsSync(deltaPath(sessionId)), false);
   });
 
   test('no session_id -> no-op, exit 0', () => {
@@ -72,14 +80,17 @@ describe('postcompact-rearm hook', () => {
     const sessionId = freshSessionId();
     fs.writeFileSync(notePath(sessionId), '');
     fs.writeFileSync(meterPath(sessionId), '{}');
+    fs.writeFileSync(deltaPath(sessionId), '{}');
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: sessionId }, { HUSH_DISABLE: '1' });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout, '');
     assert.strictEqual(fs.existsSync(notePath(sessionId)), true);
     assert.strictEqual(fs.existsSync(meterPath(sessionId)), true);
+    assert.strictEqual(fs.existsSync(deltaPath(sessionId)), true);
 
     fs.rmSync(notePath(sessionId), { force: true });
     fs.rmSync(meterPath(sessionId), { force: true });
+    fs.rmSync(deltaPath(sessionId), { force: true });
   });
 });

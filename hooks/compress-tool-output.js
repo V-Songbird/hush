@@ -13,6 +13,11 @@ const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read"]);
+// Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
+// below) — watched only so a re-read delta on the same path can tell "the
+// session changed this itself" apart from "this changed for some other
+// reason", per the re-read delta's correctness guard.
+const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
 
 // Caps are in lines. Passing output is mostly noise (install trees, progress
 // logs); failing output is evidence, so it keeps ~4x more.
@@ -670,6 +675,30 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   return { body: out.join("\n"), total, signalCount: signalIdx.length, census };
 }
 
+// Credential-shaped content is screened out of the sidecar path entirely,
+// never redacted-and-persisted: a hit here means the caller falls through to
+// the ordinary inline cap (below) — the same view the model gets without
+// hush — rather than writing a "cleaned" file that still carries the secret.
+// Clean-room, deliberately over-matching (a false positive only costs a
+// slightly more common inline fallback, never a leak): provider key-prefix
+// families (OpenAI/Anthropic-style sk-, GitHub ghp_ tokens, AWS AKIA access
+// key ids, Slack xox* tokens), PEM private-key blocks (not certificates —
+// those are public), Bearer/Basic auth values, and connection-string
+// embedded credentials (scheme://user:pass@host).
+const SECRET_RES = [
+  /\bsk-[A-Za-z0-9_-]{16,}\b/,
+  /\bghp_[A-Za-z0-9]{20,}\b/,
+  /\bAKIA[0-9A-Z]{16}\b/,
+  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY[A-Z0-9 ]*-----/,
+  /\b(?:Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/,
+  /\b\w+:\/\/[^\s/:@]+:[^\s/:@]+@[^\s/]+/,
+];
+
+function containsSecret(text) {
+  return SECRET_RES.some((re) => re.test(text));
+}
+
 function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
   if (process.env.HUSH_SIDECAR === "off") return null;
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
@@ -678,6 +707,10 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
   // adds no truncated "full" file and no competing pointer.
   if (hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX) return null;
   try {
+    // Scan before ever touching disk. A scanner exception falls into the same
+    // catch as every I/O failure below and returns null (fail-open for the
+    // hook's output, but never a reason to persist ambiguous content).
+    if (containsSecret(cleaned)) return null;
     const name = (sessionId ? `${String(sessionId).slice(0, 8)}-` : "") + `${cheapHash(cleaned)}.txt`;
     const file = path.join(SIDECAR_DIR, name);
     const d = buildSidecarDigest(cleaned, relevanceTokens);
@@ -714,6 +747,135 @@ function isSidecarPath(filePath) {
     typeof filePath === "string" &&
     path.resolve(path.dirname(filePath.trim())) === path.resolve(SIDECAR_DIR)
   );
+}
+
+// Re-read delta (ROADMAP 066b, corpus-probed): a watched Read path (log or
+// generated — never source, see the isLogPath/isGeneratedPath callers below)
+// whose content changed since this session last read it gets only the
+// changed lines, plus any SIGNAL_RE lines, instead of the full view again. A
+// local-transcript probe found 12.4% of full-file re-reads changed with no
+// self-edit in between — real, if modest, volume; the sibling idea (a delta
+// on a re-RUN command) measured under its own bar on the same corpus and was
+// deliberately not built. State lives per session, keyed by the exact path
+// string Read was given, and holds only cheap line hashes — never the file's
+// actual content — so there is nothing here for the secrets guard to screen.
+const DELTA_FORCE_FULL_EVERY = 3; // every Nth changed re-read of a path goes out full, not delta
+
+function deltaStatePath(sessionId) {
+  const safe = String(sessionId || "unknown").replace(/[^a-zA-Z0-9-]/g, "_");
+  return path.join(os.tmpdir(), `hush-delta-${safe}.json`);
+}
+
+function readDeltaState(sessionId) {
+  try {
+    return JSON.parse(fs.readFileSync(deltaStatePath(sessionId), "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeDeltaState(sessionId, state) {
+  try {
+    safeWriteFileSync(deltaStatePath(sessionId), JSON.stringify(state));
+  } catch {
+    /* best effort — losing state just means the next re-read goes out full */
+  }
+}
+
+// Edit/Write/MultiEdit on a path this session is tracking means the next
+// content change is self-caused, not the external-change signal the delta
+// targets — the corpus probe counted those separately and excluded them from
+// the build target. Dropping the entry makes the next read a fresh baseline
+// (full output, no diff), which is exactly the expected shape.
+function invalidateDeltaPath(filePath, sessionId) {
+  if (typeof filePath !== "string" || !filePath || !sessionId) return;
+  const state = readDeltaState(sessionId);
+  if (!(filePath in state)) return;
+  delete state[filePath];
+  writeDeltaState(sessionId, state);
+}
+
+function hashLines(text) {
+  return text.split("\n").map(cheapHash);
+}
+
+// Index-position comparison — exact for the shapes this targets (a log
+// appended to, or a generated file rewritten with mostly the same rows), not
+// a general line-diff. A line inserted or removed mid-file shifts every
+// later hash and the tail reads as "changed" too; that only makes the delta
+// larger, never wrong, since every genuinely different line still shows.
+function changedLineIndexes(prevHashes, hashes) {
+  const out = [];
+  const max = Math.max(prevHashes.length, hashes.length);
+  for (let i = 0; i < max; i++) {
+    if (prevHashes[i] !== hashes[i]) out.push(i);
+  }
+  return out;
+}
+
+function renderDelta(lines, changedIdx) {
+  const total = lines.length;
+  const signalIdx = [];
+  lines.forEach((l, i) => {
+    if (SIGNAL_RE.test(l)) signalIdx.push(i);
+  });
+  const shown = new Set([...changedIdx.filter((i) => i < total), ...signalIdx]);
+  const sorted = [...shown].sort((a, b) => a - b);
+  const out = [
+    `[hush hook: this file changed since your last read of it this session — ${sorted.length} of ${total} ` +
+      `lines shown below (the changed lines, plus any warnings/errors/failures); everything else is unchanged. ` +
+      `Read it again without offset/limit for the full file.]`,
+  ];
+  let last = -1;
+  for (const i of sorted) {
+    if (i - last > 1) out.push(`  ... ${i - last - 1} unchanged lines ...`);
+    out.push(`L${i + 1}: ${lines[i]}`);
+    last = i;
+  }
+  if (total - 1 - last > 0) out.push(`  ... ${total - 1 - last} unchanged lines ...`);
+  return out.join("\n");
+}
+
+// Returns the delta text, or null whenever the caller should fall through to
+// the ordinary compress() view instead: delta turned off, no session to key
+// state on, first read of this path this session (nothing to diff against
+// yet), content identical to the last read, this is the forced-full Nth
+// changed re-read, or the delta isn't actually smaller than the cleaned text
+// it would replace (the same rejected-not-smaller discipline every other
+// rewrite in this file follows). Fail-open: any state-file trouble falls
+// through the same way.
+function maybeDelta(cleaned, filePath, sessionId) {
+  if (process.env.HUSH_DELTA === "off") return null;
+  if (typeof filePath !== "string" || !filePath || !sessionId) return null;
+  try {
+    const state = readDeltaState(sessionId);
+    const prev = state[filePath];
+    const hashes = hashLines(cleaned);
+
+    if (!prev) {
+      state[filePath] = { hashes, rereads: 0 };
+      writeDeltaState(sessionId, state);
+      return null;
+    }
+
+    const changedIdx = changedLineIndexes(prev.hashes, hashes);
+    if (!changedIdx.length) return null;
+
+    const rereads = (prev.rereads || 0) + 1;
+    if (rereads % DELTA_FORCE_FULL_EVERY === 0) {
+      state[filePath] = { hashes, rereads: 0 };
+      writeDeltaState(sessionId, state);
+      return null;
+    }
+
+    const rendered = renderDelta(cleaned.split("\n"), changedIdx);
+    state[filePath] = { hashes, rereads };
+    writeDeltaState(sessionId, state);
+    if (rendered.length >= cleaned.length) return null;
+    return rendered;
+  } catch {
+    return null;
+  }
 }
 
 // `decision`, when passed, is mutated with the single action token that
@@ -777,13 +939,23 @@ function logDecision(entry, sessionId) {
   try {
     const file = debugManifestPath(sessionId);
     // Same residual defense as claimSessionNote: refuse a pre-planted symlink
-    // at the manifest path before appending to it.
+    // at the manifest path before appending to it. The lstat check alone
+    // still leaves a TOCTOU gap between the check and the write — an
+    // O_NOFOLLOW open closes it atomically on the platforms that honor the
+    // flag (see safe-write.js's header for why win32 can't and the lstat
+    // check is the accepted residual there).
     try {
       if (fs.lstatSync(file).isSymbolicLink()) return;
     } catch (e) {
       if (e.code !== "ENOENT") return;
     }
-    fs.appendFileSync(file, JSON.stringify(entry) + "\n", { flag: "a" });
+    const O_NOFOLLOW = typeof fs.constants.O_NOFOLLOW === "number" ? fs.constants.O_NOFOLLOW : 0;
+    const fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_APPEND | O_NOFOLLOW, 0o600);
+    try {
+      fs.writeSync(fd, JSON.stringify(entry) + "\n");
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch {
     /* fail-open: the debug manifest is best-effort observability, never a
        reason to alter or block the actual compression decision. */
@@ -874,6 +1046,11 @@ function main() {
     return emit(result, data.session_id);
   }
 
+  if (EDIT_TOOLS.has(data.tool_name)) {
+    invalidateDeltaPath(data.tool_input && data.tool_input.file_path, data.session_id);
+    return; // Edit/Write/MultiEdit output is never compressed — this is a state side effect only
+  }
+
   if (!WATCHED_TOOLS.has(data.tool_name)) return;
 
   const response = data.tool_response;
@@ -900,10 +1077,26 @@ function main() {
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
     const sideRead = isSidecarPath(filePath);
+    // Only a full read (no offset/limit) is a valid delta candidate — a
+    // ranged read covers a different slice of the file than whatever was
+    // hashed last time, so there is nothing sound to diff it against. Mirrors
+    // exactly the scope the corpus probe measured.
+    const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
     if (file && typeof file.content === "string") {
       if (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead) {
         const decision = {};
-        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
+        let out;
+        if (!sideRead && !isRangeRead && !enumerate) {
+          const cleaned = resolveCarriageReturns(stripAnsi(file.content));
+          const delta = maybeDelta(cleaned, filePath, data.session_id);
+          if (delta !== null) {
+            decision.action = "delta";
+            out = delta;
+          }
+        }
+        if (out === undefined) {
+          out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
+        }
         logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
         if (out !== file.content) {
           updated = {
@@ -1011,4 +1204,12 @@ module.exports = {
   extractMcpText,
   compressMcpTable,
   debugManifestPath,
+  containsSecret,
+  deltaStatePath,
+  readDeltaState,
+  writeDeltaState,
+  invalidateDeltaPath,
+  changedLineIndexes,
+  renderDelta,
+  maybeDelta,
 };

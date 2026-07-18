@@ -5,6 +5,14 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.8.0-alpha — 2026-07-17
+
+Added `/hush:stats` — reports how much a session's output actually shrank, broken down by what kind of trim did it, plus a per-model read/write summary. Needs `HUSH_DEBUG=1` set beforehand; without it there's nothing to report.
+
+Re-reading a log or generated file that changed since you last read it now shows just the changed lines (plus any warnings, errors, or failures) instead of the whole file again. `HUSH_DELTA=off` disables it.
+
+A large output that contains a credential-shaped secret (an API key, a token, a private key block, a connection string with embedded credentials) is never moved to a local sidecar file — it stays on the ordinary inline path instead.
+
 ## 0.7.0-alpha — 2026-07-17
 
 Reports read plainer. Around the exact file and function names, Claude now favors everyday words over engineer shorthand, and a short report is written as plain sentences instead of labeled lines. Bullets appear only when there are enough facts to need them.

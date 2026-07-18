@@ -40,6 +40,7 @@ Four small habits, picked up the moment it's installed:
 | Command output & log files | Trimmed as it comes in — a short tail from a clean run, the whole thing from a failing one |
 | Mid-turn rambling | Caught by a running word count and cut off the moment it starts |
 | Really large output (a huge log, a giant lockfile) | Moved to a local file behind a short summary, so it's not re-sent in full every turn |
+| Re-reading a log or generated file that changed on its own | Shown as just the changed lines, not the whole file again |
 
 That's the whole list. No workflow to learn, no dial to find first — it's just how Claude behaves now.
 
@@ -105,6 +106,13 @@ Every job passed its correctness check in every setup — compression never boug
 > [!IMPORTANT]
 > It never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) for you to review and swap in yourself.
 
+## See what hush saved
+
+`/hush:stats` shows what hush actually trimmed this session — how much smaller each kind of output got (a capped log, a moved-aside file, a rendered table, and more) — plus a per-model summary of what each one read and wrote.
+
+> [!IMPORTANT]
+> This needs `HUSH_DEBUG=1` set before the work you want measured — hush doesn't keep this record by default. Without it, `/hush:stats` has nothing to report and says so.
+
 ## Under the hood
 
 Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise. Run both and neither notices the other — measured together, they add no overhead of their own.
@@ -115,20 +123,11 @@ Most people never touch these, but a few environment variables tune the caps or 
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Turns the hooks off |
-| `HUSH_CAP_PASS=60` | Lines kept from successful command output |
-| `HUSH_CAP_FAIL=250` | Lines kept from failing output |
-| `HUSH_NARRATION_BUDGET=120` | Words of narration before a gentle nudge |
-| `HUSH_WRAP=1` | Captures real exit codes from shell commands in permission-checked sessions — needs blanket `Bash`/`PowerShell` permission rules (no command pattern); sessions that bypass permissions get this automatically |
-| `HUSH_NOTE=off` | Skips the one-time per-session note that tells the model hush's compression markers are trusted tooling |
-| `HUSH_SUBAGENT=off` | Stops extending the terse-report style to spawned subagents |
-| `HUSH_ADAPTIVE=off` | Keeps compression caps fixed instead of tightening them in very long sessions |
-| `HUSH_SIDECAR=off` | Keeps very large outputs inline instead of moving them to a local file behind a digest |
-| `HUSH_SIDECAR_MIN=15000` | Size (characters) at which an output moves to a sidecar file |
-| `HUSH_SIDECAR_SHELL_MAX=28000` | Above this size, a command's output stays inline (past here the terminal already keeps its own copy) |
-| `HUSH_COMPACT=off` | Stops shaping the compaction summarizer's format instructions |
-| `HUSH_TEMPLATE=off` | Stops collapsing runs of same-shaped log lines (e.g. repeated worker/job entries) into one example line + a count |
-| `HUSH_DEBUG=1` | Appends a per-decision JSON line to a temp-dir manifest file for every tool output hush looks at — for debugging and benchmark tooling, not everyday use |
+| `HUSH_DISABLE=1` | Turns hush off |
+| `HUSH_NARRATION_BUDGET=120` | Words of narration allowed before hush steps in |
+| `HUSH_SIDECAR=off` | Keeps big output inline instead of moving it to a file |
+| `HUSH_DELTA=off` | Shows the whole file again on a re-read instead of just what changed |
+| `HUSH_DEBUG=1` | Turns on the record `/hush:stats` reads from |
 
 ## License
 
