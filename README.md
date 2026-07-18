@@ -57,11 +57,11 @@ Takes effect at your next session. There's nothing to invoke — hush just works
 
 ## Benchmarks
 
-We put hush up against plain Claude Code and two rival plugins — one that tells Claude to talk less, one that runs an all-round "efficiency mode" — on real engineering work: full agent sessions that explore, edit, and run code, not a single canned reply. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
+We put hush up against plain Claude Code and two rival plugins — caveman, which tells Claude to talk less, and one that runs an all-round "efficiency mode" — on real engineering work: full agent sessions that explore, edit, and run code, not a single canned reply. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
 <p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.211, a 'be brief' plugin $0.205, an 'efficiency mode' plugin $0.191, hush $0.171. hush takes $0.040 off the bill; asking Claude to be brief takes off $0.006" width="700"></p>
 
-**Being brief isn't enough.** Asking Claude to talk less takes about half a cent off the bill. An all-round efficiency mode takes off two. hush takes off four. Turns out asking politely and actually doing the work are two different things.
+**Being brief isn't enough.** caveman asks Claude to talk less — about half a cent off the bill. An all-round efficiency mode takes off two. hush takes off four. Turns out asking politely and actually doing the work are two different things.
 
 <p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.186; what Claude wrote back, the reply, $0.026; the session $0.211. A plugin that only shortens the reply is working on the $0.026" width="700"></p>
 
@@ -81,7 +81,7 @@ We put hush up against plain Claude Code and two rival plugins — one that tell
 
 Every job, every setup — the wins **and** the ties and losses. Cheapest per row in **bold**.
 
-| What Claude did | no plugin | "be brief" | "efficiency mode" | hush |
+| What Claude did | no plugin | caveman | "efficiency mode" | hush |
 | --- | --- | --- | --- | --- |
 | Triage a production outage log | $0.302 | $0.289 | $0.274 | **$0.164** |
 | Multi-turn incident + write the handoff | $0.416 | $0.397 | $0.388 | **$0.240** |
