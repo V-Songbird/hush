@@ -220,7 +220,8 @@ function latestTranscript(projectDir) {
 }
 
 function sessionIdFromTranscriptPath(transcriptPath) {
-  return path.basename(transcriptPath, ".jsonl");
+  // win32 basename splits on both / and \, so Windows transcript paths parse anywhere
+  return path.win32.basename(transcriptPath, ".jsonl");
 }
 
 // Resolves {sessionId, transcriptPath} from explicit flags, or by finding
