@@ -55,6 +55,10 @@ Inside Claude Code, run:
 
 Takes effect at your next session. There's nothing to invoke — hush just works in the background.
 
+### Better together
+
+We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/razor) — against the rivals run as a pair, caveman with ponytail. Same jobs, both models. The pair came out cheapest on both models and was the only setup that never turned in a wrong answer; the rival pair managed to cost more than running no plugin at all. The difference is enforcement. caveman and ponytail *ask* — talk less, build lean — and asking works right up until the model forgets: their pair still shipped the needless dependency more often than not. hush and razor don't ask. hush's compression and razor's gates fire on every session, whether Claude is in the mood or not.
+
 ## Benchmarks
 
 We put hush up against plain Claude Code and two rival plugins — caveman, which tells Claude to talk less, and one that runs an all-round "efficiency mode" — on real engineering work: full agent sessions that explore, edit, and run code, not a single canned reply. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
@@ -99,10 +103,6 @@ Every job passed its correctness check in every setup — 128 sessions, not one 
 > hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and roughly ties on short or low-output jobs, where a session's fixed overhead dwarfs anything a plugin can trim. On a few it costs a hair more; that's the honest shape, and it's why the average is what to read.
 
 *How we tested: the same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs from the API, not estimates. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
-
-### Better together
-
-We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/razor) — against the rivals run as a pair, caveman with ponytail. Same jobs, both models. The pair came out cheapest on both models and was the only setup that never turned in a wrong answer; the rival pair managed to cost more than running no plugin at all. The difference is enforcement. caveman and ponytail *ask* — talk less, build lean — and asking works right up until the model forgets: their pair still shipped the needless dependency more often than not. hush and razor don't ask. hush's compression and razor's gates fire on every session, whether Claude is in the mood or not.
 
 ## Compress a memory file
 
