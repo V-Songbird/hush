@@ -76,6 +76,12 @@ hush runs itself; these commands are extras:
 
 Switch styles yourself any time: `/config` → **Output style**, or set `"outputStyle"` in `.claude/settings.local.json`. Either way it applies from the next session.
 
+```json
+{
+  "outputStyle": "my-crafted-style"
+}
+```
+
 ## Benchmarks
 
 We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on real engineering work: full agent sessions that explore, edit, and run code. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
