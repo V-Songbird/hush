@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.9.4-alpha — 2026-07-18
+
+Fixed an issue where a session id derived from a Windows-style transcript path kept the folder prefix on non-Windows systems.
+
+The README is rebuilt around a TL;DR up top and one unified section order shared with razor and foreman; both commands now live in a single table.
+
 ## 0.9.3-alpha — 2026-07-18
 
 Docs only. The README's benchmark section now covers running hush and razor as a pair, measured against a rival plugin pair.
