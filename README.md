@@ -72,7 +72,9 @@ hush runs itself; these commands are extras:
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
-`/hush:craft-style` makes the style yours — robotic, piratical, whatever you'd actually enjoy reading — while keeping everything that makes hush work. One honest caveat: the benchmark numbers on this page belong to the stock style, and nobody has measured your pirate voice.
+`/hush:craft-style` makes the style yours — robotic, piratical, whatever you'd actually enjoy reading — while keeping everything that makes hush work. It asks before letting your style take over from the built-in one, keeps track of every style it has made, and hands back to stock just as easily. One honest caveat: the benchmark numbers on this page belong to the stock style, and nobody has measured your pirate voice.
+
+Switch styles yourself any time: `/config` → **Output style**, or set `"outputStyle"` in `.claude/settings.local.json`. Either way it applies from the next session.
 
 ## Benchmarks
 
@@ -125,7 +127,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder — activated with `/output-style`, checked by a mechanical verifier, the plugin itself never touched. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier. With your say-so it steps hush's own style aside so yours can run, and steps it back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 
