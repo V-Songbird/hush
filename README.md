@@ -100,6 +100,10 @@ Every job passed its correctness check in every setup — 128 sessions, not one 
 
 *How we tested: the same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs from the API, not estimates. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
 
+### Better together
+
+We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/razor) — against the rivals run as a pair, caveman with ponytail. Same jobs, both models. The pair came out cheapest on both models and was the only setup that never turned in a wrong answer; the rival pair managed to cost more than running no plugin at all. The difference is enforcement. caveman and ponytail *ask* — talk less, build lean — and asking works right up until the model forgets: their pair still shipped the needless dependency more often than not. hush and razor don't ask. hush's compression and razor's gates fire on every session, whether Claude is in the mood or not.
+
 ## Compress a memory file
 
 `/hush:hush-compress <path>` shrinks a `CLAUDE.md` or notes file into a tighter form, so every future session that loads it costs a little less.
@@ -113,7 +117,7 @@ Every job passed its correctness check in every setup — 128 sessions, not one 
 
 ## Under the hood
 
-Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise. Run both and neither notices the other — measured together, they add no overhead of their own.
+Every check above runs locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code and the cost, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 

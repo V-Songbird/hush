@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.9.3-alpha — 2026-07-18
+
+Docs only. The README's benchmark section now covers running hush and razor as a pair, measured against a rival plugin pair.
+
 ## 0.9.2-alpha — 2026-07-18
 
 When Claude Code moves an oversized output aside into its own storage and Claude later reads that file back, the read now returns the trimmed view — warnings, errors, and failures kept verbatim, repeated noise collapsed. A read with an explicit line range still comes back untouched. `HUSH_TOOLRESULTS=off` disables it.
