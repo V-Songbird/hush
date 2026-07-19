@@ -6,14 +6,14 @@
   <h1>hush</h1>
   <p><strong>Shuts Claude up so your session stops costing money to read.</strong></p>
 
-  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across half the suite and peaks at 76 words, silent in 17 of 32 sessions. The hush lane is close to a flat line — silent in 27 of 32, with the remaining spikes on the bug-hunting tasks" width="700" />
+  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across half the suite and peaks at 76 words, silent in 17 of 32 sessions. The hush lane is close to a flat line — silent in 26 of 32, with most of the remaining spikes on the bug-hunting tasks" width="700" />
 
   <p><em>This is what a session sounds like.</em></p>
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE) [![Claude Code](https://img.shields.io/badge/Claude_Code-E5582B)](https://docs.anthropic.com/en/docs/claude-code)
 
-> **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.171 an average session against $0.211 without it.
+> **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.174 an average session against $0.211 without it.
 
 ---
 
@@ -86,23 +86,23 @@ Switch styles yourself any time: `/config` → **Output style**, or set `"output
 
 We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on real engineering work: full agent sessions that explore, edit, and run code. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
-<p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.211, a 'be brief' plugin $0.205, an 'efficiency mode' plugin $0.191, hush $0.171. hush takes $0.040 off the bill; asking Claude to be brief takes off $0.006" width="700"></p>
+<p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.211, a 'be brief' plugin $0.205, an 'efficiency mode' plugin $0.191, hush $0.174. hush takes $0.037 off the bill; asking Claude to be brief takes off $0.006" width="700"></p>
 
-**Being brief isn't enough.** Asking Claude to talk less saves about half a cent. An efficiency mode saves two. hush saves four. Asking politely and actually doing the work are two different things.
+**Being brief isn't enough.** Asking Claude to talk less saves about half a cent. An efficiency mode saves two. hush saves close to four. Asking politely and actually doing the work are two different things.
 
 <p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.186; what Claude wrote back, the reply, $0.026; the session $0.211. A plugin that only shortens the reply is working on the $0.026" width="700"></p>
 
 **Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on three cents of a twenty-one-cent session. hush trims the logs and output before they hit your bill.
 
-<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.42, a 'be brief' plugin $0.40, an 'efficiency mode' plugin $0.39, hush $0.24. hush takes $0.18 off the bill" width="700"></p>
+<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.42, a 'be brief' plugin $0.40, an 'efficiency mode' plugin $0.39, hush $0.28. hush takes $0.14 off the bill" width="700"></p>
 
-**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.24 against $0.42. Neither rival moved it more than three cents.
+**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.28 against $0.42. Neither rival moved it more than three cents.
 
-<p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — fix a currency bug, ask why the conversion order matters, write it up — with every reply drawn at actual size. A typical run with no plugin fills 434 words; a typical hush run fills 217, a visibly shorter column. Both fixed the bug and passed the same check" width="700"></p>
+<p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — fix a currency bug, ask why the conversion order matters, write it up — with every reply drawn at actual size. A typical run with no plugin fills 434 words; a typical hush run fills 257, a visibly shorter column. Both fixed the bug and passed the same check" width="700"></p>
 
-**And you read about half as much.** Across the suite the replies come to 126 words against 254 — one message at the end, outcome first, instead of pieces arriving while Claude works.
+**And you read about half as much.** Across the suite the replies come to 130 words against 254 — one message at the end, outcome first, instead of pieces arriving while Claude works.
 
-**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 27 sessions out of 32. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 26 sessions out of 32. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
 
 ### The full picture
 
@@ -110,17 +110,17 @@ Every job, every setup — the wins **and** the ties and losses. Cheapest per ro
 
 | What Claude did | no plugin | caveman | "efficiency mode" | hush |
 | --- | --- | --- | --- | --- |
-| Triage a production outage log | $0.302 | $0.289 | $0.274 | **$0.164** |
-| Multi-turn incident + write the handoff | $0.416 | $0.397 | $0.388 | **$0.240** |
-| Hunt a cross-file currency bug | $0.180 | $0.198 | **$0.161** | $0.172 |
-| Fix a bug, explain it, write it up (3 turns) | $0.248 | $0.267 | **$0.202** | $0.234 |
-| Summarize a repo | $0.127 | **$0.118** | $0.142 | $0.123 |
-| Find the error in a noisy build | **$0.151** | $0.172 | $0.158 | $0.158 |
-| Fix a failing test suite | **$0.115** | $0.132 | $0.132 | $0.139 |
-| Answer a code question (no tools) | $0.153 | **$0.069** | $0.075 | $0.136 |
-| **Average** | $0.211 | $0.205 | $0.191 | **$0.171** |
+| Triage a production outage log | $0.302 | $0.289 | $0.274 | **$0.143** |
+| Multi-turn incident + write the handoff | $0.416 | $0.397 | $0.388 | **$0.277** |
+| Hunt a cross-file currency bug | $0.180 | $0.198 | **$0.161** | $0.186 |
+| Fix a bug, explain it, write it up (3 turns) | $0.248 | $0.267 | **$0.202** | $0.289 |
+| Summarize a repo | $0.127 | **$0.118** | $0.142 | $0.130 |
+| Find the error in a noisy build | $0.151 | $0.172 | $0.158 | **$0.149** |
+| Fix a failing test suite | **$0.115** | $0.132 | $0.132 | $0.141 |
+| Answer a code question (no tools) | $0.153 | **$0.069** | $0.075 | $0.078 |
+| **Average** | $0.211 | $0.205 | $0.191 | **$0.174** |
 
-Every job passed its correctness check in every setup — 128 sessions, not one cheaper-but-wrong answer.
+Every job passed its correctness check in every setup — not one cheaper-but-wrong answer.
 
 > [!NOTE]
 > hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and roughly ties on short or low-output jobs, where a session's fixed overhead dwarfs anything a plugin can trim. On a few it costs a hair more. That's the honest shape, and it's why the average is the number to read.
@@ -133,7 +133,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier. With your say-so it steps hush's own style aside so yours can run, and steps it back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier. With your say-so it swaps your style into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 

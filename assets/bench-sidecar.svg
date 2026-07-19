@@ -26,12 +26,12 @@
   <text x="704" y="148" class="amt" text-anchor="end">$0.39</text>
 
   <text x="16" y="176" class="hushitem">hush</text>
-  <text x="704" y="176" class="hushamt" text-anchor="end">$0.24</text>
+  <text x="704" y="176" class="hushamt" text-anchor="end">$0.28</text>
 
   <line x1="16" y1="196" x2="704" y2="196" class="rule"/>
 
   <text x="16" y="220" class="item">what hush takes off the bill</text>
-  <text x="704" y="220" class="hushamt" text-anchor="end">$0.18</text>
+  <text x="704" y="220" class="hushamt" text-anchor="end">$0.14</text>
 
   <text x="16" y="240" class="foot">The lockfile never floods the chat &#8212; hush keeps a tidy summary and the full copy one click away.</text>
 </svg>

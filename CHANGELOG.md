@@ -5,6 +5,16 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.10.0-alpha — 2026-07-19
+
+The built-in output style now speaks plainer: everyday words, numbered steps where order matters, a small table where facts repeat the same fields, and plain sentences when markdown would be overkill. The silence rules and hard caps are unchanged.
+
+New skill `/hush:craft-style` — build an output style in your own voice on hush's silent frame. It keeps track of every style it makes, verifies that hush's mechanics survive your rewrite, and activates a style only with your say-so.
+
+Fixed an issue where a crafted style barely changed Claude's behavior once activated. Activation now swaps the crafted style into hush's own slot, and swaps stock back on request.
+
+The README's benchmark numbers and charts are refreshed on the new default style.
+
 ## 0.9.4-alpha — 2026-07-18
 
 Fixed an issue where a session id derived from a Windows-style transcript path kept the folder prefix on non-Windows systems.

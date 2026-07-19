@@ -15,7 +15,7 @@
   <text x="16" y="50" class="sub">Fix a currency bug, ask why the order matters, write it up &#8212; a typical run of each, every reply at actual size</text>
 
   <text x="16" y="72" class="cap">no plugin &#183; 434 words</text>
-  <text x="380" y="72" class="caph">hush &#183; 217 words</text>
+  <text x="380" y="72" class="caph">hush &#183; 257 words</text>
 
     <rect x="16" y="86.0" width="168.5" height="4.4" rx="2.2" class="lead"/>
     <rect x="16" y="93.0" width="255.0" height="4.4" rx="2.2" class="ln"/>
@@ -68,31 +68,31 @@
     <rect x="16" y="466.8" width="99.4" height="4.4" rx="2.2" class="ln"/>
     <rect x="16" y="477.0" width="285.2" height="4.4" rx="2.2" class="lead"/>
     <rect x="16" y="484.0" width="280.9" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="86.0" width="276.6" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="93.0" width="250.6" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="100.0" width="255.0" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="107.0" width="272.2" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="114.0" width="38.9" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="124.2" width="280.9" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="131.2" width="125.3" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="141.4" width="272.2" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="148.4" width="99.4" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="158.6" width="276.6" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="165.6" width="263.6" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="172.6" width="280.9" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="179.6" width="142.6" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="189.8" width="259.3" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="196.8" width="250.6" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="203.8" width="272.2" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="210.8" width="242.0" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="217.8" width="237.7" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="224.8" width="64.8" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="235.0" width="108.0" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="245.2" width="86.4" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="255.4" width="242.0" height="4.4" rx="2.2" class="lead"/>
-    <rect x="380" y="262.4" width="285.2" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="269.4" width="255.0" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="276.4" width="263.6" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="283.4" width="259.3" height="4.4" rx="2.2" class="ln"/>
-    <rect x="380" y="290.4" width="276.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="86.0" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380" y="93.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="100.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="107.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="114.0" width="56.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="121.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="128.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="135.0" width="211.7" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="142.0" width="263.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="149.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="156.0" width="159.9" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="163.0" width="267.9" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="170.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="177.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="184.0" width="250.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="191.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="198.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="205.0" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="212.0" width="233.3" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="222.2" width="285.2" height="4.4" rx="2.2" class="lead"/>
+    <rect x="380" y="229.2" width="13" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="236.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="243.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="250.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="257.2" width="285.2" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="264.2" width="276.6" height="4.4" rx="2.2" class="ln"/>
+    <rect x="380" y="271.2" width="116.7" height="4.4" rx="2.2" class="ln"/>
 </svg>

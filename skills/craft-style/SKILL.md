@@ -1,6 +1,6 @@
 ---
 name: craft-style
-description: Builds a personal output style on hush's frame — the user's voice on the surface, hush's silence-and-structure mechanics copied verbatim underneath. Manages its own creations: lists them alongside stock Hush, edits them, and — with the user's consent — steps the plugin's forced style aside so a crafted one can run. A mechanical verifier confirms every invariant survived. Only the stock Hush style is benchmarked — crafted styles are unmeasured.
+description: Builds a personal output style on hush's frame — the user's voice on the surface, hush's silence-and-structure mechanics copied verbatim underneath. Manages its own creations: lists them alongside stock Hush, edits them, and — with the user's consent — swaps a crafted style into the plugin's forced slot so it binds like stock. A mechanical verifier confirms every invariant survived. Only the stock Hush style is benchmarked — crafted styles are unmeasured.
 when_to_use: Trigger when the user wants a personal or custom output style built on hush, wants to edit or switch a crafted style, says "make me a hush style", "hush but robotic", "craft a style", "custom output style", or invokes /hush:craft-style.
 argument-hint: "[voice description]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell, AskUserQuestion
@@ -20,7 +20,7 @@ Then route:
 
 - **No crafted styles found** → go to step 2 and create one.
 - **Crafted styles found** → ask the user (AskUserQuestion) what to do, listing every crafted style by name and destination alongside `Hush (stock, benchmarked)`: create a new style, edit one of the listed, or switch which style is active (step 5 handles the switch).
-- **A crafted style is selected in settings but the plugin copy carries the flag again** → a plugin update restored it. Say so and offer to re-run step 5's takeover before anything else.
+- **A `hush.md.stock` backup exists but the plugin's `hush.md` no longer carries `Unmeasured variant of Hush.` in its description** → a plugin update restored stock over a takeover. Say so and offer to re-run step 5's swap before anything else.
 
 ## 2. Gather three inputs
 
@@ -77,15 +77,16 @@ It lists every invariant that didn't survive. Fix the file and re-run until it e
 
 ## 5. Activate — only with the user's consent
 
-While `force-for-plugin: true` is present in the plugin's own style file, that style wins every session and a crafted style never runs. Activation therefore edits one line inside the installed plugin copy — ask the user first, every time, and touch nothing else in that file.
+A style delivered through `force-for-plugin: true` binds; the same content merely selected in settings under-delivers on the mechanics it copied. Activation therefore swaps the crafted style INTO the plugin's forced slot — ask the user first, every time.
 
 To activate a crafted style:
 
-1. Delete the `force-for-plugin: true` line from `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md`. Tell the user a plugin update restores the line, and that this skill notices and offers the fix on its next run (step 1).
-2. Select the style, preserving every other key in the settings file: project-level style → set `"outputStyle": "<name>"` in `<project>/.claude/settings.local.json`; user-level style → set it in `~/.claude/settings.json`, or the user picks it under `/config` → Output style.
-3. It takes effect at the next session.
+1. Back up the stock file: copy `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md` to `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md.stock` (non-`.md`, so it never registers as a style). Skip if the backup already exists.
+2. Overwrite `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md` with the crafted file's content, plus `force-for-plugin: true` added to its frontmatter. The crafted file at its step-2 destination stays untouched — it remains the editable master.
+3. Remove any `outputStyle` selection pointing at the crafted style; the forced slot makes it redundant.
+4. It takes effect at the next session. Tell the user a plugin update restores stock hush, and that this skill notices and offers the swap again on its next run (step 1).
 
-To switch back to `Hush (stock)`: restore the `force-for-plugin: true` line in the plugin copy and remove the `outputStyle` selection.
+To switch back to `Hush (stock)`: restore `hush.md` from `hush.md.stock`.
 
 If the user declines the takeover, the crafted file stays where it was written, inert until they activate it themselves.
 
