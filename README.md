@@ -59,17 +59,20 @@ Running [razor](https://github.com/V-Songbird/razor) too? Good instinct — the 
 
 ## What you can do
 
-hush runs itself; these two commands are extras:
+hush runs itself; these commands are extras:
 
 | You want to… | Command |
 | --- | --- |
 | Shrink a `CLAUDE.md` or notes file so every session that loads it costs less | `/hush:hush-compress <path>` |
 | See exactly what hush trimmed this session | `/hush:stats` |
+| Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
 
 > [!IMPORTANT]
 > `hush-compress` never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) for you to review and swap in yourself.
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
+
+`/hush:craft-style` makes the style yours — robotic, piratical, whatever you'd actually enjoy reading — while keeping everything that makes hush work. One honest caveat: the benchmark numbers on this page belong to the stock style, and nobody has measured your pirate voice.
 
 ## Benchmarks
 
@@ -122,7 +125,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder — activated with `/output-style`, checked by a mechanical verifier, the plugin itself never touched. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 
