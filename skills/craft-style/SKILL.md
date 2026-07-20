@@ -63,6 +63,7 @@ Rewrite the rest in the requested voice — the opening voice line under that ru
 Rules for the rewrite:
 
 - **Name the voice outright, in a sentence of its own in Register.** Writing the rules *in* the voice changes how the rules read, not how the reply sounds — a style whose prose was rewritten but whose voice was never stated produced replies indistinguishable from stock. Say what every final message should sound like.
+- **Then give the voice something to obey.** Naming it is not enough on its own: a style that asked for a ship's log voice, listing the words to use, produced none of them, and one that demanded uppercase produced none. What survives into the reply is a concrete element the model can check it did — a required closing line, a fixed opening form, a named section, a specific phrase in a specific place. The preset that ends every report with a `**Check:**` question gets that line every single time. Turn the voice into at least one requirement of that kind, or expect the voice not to arrive.
 - State every rule as the action to take, in positive form.
 - An exception says what it grants, and stops there.
 - Every number keeps its value.
