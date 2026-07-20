@@ -88,6 +88,9 @@ hush runs itself; these commands are extras:
 
 `/hush:craft-style` goes one further: your own voice, written to a file you own, with everything that makes hush work copied in verbatim and a verifier that checks it survived.
 
+> [!NOTE]
+> A style can change the words and the shape of the final message. It cannot rewrite Claude's grammar. Ask for a ship's log and you get a log heading and sailor's words around ordinary sentences; ask for Shakespeare and you get the vocabulary, not the syntax. `craft-style` builds what holds — a required opening or closing line, a named section, your own words for the recurring things — and steers you away from what doesn't.
+
 Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the four presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
 ## Benchmarks
