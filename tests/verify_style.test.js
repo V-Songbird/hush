@@ -165,3 +165,21 @@ test("exactly one skill describes the forced-slot swap", () => {
     );
   assert.deepStrictEqual(mentions, ["pick-style"]);
 });
+
+// The self-narration ban may be reworded by a voice, never dropped. Its quoted
+// openers carry the rule, so the verifier anchors those and leaves the sentence
+// around them free.
+test("dropping the self-narration examples is flagged", () => {
+  const body = canonicalBody.replace(/\("Let me\.\.\.", "Now I'll\.\.\."\)/, "");
+  const result = verify(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.startsWith("Register no-self-narration example missing")));
+});
+
+test("rewording the ban around its examples still passes", () => {
+  const body = canonicalBody.replace(
+    /No pleasantries, praise, hedging, or self-narration/,
+    "No greeting, no praise, no hedge, no self-narration"
+  );
+  const result = verify(canonical, variant(body));
+  assert.deepStrictEqual(result.problems, []);
+});

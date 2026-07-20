@@ -105,6 +105,14 @@ function verify(canonicalText, generatedText) {
     }
   }
 
+  // The self-narration ban is the one Register rule a voice may reword but not
+  // drop. Its quoted openers are what give it teeth, so they are the anchor —
+  // the sentence around them stays the author's to rewrite.
+  for (const quoted of (canSections["Register"] || "").match(/"[^"]+\.\.\."/g) || []) {
+    if (!generated.body.includes(quoted))
+      problems.push(`Register no-self-narration example missing: ${quoted}`);
+  }
+
   return { ok: problems.length === 0, problems };
 }
 

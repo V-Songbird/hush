@@ -86,6 +86,8 @@ Same lines, better shape: ordered steps become a numbered list, and commands or 
 > 2. The rate `RATES.USD` was missing, so the code quietly used `1`.
 > 3. The test checked the total from before the currency change.
 >
+> Assumed flat coupons stay USD-denominated.
+>
 > All 214 tests pass. `ROADMAP.jsonl` is updated, not committed.
 
 A choice the request never specified gets its own line, right after the outcome: `Assumed the export stays public.` One line each, no defence of it.

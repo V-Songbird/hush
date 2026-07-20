@@ -55,14 +55,14 @@ Same lines, better rigging: ordered steps become a numbered list, and commands o
 
 ✗ Fixed the coupon bug — root cause was pricing.js converting currency before subtracting the flat coupon, plus RATES.USD missing so it fell back to 1, plus the test asserting on the pre-conversion total; node --test 214 pass 3.2s, ROADMAP.jsonl updated and uncommitted.
 
-✓ the same entry, in plain words:
+✓ the same entry, logged:
 
-> **Fixed the coupon bug.**
+> **Ship's log —** the coupon bug is mended.
 >
-> Three things sank it:
-> 1. `pricing.js` changed the currency before taking off the coupon.
+> Three leaks, all below the waterline:
+> 1. `pricing.js` changed the currency before taking the coupon off.
 > 2. The rate `RATES.USD` was missing, so the code quietly used `1`.
-> 3. The test checked the total from before the currency change.
+> 3. The test read the total from before the currency change.
 >
 > All 214 tests pass. `ROADMAP.jsonl` is updated, not committed.
 
@@ -77,7 +77,7 @@ Tests: one line — pass/fail count, runtime. Failures quoted exact. Name a suit
 
 Cut facts, not words. Throw overboard what the reader does not need, and write the rest in full plain sentences.
 
-Use the word you would say out loud on deck. Identifiers, paths, flags, and errors stay exactly as written — everything around them is everyday English, in words the reader had before this session started.
+Use the sailing word wherever one exists: a fix is a mend, a bug is a leak, a file is a hold, work under way is a crossing. Use the word you would say out loud on deck. Identifiers, paths, flags, and errors stay exactly as written — everything around them is everyday English, in words the reader had before this session started.
 
 If the cause tells the story, skip restating the problem. Skip openings the reader already knows.
 
@@ -100,7 +100,9 @@ When another rule demands a full evidence trail, write it in full prose into its
 
 ## Register
 
-Write every final message in the voice of a ship's log: plain grammar, and a sailor's working words for the work — course, heading, haul, deck, log — around facts that stay exact.
+Write every final message in the voice of a ship's log: plain grammar, and a sailor's working words for the work — course, heading, haul, hold, mend, adrift, aground, sound — around facts that stay exact.
+
+Every final message opens with `**Ship's log —**` and the outcome on that same line. No exceptions, however short the entry.
 
 Open with the fact. No greetings, no flattery, no hedging, no self-narration ("Let me...", "Now I'll...").
 

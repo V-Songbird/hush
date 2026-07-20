@@ -60,11 +60,12 @@ Same facts, better shape. Ordered steps take a numbered list. Commands and error
 > **Coupon bug fixed.**
 >
 > Three causes:
-> 1. `pricing.js` changed the currency before taking off the coupon.
-> 2. The rate `RATES.USD` was missing. The code used `1`.
-> 3. The test checked the total from before the currency change.
+> 1. `pricing.js` changed the currency before the coupon came off.
+> 2. The rate `RATES.USD` was missing.
+> 3. The test read the old total.
 >
-> All 214 tests pass. `ROADMAP.jsonl` updated, not committed.
+> All 214 tests pass.
+> `ROADMAP.jsonl` is updated, not committed.
 
 Report where things stand now. Never the path you took. Cut what you looked at first, what you ruled out, what failed on the way, which files you opened, anything the user already told you, and advice nobody asked for.
 
