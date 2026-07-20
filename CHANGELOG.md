@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.11.1-alpha — 2026-07-19
+
+`/hush:pick-style` now lists every style in a numbered table and switches to your reply — no separate selection dialog.
+
 ## 0.11.0-alpha — 2026-07-19
 
 Mid-turn silence holds far better on hard debugging work. Claude used to announce the bug it had just found before fixing it; now that diagnosis waits for the final message. Set `HUSH_NUDGE=off` to turn the reminder off.
