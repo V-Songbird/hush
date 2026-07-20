@@ -13,6 +13,18 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js\"",
+            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\silence-nudge.js\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "hooks": [
@@ -68,6 +80,16 @@
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/narration-meter.js\"",
             "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\narration-meter.js\"",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js\"",
+            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\silence-nudge.js\"",
+            "timeout": 5
           }
         ]
       }

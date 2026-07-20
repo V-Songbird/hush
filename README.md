@@ -69,6 +69,7 @@ hush runs itself; these commands are extras:
 | --- | --- |
 | Shrink a `CLAUDE.md` or notes file so every session that loads it costs less | `/hush:hush-compress <path>` |
 | See exactly what hush trimmed this session | `/hush:stats` |
+| Try one of the four output styles hush ships, or hand back to stock | `/hush:pick-style` |
 | Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
 
 > [!IMPORTANT]
@@ -76,15 +77,18 @@ hush runs itself; these commands are extras:
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
-`/hush:craft-style` makes the style yours — robotic, piratical, whatever you'd actually enjoy reading — while keeping everything that makes hush work. It asks before letting your style take over from the built-in one, keeps track of every style it has made, and hands back to stock just as easily. One honest caveat: the benchmark numbers on this page belong to the stock style, and nobody has measured your pirate voice.
+`/hush:pick-style` is the shelf. Four styles ship with hush, same silent machinery underneath, and they differ only in what that one last message is *for*:
 
-Switch styles yourself any time: `/config` → **Output style**, or set `"outputStyle"` in `.claude/settings.local.json`. Either way it applies from the next session.
+| Style | What the final message does |
+| --- | --- |
+| **Chalkline** | Stops and asks before a decision that's expensive to undo, and names what it assumed |
+| **Sightline** | Hands back the one rule of the system that makes the fix make sense, then asks you a question |
+| **Rock** | Says it in as few hard words as the facts allow |
+| **Pirate** | Keeps a ship's log |
 
-```json
-{
-  "outputStyle": "my-crafted-style"
-}
-```
+`/hush:craft-style` goes one further: your own voice, written to a file you own, with everything that makes hush work copied in verbatim and a verifier that checks it survived.
+
+Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the four presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
 ## Benchmarks
 
@@ -137,7 +141,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier. With your say-so it swaps your style into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier; the four shipped presets are built the same way and pass the same check. With your say-so `pick-style` swaps whichever one you chose into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 

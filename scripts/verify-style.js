@@ -69,6 +69,16 @@ function verify(canonicalText, generatedText) {
   const canSections = sections(canonical.body);
   const genLines = new Set(generated.body.split("\n"));
 
+  // Everything above the first heading is preamble. Its first line is the
+  // one-message-per-turn rule and is a mechanic; the lines after it are the
+  // opening voice and stay rewritable.
+  const openingRule = (canonical.body.split(/^## /m)[0] || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .find(Boolean);
+  if (openingRule && !generated.body.includes(openingRule))
+    problems.push(`opening rule missing: ${openingRule.slice(0, 60)}`);
+
   for (const name of VERBATIM_SECTIONS) {
     const body = canSections[name];
     if (!body) {

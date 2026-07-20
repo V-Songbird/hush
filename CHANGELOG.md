@@ -5,6 +5,20 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.11.0-alpha — 2026-07-19
+
+Mid-turn silence holds far better on hard debugging work. Claude used to announce the bug it had just found before fixing it; now that diagnosis waits for the final message. Set `HUSH_NUDGE=off` to turn the reminder off.
+
+The built-in style states the one-message-per-turn rule up front and drops the list of examples that was teaching the behavior it meant to prevent. Shipped presets carry the same rules.
+
+`/hush:craft-style` now asks you to name the voice outright — writing the rules in a voice changed how the rules read, not how replies sounded.
+
+New skill `/hush:pick-style` — browse the output styles hush ships and switch between them. Four presets come with it: Chalkline asks before a decision that's costly to undo, Sightline explains the rule behind the fix, Rock keeps it blunt, and Pirate keeps a ship's log. Stock hush is always one command away.
+
+`/hush:craft-style` now hands activation to `/hush:pick-style`, so switching to a style you built and switching to a shipped one work the same way.
+
+Only the built-in style is benchmarked. The presets and anything you craft are unmeasured.
+
 ## 0.10.0-alpha — 2026-07-19
 
 The built-in output style now speaks plainer: everyday words, numbered steps where order matters, a small table where facts repeat the same fields, and plain sentences when markdown would be overkill. The silence rules and hard caps are unchanged.
