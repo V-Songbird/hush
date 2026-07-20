@@ -88,9 +88,13 @@ It lists every invariant that didn't survive. Fix the file and re-run until it e
 
 ## 5. Activate — only with the user's consent
 
-A style delivered through `force-for-plugin: true` binds; the same content merely selected in settings under-delivers on the mechanics it copied. So ask the user first, every time — and if they say yes, swap.
+A style delivered through `force-for-plugin: true` binds; the same content merely selected in settings under-delivers on the mechanics it copied. So ask the user first, every time — and if they say yes, run:
 
-`hush:pick-style` holds the one copy of that swap. Read `${CLAUDE_PLUGIN_ROOT}/skills/pick-style/SKILL.md` and follow its step 3 with the file you just wrote as the chosen style, or hand the user off to `/hush:pick-style`. Never restate the procedure here — one description of it, in one place.
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<the file you just wrote>"
+```
+
+This is the same mechanical swap `hush:pick-style` uses — one script, called from both skills, so the procedure never drifts between them.
 
 If the user declines the takeover, the crafted file stays where it was written, inert until they activate it themselves.
 

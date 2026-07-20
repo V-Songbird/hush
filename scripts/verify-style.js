@@ -133,4 +133,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { verify };
+module.exports = { verify, splitFrontmatter, parseFrontmatter, normalize };
