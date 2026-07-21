@@ -24,12 +24,12 @@
 
   <text x="16" y="120" class="item">what Claude wrote back</text>
   <text x="250" y="120" class="note">the reply</text>
-  <text x="704" y="120" class="amt" text-anchor="end">$0.023</text>
+  <text x="704" y="120" class="amt" text-anchor="end">$0.024</text>
 
   <line x1="16" y1="140" x2="704" y2="140" class="rule"/>
 
   <text x="16" y="164" class="tot">the session</text>
   <text x="704" y="164" class="tot" text-anchor="end">$0.179</text>
 
-  <text x="16" y="196" class="foot">A plugin that only shortens the reply is working on the <tspan class="em">$0.023</tspan>. hush works on the line above it too.</text>
+  <text x="16" y="196" class="foot">A plugin that only shortens the reply is working on the <tspan class="em">$0.024</tspan>. hush works on the line above it too.</text>
 </svg>

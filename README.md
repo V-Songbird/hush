@@ -102,7 +102,7 @@ We put hush up against plain Claude Code and two rivals — caveman, which tells
 
 **Being brief isn't enough.** Asking Claude to talk less saves under half a cent. An efficiency mode saves about one. hush saves two. Asking politely and actually doing the work are two different things.
 
-<p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.155; what Claude wrote back, the reply, $0.023; the session $0.179. A plugin that only shortens the reply is working on the $0.023" width="700"></p>
+<p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.155; what Claude wrote back, the reply, $0.024; the session $0.179. A plugin that only shortens the reply is working on the $0.024" width="700"></p>
 
 **Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on two cents of an eighteen-cent session. hush trims the logs and output before they hit your bill.
 
@@ -134,7 +134,8 @@ Every job, every setup — the wins **and** the ties and losses. Cheapest per ro
 | Fix a pagination bug | **$0.109** | $0.118 | $0.128 | $0.135 |
 | Rename an API across a codebase | $0.210 | $0.205 | **$0.204** | $0.214 |
 | Summarize a repo | $0.122 | **$0.113** | $0.135 | $0.144 |
-| Answer two code questions (no tools) | **$0.062** | $0.068 | $0.075 | $0.080 |
+| Explain a React re-render (no tools) | **$0.063** | $0.069 | $0.074 | $0.082 |
+| Explain rebase vs merge (no tools) | **$0.060** | $0.067 | $0.075 | $0.077 |
 | Write an email validator (no tools) | $0.079 | **$0.074** | $0.087 | $0.077 |
 | **Average** | $0.179 | $0.175 | $0.170 | **$0.159** |
 
