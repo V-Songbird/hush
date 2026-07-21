@@ -7,6 +7,10 @@ version field by convention).
 
 ## 0.12.2-alpha — 2026-07-21
 
+Pirate leads with the outcome in its own voice and adds no heading of its own.
+
+`/hush:craft-style` builds the voice you asked for and nothing else. A style gets a fixed opening or closing line only when you ask for one.
+
 Rock keeps its sentences short in practice, not only in principle, and now reads shorter than stock Hush on the same work.
 
 ## 0.12.1-alpha — 2026-07-21

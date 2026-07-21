@@ -64,12 +64,13 @@ What has to come through the rewrite intact, everywhere in the file:
 
 Step 4 checks all of it mechanically.
 
-Then four things, in this order:
+Then three things, in this order:
 
 1. **Put the redo line in Register.** Tell the model to read the finished message back and put it in the voice before sending, naming the two or three substitutions the voice turns on — `be` for is and are, `ye` for you, `-in'` for every -ing. A voice given as a step to carry out at write time reaches the reply; a voice merely described sits in the file.
-2. **Require one concrete element.** A fixed opening form, a required closing line, a named section — something the model can check it produced. This is the most reliable single thing in the file, and it lands every run.
-3. **Give the voice its own words for the recurring things.** A fix is a mend, a bug is a leak, a file is a hold.
-4. **Write the worked example fully in the voice.** It is the only reply the file shows, and the model writes what it was shown. Put the required element in it so it demonstrates itself.
+2. **Give the voice its own words for the recurring things.** A fix is a mend, a bug is a leak, a file is a hold.
+3. **Write the worked example fully in the voice.** It is the only reply the file shows, and the model writes what it was shown.
+
+**Build a fixed line only when the user asks for one.** A required opening form, a closing line, a named section — each lands in every single reply, more reliably than anything else in the file. That makes it the right tool when someone wants a heading on every report, and the wrong one otherwise: the voice is what they asked for, and a label nobody requested is not the voice. Ask before adding one.
 
 Rules for the rewrite:
 

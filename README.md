@@ -84,7 +84,7 @@ hush runs itself; these commands are extras:
 | **Chalkline** | Stops and asks before a decision that's expensive to undo, and names what it assumed |
 | **Sightline** | Hands back the one rule of the system that makes the fix make sense, then asks you a question |
 | **Rock** | Says it in as few hard words as the facts allow |
-| **Pirate** | Keeps a ship's log, and talks like it |
+| **Pirate** | Says it the way a pirate would say it |
 
 `/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
 
