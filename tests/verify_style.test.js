@@ -55,13 +55,36 @@ test("removing the harness-override paragraph fails Mid-turn silence", () => {
 test("altering a cap bullet in Final message is flagged", () => {
   const body = canonicalBody.replace("- **15 words**", "- **50 words**");
   const result = verify(canonical, variant(body));
-  assert.ok(result.problems.some((p) => p.startsWith("Final message line missing")));
+  assert.ok(result.problems.some((p) => p.includes("bold anchor dropped: **15 words**")));
 });
 
 test("removing a shape-table row is flagged", () => {
   const body = canonicalBody.replace(/^\| One fact[^\n]*\n/m, "");
   const result = verify(canonical, variant(body));
-  assert.ok(result.problems.some((p) => p.startsWith("Final message line missing")));
+  assert.ok(result.problems.some((p) => p.includes('table row "One fact" dropped')));
+});
+
+test("rewriting prose inside a guarded section passes", () => {
+  const body = canonicalBody
+    .replace("Emit no text between tool calls.", "Emit no text betwixt tool calls, matey.")
+    .replace("Then write one final message.", "Then write the one final message, and no more.");
+  const result = verify(canonical, variant(body));
+  assert.deepStrictEqual(result.problems, []);
+});
+
+test("gutting a guarded section to a stub is flagged", () => {
+  const body = canonicalBody.replace(
+    /(## Thoroughness\n\n)[\s\S]*?(\n## Never compress)/,
+    "$1Be thorough.$2"
+  );
+  const result = verify(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.includes('section "Thoroughness"')));
+});
+
+test("dropping an exception from Mid-turn silence is flagged", () => {
+  const body = canonicalBody.replace(/^3\. One single operation[^\n]*\n/m, "");
+  const result = verify(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.includes("listed items became")));
 });
 
 test("breaking the [hush ...] telemetry clause is flagged", () => {

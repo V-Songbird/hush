@@ -5,6 +5,16 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.12.0-alpha — 2026-07-20
+
+Styles now speak in the voice you asked for, not just about it. Ask `/hush:craft-style` for a pirate and the replies come back in dialect — `be` for is, `ye` for you, dropped g's — with paths, identifiers and error text still exact.
+
+The Pirate preset was rebuilt on the same footing and talks like a pirate throughout, not only in its heading. Rock reads blunter.
+
+`/hush:craft-style` writes your voice through the whole style file, and the verifier checks that hush's rules survived it — every number, every cap, every listed exception, one paragraph for one paragraph.
+
+Very old or ornate voices still arrive unevenly, and a heavy one can bury the technical terms you were looking for.
+
 ## 0.11.1-alpha — 2026-07-19
 
 `/hush:pick-style` now lists every style in a numbered table and switches to your reply — no separate selection dialog.

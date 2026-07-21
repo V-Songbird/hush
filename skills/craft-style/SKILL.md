@@ -48,31 +48,37 @@ keep-coding-instructions: true
 ---
 ```
 
-The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and it is what keeps a crafted style distinct from the presets hush ships. `force-for-plugin` stays out — that key belongs to the plugin's own copy only.
+The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and it is what keeps a crafted style distinct from the presets hush ships. `force-for-plugin` stays out — activation adds it.
 
-Copy these VERBATIM, byte for byte:
+**Write the whole file in the voice.** Every section, top to bottom: the silence rules, the caps, the thoroughness rules, the worked example, Register. The reply comes out in the register the file is written in, so the sections that stay in stock's plain English are the ones that decide how the reply sounds. This single choice is the difference between a style that speaks in the voice and one that only names it.
 
-- the first line above the first heading — the one-message-per-turn rule
-- the entire **Mid-turn silence**, **Thoroughness**, and **Never compress** sections
-- every `## ` heading, with its exact text
-- in **Final message**: the shape table and every bolded cap bullet
-- in **Register**: the paragraph about bracketed `[hush ...]` notes and the paragraph about hook-injected reminders
+What has to come through the rewrite intact, everywhere in the file:
 
-Rewrite the rest in the requested voice — the opening voice line under that rule, the prose around the table and caps in **Final message**, the worked example, the **Word economy** body, the rest of **Register**.
+- every number, at its exact value
+- every `inline code` span and every `**bold**` span, character for character
+- every listed exception and every shape-table row, one for one
+- one paragraph for each paragraph — reword a rule, never drop it
+- the first line above the first heading, and every `## ` heading text
+- the quoted openers inside the self-narration ban
+- verbatim: the paragraph about bracketed `[hush ...]` notes, and the paragraph about hook-injected reminders
+
+Step 4 checks all of it mechanically.
+
+Then four things, in this order:
+
+1. **Put the redo line in Register.** Tell the model to read the finished message back and put it in the voice before sending, naming the two or three substitutions the voice turns on — `be` for is and are, `ye` for you, `-in'` for every -ing. A voice given as a step to carry out at write time reaches the reply; a voice merely described sits in the file.
+2. **Require one concrete element.** A fixed opening form, a required closing line, a named section — something the model can check it produced. This is the most reliable single thing in the file, and it lands every run.
+3. **Give the voice its own words for the recurring things.** A fix is a mend, a bug is a leak, a file is a hold.
+4. **Write the worked example fully in the voice.** It is the only reply the file shows, and the model writes what it was shown. Put the required element in it so it demonstrates itself.
 
 Rules for the rewrite:
 
-- **Name the voice outright, in a sentence of its own in Register.** Writing the rules *in* the voice changes how the rules read, not how the reply sounds — a style whose prose was rewritten but whose voice was never stated produced replies indistinguishable from stock. Say what every final message should sound like.
-- **Then give the voice something to obey.** Naming it is not enough on its own: a style that asked for a ship's log voice, listing the words to use, produced none of them, and one that demanded uppercase produced none. What survives into the reply is a concrete element the model can check it did — a required closing line, a fixed opening form, a named section, a specific phrase in a specific place. The preset that ends every report with a `**Check:**` question gets that line every single time. Turn the voice into at least one requirement of that kind, or expect the voice not to arrive.
-- **Write the worked example in the voice, in full.** It is the only reply the file actually shows, and the model writes what it was shown. An example that keeps stock's plain wording teaches stock's plain wording, whatever the rules above it say. Include the required element in the example so it demonstrates itself.
-- **Give the voice its own words for the recurring things.** A short concrete list lands: a fix is a mend, a bug is a leak, a file is a hold. Those come through.
-
-Say what the style cannot do, before the user asks for it. **Words and shape carry; grammar does not.** A required line arrives every time, and a handful of substituted words arrive most of the time, but a wholesale change to sentence construction — early-modern syntax, dropped articles, an inverted clause order — does not survive into the reply. If the user asks for a voice defined by its grammar, build the closest thing made of words and shape, and tell them which half they are getting.
 - State every rule as the action to take, in positive form.
 - An exception says what it grants, and stops there.
-- Every number keeps its value.
 - Keep a clause that identifiers, paths, and error text stay verbatim, whatever the voice does.
-- The worked example must itself obey every cap, and must be written in the voice.
+- The worked example must itself obey every cap.
+
+Two things to say out loud when the requested voice is an old or ornate one — early-modern English, a heavily inflected register. It arrives about half the time, where a voice built on word substitution arrives every time. And a heavy one will sometimes reach for its own word in place of the technical term the reader came for. Build it, and tell the user which half they are getting.
 
 The mid-turn silence itself does not depend on any of this. It is re-stated at run time by `hooks/silence-nudge.js`, which is part of the plugin, not the style — so a crafted voice cannot weaken it, and a crafted style stays as quiet as stock.
 
