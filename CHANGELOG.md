@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.15.0-alpha — 2026-07-21
+
+Added the Anchor style preset — silent while working, then one chunked, signposted report built for limited attention. Tightened the shipped presets so every style keeps hush's silence contract, and style verification now enforces that contract in every mode.
+
 ## 0.14.0-alpha — 2026-07-21
 
 Fixed an issue where Claude could report a wrong total after hush condensed a very large output — the digest now counts only non-empty lines and steers any total or count to the full saved copy.
