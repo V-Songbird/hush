@@ -13,8 +13,8 @@
 
 <p align="center">
     <a href="https://github.com/V-Songbird/hush/stargazers"><img src="https://img.shields.io/github/stars/V-Songbird/hush?style=social" alt="GitHub stars"/></a>
-    <a href="https://https://github.com/V-Songbird/hush/blob/main/LICENSE"><img src="https://img.shields.io/github/license/github/spec-kit" alt="License"/></a>
-    <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="License"/></a>
+    <a href="https://github.com/V-Songbird/hush/blob/main/LICENSE"><img src="https://img.shields.io/github/license/V-Songbird/hush" alt="License"/></a>
+    <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
 > **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.174 an average session against $0.211 without it.
