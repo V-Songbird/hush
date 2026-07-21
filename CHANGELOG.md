@@ -5,13 +5,15 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.12.2-alpha — 2026-07-21
+
+Rock keeps its sentences short in practice, not only in principle, and now reads shorter than stock Hush on the same work.
+
 ## 0.12.1-alpha — 2026-07-21
 
 Fixed an issue where `/hush:pick-style` claimed a plugin update had replaced your style every time you switched back to stock Hush yourself.
 
 `/hush:pick-style` now tells you when the active style's file is gone from disk, instead of showing a table with nothing checked.
-
-Rock keeps its sentences short in practice, not only in principle, and now reads shorter than stock Hush on the same work.
 
 ## 0.12.0-alpha — 2026-07-20
 
