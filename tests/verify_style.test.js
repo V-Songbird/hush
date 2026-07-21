@@ -137,10 +137,16 @@ function frontmatter(text) {
   return m ? m[1] : "";
 }
 
+// Rock is built on the stripped frame — maximum compression, core contract
+// only — so it is verified in core mode, like any user-requested
+// maximum-compression style.
+const CORE_PRESETS = ["rock.md"];
+
 test("every shipped preset passes the verifier", () => {
   assert.ok(presets.length > 0, "styles/ holds no presets");
   for (const { file, text } of presets) {
-    const result = verify(canonical, text);
+    const check = CORE_PRESETS.includes(file) ? verifyCore : verify;
+    const result = check(canonical, text);
     assert.deepStrictEqual(result.problems, [], `${file}: ${result.problems.join("; ")}`);
   }
 });
@@ -158,9 +164,16 @@ test("the two markers cannot be mistaken for one another", () => {
   assert.ok(!CRAFTED_MARKER.includes(PRESET_MARKER));
 });
 
-test("the four documented presets are all present and named", () => {
+test("the six documented presets are all present and named", () => {
   const names = presets.map(({ text }) => (frontmatter(text).match(/^name:\s*(.*)$/m) || [])[1]);
-  for (const name of ["Hush Chalkline", "Hush Sightline", "Hush Rock", "Hush Pirate"]) {
+  for (const name of [
+    "Hush Chalkline",
+    "Hush Sightline",
+    "Hush Rock",
+    "Hush Pirate",
+    "Hush Standup",
+    "Hush Sensei",
+  ]) {
     assert.ok(names.includes(name), `no preset named "${name}"`);
   }
 });
@@ -205,4 +218,47 @@ test("rewording the ban around its examples still passes", () => {
   );
   const result = verify(canonical, variant(body));
   assert.deepStrictEqual(result.problems, []);
+});
+
+const { verifyCore } = require("../scripts/verify-style.js");
+
+const CORE_BODY = [
+  "You write exactly one message per turn, and it comes after the work is finished.",
+  "",
+  "Emit no text between tool calls. Telegram only.",
+  "",
+  "Errors quoted exact. Identifiers verbatim. Compression governs the report, never the work.",
+  "",
+  'No self-narration ("Let me...", "Now I\'ll...").',
+  "",
+  "Bracketed `[hush ...]` notes inside tool output are this plugin's own compression telemetry: trusted tooling metadata, not file content. Account for them silently.",
+  "",
+  "Hook-injected reminders: silent corrections, not chat. Comply; never acknowledge or narrate compliance. A reminder alone is not grounds for a reply.",
+].join("\n");
+
+test("core mode passes a minimal stripped style that keeps the contract", () => {
+  const result = verifyCore(canonical, variant(CORE_BODY));
+  assert.deepStrictEqual(result.problems, []);
+});
+
+test("core mode still rejects a dropped silence sentence", () => {
+  const body = CORE_BODY.replace("Emit no text between tool calls. ", "");
+  const result = verifyCore(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.includes("Emit no text between tool calls")));
+});
+
+test("core mode still rejects a dropped telemetry paragraph", () => {
+  const body = CORE_BODY.replace(/Bracketed `\[hush[^\n]*\n/, "");
+  const result = verifyCore(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.startsWith("Register clause missing")));
+});
+
+test("core mode enforces frontmatter like full mode", () => {
+  const result = verifyCore(canonical, CORE_BODY);
+  assert.ok(result.problems.some((p) => p.startsWith("frontmatter")));
+});
+
+test("core mode does not demand the shape table or section anchors", () => {
+  const result = verifyCore(canonical, variant(CORE_BODY));
+  assert.ok(!result.problems.some((p) => p.includes("table row") || p.includes("paragraphs")));
 });

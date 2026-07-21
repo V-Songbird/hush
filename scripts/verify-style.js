@@ -86,6 +86,60 @@ function anchors(sectionBody) {
   };
 }
 
+// Core mode: for a style built on the stripped frame (maximum compression at
+// the user's explicit request). Checks only the core contract — silence,
+// thoroughness-over-report, never-compress essentials, the telemetry and hook
+// paragraphs — all derived from the canonical file. The readability frame
+// (shape table, caps, paragraph structure) is deliberately not checked.
+function verifyCore(canonicalText, generatedText) {
+  const problems = [];
+  const canonical = splitFrontmatter(normalize(canonicalText));
+  const generated = splitFrontmatter(normalize(generatedText));
+
+  if (generated.frontmatter === null) {
+    problems.push("frontmatter: missing");
+  } else {
+    const fm = parseFrontmatter(generated.frontmatter);
+    if (!fm.name) problems.push("frontmatter: name is missing");
+    if (fm["keep-coding-instructions"] !== "true")
+      problems.push("frontmatter: keep-coding-instructions must be true");
+    if ("force-for-plugin" in fm)
+      problems.push("frontmatter: force-for-plugin must not be copied");
+    if (!/unmeasured/i.test(fm.description || ""))
+      problems.push('frontmatter: description must say "unmeasured"');
+  }
+
+  const canSections = sections(canonical.body);
+  const openingRule = (canonical.body.split(/^## /m)[0] || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .find(Boolean);
+  if (openingRule && !generated.body.includes(openingRule))
+    problems.push(`opening rule missing: ${openingRule.slice(0, 60)}`);
+
+  for (const phrase of [
+    "Emit no text between tool calls",
+    "quoted exact",
+    "verbatim",
+    "never the work",
+  ]) {
+    if (!generated.body.includes(phrase)) problems.push(`core phrase missing: ${phrase}`);
+  }
+
+  for (const para of paragraphs(canSections["Register"] || "")) {
+    if (para.includes("[hush") || para.startsWith("Hook-injected")) {
+      if (!generated.body.includes(para))
+        problems.push(`Register clause missing: ${para.slice(0, 60)}`);
+    }
+  }
+  for (const quoted of (canSections["Register"] || "").match(/"[^"]+\.\.\."/g) || []) {
+    if (!generated.body.includes(quoted))
+      problems.push(`Register no-self-narration example missing: ${quoted}`);
+  }
+
+  return { ok: problems.length === 0, problems };
+}
+
 function verify(canonicalText, generatedText) {
   const problems = [];
   const canonical = splitFrontmatter(normalize(canonicalText));
@@ -173,13 +227,16 @@ function verify(canonicalText, generatedText) {
 }
 
 function main() {
-  const [canonicalPath, generatedPath] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const core = args.includes("--core");
+  const [canonicalPath, generatedPath] = args.filter((a) => a !== "--core");
   if (!canonicalPath || !generatedPath) {
-    console.error("Usage: verify-style.js <canonical-hush.md> <generated-style.md>");
+    console.error("Usage: verify-style.js <canonical-hush.md> <generated-style.md> [--core]");
     process.exit(1);
   }
   const fs = require("fs");
-  const result = verify(
+  const check = core ? verifyCore : verify;
+  const result = check(
     fs.readFileSync(canonicalPath, "utf-8"),
     fs.readFileSync(generatedPath, "utf-8")
   );
@@ -189,4 +246,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { verify, splitFrontmatter, parseFrontmatter, normalize };
+module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize };

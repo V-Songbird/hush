@@ -69,7 +69,7 @@ hush runs itself; these commands are extras:
 | --- | --- |
 | Shrink a `CLAUDE.md` or notes file so every session that loads it costs less | `/hush:hush-compress <path>` |
 | See exactly what hush trimmed this session | `/hush:stats` |
-| Try one of the four output styles hush ships, or hand back to stock | `/hush:pick-style` |
+| Try one of the six output styles hush ships, or hand back to stock | `/hush:pick-style` |
 | Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
 
 > [!IMPORTANT]
@@ -77,20 +77,22 @@ hush runs itself; these commands are extras:
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
-`/hush:pick-style` is the shelf. Four styles ship with hush, same silent machinery underneath, and they differ only in what that one last message is *for*:
+`/hush:pick-style` is the shelf. Six styles ship with hush, same silent machinery underneath, and they differ only in what that one last message is *for*:
 
 | Style | What the final message does |
 | --- | --- |
 | **Chalkline** | Stops and asks before a decision that's expensive to undo, and names what it assumed |
 | **Sightline** | Hands back the one rule of the system that makes the fix make sense, then asks you a question |
-| **Rock** | Says it in as few hard words as the facts allow |
+| **Rock** | Pure telegram — noun chains, dropped articles, one fix per question, every fact kept |
 | **Pirate** | Says it the way a pirate would say it |
+| **Standup** | Shapes it as `Done:` / `Next:` / `Blocked:`, ready to paste in the team channel |
+| **Sensei** | Ends with one `Lesson:` line — why it broke and the pattern to remember |
 
 `/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
 
-Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's, the whole way through, with the paths and the error text still exact. The trick is that your voice gets written into every line of the style file, not just the line that names it: Claude answers in the register it was handed. `craft-style` does that part for you.
+Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's, the whole way through, with the paths and the error text still exact. The trick is that your voice gets written into every line of the style file, not just the line that names it: Claude answers in the register it was handed. `craft-style` does that part for you. Want it terser than stock's readability rules allow? Ask for maximum compression — the skill strips the readability frame Rock-style, keeps the silence and the exact-facts contract, and tells you what you traded.
 
-Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the four presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
+Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
 ## Benchmarks
 
@@ -143,7 +145,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier; the four shipped presets are built the same way and pass the same check. With your say-so `pick-style` swaps whichever one you chose into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier; the six shipped presets are built the same way and pass the same verifier. With your say-so `pick-style` swaps whichever one you chose into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 

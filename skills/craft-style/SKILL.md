@@ -50,7 +50,7 @@ keep-coding-instructions: true
 
 The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and it is what keeps a crafted style distinct from the presets hush ships. `force-for-plugin` stays out — activation adds it.
 
-**Write the whole file in the voice.** Every section, top to bottom: the silence rules, the caps, the thoroughness rules, the worked example, Register. The reply comes out in the register the file is written in, so the sections that stay in stock's plain English are the ones that decide how the reply sounds. This single choice is the difference between a style that speaks in the voice and one that only names it.
+**Write the whole file in the voice.** Every section, top to bottom: the silence rules, the caps, the thoroughness rules, the worked example, Register. When the voice needs an extra push — a distant register, a weak first draft — open the file with one line above the opening rule: `Agent personality: <the voice in one sentence>.` The reply comes out in the register the file is written in, so the sections that stay in stock's plain English are the ones that decide how the reply sounds. This single choice is the difference between a style that speaks in the voice and one that only names it.
 
 What has to come through the rewrite intact, everywhere in the file:
 
@@ -66,8 +66,8 @@ Step 4 checks all of it mechanically.
 
 Then three things, in this order:
 
-1. **Put the redo line in Register.** Tell the model to read the finished message back and put it in the voice before sending, naming the two or three substitutions the voice turns on — `be` for is and are, `ye` for you, `-in'` for every -ing. A voice given as a step to carry out at write time reaches the reply; a voice merely described sits in the file.
-2. **Give the voice its own words for the recurring things.** A fix is a mend, a bug is a leak, a file is a hold.
+1. **Put the redo line in Register.** Tell the model to read the finished message back and put it in the voice before sending, naming the two or three substitutions the voice turns on — `be` for is and are, `ye` for you, `-in'` for every -ing. A voice given as a step to carry out at write time reaches the reply; a voice merely described sits in the file. Anchor every substitution to something each reply contains: a function word anchors itself, and a particle or interjection anchors to a position — the first line and the last line each end in `nya~`. Write the position, not "where it falls natural" — a technical answer offers no natural place, and the particle drops out.
+2. **Give the voice its own words for the recurring things.** A fix is a mend, a bug is a leak, a file is a hold. Kaomoji, an emoji, a short asterisk aside, an address for the reader — the same class; give each a position, and they cost almost nothing. When the user wants chatty storytelling too, name its moves as quoted phrases with positions — a `guess what?` introducing the finding, a celebration line first — and write the worked example as the exact target reply; that lands the whole persona for ten or twenty words more.
 3. **Write the worked example fully in the voice.** It is the only reply the file shows, and the model writes what it was shown.
 
 **Build a fixed line only when the user asks for one.** A required opening form, a closing line, a named section — each lands in every single reply, more reliably than anything else in the file. That makes it the right tool when someone wants a heading on every report, and the wrong one otherwise: the voice is what they asked for, and a label nobody requested is not the voice. Ask before adding one.
@@ -81,6 +81,12 @@ Rules for the rewrite:
 
 Two things to say out loud when the requested voice is an old or ornate one — early-modern English, a heavily inflected register. It arrives about half the time, where a voice built on word substitution arrives every time. And a heavy one will sometimes reach for its own word in place of the technical term the reader came for. Build it, and tell the user which half they are getting.
 
+One thing to say out loud when the voice speaks in status tokens — a machine's `NOMINAL` and `FAULT`, a soldier's `mission complete`. Those words fire on tasks that end in a verdict and sit out explanations, and a register that terse reads much like stock Hush already. What makes such a voice land on every reply is a status line opening each one — that is a fixed line, so offer it and let the user decide.
+
+Default to the smallest output the voice allows. When the requested voice inherently lengthens replies — a dialect's extra syllables, a persona's storytelling — tell the user the price while building, and give them the leaner cut of the same voice as the alternative.
+
+**Maximum compression, only when the user asks for it.** The sections this skill guards carry stock's readability rules, and those rules are what keep a crafted style above telegram density. At the user's explicit request, build on the stripped frame instead: keep the opening rule, `Emit no text between tool calls`, errors `quoted exact`, identifiers `verbatim`, compression governing the report and `never the work`, the self-narration ban with its quoted openers, and the two verbatim Register paragraphs — then write the rest as pure telegram rules with a shape example. Verify with `--core` (step 4). Tell the user what they traded away: stock's readability guarantees, not its silence — the silence hooks are plugin-side and hold regardless.
+
 The mid-turn silence itself does not depend on any of this. It is re-stated at run time by `hooks/silence-nudge.js`, which is part of the plugin, not the style — so a crafted voice cannot weaken it, and a crafted style stays as quiet as stock.
 
 ## 4. Verify mechanically
@@ -92,6 +98,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-style.js" "${CLAUDE_PLUGIN_ROOT}/outp
 ```
 
 It lists every invariant that didn't survive. Fix the file and re-run until it exits 0.
+
+For a maximum-compression style built on the stripped frame, append `--core` — it checks the core contract only and skips the readability anchors.
 
 ## 5. Activate — only with the user's consent
 

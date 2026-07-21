@@ -5,6 +5,16 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.13.0-alpha — 2026-07-21
+
+Two new presets on the shelf. **Standup** shapes every report as `Done:` / `Next:` / `Blocked:`, ready for the team channel. **Sensei** closes each task with one `Lesson:` line — why it broke and the pattern to remember.
+
+**Rock** is now pure telegram: noun chains, dropped articles, `=` for cause — a question gets what, why, and one fix. Every fact, identifier, and error string stays exact, and the mid-turn silence is untouched.
+
+`/hush:craft-style` can now build a maximum-compression style like Rock when you ask for one, and tells you what you trade: stock's readability guarantees, never its silence.
+
+Crafted voices carry further: distant registers get an extra push, and a voice can include character markers — a kaomoji, an aside, an address for the reader. The skill warns you when a voice inherently lengthens replies and offers the leaner cut.
+
 ## 0.12.2-alpha — 2026-07-21
 
 Pirate leads with the outcome in its own voice and adds no heading of its own.
