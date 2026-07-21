@@ -11,6 +11,8 @@ Fixed an issue where `/hush:pick-style` claimed a plugin update had replaced you
 
 `/hush:pick-style` now tells you when the active style's file is gone from disk, instead of showing a table with nothing checked.
 
+Rock keeps its sentences short in practice, not only in principle, and now reads shorter than stock Hush on the same work.
+
 ## 0.12.0-alpha — 2026-07-20
 
 Styles now speak in the voice you asked for, not just about it. Ask `/hush:craft-style` for a pirate and the replies come back in dialect — `be` for is, `ye` for you, dropped g's — with paths, identifiers and error text still exact.
