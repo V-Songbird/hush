@@ -140,8 +140,8 @@ function frontmatter(text) {
 // Presets that abandon stock's readability frame keep only the core contract
 // and are verified in core mode: rock strips the frame down to telegram,
 // glyph swaps words for emotes, sensei replaces it with a teaching skeleton
-// that has no length caps.
-const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md"];
+// that has no length caps, anchor trades the caps for chunked signposting.
+const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md", "anchor.md"];
 
 test("every shipped preset passes the verifier", () => {
   assert.ok(presets.length > 0, "styles/ holds no presets");

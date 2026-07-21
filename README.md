@@ -81,6 +81,7 @@ hush runs itself; these commands are extras:
 
 | Style | What the final message does |
 | --- | --- |
+| **Anchor** | Chunked, signposted reporting built for limited attention — answer first, one idea per sentence, depth below |
 | **Glyph** | Swaps words for emotes — one glyph-led line per fact, `✅ 214 tests, 3.2s` |
 | **Rock** | Pure telegram — noun chains, dropped articles, one fix per question, every fact kept |
 | **Pirate** | Says it the way a pirate would say it |
