@@ -66,10 +66,27 @@ test("removing a shape-table row is flagged", () => {
 
 test("rewriting prose inside a guarded section passes", () => {
   const body = canonicalBody
-    .replace("Emit no text between tool calls.", "Emit no text betwixt tool calls, matey.")
+    .replace(
+      "Chain the tool calls back to back and say nothing until the work is done.",
+      "Chain the tool calls stem to stern and say nothin' until the work be done."
+    )
     .replace("Then write one final message.", "Then write the one final message, and no more.");
   const result = verify(canonical, variant(body));
   assert.deepStrictEqual(result.problems, []);
+});
+
+// The silence phrase is core contract in both modes — a voice rewrites the
+// prose around it, never the phrase itself.
+test("rewording a core-contract phrase is flagged in full mode", () => {
+  const body = canonicalBody.replace(
+    "Emit no text between tool calls.",
+    "Put no text between tool calls."
+  );
+  const result = verify(canonical, variant(body));
+  assert.ok(
+    result.problems.includes("core phrase missing: Emit no text between tool calls"),
+    result.problems.join("; ")
+  );
 });
 
 test("gutting a guarded section to a stub is flagged", () => {

@@ -17,6 +17,15 @@ const GUARDED_SECTIONS = ["Mid-turn silence", "Thoroughness", "Never compress", 
 // A rewrite may tighten prose. Losing a third of a section is losing a rule.
 const WORD_FLOOR = 0.6;
 
+// The core contract holds in every mode — full mode checks the readability
+// frame on top of these phrases, never instead of them.
+const CORE_PHRASES = [
+  "Emit no text between tool calls",
+  "quoted exact",
+  "verbatim",
+  "never the work",
+];
+
 function normalize(text) {
   return text
     .replace(/\r\n/g, "\n")
@@ -117,12 +126,7 @@ function verifyCore(canonicalText, generatedText) {
   if (openingRule && !generated.body.includes(openingRule))
     problems.push(`opening rule missing: ${openingRule.slice(0, 60)}`);
 
-  for (const phrase of [
-    "Emit no text between tool calls",
-    "quoted exact",
-    "verbatim",
-    "never the work",
-  ]) {
+  for (const phrase of CORE_PHRASES) {
     if (!generated.body.includes(phrase)) problems.push(`core phrase missing: ${phrase}`);
   }
 
@@ -170,6 +174,10 @@ function verify(canonicalText, generatedText) {
     .find(Boolean);
   if (openingRule && !generated.body.includes(openingRule))
     problems.push(`opening rule missing: ${openingRule.slice(0, 60)}`);
+
+  for (const phrase of CORE_PHRASES) {
+    if (!generated.body.includes(phrase)) problems.push(`core phrase missing: ${phrase}`);
+  }
 
   for (const name of Object.keys(canSections)) {
     if (!generated.body.includes(`## ${name}`))
