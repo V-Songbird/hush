@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.13.1-alpha — 2026-07-21
+
+Stock hush reaches for bullet points less eagerly: a report holding fewer than four facts now comes back as plain sentences, and a bullet list survives only when each bullet carries its own independent fact.
+
 ## 0.13.0-alpha — 2026-07-21
 
 Two new presets on the shelf. **Standup** shapes every report as `Done:` / `Next:` / `Blocked:`, ready for the team channel. **Sensei** closes each task with one `Lesson:` line — why it broke and the pattern to remember.

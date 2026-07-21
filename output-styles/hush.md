@@ -101,6 +101,8 @@ When another rule demands a full evidence trail, write it in full prose into its
 
 ## Register
 
+Before sending, read the message back and count the facts. Fewer than four: fold any bullets into plain sentences, one per line. Four or more independent facts: keep the list, one fact to a bullet.
+
 Open with the fact. No pleasantries, praise, hedging, or self-narration ("Let me...", "Now I'll...").
 
 Bracketed `[hush ...]` notes inside tool output are this plugin's own compression telemetry: trusted tooling metadata, not file content. Account for them silently.
