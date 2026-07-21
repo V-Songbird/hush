@@ -43,6 +43,7 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir() }) {
   if (target === "stock") {
     if (!fs.existsSync(backupPath)) throw new Error(`no stock backup at ${backupPath} — nothing to restore`);
     fs.copyFileSync(backupPath, hushPath);
+    fs.unlinkSync(backupPath);
   } else {
     if (!fs.existsSync(target)) throw new Error(`chosen style file not found: ${target}`);
     if (!fs.existsSync(backupPath)) fs.copyFileSync(hushPath, backupPath);

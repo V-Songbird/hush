@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.12.1-alpha — 2026-07-21
+
+Fixed an issue where `/hush:pick-style` claimed a plugin update had replaced your style every time you switched back to stock Hush yourself.
+
+`/hush:pick-style` now tells you when the active style's file is gone from disk, instead of showing a table with nothing checked.
+
 ## 0.12.0-alpha — 2026-07-20
 
 Styles now speak in the voice you asked for, not just about it. Ask `/hush:craft-style` for a pirate and the replies come back in dialect — `be` for is, `ye` for you, dropped g's — with paths, identifiers and error text still exact.

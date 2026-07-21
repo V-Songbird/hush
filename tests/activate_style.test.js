@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const { activate } = require("../scripts/activate-style.js");
+const { shelf } = require("../scripts/list-styles.js");
 
 function write(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -67,6 +68,19 @@ test("restoring stock copies the backup back and requires one to exist", () => {
   assert.strictEqual(result.name, "Hush");
   const hushMd = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf-8");
   assert.match(hushMd, /name: Hush\n/);
+});
+
+test("restoring stock clears the backup, so no update warning follows", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
+  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
+  activate(presetPath, { pluginRoot, projectDir, homeDir });
+
+  const result = activate("stock", { pluginRoot, projectDir, homeDir });
+
+  assert.strictEqual(result.backedUp, false);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.stock")), false);
+  assert.strictEqual(shelf(pluginRoot, projectDir, homeDir).restoredOverTakeover, false);
 });
 
 test("a missing chosen file is an error, not a partial write", () => {

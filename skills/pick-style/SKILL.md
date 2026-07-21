@@ -20,7 +20,7 @@ Run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/list-styles.js"
 ```
 
-It prints one JSON object: `styles` (each with `index`, `name`, `description`, `source`, `path`, `active`), plus `stockBackupExists` and `restoredOverTakeover`.
+It prints one JSON object: `styles` (each with `index`, `name`, `description`, `source`, `path`, `active`), plus `activeName`, `activeOnShelf`, `stockBackupExists`, and `restoredOverTakeover`.
 
 Render it as exactly this table, one row per entry in `styles`, in index order:
 
@@ -31,6 +31,8 @@ Render it as exactly this table, one row per entry in `styles`, in index order:
 ```
 
 If `restoredOverTakeover` is `true`, add one line above the table: "A plugin update restored stock Hush over a prior takeover." Otherwise add nothing.
+
+If `activeOnShelf` is `false`, add one line above the table instead: "`<activeName>` is active but its file is no longer on disk — no row below is checked." This means no row in the table will show ✓.
 
 If the invocation already named a style, match it case-insensitively against `styles[].name`. Exactly one match → skip straight to step 2 with that entry's `path`, no table shown. No match, or more than one → show the table as above and ask the user to reply with a row number.
 
