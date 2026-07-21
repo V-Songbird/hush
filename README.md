@@ -69,7 +69,7 @@ hush runs itself; these commands are extras:
 | --- | --- |
 | Shrink a `CLAUDE.md` or notes file so every session that loads it costs less | `/hush:hush-compress <path>` |
 | See exactly what hush trimmed this session | `/hush:stats` |
-| Try one of the six output styles hush ships, or hand back to stock | `/hush:pick-style` |
+| Try one of the output styles hush ships, or hand back to stock | `/hush:pick-style` |
 | Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
 
 > [!IMPORTANT]
@@ -77,16 +77,14 @@ hush runs itself; these commands are extras:
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
-`/hush:pick-style` is the shelf. Six styles ship with hush, same silent machinery underneath, and they differ only in what that one last message is *for*:
+`/hush:pick-style` is the shelf. Every style on it ships with the same silent machinery underneath, and they differ only in what that one last message is *for*:
 
 | Style | What the final message does |
 | --- | --- |
-| **Chalkline** | Stops and asks before a decision that's expensive to undo, and names what it assumed |
-| **Sightline** | Hands back the one rule of the system that makes the fix make sense, then asks you a question |
+| **Glyph** | Swaps words for emotes — one glyph-led line per fact, `✅ 214 tests, 3.2s` |
 | **Rock** | Pure telegram — noun chains, dropped articles, one fix per question, every fact kept |
 | **Pirate** | Says it the way a pirate would say it |
-| **Standup** | Shapes it as `Done:` / `Next:` / `Blocked:`, ready to paste in the team channel |
-| **Sensei** | Ends with one `Lesson:` line — why it broke and the pattern to remember |
+| **Sensei** | Teaches every change at newcomer depth — what, why, how, with examples and diagrams, closed by a `Lesson:` and a `Check:` |
 
 `/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
 

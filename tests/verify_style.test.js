@@ -137,10 +137,11 @@ function frontmatter(text) {
   return m ? m[1] : "";
 }
 
-// Rock is built on the stripped frame — maximum compression, core contract
-// only — so it is verified in core mode, like any user-requested
-// maximum-compression style.
-const CORE_PRESETS = ["rock.md"];
+// Presets that abandon stock's readability frame keep only the core contract
+// and are verified in core mode: rock strips the frame down to telegram,
+// glyph swaps words for emotes, sensei replaces it with a teaching skeleton
+// that has no length caps.
+const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md"];
 
 test("every shipped preset passes the verifier", () => {
   assert.ok(presets.length > 0, "styles/ holds no presets");
@@ -164,18 +165,26 @@ test("the two markers cannot be mistaken for one another", () => {
   assert.ok(!CRAFTED_MARKER.includes(PRESET_MARKER));
 });
 
-test("the six documented presets are all present and named", () => {
-  const names = presets.map(({ text }) => (frontmatter(text).match(/^name:\s*(.*)$/m) || [])[1]);
-  for (const name of [
-    "Hush Chalkline",
-    "Hush Sightline",
-    "Hush Rock",
-    "Hush Pirate",
-    "Hush Standup",
-    "Hush Sensei",
-  ]) {
-    assert.ok(names.includes(name), `no preset named "${name}"`);
+// No hardcoded roster: the README's style table is the documentation surface,
+// so disk and table are reconciled against each other instead of a fixed list.
+test("the README style table matches the presets on disk", () => {
+  const readme = fs
+    .readFileSync(path.join(pluginRoot, "README.md"), "utf-8")
+    .replace(/\r\n/g, "\n");
+  const lines = readme.split("\n");
+  const start = lines.findIndex((l) => /^\|\s*Style\s*\|/.test(l));
+  assert.ok(start !== -1, "README style table not found");
+  const labels = [];
+  for (let i = start + 2; i < lines.length && lines[i].startsWith("|"); i++) {
+    const m = lines[i].match(/^\|\s*\*\*([^*]+)\*\*\s*\|/);
+    if (m) labels.push(m[1].trim());
   }
+  assert.ok(labels.length > 0, "README style table holds no rows");
+  const documented = labels.map((l) => `Hush ${l}`).sort();
+  const onDisk = presets
+    .map(({ text }) => (frontmatter(text).match(/^name:\s*(.*)$/m) || [])[1])
+    .sort();
+  assert.deepStrictEqual(onDisk, documented);
 });
 
 test("output-styles/ registers hush.md and nothing else, at any depth", () => {
