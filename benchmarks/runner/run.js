@@ -39,6 +39,7 @@ const concurrency = Number(flag('concurrency', CONFIG.concurrency));
 // Off by default — the extra tmpdir I/O has no business skewing a cost/
 // timing measurement nobody asked for.
 const hushDebug = argv.includes('--hush-debug');
+const resume = argv.includes('--resume');
 
 // --- arms -------------------------------------------------------------------
 // The hush plugin lives one directory up from this harness; resolve it there
@@ -68,18 +69,27 @@ const ARMS = {
   },
 };
 
-// Optional bring-your-own-rival arm. We never name or ship a rival plugin —
-// you point this at whatever plugin dir you want to measure against.
-const rivalDir = flag('rival-dir', null);
-if (rivalDir) {
-  const rivalName = flag('rival-name', 'rival');
-  const rivalSettings = flag('rival-settings', null);
-  ARMS[rivalName] = {
-    pluginDirs: [path.resolve(rivalDir)],
-    ...(rivalSettings ? { settings: path.resolve(rivalSettings) } : {}),
-    env: parseRivalEnv(flag('rival-env', null)),
-  };
+// Optional bring-your-own-rival arms. We never name or ship a rival plugin —
+// you point this at whatever plugin dir you want to measure against. The
+// flags repeat for extra rivals and pair up by position: the Nth --rival-name /
+// --rival-settings / --rival-env belongs to the Nth --rival-dir.
+function flagAll(name) {
+  const out = [];
+  for (let i = 0; i < argv.length; i++) if (argv[i] === `--${name}`) out.push(argv[i + 1]);
+  return out;
 }
+const rivalDirs = flagAll('rival-dir');
+const rivalNames = flagAll('rival-name');
+const rivalSettingsList = flagAll('rival-settings');
+const rivalEnvs = flagAll('rival-env');
+rivalDirs.forEach((dir, i) => {
+  const name = rivalNames[i] || (rivalDirs.length > 1 ? `rival${i + 1}` : 'rival');
+  ARMS[name] = {
+    pluginDirs: [path.resolve(dir)],
+    ...(rivalSettingsList[i] ? { settings: path.resolve(rivalSettingsList[i]) } : {}),
+    env: parseRivalEnv(rivalEnvs[i] || null),
+  };
+});
 
 const armNames = (flag('arms', Object.keys(ARMS).join(','))).split(',');
 
@@ -186,8 +196,26 @@ function spawnClaude(args, workDir, env, prompt) {
 // workdir, so real history accumulation and re-send costs show up in
 // contextTraffic the way they do in an actual multi-prompt session). Per-call
 // metrics are summed; finalText/check come from the last turn.
+// A batch is a long chain of paid API calls, and the runner is a child of
+// whatever shell launched it — a killed parent takes the whole run down
+// mid-flight. Completed runs are already on disk, so --resume re-reads them
+// instead of paying for them twice.
+function completedRun(key) {
+  const f = path.join(outDir, 'runs', `${key}.json`);
+  if (!resume || !fs.existsSync(f)) return null;
+  try {
+    const r = JSON.parse(fs.readFileSync(f, 'utf8'));
+    return r.error ? null : r;
+  } catch { return null; }
+}
+
 async function oneRun(task, arm, rep) {
   const key = `${task.id}__${arm}__r${rep}`;
+  const done = completedRun(key);
+  if (done) {
+    console.log(`SKIP ${key}  (resume: already on disk)`);
+    return done;
+  }
   const workDir = path.join(workRoot, key);
   fs.rmSync(workDir, { recursive: true, force: true });
   fs.mkdirSync(workDir, { recursive: true });
@@ -213,6 +241,13 @@ async function oneRun(task, arm, rep) {
   try {
     const parsed = calls.map((s) => parseTranscript(s));
     const last = parsed[parsed.length - 1];
+    // A rate-limited call is not a failed call — the CLI reports subtype
+    // "success", exits 0, and returns "You've hit your session limit ..." as
+    // the model's answer, at cost 0. Left alone it lands in the averages as a
+    // very terse final message, silently poisoning the batch. Fail it loudly
+    // so it records as an error and --resume re-runs it.
+    const limited = parsed.find((p) => /you've hit your (session|usage) limit/i.test(p.finalText || ''));
+    if (limited) throw new Error(`rate limited: ${limited.finalText.trim().slice(0, 120)}`);
     const sum = (f) => parsed.reduce((n, p) => n + (p[f] || 0), 0);
     const check = runCheck(task.check, last.finalText, workDir);
     record = {

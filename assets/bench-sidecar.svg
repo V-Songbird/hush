@@ -17,13 +17,13 @@
   <text x="16" y="50" class="sub">Triage an outage, dig the version out of a huge lockfile, then write the handoff</text>
 
   <text x="16" y="92" class="item">no plugin</text>
-  <text x="704" y="92" class="amt" text-anchor="end">$0.42</text>
+  <text x="704" y="92" class="amt" text-anchor="end">$0.43</text>
 
   <text x="16" y="120" class="item">a &#8220;be brief&#8221; plugin</text>
-  <text x="704" y="120" class="amt" text-anchor="end">$0.40</text>
+  <text x="704" y="120" class="amt" text-anchor="end">$0.42</text>
 
   <text x="16" y="148" class="item">an &#8220;efficiency mode&#8221; plugin</text>
-  <text x="704" y="148" class="amt" text-anchor="end">$0.39</text>
+  <text x="704" y="148" class="amt" text-anchor="end">$0.41</text>
 
   <text x="16" y="176" class="hushitem">hush</text>
   <text x="704" y="176" class="hushamt" text-anchor="end">$0.28</text>
@@ -31,7 +31,7 @@
   <line x1="16" y1="196" x2="704" y2="196" class="rule"/>
 
   <text x="16" y="220" class="item">what hush takes off the bill</text>
-  <text x="704" y="220" class="hushamt" text-anchor="end">$0.14</text>
+  <text x="704" y="220" class="hushamt" text-anchor="end">$0.15</text>
 
   <text x="16" y="240" class="foot">The lockfile never floods the chat &#8212; hush keeps a tidy summary and the full copy one click away.</text>
 </svg>

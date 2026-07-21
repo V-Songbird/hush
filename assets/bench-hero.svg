@@ -17,21 +17,21 @@
   <text x="16" y="50" class="sub">Average bill across the benchmark suite — read off the API, not estimated</text>
 
   <text x="16" y="92" class="item">no plugin</text>
-  <text x="704" y="92" class="amt" text-anchor="end">$0.211</text>
+  <text x="704" y="92" class="amt" text-anchor="end">$0.179</text>
 
   <text x="16" y="120" class="item">a &#8220;be brief&#8221; plugin</text>
-  <text x="704" y="120" class="amt" text-anchor="end">$0.205</text>
+  <text x="704" y="120" class="amt" text-anchor="end">$0.175</text>
 
   <text x="16" y="148" class="item">an &#8220;efficiency mode&#8221; plugin</text>
-  <text x="704" y="148" class="amt" text-anchor="end">$0.191</text>
+  <text x="704" y="148" class="amt" text-anchor="end">$0.170</text>
 
   <text x="16" y="176" class="hushitem">hush</text>
-  <text x="704" y="176" class="hushamt" text-anchor="end">$0.174</text>
+  <text x="704" y="176" class="hushamt" text-anchor="end">$0.159</text>
 
   <line x1="16" y1="196" x2="704" y2="196" class="rule"/>
 
   <text x="16" y="220" class="item">what hush takes off the bill</text>
-  <text x="704" y="220" class="hushamt" text-anchor="end">$0.037</text>
+  <text x="704" y="220" class="hushamt" text-anchor="end">$0.019</text>
 
-  <text x="16" y="240" class="foot">Asking Claude to be brief takes off <tspan class="em">$0.006</tspan>. The reply was never where the money was.</text>
+  <text x="16" y="240" class="foot">Asking Claude to be brief takes off <tspan class="em">$0.004</tspan>. The reply was never where the money was.</text>
 </svg>

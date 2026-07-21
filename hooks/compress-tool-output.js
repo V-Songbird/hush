@@ -735,6 +735,10 @@ function cheapHash(s) {
 function buildSidecarDigest(cleaned, relevanceTokens) {
   const lines = cleaned.split("\n");
   const total = lines.length;
+  // The header advertises non-empty lines: a trailing newline or blank
+  // separator is not output, and a raw element count reads as one-more-than-
+  // the-records to anyone doing arithmetic on it.
+  const nonBlank = lines.filter((l) => l.trim() !== "").length;
   const signalIdx = [];
   lines.forEach((l, i) => {
     if (SIGNAL_RE.test(l)) signalIdx.push(i);
@@ -795,7 +799,7 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
     out.push(`L${i + 1}: ${lines[i]}`);
     last = i;
   }
-  return { body: out.join("\n"), total, signalCount: signalIdx.length, census };
+  return { body: out.join("\n"), total, nonBlank, signalCount: signalIdx.length, census };
 }
 
 // Credential-shaped content is screened out of the sidecar path entirely,
@@ -838,10 +842,11 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
     const file = path.join(SIDECAR_DIR, name);
     const d = buildSidecarDigest(cleaned, relevanceTokens);
     const header =
-      `[hush hook: this output is ${d.total} lines (${d.census || "0 signal lines"}) ` +
+      `[hush hook: this output is ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}) ` +
       `and was saved in full to ${file.replace(/\\/g, "/")}; the digest below keeps the head, tail, ` +
       `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
-      `For anything else, Read that file with offset/limit around the L<n> numbers you need. ` +
+      `For anything else — including any total or count you report — Read that file with ` +
+      `offset/limit around the L<n> numbers you need. ` +
       `If that file no longer exists, re-run the command instead.]`;
     const out = `${header}\n${d.body}`;
     // A near-line-free payload (e.g. one giant minified-JSON line) leaves

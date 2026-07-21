@@ -49,7 +49,7 @@ describe('sidecar-follow eval task definition', () => {
       const m = digest.match(/saved in full to ([^;]+);/);
       if (m) created.push(m[1].trim());
 
-      assert.match(digest, /this output is \d+ lines \(2 failures\)/, 'census names exactly 2 failures');
+      assert.match(digest, /this output is \d+ non-empty lines \(2 failures\)/, 'census names exactly 2 failures');
       assert.match(digest, /Signal lines \(2 total: 2 failures\)/);
       // The bare FAIL lines (and their line numbers) are visible directly...
       assert.match(digest, /L\d+: FAIL\b/);

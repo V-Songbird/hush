@@ -1,118 +1,116 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 296" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 284" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
   <style>
     .title{fill:#1f2937;font-size:17px;font-weight:700}
     .sub{fill:#6b7280;font-size:12.5px}
     .lab{fill:#4b5563;font-size:13px;font-weight:600}
     .hushlab{fill:#059669;font-size:13px;font-weight:700}
     .note{fill:#9aa3ad;font-size:11.5px}
-    .task{fill:#9aa3ad;font-size:10.5px}
     .wb{fill:#94a3b8}.wh{fill:#10b981}
     .zero{stroke:#cbd5e1;stroke-width:1}
     .zeroh{stroke:#6ee7b7;stroke-width:1}
     .div{stroke:#eef2f6;stroke-width:1}
-    .foot{fill:#6b7280;font-size:12.5px}.em{fill:#059669;font-weight:700}
     @media (prefers-color-scheme:dark){
       .title{fill:#e6edf3}.sub{fill:#9198a1}.lab{fill:#b0b8c0}.hushlab{fill:#3fb950}
-      .note{fill:#6e7681}.task{fill:#6e7681}.wb{fill:#768390}.wh{fill:#3fb950}
-      .zero{stroke:#444c56}.zeroh{stroke:#238636}.div{stroke:#21262d}.foot{fill:#9198a1}.em{fill:#3fb950}
+      .note{fill:#6e7681}.wb{fill:#768390}.wh{fill:#3fb950}
+      .zero{stroke:#444c56}.zeroh{stroke:#238636}.div{stroke:#21262d}
     }
   </style>
   <text x="16" y="28" class="title">How much Claude natters while it works</text>
   <text x="16" y="50" class="sub">Every session in the suite, one after another &#8212; each spike is words of play-by-play before the answer</text>
 
   <text x="16" y="78" class="lab">no plugin</text>
-  <text x="704" y="78" class="note" text-anchor="end">17 of 32 sessions silent</text>
-    <line x1="102.0" y1="74" x2="102.0" y2="162" class="div"/>
-    <line x1="188.0" y1="74" x2="188.0" y2="162" class="div"/>
-    <line x1="274.0" y1="74" x2="274.0" y2="162" class="div"/>
-    <line x1="360.0" y1="74" x2="360.0" y2="162" class="div"/>
-    <line x1="446.0" y1="74" x2="446.0" y2="162" class="div"/>
-    <line x1="532.0" y1="74" x2="532.0" y2="162" class="div"/>
-    <line x1="618.0" y1="74" x2="618.0" y2="162" class="div"/>
+  <text x="704" y="78" class="note" text-anchor="end">13 of 30 sessions silent &#183; loudest 266 words</text>
+    <line x1="61.9" y1="74" x2="61.9" y2="162" class="div"/>
+    <line x1="107.7" y1="74" x2="107.7" y2="162" class="div"/>
+    <line x1="153.6" y1="74" x2="153.6" y2="162" class="div"/>
+    <line x1="199.5" y1="74" x2="199.5" y2="162" class="div"/>
+    <line x1="245.3" y1="74" x2="245.3" y2="162" class="div"/>
+    <line x1="291.2" y1="74" x2="291.2" y2="162" class="div"/>
+    <line x1="337.1" y1="74" x2="337.1" y2="162" class="div"/>
+    <line x1="382.9" y1="74" x2="382.9" y2="162" class="div"/>
+    <line x1="428.8" y1="74" x2="428.8" y2="162" class="div"/>
+    <line x1="474.7" y1="74" x2="474.7" y2="162" class="div"/>
+    <line x1="520.5" y1="74" x2="520.5" y2="162" class="div"/>
+    <line x1="566.4" y1="74" x2="566.4" y2="162" class="div"/>
+    <line x1="612.3" y1="74" x2="612.3" y2="162" class="div"/>
+    <line x1="658.1" y1="74" x2="658.1" y2="162" class="div"/>
   <line x1="16" y1="118" x2="704" y2="118" class="zero"/>
-    <rect x="20.8" y="105.2" width="12" height="25.6" rx="6.0" class="wb"/>
-    <rect x="42.3" y="107.1" width="12" height="21.8" rx="6.0" class="wb"/>
-    <rect x="63.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="85.3" y="97.1" width="12" height="41.8" rx="6.0" class="wb"/>
-    <rect x="106.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="128.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="149.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="171.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="192.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="214.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="235.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="257.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="278.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="300.3" y="106.1" width="12" height="23.8" rx="6.0" class="wb"/>
-    <rect x="321.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="343.3" y="109.5" width="12" height="17.1" rx="6.0" class="wb"/>
-    <rect x="364.8" y="112.3" width="12" height="11.4" rx="5.7" class="wb"/>
-    <rect x="386.3" y="109.9" width="12" height="16.1" rx="6.0" class="wb"/>
-    <rect x="407.8" y="112.8" width="12" height="10.4" rx="5.2" class="wb"/>
-    <rect x="429.3" y="113.3" width="12" height="9.5" rx="4.8" class="wb"/>
-    <rect x="450.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="472.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="493.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="515.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="536.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="558.3" y="112.3" width="12" height="11.4" rx="5.7" class="wb"/>
-    <rect x="579.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
-    <rect x="601.3" y="109.5" width="12" height="17.1" rx="6.0" class="wb"/>
-    <rect x="622.8" y="98.0" width="12" height="39.9" rx="6.0" class="wb"/>
-    <rect x="644.3" y="104.7" width="12" height="26.6" rx="6.0" class="wb"/>
-    <rect x="665.8" y="81.9" width="12" height="72.2" rx="6.0" class="wb"/>
-    <rect x="687.3" y="104.7" width="12" height="26.6" rx="6.0" class="wb"/>
+    <rect x="21.5" y="109.0" width="12" height="18.0" rx="6.0" class="wb"/>
+    <rect x="44.4" y="110.6" width="12" height="14.7" rx="6.0" class="wb"/>
+    <rect x="67.3" y="114.1" width="12" height="7.8" rx="3.9" class="wb"/>
+    <rect x="90.3" y="113.9" width="12" height="8.2" rx="4.1" class="wb"/>
+    <rect x="113.2" y="113.9" width="12" height="8.2" rx="4.1" class="wb"/>
+    <rect x="136.1" y="111.0" width="12" height="14.1" rx="6.0" class="wb"/>
+    <rect x="159.1" y="76.0" width="12" height="84.1" rx="6.0" class="wb"/>
+    <rect x="182.0" y="74.5" width="12" height="87.0" rx="6.0" class="wb"/>
+    <rect x="204.9" y="113.3" width="12" height="9.5" rx="4.7" class="wb"/>
+    <rect x="227.9" y="109.5" width="12" height="17.0" rx="6.0" class="wb"/>
+    <rect x="250.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="273.7" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="296.7" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="319.6" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="342.5" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="365.5" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="388.4" y="86.9" width="12" height="62.1" rx="6.0" class="wb"/>
+    <rect x="411.3" y="105.9" width="12" height="24.2" rx="6.0" class="wb"/>
+    <rect x="434.3" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="457.2" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="480.1" y="105.4" width="12" height="25.2" rx="6.0" class="wb"/>
+    <rect x="503.1" y="108.2" width="12" height="19.6" rx="6.0" class="wb"/>
+    <rect x="526.0" y="108.0" width="12" height="20.0" rx="6.0" class="wb"/>
+    <rect x="548.9" y="106.9" width="12" height="22.2" rx="6.0" class="wb"/>
+    <rect x="571.9" y="112.9" width="12" height="10.1" rx="5.1" class="wb"/>
+    <rect x="594.8" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="617.7" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="640.7" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="663.6" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
+    <rect x="686.5" y="117.1" width="12" height="1.8" rx="0.9" class="wb"/>
 
   <text x="16" y="186" class="hushlab">hush</text>
-  <text x="704" y="186" class="note" text-anchor="end">26 of 32 sessions silent</text>
-    <line x1="102.0" y1="182" x2="102.0" y2="270" class="div"/>
-    <line x1="188.0" y1="182" x2="188.0" y2="270" class="div"/>
-    <line x1="274.0" y1="182" x2="274.0" y2="270" class="div"/>
-    <line x1="360.0" y1="182" x2="360.0" y2="270" class="div"/>
-    <line x1="446.0" y1="182" x2="446.0" y2="270" class="div"/>
-    <line x1="532.0" y1="182" x2="532.0" y2="270" class="div"/>
-    <line x1="618.0" y1="182" x2="618.0" y2="270" class="div"/>
+  <text x="704" y="186" class="note" text-anchor="end">27 of 30 sessions silent &#183; loudest 25 words</text>
+    <line x1="61.9" y1="182" x2="61.9" y2="270" class="div"/>
+    <line x1="107.7" y1="182" x2="107.7" y2="270" class="div"/>
+    <line x1="153.6" y1="182" x2="153.6" y2="270" class="div"/>
+    <line x1="199.5" y1="182" x2="199.5" y2="270" class="div"/>
+    <line x1="245.3" y1="182" x2="245.3" y2="270" class="div"/>
+    <line x1="291.2" y1="182" x2="291.2" y2="270" class="div"/>
+    <line x1="337.1" y1="182" x2="337.1" y2="270" class="div"/>
+    <line x1="382.9" y1="182" x2="382.9" y2="270" class="div"/>
+    <line x1="428.8" y1="182" x2="428.8" y2="270" class="div"/>
+    <line x1="474.7" y1="182" x2="474.7" y2="270" class="div"/>
+    <line x1="520.5" y1="182" x2="520.5" y2="270" class="div"/>
+    <line x1="566.4" y1="182" x2="566.4" y2="270" class="div"/>
+    <line x1="612.3" y1="182" x2="612.3" y2="270" class="div"/>
+    <line x1="658.1" y1="182" x2="658.1" y2="270" class="div"/>
   <line x1="16" y1="226" x2="704" y2="226" class="zeroh"/>
-    <rect x="20.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="42.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="63.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="85.3" y="220.3" width="12" height="11.4" rx="5.7" class="wh"/>
-    <rect x="106.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="128.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="149.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="171.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="192.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="214.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="235.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="257.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="278.8" y="214.6" width="12" height="22.8" rx="6.0" class="wh"/>
-    <rect x="300.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="321.8" y="217.9" width="12" height="16.1" rx="6.0" class="wh"/>
-    <rect x="343.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="364.8" y="221.8" width="12" height="8.5" rx="4.3" class="wh"/>
-    <rect x="386.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="407.8" y="222.2" width="12" height="7.6" rx="3.8" class="wh"/>
-    <rect x="429.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="450.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="472.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="493.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="515.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="536.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="558.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="579.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="601.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="622.8" y="207.9" width="12" height="36.1" rx="6.0" class="wh"/>
-    <rect x="644.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="665.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-    <rect x="687.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
-
-
-  <text x="59.0" y="286" class="task" text-anchor="middle">currency bug</text>
-  <text x="145.0" y="286" class="task" text-anchor="middle">outage triage</text>
-  <text x="231.0" y="286" class="task" text-anchor="middle">noisy build</text>
-  <text x="317.0" y="286" class="task" text-anchor="middle">failing tests</text>
-  <text x="403.0" y="286" class="task" text-anchor="middle">repo summary</text>
-  <text x="489.0" y="286" class="task" text-anchor="middle">code question</text>
-  <text x="575.0" y="286" class="task" text-anchor="middle">incident</text>
-  <text x="661.0" y="286" class="task" text-anchor="middle">3-turn bug</text>
+    <rect x="21.5" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="44.4" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="67.3" y="223.5" width="12" height="4.9" rx="2.5" class="wh"/>
+    <rect x="90.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="113.2" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="136.1" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="159.1" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="182.0" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="204.9" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="227.9" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="250.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="273.7" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="296.7" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="319.6" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="342.5" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="365.5" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="388.4" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="411.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="434.3" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="457.2" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="480.1" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="503.1" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="526.0" y="221.9" width="12" height="8.2" rx="4.1" class="wh"/>
+    <rect x="548.9" y="222.7" width="12" height="6.5" rx="3.3" class="wh"/>
+    <rect x="571.9" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="594.8" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="617.7" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="640.7" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="663.6" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
+    <rect x="686.5" y="225.1" width="12" height="1.8" rx="0.9" class="wh"/>
 </svg>

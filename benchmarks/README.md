@@ -44,7 +44,7 @@ node runner/run.js --tag full --full --model haiku      # all 9 tasks
 node runner/run.js --tag big  --model sonnet            # default subset, bigger model
 ```
 
-Flags: `--tasks a,b` (pick tasks) · `--full` (whole suite) · `--reps N` · `--model haiku|sonnet` · `--arms baseline,hush` · `--concurrency N` · `--tag NAME` · `--hush-debug` (attach hush's per-decision manifest to each hush-arm record, surfaced in `report.md` as a "hush decisions" line per task).
+Flags: `--tasks a,b` (pick tasks) · `--full` (whole suite) · `--reps N` · `--model haiku|sonnet` · `--arms baseline,hush` · `--concurrency N` · `--tag NAME` · `--resume` (re-read completed runs from disk instead of paying for them again — a rate-limited or interrupted run records as an error and re-runs) · `--hush-debug` (attach hush's per-decision manifest to each hush-arm record, surfaced in `report.md` as a "hush decisions" line per task).
 
 ## Bring your own rival
 
@@ -55,7 +55,7 @@ node runner/run.js --tag vs --rival-dir /path/to/other-plugin
 node runner/report.js --tag vs
 ```
 
-Options: `--rival-name <label>` (how it shows up in the report) · `--rival-settings <path>` (a `--settings` file if that plugin needs one) · `--rival-env KEY=VAL,KEY2=VAL2` (env vars it expects). We don't ship or name any rival — you bring whichever one you're curious about.
+Options: `--rival-name <label>` (how it shows up in the report) · `--rival-settings <path>` (a `--settings` file if that plugin needs one) · `--rival-env KEY=VAL,KEY2=VAL2` (env vars it expects). Repeat the flags to race several rivals at once — the Nth `--rival-name`/`--rival-settings`/`--rival-env` belongs to the Nth `--rival-dir`. We don't ship or name any rival — you bring whichever one you're curious about.
 
 ## Verify it yourself, for free
 

@@ -1,5 +1,6 @@
 'use strict';
 const fs = require('node:fs');
+const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { debugManifestPath } = require('../../hooks/compress-tool-output');
 
@@ -87,7 +88,21 @@ function parseTranscript(jsonl) {
 // Ground-truth checkers, declarative via tasks.json `check`.
 function runCheck(check, finalText, workDir) {
   if (check.type === 'keywords') {
-    const hits = check.patterns.filter((p) => new RegExp(p, 'i').test(finalText));
+    // A session may legitimately deliver the asked-for code as a file and only
+    // summarize in chat. When the check opts in via orFiles (an extension,
+    // e.g. ".py"), top-level workdir files with that extension join the
+    // scored corpus. Opt-in only: fixture tasks would otherwise self-match
+    // their own inputs. razor: top-level scan only — nest-happy sessions can
+    // move to a recursive walk if one ever appears.
+    let corpus = finalText;
+    if (check.orFiles && workDir && fs.existsSync(workDir)) {
+      for (const f of fs.readdirSync(workDir)) {
+        if (f.endsWith(check.orFiles)) {
+          try { corpus += '\n' + fs.readFileSync(path.join(workDir, f), 'utf8'); } catch {}
+        }
+      }
+    }
+    const hits = check.patterns.filter((p) => new RegExp(p, 'i').test(corpus));
     return {
       pass: hits.length >= check.require,
       score: hits.length / check.patterns.length,

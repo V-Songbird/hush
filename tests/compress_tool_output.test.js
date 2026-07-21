@@ -862,8 +862,9 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   test('a huge output becomes a line-numbered digest and the full text lands in the sidecar file', () => {
     const digest = withSidecarOn(() => comp(bigLog, 0, true, false, ['ioredis'], 1, 'sidetest'));
     assert.ok(digest.startsWith('[hush hook: this output is'), 'digest opens with the provenance header');
-    assert.match(digest, /this output is \d+ lines \(\d+ errors?\)/, 'header carries the category census, not a bare count');
+    assert.match(digest, /this output is \d+ non-empty lines \(\d+ errors?\)/, 'header carries the category census, not a bare count');
     assert.match(digest, /re-run the command instead/, 'missing-file fallback is present');
+    assert.match(digest, /including any total or count you report/, 'totals are steered to the full file, not the digest');
     assert.match(digest, /L\d+: /, 'digest lines carry real line numbers');
     assert.match(digest, /lines in the file only/, 'gaps are counted, not hidden');
     const file = pathFrom(digest);

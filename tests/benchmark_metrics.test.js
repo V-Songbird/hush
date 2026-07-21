@@ -68,3 +68,21 @@ describe('readDebugManifest: fail-soft ingestion', () => {
     assert.deepStrictEqual(summary.byAction, { cap: 1 });
   });
 });
+
+describe('runCheck: keyword corpus', () => {
+  const { runCheck } = require('../benchmarks/runner/metrics.js');
+  const os = require('os');
+  const path = require('path');
+
+  test('orFiles folds a created source file into the scored corpus', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-runcheck-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'validator.py'), 'import re\ndef is_valid(email):\n    return re.match(r".+@.+", email) is not None\n');
+      const check = { type: 'keywords', orFiles: '.py', require: 2, patterns: ['def \\w+\\(', '@', 'return|re\\.'] };
+      assert.strictEqual(runCheck(check, 'Created validator.py with the function.', dir).pass, true);
+      assert.strictEqual(runCheck({ ...check, orFiles: undefined }, 'Created validator.py with the function.', dir).pass, false);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

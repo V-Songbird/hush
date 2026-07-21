@@ -6,7 +6,7 @@
   <h1>hush</h1>
   <p><strong>Shuts Claude up so your session stops costing money to read.</strong></p>
 
-  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across half the suite and peaks at 76 words, silent in 17 of 32 sessions. The hush lane is close to a flat line — silent in 26 of 32, with most of the remaining spikes on the bug-hunting tasks" width="700" />
+  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across half the suite and peaks at 266 words, silent in 13 of 30 sessions. The hush lane is close to a flat line — silent in 27 of 30, and no remaining spike tops 25 words" width="700" />
 
   <p><em>This is what a session sounds like.</em></p>
 </div>
@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.174 an average session against $0.211 without it.
+> **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.159 an average session against $0.179 without it.
 
 ---
 
@@ -98,23 +98,23 @@ Both commands ask before they swap, both take effect at your next session, and s
 
 We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on real engineering work: full agent sessions that explore, edit, and run code. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
-<p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.211, a 'be brief' plugin $0.205, an 'efficiency mode' plugin $0.191, hush $0.174. hush takes $0.037 off the bill; asking Claude to be brief takes off $0.006" width="700"></p>
+<p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.179, a 'be brief' plugin $0.175, an 'efficiency mode' plugin $0.170, hush $0.159. hush takes $0.019 off the bill; asking Claude to be brief takes off $0.004" width="700"></p>
 
-**Being brief isn't enough.** Asking Claude to talk less saves about half a cent. An efficiency mode saves two. hush saves close to four. Asking politely and actually doing the work are two different things.
+**Being brief isn't enough.** Asking Claude to talk less saves under half a cent. An efficiency mode saves about one. hush saves two. Asking politely and actually doing the work are two different things.
 
-<p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.186; what Claude wrote back, the reply, $0.026; the session $0.211. A plugin that only shortens the reply is working on the $0.026" width="700"></p>
+<p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.155; what Claude wrote back, the reply, $0.023; the session $0.179. A plugin that only shortens the reply is working on the $0.023" width="700"></p>
 
-**Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on three cents of a twenty-one-cent session. hush trims the logs and output before they hit your bill.
+**Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on two cents of an eighteen-cent session. hush trims the logs and output before they hit your bill.
 
-<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.42, a 'be brief' plugin $0.40, an 'efficiency mode' plugin $0.39, hush $0.28. hush takes $0.14 off the bill" width="700"></p>
+<p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.43, a 'be brief' plugin $0.42, an 'efficiency mode' plugin $0.41, hush $0.28. hush takes $0.15 off the bill" width="700"></p>
 
-**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.28 against $0.42. Neither rival moved it more than three cents.
+**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.28 against $0.43. Neither rival moved it more than a cent and a half.
 
-<p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — fix a currency bug, ask why the conversion order matters, write it up — with every reply drawn at actual size. A typical run with no plugin fills 434 words; a typical hush run fills 257, a visibly shorter column. Both fixed the bug and passed the same check" width="700"></p>
+<p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — triage an outage, dig a version from a huge lockfile, write the handoff — with every reply drawn at actual size. A typical run with no plugin fills 634 words; a typical hush run fills 286, a visibly shorter column. Both passed the same check" width="700"></p>
 
-**And you read about half as much.** Across the suite the replies come to 130 words against 254 — one message at the end, outcome first, instead of pieces arriving while Claude works.
+**And you read a third less.** Across the suite the replies come to 95 words against 145 — one message at the end, outcome first, instead of pieces arriving while Claude works.
 
-**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 26 sessions out of 32. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 27 sessions out of 30. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
 
 ### The full picture
 
@@ -122,15 +122,21 @@ Every job, every setup — the wins **and** the ties and losses. Cheapest per ro
 
 | What Claude did | no plugin | caveman | "efficiency mode" | hush |
 | --- | --- | --- | --- | --- |
-| Triage a production outage log | $0.302 | $0.289 | $0.274 | **$0.143** |
-| Multi-turn incident + write the handoff | $0.416 | $0.397 | $0.388 | **$0.277** |
-| Hunt a cross-file currency bug | $0.180 | $0.198 | **$0.161** | $0.186 |
-| Fix a bug, explain it, write it up (3 turns) | $0.248 | $0.267 | **$0.202** | $0.289 |
-| Summarize a repo | $0.127 | **$0.118** | $0.142 | $0.130 |
-| Find the error in a noisy build | $0.151 | $0.172 | $0.158 | **$0.149** |
-| Fix a failing test suite | **$0.115** | $0.132 | $0.132 | $0.141 |
-| Answer a code question (no tools) | $0.153 | **$0.069** | $0.075 | $0.078 |
-| **Average** | $0.211 | $0.205 | $0.191 | **$0.174** |
+| Triage a production outage log | $0.294 | $0.290 | $0.300 | **$0.156** |
+| Multi-turn incident + write the handoff | $0.427 | $0.424 | $0.414 | **$0.281** |
+| Find a connection leak from incident logs | $0.283 | $0.241 | $0.199 | **$0.192** |
+| Digest a 700-line CI log | $0.191 | $0.175 | $0.176 | **$0.140** |
+| Find the error in a noisy build | $0.178 | $0.188 | **$0.148** | $0.165 |
+| Clean up a build after a dependency bump | $0.191 | $0.219 | **$0.170** | $0.211 |
+| Chase a flaky rounding bug through pricing tests | $0.216 | $0.165 | **$0.155** | $0.191 |
+| Hunt a cross-file currency bug | **$0.134** | $0.137 | $0.147 | $0.175 |
+| Fix an expired-token auth bug | **$0.119** | $0.139 | $0.136 | $0.149 |
+| Fix a pagination bug | **$0.109** | $0.118 | $0.128 | $0.135 |
+| Rename an API across a codebase | $0.210 | $0.205 | **$0.204** | $0.214 |
+| Summarize a repo | $0.122 | **$0.113** | $0.135 | $0.144 |
+| Answer two code questions (no tools) | **$0.062** | $0.068 | $0.075 | $0.080 |
+| Write an email validator (no tools) | $0.079 | **$0.074** | $0.087 | $0.077 |
+| **Average** | $0.179 | $0.175 | $0.170 | **$0.159** |
 
 Every job passed its correctness check in every setup — not one cheaper-but-wrong answer.
 

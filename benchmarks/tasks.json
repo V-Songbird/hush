@@ -42,7 +42,7 @@
     "check": {
       "type": "keywords",
       "require": 2,
-      "patterns": ["referen(ce|tial)|new object|identity", "useMemo|React\\.memo|\\bmemo\\b", "shallow|===|strict(ly)? equal"]
+      "patterns": ["referen(ce|tial)|new (object|ref)\\b|identity", "useMemo|React\\.memo|\\bmemo\\b", "shallow|===|strict(ly)? equal"]
     }
   },
   {
@@ -63,6 +63,7 @@
     "prompt": "Write me a Python function that validates email addresses.",
     "check": {
       "type": "keywords",
+      "orFiles": ".py",
       "require": 2,
       "patterns": ["def \\w+\\(", "@", "return|re\\.|regex|match"]
     }

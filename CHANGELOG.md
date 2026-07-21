@@ -5,6 +5,14 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.14.0-alpha — 2026-07-21
+
+Fixed an issue where Claude could report a wrong total after hush condensed a very large output — the digest now counts only non-empty lines and steers any total or count to the full saved copy.
+
+The benchmark harness can resume an interrupted run without paying for finished sessions again (`--resume`), and can race several rival plugins in one run by repeating `--rival-dir`.
+
+Benchmark numbers and charts across the README are refreshed.
+
 ## 0.13.1-alpha — 2026-07-21
 
 Stock hush reaches for bullet points less eagerly: a report holding fewer than four facts now comes back as plain sentences, and a bullet list survives only when each bullet carries its own independent fact.
