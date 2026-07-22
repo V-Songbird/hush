@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.16.1-alpha — 2026-07-21
+
+The stock Hush style now leans on plain, friendly prose. Short answers that used to arrive as a cluster of bullets read as a sentence or two, and lists are kept for content that is genuinely a list — bullets for parallel items like files or options, a numbered list for real steps.
+
 ## 0.16.0-alpha — 2026-07-21
 
 The Anchor preset picked up three attention-friendly habits: when work remains for you, the report now ends on the one next action; a turn that advances a multi-step plan opens with the position (step n of N done, next step named); and from the third consecutive turn stuck on the same failure, it states the assumption it is relying on and asks one diagnostic question instead of patching blind.
