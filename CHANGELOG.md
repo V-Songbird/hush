@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.16.4-alpha — 2026-07-22
+
+The README's style table now quotes each bundled preset's own description, so it can't drift out of sync with the style files again.
+
 ## 0.16.3-alpha — 2026-07-22
 
 The bundled output styles now ship with a side-by-side reference — the same bug fixed in each voice — linked from the README. The style picker now ignores a README placed in the styles folder, so only real styles are listed.
