@@ -25,7 +25,7 @@ function listMdFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith(".md"))
+    .filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md")
     .map((f) => path.join(dir, f))
     .sort();
 }

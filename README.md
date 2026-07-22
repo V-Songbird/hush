@@ -93,6 +93,8 @@ Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's
 
 Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
+**See them side by side.** Same bug, same fix, six sign-offs — [`styles/README.md`](styles/README.md).
+
 ## Benchmarks
 
 We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on real engineering work: full agent sessions that explore, edit, and run code. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.

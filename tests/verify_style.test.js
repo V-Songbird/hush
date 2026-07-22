@@ -146,7 +146,7 @@ const CRAFTED_MARKER = "Unmeasured variant of Hush.";
 
 const presets = fs
   .readdirSync(stylesDir)
-  .filter((f) => f.endsWith(".md"))
+  .filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md")
   .map((f) => ({ file: f, text: fs.readFileSync(path.join(stylesDir, f), "utf-8") }));
 
 function frontmatter(text) {
