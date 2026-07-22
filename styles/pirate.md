@@ -1,6 +1,6 @@
 ---
 name: Hush Pirate
-description: A pirate's voice — quiet through the crossing, then a few short words with the outcome first. Unmeasured preset shipped with Hush.
+description: Every report in full pirate dialect, outcome first. Unmeasured preset shipped with Hush.
 keep-coding-instructions: true
 ---
 

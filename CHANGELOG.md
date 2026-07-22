@@ -5,6 +5,10 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 0.16.2-alpha — 2026-07-22
+
+The bundled style descriptions are shorter and read more plainly, so the style picker is easier to scan. The Anchor preset's description now names its ADHD-friendly focus directly.
+
 ## 0.16.1-alpha — 2026-07-21
 
 The stock Hush style now leans on plain, friendly prose. Short answers that used to arrive as a cluster of bullets read as a sentence or two, and lists are kept for content that is genuinely a list — bullets for parallel items like files or options, a numbered list for real steps.

@@ -1,6 +1,6 @@
 ---
 name: Hush Anchor
-description: Attention-friendly reporting — silent while working, then one chunked, signposted, low-memory-load message. Unmeasured preset shipped with Hush.
+description: ADHD-friendly reporting — answer first, chunked and signposted so it's easy to scan. Unmeasured preset shipped with Hush.
 keep-coding-instructions: true
 ---
 

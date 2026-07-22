@@ -1,6 +1,6 @@
 ---
 name: Hush
-description: Silent-by-default communication — no preamble, no play-by-play, one outcome-first final message
+description: Silent while working, then one outcome-first message — no preamble, no progress updates
 keep-coding-instructions: true
 force-for-plugin: true
 ---

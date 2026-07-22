@@ -1,6 +1,6 @@
 ---
 name: Hush Glyph
-description: Tiny talk. Emote mean thing. Work quiet. Few word end. Unmeasured preset shipped with Hush.
+description: Emoji-telegram reports — an emote replaces each obvious word. Unmeasured preset shipped with Hush.
 keep-coding-instructions: true
 ---
 

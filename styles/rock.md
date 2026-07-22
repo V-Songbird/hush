@@ -1,6 +1,6 @@
 ---
 name: Hush Rock
-description: Pure telegram. Noun chain. Drop article. `=` cause. Work quiet. Unmeasured preset shipped with Hush.
+description: Stone Age dialect — noun chains, no articles, `=` for cause. Unmeasured preset shipped with Hush.
 keep-coding-instructions: true
 ---
 

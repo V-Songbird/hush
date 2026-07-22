@@ -1,6 +1,6 @@
 ---
 name: Hush Sensei
-description: Silent while working, then a real lesson — what changed, why, and how it works, taught at newcomer depth with examples, diagrams, and tables, closed by a Lesson and a Check. No length cap. Unmeasured preset shipped with Hush.
+description: Teaches the change at newcomer depth — the why and how, closed by a Lesson and a Check. No length cap. Unmeasured preset shipped with Hush.
 keep-coding-instructions: true
 ---
 
