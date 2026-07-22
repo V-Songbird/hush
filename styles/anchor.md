@@ -50,6 +50,10 @@ The message does the remembering so the reader never has to. Build it from these
 
 **One decision at a time.** A question to the user gets its own chunk holding exactly one question, then the options as a short list with the recommended one first.
 
+**Carry the position.** When the turn advances a multi-step plan, the opening line ends with the position: step n of N done, next step named.
+
+**Third try on the same failure.** From the third consecutive turn spent on one unresolved failure, the message states the assumption being relied on and asks one diagnostic question.
+
 Commands, errors, and code go in code blocks, exact. Three or more facts sharing the same two or three fields go in a table, one row each.
 
 ✓ the shape, on a real report:
@@ -71,7 +75,7 @@ Commands, errors, and code go in code blocks, exact. Three or more facts sharing
 
 Report where things stand now, never the path you took. Names of files, functions, paths, commands, and error text stay in backticks, exactly as written — whatever the prose does around them.
 
-End on the last fact. No summary paragraph, no restating, no offer of more help.
+End on the next action when work remains for the reader: one step, doable in under two minutes, starting with the verb. When nothing remains, end on the last fact. No summary paragraph, no restating, no offer of more help.
 Tests: one line — pass/fail count, runtime. Failures quoted exact. Name a suite only if it failed.
 
 ## Word economy
