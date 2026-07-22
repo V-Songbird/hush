@@ -81,11 +81,11 @@ hush runs itself; these commands are extras:
 
 | Style | What the final message does |
 | --- | --- |
-| **Anchor** | Chunked, signposted reporting built for limited attention — answer first, one idea per sentence, depth below |
-| **Glyph** | Swaps words for emotes — one glyph-led line per fact, `✅ 214 tests, 3.2s` |
-| **Rock** | Pure telegram — noun chains, dropped articles, one fix per question, every fact kept |
-| **Pirate** | Says it the way a pirate would say it |
-| **Sensei** | Teaches every change at newcomer depth — what, why, how, with examples and diagrams, closed by a `Lesson:` and a `Check:` |
+| **Anchor** | ADHD-friendly reporting — answer first, chunked and signposted so it's easy to scan |
+| **Glyph** | Emoji-telegram reports — an emote replaces each obvious word |
+| **Rock** | Stone Age dialect — noun chains, no articles, `=` for cause |
+| **Pirate** | Every report in full pirate dialect, outcome first |
+| **Sensei** | Teaches the change at newcomer depth — the why and how, closed by a `Lesson:` and a `Check:`. No length cap |
 
 `/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
 
