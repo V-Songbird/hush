@@ -77,7 +77,11 @@ hush runs itself; these commands are extras:
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
+`/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
+
 `/hush:pick-style` is the shelf. Every style on it ships with the same silent machinery underneath, and they differ only in what that one last message is *for*:
+
+**See them side by side.** Same bug, same fix, six sign-offs — [`styles/README.md`](styles/README.md).
 
 | Style | What the final message does |
 | --- | --- |
@@ -87,13 +91,8 @@ hush runs itself; these commands are extras:
 | **Pirate** | Every report in full pirate dialect, outcome first |
 | **Sensei** | Teaches the change at newcomer depth — the why and how, closed by a `Lesson:` and a `Check:`. No length cap |
 
-`/hush:craft-style` goes one further: your own voice, written to a file you own, and a verifier that checks hush's mechanics came through the rewrite — every number, every cap, every rule, one paragraph for one paragraph.
-
-Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's, the whole way through, with the paths and the error text still exact. The trick is that your voice gets written into every line of the style file, not just the line that names it: Claude answers in the register it was handed. `craft-style` does that part for you. Want it terser than stock's readability rules allow? Ask for maximum compression — the skill strips the readability frame Rock-style, keeps the silence and the exact-facts contract, and tells you what you traded.
-
 Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
-**See them side by side.** Same bug, same fix, six sign-offs — [`styles/README.md`](styles/README.md).
 
 ## Benchmarks
 
