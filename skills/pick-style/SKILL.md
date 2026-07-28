@@ -52,7 +52,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<that entry's path>"
 
 The script checks the chosen style against hush's mechanics first, backs up `output-styles/hush.md` to `output-styles/hush.md.stock` on first use, writes the chosen file into the forced slot with `force-for-plugin: true` added, and strips any `outputStyle` setting that pointed at the same name. The swap is all-or-nothing: a style that dropped hush's mechanics or answers to a shipped preset's name is refused, and any failure mid-swap puts the previously active style back. The backup is kept, so `stock` restores as often as it is asked for.
 
-It prints `{ ok, target, name, backedUp, settingsUpdated }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying.
+It prints `{ ok, target, name, backedUp, settingsUpdated, warnings }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying. A non-empty `warnings` comes with a completed swap: the style is active, and each warning names a settings file whose redundant `outputStyle` is still there for the user to remove by hand. Relay those verbatim too, under the report.
 
 This is the only place in the plugin that touches `output-styles/hush.md`; `craft-style` calls this same script rather than repeating the swap.
 

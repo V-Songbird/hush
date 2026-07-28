@@ -185,6 +185,74 @@ test("a write that fails mid-swap leaves the previous style active", () => {
   assert.strictEqual(activate("stock", { pluginRoot, projectDir, homeDir }).name, "Hush");
 });
 
+test("a settings file that cannot be cleaned warns, and the swap still stands", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
+  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const settingsPath = path.join(projectDir, ".claude", "settings.json");
+  write(path.join(settingsPath, "blocker"), "x");
+
+  const result = activate(presetPath, { pluginRoot, projectDir, homeDir });
+
+  assert.strictEqual(result.ok, true);
+  assert.deepStrictEqual(result.settingsUpdated, []);
+  assert.strictEqual(result.warnings.length, 1);
+  assert.match(result.warnings[0], /could not remove the outputStyle setting from/);
+  assert.ok(result.warnings[0].includes(settingsPath));
+  assert.match(slot(pluginRoot), /name: Hush Pirate/);
+});
+
+test("a clean activation warns about nothing", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
+  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+
+  assert.deepStrictEqual(activate(presetPath, { pluginRoot, projectDir, homeDir }).warnings, []);
+});
+
+test("a variant answering to stock's own name is refused", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const variantPath = path.join(homeDir, ".claude", "output-styles", "mine.md");
+  write(variantPath, VALID_VARIANT.replace("name: Robo", "name: hush"));
+  const before = slot(pluginRoot);
+
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /is the name of a style hush ships/);
+  assert.strictEqual(slot(pluginRoot), before);
+});
+
+// Windows resolves either casing to the same file, so a preset addressed in a
+// different case is still a bundled preset and not a variant colliding with
+// its own name.
+test("a bundled preset addressed in another case still activates", { skip: process.platform !== "win32" }, () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
+  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+
+  const result = activate(presetPath.toLowerCase(), { pluginRoot, projectDir, homeDir });
+
+  assert.strictEqual(result.name, "Hush Pirate");
+});
+
+test("a rollback that also fails keeps the pristine stock copy", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
+  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const stock = slot(pluginRoot);
+  const realRename = fs.renameSync;
+  fs.renameSync = () => {
+    throw new Error("rename blocked");
+  };
+
+  try {
+    assert.throws(() => activate(presetPath, { pluginRoot, projectDir, homeDir }), /rename blocked/);
+  } finally {
+    fs.renameSync = realRename;
+  }
+
+  assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), stock);
+  assert.strictEqual(activate("stock", { pluginRoot, projectDir, homeDir }).name, "Hush");
+});
+
 test("a first activation that fails leaves no backup for the shelf to misread", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const presetPath = path.join(pluginRoot, "styles", "pirate.md");

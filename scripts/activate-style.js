@@ -59,7 +59,8 @@ function stripOutputStyle(settingsPath, targetName) {
 }
 
 function isBundled(target, pluginRoot) {
-  return path.resolve(target).startsWith(path.resolve(pluginRoot, "styles") + path.sep);
+  const fold = (p) => (process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p));
+  return fold(target).startsWith(fold(path.join(pluginRoot, "styles")) + path.sep);
 }
 
 // The presets under styles/ ship with the plugin and the suite verifies them.
@@ -70,9 +71,12 @@ function isBundled(target, pluginRoot) {
 function validateVariant(target, text, canonicalText, pluginRoot) {
   const fm = parseFrontmatter(splitFrontmatter(normalize(text)).frontmatter);
   const name = (fm.name || "").trim().toLowerCase();
-  for (const file of listMdFiles(path.join(pluginRoot, "styles"))) {
-    const bundled = (readFrontmatter(file).name || "").trim().toLowerCase();
-    if (bundled && bundled === name)
+  const stockName = parseFrontmatter(splitFrontmatter(normalize(canonicalText)).frontmatter).name;
+  const shipped = listMdFiles(path.join(pluginRoot, "styles"));
+  // Stock's own name is taken too: a variant wearing it makes the record and
+  // the slot agree even after an update wrote over the takeover.
+  for (const bundled of [stockName, ...shipped.map((f) => readFrontmatter(f).name)]) {
+    if (bundled && bundled.trim().toLowerCase() === name)
       throw new Error(`"${fm.name}" is the name of a style hush ships — rename this variant before activating it`);
   }
   if ((fm.description || "").includes(PRESET_MARKER))
@@ -112,14 +116,16 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir() }) {
     safeWriteFileSync(hushPath, next);
     safeWriteFileSync(activePath, JSON.stringify({ target, name }, null, 2) + "\n");
   } catch (err) {
-    if (previous !== null) {
-      try {
+    let rolledBack = previous === null;
+    try {
+      if (previous !== null) {
         safeWriteFileSync(hushPath, previous);
-      } catch {
-        /* best-effort; the backup is the second way back */
+        rolledBack = true;
       }
+    } catch {
+      /* best-effort; the backup is the second way back, so it stays */
     }
-    if (backupTaken) {
+    if (backupTaken && rolledBack) {
       try {
         fs.unlinkSync(backupPath);
       } catch {
@@ -129,13 +135,23 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir() }) {
     throw err;
   }
 
-  const settingsUpdated = [
+  // The swap is committed. A settings file that cannot be cleaned is a leftover
+  // redundant setting, not a failed activation, so it is reported, not thrown.
+  const settingsUpdated = [];
+  const warnings = [];
+  for (const p of [
     path.join(homeDir, ".claude", "settings.json"),
     path.join(projectDir, ".claude", "settings.json"),
     path.join(projectDir, ".claude", "settings.local.json"),
-  ].filter((p) => stripOutputStyle(p, name));
+  ]) {
+    try {
+      if (stripOutputStyle(p, name)) settingsUpdated.push(p);
+    } catch (err) {
+      warnings.push(`could not remove the outputStyle setting from ${p}: ${err.message}`);
+    }
+  }
 
-  return { ok: true, target, name, backedUp: fs.existsSync(backupPath), settingsUpdated };
+  return { ok: true, target, name, backedUp: fs.existsSync(backupPath), settingsUpdated, warnings };
 }
 
 function main() {
