@@ -35,7 +35,10 @@ const uniqueLines = (n) => Array.from({ length: n }, (_, i) => `line ${i} of the
 describe('HUSH_DEBUG manifest: gate', () => {
   test('off by default — no manifest file at all', () => {
     const id = sid('gate-off');
-    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(300) });
+    // Pinned off explicitly: runHook inherits process.env, so an ambient
+    // HUSH_DEBUG=1 in the developer's shell would otherwise turn this gate
+    // test into a false failure.
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(300) }, { HUSH_DEBUG: '0' });
     assert.strictEqual(fs.existsSync(debugManifestPath(id)), false);
   });
 
