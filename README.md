@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude bills you for every word it reads and writes, and in noisy work most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. It's built for the loud sessions — logs, builds, long multi-turn debugging — where it took our benchmark suite's average session from $0.179 to $0.159. On a short, quiet job there's nothing to cut and it can cost a little more.
+> **TL;DR** — Claude bills you for every log line, build dump, and word of play-by-play. hush trims them at the source in the loud sessions, taking our benchmark suite's average from $0.179 to $0.159. Short, quiet jobs have nothing to cut and can cost a little more.
 
 ---
 
@@ -25,9 +25,7 @@
 
 You've seen it: "Let me start by looking at the codebase." "Now I'll check the config." Four hundred lines of build output you didn't ask for, and — eventually — the one sentence you actually needed. Every word of that is billed.
 
-hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill.
-
-It's a specialist, and it says so on the tin: it earns its keep in sessions that read logs, run builds, and keep going for turn after turn, because that's where the noise lives. Ask it a one-shot question with no tools involved and there's nothing to trim — you'll pay hush's own small overhead for the quieter reply.
+hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill. It's a specialist, and it says so on the tin: it earns its keep in sessions that read logs, run builds, and keep going turn after turn, because that's where the noise lives. Ask it a one-shot question with no tools involved and there's nothing to trim — you'll pay hush's own small overhead for the quieter reply.
 
 And the one message you do get is built to be read on an empty tank. Answer first. Everyday words instead of jargon, because swapping a word is free and explaining one costs you a line. Hard caps on the whole thing: 12 lines, 15 words a sentence. If you have ADHD, or you're just fried at the end of a long day, that's the point — nothing to wade through, and nothing you're assumed to already know.
 
