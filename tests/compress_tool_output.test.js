@@ -1256,6 +1256,45 @@ describe('MCP JSON table-ification (ROADMAP 007 / Probe 7)', () => {
     assert.strictEqual(c.records.length, 30);
   });
 
+  test('wrapper siblings: scalar metadata survives the conversion verbatim', () => {
+    const wrapped = { total: 4213, next_cursor: 'abc', truncated: true, results: records() };
+    const c = mcpTableCandidate(JSON.stringify(wrapped));
+    assert.ok(c, 'scalar siblings are representable, so the conversion stands');
+    const out = renderMcpTable(c.records, c.columns, c.wrapper);
+    assert.match(out, /^wrapper: /m);
+    assert.ok(out.includes('total=4213'), 'the record count sibling is present');
+    assert.ok(out.includes('next_cursor=abc'), 'the pagination cursor is present');
+    assert.ok(out.includes('truncated=true'), 'the boolean sibling is present');
+    assert.ok(out.length < JSON.stringify(wrapped).length, 'still smaller than the raw JSON');
+  });
+
+  test('wrapper siblings: a nested sibling rejects the conversion rather than dropping it', () => {
+    const wrapped = { total: 4213, warnings: ['results truncated at 30'], results: records() };
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(wrapped)), null, 'an array sibling has no faithful one-line form');
+    assert.strictEqual(compressMcpTable(JSON.stringify(wrapped)), undefined, 'so the original payload is left untouched');
+  });
+
+  test('wrapper siblings: an overlong sibling rejects the conversion too', () => {
+    const wrapped = { note: 'n'.repeat(200), results: records() };
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(wrapped)), null);
+  });
+
+  test('wrapper siblings: metadata one level deeper is collected, not lost', () => {
+    const wrapped = { server: 'idea', payload: { total: 7, results: records() } };
+    const c = mcpTableCandidate(JSON.stringify(wrapped));
+    assert.ok(c);
+    const out = renderMcpTable(c.records, c.columns, c.wrapper);
+    assert.ok(out.includes('payload.total=7'), 'the inner wrapper field is labelled by its path');
+    assert.ok(out.includes('server=idea'), 'the outer wrapper field survives as well');
+  });
+
+  test('unknown wrapper shapes stay untouched: too deep, or too few records', () => {
+    const tooDeep = { a: { b: { c: { results: records() } } } };
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(tooDeep)), null, 'the array sits below the depth-2 search');
+    const tooFew = { total: 4, results: records(4), pad: 'p'.repeat(2400) };
+    assert.strictEqual(mcpTableCandidate(JSON.stringify(tooFew)), null, 'under the 5-record floor, whatever the wrapper says');
+  });
+
   test('renderMcpTable hoists the constant column and shrinks the payload', () => {
     const rs = records();
     const out = renderMcpTable(rs, Object.keys(rs[0]));
@@ -1460,6 +1499,80 @@ describe('re-read delta (ROADMAP 066b): only the corpus-probed half of the cross
     if (out2) assert.doesNotMatch(out2.hookSpecificOutput.updatedToolOutput.file.content, DELTA_HEADER_RE);
   });
 
+  test('a tail deletion is named as removed lines, never reported as all-unchanged', () => {
+    const filePath = 'C:\\repo\\logs\\svc9.log';
+    const sessionId = freshSession();
+    readLog(filePath, steadyLines(60).join('\n'), sessionId);
+
+    const shrunk = steadyLines(60).slice(0, 45).join('\n');
+    const content = hookOutput(readLog(filePath, shrunk, sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+    assert.match(content, DELTA_HEADER_RE);
+    assert.ok(content.includes('15 lines were removed since the last read'), 'the deletion is counted');
+    assert.ok(content.includes('the file shrank from 60 to 45 lines'), 'both line counts are stated');
+    assert.ok(!content.includes('everything else is unchanged'), 'the all-unchanged claim is false here and must not appear');
+    assert.ok(content.includes('15 lines removed from the end of the file'), 'a pure tail cut says where');
+    assert.match(content, /Read it again without offset\/limit for the full file/, 'the recovery sentence survives');
+  });
+
+  test('a mid-file deletion carries the shrink count as well as the shifted lines', () => {
+    const filePath = 'C:\\repo\\logs\\svc10.log';
+    const sessionId = freshSession();
+    const before = steadyLines(60);
+    readLog(filePath, before.join('\n'), sessionId);
+
+    const after = [...before.slice(0, 20), ...before.slice(23)]; // 3 lines cut out of the middle
+    const content = hookOutput(readLog(filePath, after.join('\n'), sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+    assert.ok(content.includes('3 lines were removed since the last read'), 'the count is present even though the cut is not at the tail');
+    assert.ok(content.includes('the file shrank from 60 to 57 lines'));
+    assert.ok(!content.includes('everything else is unchanged'));
+    assert.ok(!content.includes('removed from the end of the file'), 'a mid-file cut never claims a tail position');
+  });
+
+  test('a same-length replacement still renders its changed lines and claims nothing was removed', () => {
+    const filePath = 'C:\\repo\\logs\\svc11.log';
+    const sessionId = freshSession();
+    const before = steadyLines(60);
+    readLog(filePath, before.join('\n'), sessionId);
+
+    const after = [...before];
+    after[12] = '10:12 info replaced worker line twelve entirely';
+    after[13] = '10:13 info replaced worker line thirteen entirely';
+    const content = hookOutput(readLog(filePath, after.join('\n'), sessionId)).hookSpecificOutput.updatedToolOutput.file.content;
+    assert.ok(content.includes('L13: 10:12 info replaced worker line twelve entirely'));
+    assert.ok(content.includes('L14: 10:13 info replaced worker line thirteen entirely'));
+    assert.ok(content.includes('2 of 60 lines shown'));
+    assert.ok(content.includes('everything else is unchanged'), 'no shrink, so the original claim is the true one');
+    assert.ok(!content.includes('were removed since the last read'));
+  });
+
+  test('a ranged read of a log path comes back byte-identical — no cap, no delta', () => {
+    const filePath = 'C:\\repo\\logs\\svc12.log';
+    const sessionId = freshSession();
+    const slice = steadyLines(400).slice(100, 300).join('\n');
+    assert.ok(slice.length > 8000, 'large enough that a full read would certainly be capped');
+    assert.strictEqual(
+      hookOutput(readLog(filePath, slice, sessionId, { offset: 100, limit: 200 })),
+      null,
+      'an explicit slice must return verbatim or the follow-up loop never resolves'
+    );
+  });
+
+  test('a ranged read of a sidecar path is verbatim too', () => {
+    const filePath = path.join(os.tmpdir(), 'hush-sidecar', 'abc123.txt');
+    const sessionId = freshSession();
+    const slice = steadyLines(400).slice(0, 200).join('\n');
+    assert.strictEqual(hookOutput(readLog(filePath, slice, sessionId, { offset: 1, limit: 200 })), null);
+  });
+
+  test('a full read of the same log path still gets the ordinary treatment', () => {
+    const filePath = 'C:\\repo\\logs\\svc13.log';
+    const sessionId = freshSession();
+    const content = steadyLines(400).join('\n');
+    const out = hookOutput(readLog(filePath, content, sessionId));
+    assert.ok(out, 'a full read of a log is still compressed');
+    assert.ok(out.hookSpecificOutput.updatedToolOutput.file.content.length < content.length);
+  });
+
   test('rejected-not-smaller: a near-total rewrite falls back to the ordinary view, not an oversized delta', () => {
     const filePath = 'C:\\repo\\logs\\svc7.log';
     const sessionId = freshSession();
@@ -1504,6 +1617,15 @@ describe('re-read delta (ROADMAP 066b): only the corpus-probed half of the cross
       const out = renderDelta(lines, []);
       assert.ok(out.includes('L2: ERROR two'));
       assert.ok(!out.includes('L1: ok one'));
+    });
+
+    test('changedLineIndexes reports the vanished tail positions of a shrunk file', () => {
+      assert.deepStrictEqual(changedLineIndexes(['a', 'b', 'c'], ['a', 'b']), [2]);
+    });
+
+    test('renderDelta without a previous count keeps the original all-unchanged wording', () => {
+      const out = renderDelta(['a', 'b'], [], undefined);
+      assert.ok(out.includes('everything else is unchanged'));
     });
   });
 });

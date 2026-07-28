@@ -453,22 +453,57 @@ function isMcpTableTool(toolName) {
 
 // JetBrains MCP payloads are usually a bare array of records, or an object
 // wrapping one (`{results:[...]}`); a shallow (depth<=2) search covers both
-// without guessing at every possible field name.
-function findMcpRecordsArray(parsed, depth) {
+// without guessing at every possible field name. A wrapper's OTHER fields
+// (`total`, `next_cursor`, a `warnings` array) are payload too — rendering
+// only the records array would drop them silently — so every field walked past
+// on the way to the array is collected into `siblings` (dotted labels at
+// depth), and the caller decides whether they can be stated faithfully.
+function findMcpRecordsArray(parsed, depth, prefix, siblings) {
   if (Array.isArray(parsed)) return parsed;
   if (depth >= 2 || !parsed || typeof parsed !== "object") return null;
+  const collect = (obj, skipKey) => {
+    for (const k of Object.keys(obj)) if (k !== skipKey) siblings.push([prefix + k, obj[k]]);
+  };
   for (const key of Object.keys(parsed)) {
     const val = parsed[key];
-    if (Array.isArray(val) && val.length >= MCP_TABLE_MIN_RECORDS) return val;
+    if (Array.isArray(val) && val.length >= MCP_TABLE_MIN_RECORDS) {
+      collect(parsed, key);
+      return val;
+    }
   }
   for (const key of Object.keys(parsed)) {
     const val = parsed[key];
     if (val && typeof val === "object" && !Array.isArray(val)) {
-      const found = findMcpRecordsArray(val, depth + 1);
-      if (found) return found;
+      // Only the winning branch pushes (the failing one returns before any
+      // collect call), so there is nothing to unwind on a miss.
+      const found = findMcpRecordsArray(val, depth + 1, `${prefix}${key}.`, siblings);
+      if (found) {
+        collect(parsed, key);
+        return found;
+      }
     }
   }
   return null;
+}
+
+// A sibling is representable when one short line can state it exactly, which
+// means scalars only. Anything nested, long, or tab/newline-bearing would have
+// to be summarized or reflowed, and a summarized field is precisely the data
+// loss this guard exists to prevent — null rejects the whole conversion and
+// the raw JSON goes through untouched. Losing the rewrite is fine; losing a
+// field is not.
+const MCP_SIBLING_MAX_CHARS = 120;
+
+function renderMcpSiblings(siblings) {
+  if (!siblings.length) return "";
+  const parts = [];
+  for (const [key, val] of siblings) {
+    if (val !== null && typeof val === "object") return null;
+    const text = typeof val === "string" ? val : String(val);
+    if (text.length > MCP_SIBLING_MAX_CHARS || /[\t\n\r]/.test(text)) return null;
+    parts.push(`${key}=${text}`);
+  }
+  return "wrapper: " + parts.join(", ");
 }
 
 function isPlainObject(v) {
@@ -485,8 +520,11 @@ function mcpTableCandidate(text) {
   } catch {
     return null;
   }
-  const records = findMcpRecordsArray(parsed, 0);
+  const siblings = [];
+  const records = findMcpRecordsArray(parsed, 0, "", siblings);
   if (!records || records.length < MCP_TABLE_MIN_RECORDS || !records.every(isPlainObject)) return null;
+  const wrapper = renderMcpSiblings(siblings);
+  if (wrapper === null) return null; // a wrapper field no short line can state exactly
   const keySets = records.map((r) => new Set(Object.keys(r)));
   const union = new Set();
   keySets.forEach((s) => s.forEach((k) => union.add(k)));
@@ -495,7 +533,7 @@ function mcpTableCandidate(text) {
     intersection = new Set([...intersection].filter((k) => keySets[i].has(k)));
   }
   if (!union.size || intersection.size / union.size < MCP_TABLE_KEY_SHARE) return null;
-  return { records, columns: [...union] };
+  return { records, columns: [...union], wrapper };
 }
 
 function tableCell(v) {
@@ -506,10 +544,13 @@ function tableCell(v) {
 }
 
 // Lossless: every record becomes a row, all values present, zero rows
-// dropped. Only the column classification (constant vs variable) is derived;
-// nothing is elided or summarized. The header is count-based, naming its own
-// provenance, matching every other [hush hook: ...] marker in this file.
-function renderMcpTable(records, columns) {
+// dropped, and any wrapper the records array was nested in contributes its own
+// verbatim `wrapper: k=v, ...` line (mcpTableCandidate rejects the whole
+// conversion when a wrapper field cannot be stated that exactly). Only the
+// column classification (constant vs variable) is derived; nothing is elided
+// or summarized. The header is count-based, naming its own provenance,
+// matching every other [hush hook: ...] marker in this file.
+function renderMcpTable(records, columns, wrapper) {
   const constantCols = [];
   const variableCols = [];
   for (const col of columns) {
@@ -522,6 +563,7 @@ function renderMcpTable(records, columns) {
     else variableCols.push(col);
   }
   const out = [`[hush hook: ${records.length} MCP JSON records rendered as a schema table below.]`];
+  if (wrapper) out.push(wrapper);
   if (records.length) {
     if (constantCols.length) out.push("constant: " + constantCols.map((c) => `${c}=${tableCell(records[0][c])}`).join(", "));
     out.push(variableCols.join("\t"));
@@ -558,7 +600,7 @@ function compressMcpTable(response, decision) {
     if (decision) decision.action = "passthrough";
     return undefined;
   }
-  const rendered = renderMcpTable(candidate.records, candidate.columns);
+  const rendered = renderMcpTable(candidate.records, candidate.columns, candidate.wrapper);
   if (rendered.length >= text.length) {
     if (decision) decision.action = "rejected-not-smaller";
     return undefined;
@@ -949,6 +991,9 @@ function hashLines(text) {
 // a general line-diff. A line inserted or removed mid-file shifts every
 // later hash and the tail reads as "changed" too; that only makes the delta
 // larger, never wrong, since every genuinely different line still shows.
+// Comparing up to the LONGER of the two is what lets a shrunk file register
+// at all — the indexes past the new end have no line to render, so renderDelta
+// turns them into the header's removed-line count instead.
 function changedLineIndexes(prevHashes, hashes) {
   const out = [];
   const max = Math.max(prevHashes.length, hashes.length);
@@ -958,17 +1003,26 @@ function changedLineIndexes(prevHashes, hashes) {
   return out;
 }
 
-function renderDelta(lines, changedIdx) {
+// `prevTotal` (the previous read's line count) is what makes a deletion
+// visible: changedIdx carries the vanished tail positions, but they have no
+// line to render, so without the count a shrunk file would report "0 of 45
+// lines shown ... everything else is unchanged" — false, and silently so.
+function renderDelta(lines, changedIdx, prevTotal) {
   const total = lines.length;
+  const removed = typeof prevTotal === "number" && prevTotal > total ? prevTotal - total : 0;
   const signalIdx = [];
   lines.forEach((l, i) => {
     if (SIGNAL_RE.test(l)) signalIdx.push(i);
   });
-  const shown = new Set([...changedIdx.filter((i) => i < total), ...signalIdx]);
+  const inRange = changedIdx.filter((i) => i < total);
+  const shown = new Set([...inRange, ...signalIdx]);
   const sorted = [...shown].sort((a, b) => a - b);
   const out = [
     `[hush hook: this file changed since your last read of it this session — ${sorted.length} of ${total} ` +
-      `lines shown below (the changed lines, plus any warnings/errors/failures); everything else is unchanged. ` +
+      `lines shown below (the changed lines, plus any warnings/errors/failures); ` +
+      (removed
+        ? `${removed} lines were removed since the last read (the file shrank from ${prevTotal} to ${total} lines); every other line is unchanged. `
+        : `everything else is unchanged. `) +
       `Read it again without offset/limit for the full file.]`,
   ];
   let last = -1;
@@ -978,6 +1032,11 @@ function renderDelta(lines, changedIdx) {
     last = i;
   }
   if (total - 1 - last > 0) out.push(`  ... ${total - 1 - last} unchanged lines ...`);
+  // Hash-only state knows how MANY lines vanished, never which. When nothing
+  // inside the new range changed, the cut was a pure tail cut and the marker
+  // can say where; a mid-file cut shifts every later line, so those already
+  // render as changed above and the header's shrink count carries the rest.
+  if (removed && !inRange.length) out.push(`  ... ${removed} lines removed from the end of the file since the last read ...`);
   return out.join("\n");
 }
 
@@ -1013,7 +1072,7 @@ function maybeDelta(cleaned, filePath, sessionId) {
       return null;
     }
 
-    const rendered = renderDelta(cleaned.split("\n"), changedIdx);
+    const rendered = renderDelta(cleaned.split("\n"), changedIdx, prev.hashes.length);
     state[filePath] = { hashes, rereads };
     writeDeltaState(sessionId, state);
     if (rendered.length >= cleaned.length) return null;
@@ -1232,21 +1291,22 @@ function main() {
     const file = response && typeof response === "object" ? response.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
     const sideRead = isSidecarPath(filePath);
-    // Only a full read (no offset/limit) is a valid delta candidate — a
-    // ranged read covers a different slice of the file than whatever was
-    // hashed last time, so there is nothing sound to diff it against. Mirrors
-    // exactly the scope the corpus probe measured.
+    // An explicit offset/limit means the model is navigating to a specific
+    // slice — often after a capped view's own marker invited it — and that
+    // slice must come back verbatim or the follow-up loop never resolves. Host
+    // tool-results files stated that first; logs, generated files and hush's
+    // own sidecars need it for exactly the same reason, so a ranged Read of
+    // any watched path passes through untouched. (No delta either: a slice
+    // covers different lines than whatever was hashed last time, so there is
+    // nothing sound to diff it against — exactly the scope the corpus probe
+    // measured.)
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
-    // Host tool-results files: only a FULL read gets the capped view. An
-    // explicit offset/limit means the model is navigating to a specific slice
-    // (often after the capped view's own marker invited it) — that slice must
-    // come back verbatim or the follow-up loop never resolves.
-    const hostRead = !isRangeRead && isHostToolResultsPath(filePath);
+    const hostRead = isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
-      if (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead) {
+      if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead)) {
         const decision = {};
         let out;
-        if (!sideRead && !hostRead && !isRangeRead && !enumerate) {
+        if (!sideRead && !hostRead && !enumerate) {
           const cleaned = resolveCarriageReturns(stripAnsi(file.content));
           const delta = maybeDelta(cleaned, filePath, data.session_id);
           if (delta !== null) {
