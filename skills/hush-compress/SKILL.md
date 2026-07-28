@@ -1,6 +1,6 @@
 ---
 name: hush-compress
-description: Compresses a memory file (CLAUDE.md, project notes, preferences) into hush's own dev-shorthand voice to cut input tokens every session it's loaded. Never touches the original file — writes a sibling file for the user to review and swap in manually. A mechanical verifier checks that headings, code blocks, URLs, paths, and inline code all survived.
+description: Compresses a memory file (CLAUDE.md, project notes, preferences) into hush's own dev-shorthand voice to cut input tokens every session it's loaded. Never touches the original file — writes a sibling candidate for the user to review and swap in manually, and refuses to overwrite a candidate that is already there. A mechanical verifier checks that frontmatter, headings, code blocks, URLs, links, paths, inline code, numbers, identifiers, and negations all survived.
 when_to_use: Trigger when the user wants to shrink a memory/CLAUDE.md file to save input tokens, says "compress this file", "shrink my CLAUDE.md", "compress this memory file", or invokes /hush:hush-compress <path>.
 argument-hint: "<path to the file to compress>"
 allowed-tools: Read, Write, Bash, PowerShell
@@ -8,7 +8,7 @@ allowed-tools: Read, Write, Bash, PowerShell
 
 # hush:hush-compress
 
-Shrinks a memory file's word count using hush's own voice — the same "Word economy" rules the output style already applies to conversation — so every future session that loads this file pays fewer input tokens for it. Never writes to the original.
+Shrinks a memory file's word count using hush's own voice — the same "Word economy" rules the output style already applies to conversation — so every future session that loads this file pays fewer input tokens for it. The original is never written to. The result is a candidate file the user reviews and swaps in themselves.
 
 ## 1. Refuse before reading, if the path matches any of
 
@@ -16,13 +16,26 @@ Shrinks a memory file's word count using hush's own voice — the same "Word eco
 
 Tell the user why and stop. Do not read the file. These are exactly the kinds of files that must never reach a model call.
 
-## 2. Read the file, refuse if empty
+## 2. Check the target path, still before reading
+
+Run:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-compression.js" --target <original>
+```
+
+It prints the candidate path this run may write (`some/path/CLAUDE.md` → `some/path/CLAUDE.hush.md`) and exits 1 with the reason when the run must not proceed:
+
+- **Unsupported format** — only `.md`, `.markdown`, and `.txt` files are compressed. Everything else — PDFs, office documents, source files, data files, anything binary — is refused. Name the format and stop.
+- **A candidate already exists** — that file can hold the user's own edits, so nothing here writes over it. Show its path, say it will be replaced only if they say so, and stop this turn. Continue only after the user answers.
+
+## 3. Read the file, refuse if empty
 
 If the file is empty or whitespace-only after reading, say so and stop — nothing to compress.
 
-## 3. Compress the body, not the whole file
+## 4. Compress the body, not the whole file
 
-If the file starts with YAML frontmatter (`---` ... `---`), leave it completely untouched — copy it verbatim into the output. Compress only the body below it.
+If the file starts with YAML frontmatter (`---` ... `---`), copy the whole block into the candidate byte for byte: every line, same order, values unchanged. Compress only the body below it. Step 7 compares the two blocks byte for byte and fails the run on any difference.
 
 Apply hush's own word economy — see `output-styles/hush.md`:
 - Say it in the fewest words that stay understandable. Before keeping a sentence, ask: can this lose a word without losing a fact? If yes, cut it.
@@ -38,11 +51,13 @@ Preserve these EXACTLY, byte for byte — never reword, shorten, or paraphrase i
 - environment variable names (`$HOME`, `NODE_ENV`)
 - heading text and heading order
 
-## 4. Write the result to a sibling file — never the original
+And keep the meaning intact even where the words change: every negation (`no`, `not`, `never`, `without`), every qualifier (`usually`, `only when`, `in most cases`), every condition, and the order of anything ordered.
 
-For `some/path/CLAUDE.md`, write to `some/path/CLAUDE.hush.md`. For any other filename, insert `.hush` before the extension (`notes.md` → `notes.hush.md`). This is the whole safety model: the original's bytes are never touched by this skill, in any step, so there is no path by which running this can damage or delete the source file.
+## 5. Write the candidate — never the original
 
-## 5. Check cache stability (advisory only)
+Write to the path step 2 printed. This is the whole safety model: the original's bytes are never touched by this skill, in any step, so there is no path by which running this can damage or delete the source file.
+
+## 6. Check cache stability (advisory only)
 
 Run:
 
@@ -52,18 +67,29 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cache-stability-check.js" <original>
 
 This scans the ORIGINAL file's first 60% of lines for volatile content — ISO dates, times, `AUTO-GENERATED`/`Last updated`/`Generated by` stamps, UUID-v4s, and `@import` lines whose paths carry a date or build stamp. These lines sit early in the prompt-cache prefix; every session that changes one re-bills everything after it. This never edits the file — it's advisory only. Include any findings in your report to the user (move-or-remove suggestion); if it reports clean, no need to mention it.
 
-## 6. Verify mechanically
+## 7. Verify mechanically — this one is a gate
 
 Run:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-compression.js" <original> <compressed>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-compression.js" <original> <candidate>
 ```
 
-This checks that every heading, code block, URL, path, and inline-code span in the original still appears somewhere in the compressed file. It exits 1 and lists what's missing if not — it doesn't block anything (there's nothing destructive to block), it's evidence for you to look at before reporting back.
+It lists what didn't survive: the frontmatter block (byte for byte), headings, code blocks, URLs, markdown link targets, paths, inline code, numeric values, identifiers (`snake_case`, `CONST_CASE`, `camelCase`, `call()`, `$ENV_VAR`), and the total count of negation words. It exits 1 with each finding named.
 
-If something is flagged missing, look at whether it actually mattered (the checker is deliberately crude and can flag things like a URL fragment as a false "path") — restore anything real that got dropped, by editing the sibling file, before reporting.
+On exit 1: fix the candidate and run it again until it exits 0. The checker is deliberately crude and does produce false positives — a URL fragment read as a missing path, a number that was a duplicate, a negation the rewrite folded away. When a finding is a false positive, say which one and why in the report.
 
-## 7. Report
+If a real loss can't be fixed, delete the candidate and report what failed. Never hand back a candidate that failed verification as ready to swap in.
 
-One line: original word count → compressed word count, percent saved, where the sibling file was written. If the verifier flagged anything worth mentioning, say what and whether you fixed it. If the cache-stability check found anything, name the flagged lines and suggest moving them to the end of the file or removing them. Tell the user to review the sibling file and manually replace the original (or ask them to rename it) once they're satisfied — this skill never does that replacement itself.
+## 8. Report the semantic changes, then stop for the user's decision
+
+Step 7 covers what a script can check. It cannot see meaning that moved: a dropped qualifier, a reordered dependency, two rules merged into one, an instruction that lost its condition. That is what this report is for, and it is the only review this change gets before the user's own memory file is replaced.
+
+Report:
+
+- original word count → candidate word count, percent saved, and the candidate's path
+- every place where meaning could have moved — qualifiers dropped, conditions merged, ordering changed, sections combined — each named by its heading or line. If there are none, say so.
+- what the verifier flagged and what was done about it
+- what the cache-stability check found, if anything, with the move-or-remove suggestion
+
+Then stop. The user reads the candidate, decides, and replaces the original themselves — this skill never performs that replacement.

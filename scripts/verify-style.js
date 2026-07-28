@@ -2,8 +2,8 @@
 "use strict";
 
 // Mechanical check that a crafted output style kept hush's mechanics.
-// Advisory like verify-compression.js: reports what didn't survive and
-// exits 1 — it never edits anything. The canonical file is the source of
+// Reports what didn't survive and exits 1 — it never edits
+// anything. The canonical file is the source of
 // truth for every invariant, so this script carries no copied prose.
 
 // Sections whose RULES must survive a voice rewrite. They are checked by the
