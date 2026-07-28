@@ -40,6 +40,15 @@ test('HUSH_NUDGE=off silences the hook', () => {
   assert.strictEqual((r.stdout || '').trim(), '');
 });
 
+// Both registrations inject context, so both have to answer to the
+// product-wide disable — and it wins over an explicit HUSH_NUDGE=1.
+for (const event of ['UserPromptSubmit', 'PostToolUse']) {
+  test(`HUSH_DISABLE=1 silences the ${event} path even with HUSH_NUDGE=1`, () => {
+    const r = runHook('silence-nudge.js', { hook_event_name: event }, { HUSH_DISABLE: '1', HUSH_NUDGE: '1' });
+    assert.strictEqual((r.stdout || '').trim(), '');
+  });
+}
+
 test('the reminder never names the behavior it is preventing', () => {
   // Wording that describes narrating primes narrating — measured twice.
   for (const text of [TURN, TOOL]) {

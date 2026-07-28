@@ -31,6 +31,7 @@ function nudgeFor(event) {
 }
 
 function main() {
+  if (process.env.HUSH_DISABLE === "1") return;
   if (OFF) return;
   let raw = "";
   process.stdin.on("data", (d) => {

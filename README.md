@@ -162,7 +162,7 @@ Most people never touch these. A few environment variables tune the caps or turn
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Turns hush off |
+| `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
 | `HUSH_NARRATION_BUDGET=120` | Words of narration allowed before hush steps in |
 | `HUSH_SIDECAR=off` | Keeps big output inline instead of moving it to a file |
 | `HUSH_DELTA=off` | Shows the whole file again on a re-read instead of just what changed |
