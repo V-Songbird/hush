@@ -1,15 +1,14 @@
 # hush styles
 
-Same machinery, six voices.
+Same machinery, five voices.
 
 Every style in this folder runs the same way underneath: silent between tool calls, then one structured final message when the work is done, under the same hard caps. What changes is what that last message *sounds* like.
 
-Stock **Hush** lives one folder over, in `output-styles/`. The five files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` writes a sixth in a voice you choose.
+Stock **Hush** lives one folder over, in `output-styles/`. The four files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` writes a fifth in a voice you choose.
 
 | Style | What the sign-off does |
 | --- | --- |
-| **Hush** | Stock — silent, outcome-first, terse |
-| **Anchor** | Chunked and signposted for limited attention — answer first, one idea per sentence |
+| **Hush** | Stock — built for tired and ADHD readers: silent, answer first, plain words, hard length caps |
 | **Glyph** | Trades words for emotes — one glyph-led line per fact |
 | **Rock** | Pure telegram — noun chains, dropped articles, every fact kept |
 | **Pirate** | Says it the way a pirate would |
@@ -26,24 +25,11 @@ Every one of them found the same bug, made the same fix, and left the tests gree
 ---
 
 ### Hush
-_Stock: silent, outcome-first, terse._
+_Stock: built for tired and ADHD readers — silent, answer first, plain words, hard length caps._
 
 `payroll.js` withheld tax before subtracting the pre-tax deduction, taxing money that should've been tax-free and shorting take-home pay.
 
 Swapped the order so the deduction comes out first, then tax applies to the reduced taxable amount. All 3 tests pass, 87ms.
-
----
-
-### Anchor
-_Chunked, signposted, low memory load._
-
-**Root cause found and fixed — `netPay` was withholding tax on gross pay before subtracting the pre-tax deduction, instead of after.**
-
-In `src/payroll.js`, `netPay` called `withholdTax(gross, TAX_RATE)` first, then `applyPreTaxDeduction` on the already-taxed amount. That taxes income the deduction should have shielded, so anyone with a pre-tax deduction (benefits, retirement, etc.) got taxed on more income than they should have — the shortfall.
-
-Fixed by reordering: deduct pre-tax first, then withhold tax on the reduced taxable amount.
-
-Tests: 3/3 pass, 106ms.
 
 ---
 

@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## Unreleased
+
+The built-in Hush style is now written for tired and ADHD readers: it opens with the answer, reaches for the everyday word instead of the technical one, and holds every reply to 12 lines and 15 words a sentence.
+
+Removed the Anchor preset — the built-in style now covers what it was for.
+
 ## 0.16.4-alpha — 2026-07-22
 
 The README's style table now quotes each bundled preset's own description, so it can't drift out of sync with the style files again.

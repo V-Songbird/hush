@@ -27,6 +27,8 @@ You've seen it: "Let me start by looking at the codebase." "Now I'll check the c
 
 hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill. It earns its keep in real engineering sessions, the kind that read logs and run builds, because that's where the noise lives.
 
+And the one message you do get is built to be read on an empty tank. Answer first. Everyday words instead of jargon, because swapping a word is free and explaining one costs you a line. Hard caps on the whole thing: 12 lines, 15 words a sentence. If you have ADHD, or you're just fried at the end of a long day, that's the point — nothing to wade through, and nothing you're assumed to already know.
+
 ## Why you'd want it
 
 - **Cheaper sessions.** The two biggest sources of bulk — noisy output and narration — get shrunk, so long sessions cost less.
@@ -81,7 +83,6 @@ hush runs itself; these commands are extras:
 
 | Style | What the final message does |
 | --- | --- |
-| **Anchor** | ADHD-friendly reporting — answer first, chunked and signposted so it's easy to scan |
 | **Glyph** | Emoji-telegram reports — an emote replaces each obvious word |
 | **Rock** | Stone Age dialect — noun chains, no articles, `=` for cause |
 | **Pirate** | Every report in full pirate dialect, outcome first |
@@ -93,7 +94,7 @@ Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's
 
 Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
-**See them side by side.** Same bug, same fix, six sign-offs — [`styles/README.md`](styles/README.md).
+**See them side by side.** Same bug, same fix, five sign-offs — [`styles/README.md`](styles/README.md).
 
 ## Benchmarks
 
