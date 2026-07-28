@@ -7,6 +7,20 @@ version field by convention).
 
 ## Unreleased
 
+`HUSH_DISABLE=1` now stops everything hush does while a session runs — every hook, reminder, and file it would write. The output style is a separate switch: `/hush:pick-style` hands the slot back to stock.
+
+Fixed an issue where converting a structured result to a table could drop fields sitting beside the records — totals, cursors, and warnings are now kept, or the conversion doesn't run.
+
+Fixed an issue where re-reading a file that had lines deleted could report no change. Deletions are now shown as deletions.
+
+A ranged read (`Read` with an offset or a limit) now passes through untouched — you get exactly the lines you asked for.
+
+`/hush:hush-compress` refuses an unsupported file type or an existing `.hush.md` candidate before it reads anything, copies frontmatter across byte for byte, and won't hand you a draft the verifier can't clear.
+
+Switching styles now validates the new style before touching the active slot and puts the old one back if anything fails, so a failed switch can't leave you without a style. Restoring stock works as many times as you like, and `/hush:pick-style` shows where each style on the list came from.
+
+The README, plugin description, and benchmark docs now describe hush as what it is: a specialist for noisy, log-heavy, multi-turn work that costs a little more on short, quiet tasks. Absolute claims about losslessness and savings are replaced with what the code actually guarantees, and the docs now state where parked output is stored, how to get it back, and what `/hush:stats` can and can't tell you.
+
 The built-in Hush style is now written for tired and ADHD readers: it opens with the answer, reaches for the everyday word instead of the technical one, and holds every reply to 12 lines and 15 words a sentence.
 
 Removed the Anchor preset — the built-in style now covers what it was for.

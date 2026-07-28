@@ -1,10 +1,10 @@
 # hush styles
 
-Same machinery, five voices.
+Same machinery, four presets plus stock.
 
 Every style in this folder runs the same way underneath: silent between tool calls, then one structured final message when the work is done, under the same hard caps. What changes is what that last message *sounds* like.
 
-Stock **Hush** lives one folder over, in `output-styles/`. The four files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` writes a fifth in a voice you choose.
+Stock **Hush** lives one folder over, in `output-styles/`. The four files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` adds one more in a voice you choose.
 
 | Style | What the sign-off does |
 | --- | --- |

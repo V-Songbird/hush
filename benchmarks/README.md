@@ -18,7 +18,7 @@ It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed
 > [!NOTE]
 > The numbers move between runs — a handful of reps against a live model, not a powered experiment. Expect single-digit-percent swings on any given task, and more on the noisy ones. `noisy-build` is genuinely bimodal on the bigger model, sometimes running clean and sometimes triggering extra verification turns — judge it by the *per-rep spread*, not just the mean.
 
-**What you should see:** hush landing **at or below baseline on cost**, with **far less mid-turn narration** and leaner tool output — the same *shape* as our published charts. You will **not** reproduce our exact figures, and that's expected. If hush is cheaper and quieter with every task still passing, the claim holds.
+**What you should see:** the same *shape* as our published charts — hush **below baseline on the noisy tasks** (`log-triage`, `incident-followup`, `sidecar-follow`, `dep-bump-warnings`), **above baseline on the no-tools ones**, and **far less mid-turn narration** with leaner tool output throughout. You will **not** reproduce our exact figures, and that's expected. The claim holds if the noisy rows win by more than the quiet rows lose, with every task still passing — a run where hush is cheaper on every single task would be the surprising result, not the target.
 
 ## Run it
 
@@ -28,7 +28,7 @@ It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed
 node runner/run.js --tag smoke --tasks explain-rerender --reps 1 --model haiku
 ```
 
-**2. The real thing** — the cheap default subset (3 tasks × baseline + hush × 2 reps, small model):
+**2. The real thing** — the cheap default subset (8 tasks × baseline + hush × 2 reps, small model):
 
 ```bash
 node runner/run.js --tag mine --model haiku
@@ -40,7 +40,7 @@ That writes `results/mine/report.md` and `results/mine/report.html` — tables, 
 **3. Go bigger** (optional) — the whole task suite, or the larger model (costs more):
 
 ```bash
-node runner/run.js --tag full --full --model haiku      # all 9 tasks
+node runner/run.js --tag full --full --model haiku      # all 15 tasks
 node runner/run.js --tag big  --model sonnet            # default subset, bigger model
 ```
 
@@ -71,7 +71,9 @@ node --test hush/tests/*.test.js
 
 Each run records, per session: cost, output tokens, **context traffic** (the sum of input + cache tokens across every API call — where tool-output compression shows up), mid-turn narration words vs. the final answer, characters of tool output that entered context, turns, wall time, and a pass/fail from the task's ground-truth check.
 
-The tasks: two pure Q&A questions (no tools — measuring how much Claude *says*), tool tasks that fix failing tests, triage a long log, summarize a small codebase, or report every warning from a noisy build, and one multi-turn task (`incident-followup`) that carries a real conversation across several prompts in the same session — the only way to see what a plugin costs once history has accumulated, not just on the first exchange. Correctness is a keyword rubric or `node --test` exit code, hand-ground-truthed per task — a degenerate one-word answer fails.
+The tasks: 15 in all — three no-tools questions (measuring how much Claude *says*), eleven tool tasks that fix failing tests, triage a long log, summarize a small codebase, or report every warning from a noisy build, and one multi-turn task (`incident-followup`) that carries a conversation across three prompts in the same session — the only way to see what a plugin costs once history has accumulated, not just on the first exchange. Correctness is a keyword rubric or `node --test` exit code, hand-ground-truthed per task — a degenerate one-word answer fails.
+
+Every repo the tool tasks run in is a purpose-built fixture — a small seeded project with the bug or the noisy log already in place, not an open-source checkout. That keeps runs comparable and cheap; it also means the suite measures those shapes of work, not the shape of your repo.
 
 ### A note on fairness
 

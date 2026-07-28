@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude bills you for every word it reads and writes, and most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. Install it, change nothing, pay less: $0.159 an average session against $0.179 without it.
+> **TL;DR** — Claude bills you for every word it reads and writes, and in noisy work most of those words are logs, build output, and play-by-play. hush trims them at the source, automatically. It's built for the loud sessions — logs, builds, long multi-turn debugging — where it took our benchmark suite's average session from $0.179 to $0.159. On a short, quiet job there's nothing to cut and it can cost a little more.
 
 ---
 
@@ -25,16 +25,18 @@
 
 You've seen it: "Let me start by looking at the codebase." "Now I'll check the config." Four hundred lines of build output you didn't ask for, and — eventually — the one sentence you actually needed. Every word of that is billed.
 
-hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill. It earns its keep in real engineering sessions, the kind that read logs and run builds, because that's where the noise lives.
+hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill.
+
+It's a specialist, and it says so on the tin: it earns its keep in sessions that read logs, run builds, and keep going for turn after turn, because that's where the noise lives. Ask it a one-shot question with no tools involved and there's nothing to trim — you'll pay hush's own small overhead for the quieter reply.
 
 And the one message you do get is built to be read on an empty tank. Answer first. Everyday words instead of jargon, because swapping a word is free and explaining one costs you a line. Hard caps on the whole thing: 12 lines, 15 words a sentence. If you have ADHD, or you're just fried at the end of a long day, that's the point — nothing to wade through, and nothing you're assumed to already know.
 
 ## Why you'd want it
 
-- **Cheaper sessions.** The two biggest sources of bulk — noisy output and narration — get shrunk, so long sessions cost less.
+- **Cheaper noisy sessions.** The two biggest sources of bulk — machine output and narration — get shrunk, so the long, loud sessions cost less.
 - **Easier to read.** The answer sits at the top of one final message, not buried in a play-by-play.
-- **Nothing important is lost.** Failing command output, code, diffs, and security warnings are kept whole.
-- **Zero setup.** Install it and it's on. Tune it later only if you feel like it.
+- **Your files are never touched, and big output is saved before it's shortened.** Anything large enough to be parked out of the chat is written whole to a local file the summary points at. Smaller trims keep the lines that carry signal — errors, warnings, failures — and drop the repetitive middle, and a failing command gets far more room than a clean one.
+- **Zero setup.** Install it and the trimming and the quiet final message are on. Voices and the document rewriter wait until you ask for them by name.
 
 ## How it works
 
@@ -43,12 +45,14 @@ Five small habits, picked up the moment it's installed:
 | Moment | What happens |
 | --- | --- |
 | Progress narration | Swapped for one clean summary at the end |
-| Command output & log files | Trimmed as they come in — a short tail from a clean run, the whole thing from a failing one |
+| Command output & log files | Trimmed as they come in — a short tail from a clean run, up to 250 lines from a failing one, with the error and warning lines pulled through |
 | Mid-turn rambling | Caught by a running word count and cut off the moment it starts |
 | Really large output (a huge log, a giant lockfile) | Parked in a local file behind a short summary, so it isn't re-sent in full every turn |
-| Re-reading a file that changed on its own | Shown as just the changed lines, not the whole file again |
+| Re-reading a file that changed on its own | Shown as the added and removed lines, not the whole file again |
 
 That's the whole list. No workflow to learn, no dial to find first — it's just how Claude behaves now.
+
+All five are the default experience: **Core** trims the machine output, **Quiet** handles the silence and the answer-first final message. Two more surfaces sit off to the side until you name them — **Voices**, the style shelf (`/hush:pick-style`, `/hush:craft-style`), and **Draft**, the document rewriter (`/hush:hush-compress`). Neither switches itself on, and nothing rewrites a file of yours unless you run that last command.
 
 ## Install
 
@@ -69,13 +73,13 @@ hush runs itself; these commands are extras:
 
 | You want to… | Command |
 | --- | --- |
-| Shrink a `CLAUDE.md` or notes file so every session that loads it costs less | `/hush:hush-compress <path>` |
-| See exactly what hush trimmed this session | `/hush:stats` |
+| Draft a shorter `CLAUDE.md` or notes file, for you to review and swap in | `/hush:hush-compress <path>` |
+| See what hush trimmed this session | `/hush:stats` |
 | Try one of the output styles hush ships, or hand back to stock | `/hush:pick-style` |
 | Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
 
 > [!IMPORTANT]
-> `hush-compress` never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) for you to review and swap in yourself.
+> `hush-compress` never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) and refuses to overwrite one that's already there. Frontmatter is carried across byte for byte, and a verifier flags every number, path, link, code block, identifier, and dropped "not" it can't account for in the draft. It catches likely omissions; it can't prove the shorter file still means the same thing. That's the review's job, and it's yours.
 
 `/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
 
@@ -98,7 +102,7 @@ Both commands ask before they swap, both take effect at your next session, and s
 
 ## Benchmarks
 
-We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on real engineering work: full agent sessions that explore, edit, and run code. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
+We put hush up against plain Claude Code and two rivals — caveman, which tells Claude to talk less, and an all-round "efficiency mode" plugin — on 15 fixed jobs: full agent sessions that explore, edit, and run code in seeded throwaway repos built for the purpose. Same jobs, phrased the way a developer actually types them, real cost read straight from the API.
 
 <p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.179, a 'be brief' plugin $0.175, an 'efficiency mode' plugin $0.170, hush $0.159. hush takes $0.019 off the bill; asking Claude to be brief takes off $0.004" width="700"></p>
 
@@ -110,7 +114,7 @@ We put hush up against plain Claude Code and two rivals — caveman, which tells
 
 <p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.43, a 'be brief' plugin $0.42, an 'efficiency mode' plugin $0.41, hush $0.28. hush takes $0.15 off the bill" width="700"></p>
 
-**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one click away — that outage session came in at $0.28 against $0.43. Neither rival moved it more than a cent and a half.
+**It shows most in longer sessions.** Drag a huge file into a multi-turn conversation and that bulk gets re-sent every turn. hush keeps a tidy summary in the chat and the full copy one read away — that outage session came in at $0.28 against $0.43. Neither rival moved it more than a cent and a half.
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — triage an outage, dig a version from a huge lockfile, write the handoff — with every reply drawn at actual size. A typical run with no plugin fills 634 words; a typical hush run fills 286, a visibly shorter column. Both passed the same check" width="700"></p>
 
@@ -143,10 +147,10 @@ Every job, every setup — the wins **and** the ties and losses. Cheapest per ro
 
 Every job passed its correctness check in every setup — not one cheaper-but-wrong answer.
 
-> [!NOTE]
-> hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and roughly ties on short or low-output jobs, where a session's fixed overhead dwarfs anything a plugin can trim. On a few it costs a hair more. That's the honest shape, and it's why the average is the number to read.
+> [!IMPORTANT]
+> Read the rows, not just the last one. hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and it **loses** on short, low-output jobs, where its own overhead is bigger than anything it can trim: $0.077 against $0.060 on a no-tools explanation, $0.135 against $0.109 on a small bug fix. The average is the average of *this* suite with every job weighted the same. Your bill will follow whichever rows look like your work.
 
-*How we tested: same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — a full multi-turn agent session every time, never a single generated reply — costs read from the API, not estimated. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
+*How we tested: same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — headless agent sessions driven end to end, never a single generated reply — costs read from the API, not estimated. The repos are purpose-built fixtures, not open-source checkouts, and one of the 15 jobs runs across several turns. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
 
 ### Better together
 
@@ -154,7 +158,7 @@ We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/raz
 
 ## Under the hood
 
-Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier; the six shipped presets are built the same way and pass the same verifier. With your say-so `pick-style` swaps whichever one you chose into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
+Every trim above happens locally as Claude works — read the plugin's files if you want the exact mechanics. `craft-style` copies those measured mechanics verbatim into a new style file in your own `output-styles` folder, checked by a mechanical verifier; the four shipped presets are built the same way and pass the same verifier. With your say-so `pick-style` swaps whichever one you chose into hush's own slot so it binds like stock, and swaps stock back on request. A plugin that takes plugins, more or less. Pairs naturally with [razor](https://github.com/V-Songbird/razor): razor cuts the code, hush cuts the noise. Run both and neither notices the other — measured as a pair, they're the setup we'd pick ourselves (see [Better together](#better-together)).
 
 ## Settings
 
@@ -167,6 +171,16 @@ Most people never touch these. A few environment variables tune the caps or turn
 | `HUSH_SIDECAR=off` | Keeps big output inline instead of moving it to a file |
 | `HUSH_DELTA=off` | Shows the whole file again on a re-read instead of just what changed |
 | `HUSH_DEBUG=1` | Turns on the record `/hush:stats` reads from |
+
+There are no compression levels and no profiles. hush has one policy; these switches turn parts of it off, they don't dial it up.
+
+## Good to know
+
+- **Getting the full output back.** When hush parks something big in a file, the summary names that file — read it and you have every byte. If the file is gone, run the command again; a second run isn't guaranteed to produce the same output as the first, so hush never claims it regenerates what was lost.
+- **Turning it off is two switches.** `HUSH_DISABLE=1` stops everything hush does while a session runs. The output style is separate — it's chosen at session start, so hand the slot back with `/hush:pick-style`, or uninstall.
+- **Where the parked output lives.** Your operating system's temp folder, in `hush-sidecar`, one file per output, written only readable by you where the OS supports that. hush doesn't sweep them yet — temp cleanup does, on your OS's schedule. Anything you'd hate to see in a temp file, keep out of the terminal.
+- **Windows caveat.** Same atomic writes and the same refusal to follow symlinks, but the read-only-to-you file mode isn't enforceable there — treat parked output as readable by anything running as you.
+- **What `/hush:stats` can tell you.** How many bytes hush took out of tool output, minus the text it added back. It can't tell you what the session would have cost without it: there's no second, hush-free run of your session to compare against. It's a record of what hush did, not a bill you avoided.
 
 ## License
 
