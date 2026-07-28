@@ -25,10 +25,12 @@ It prints one JSON object: `styles` (each with `index`, `name`, `description`, `
 Render it as exactly this table, one row per entry in `styles`, in index order:
 
 ```
-| # | Name | Description | Active |
-| --- | --- | --- | --- |
-| 1 | <name> | <description> | ✓ (only on the active row) |
+| # | Name | Description | Source | Active |
+| --- | --- | --- | --- | --- |
+| 1 | <name> | <description> | <source> | ✓ (only on the active row) |
 ```
+
+`source` is `shipped` for the presets hush ships, `stock` for the benchmarked default, and `crafted` for the user's own variants. Print it as it comes — it is what tells two same-named entries apart.
 
 If `restoredOverTakeover` is `true`, add one line above the table: "A plugin update restored stock Hush over a prior takeover." Otherwise add nothing.
 
@@ -48,7 +50,9 @@ Run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<that entry's path>"
 ```
 
-The script backs up `output-styles/hush.md` to `output-styles/hush.md.stock` on first use, writes the chosen file into the forced slot with `force-for-plugin: true` added, and strips any `outputStyle` setting that pointed at the same name. It prints `{ ok, target, name, backedUp, settingsUpdated }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying.
+The script checks the chosen style against hush's mechanics first, backs up `output-styles/hush.md` to `output-styles/hush.md.stock` on first use, writes the chosen file into the forced slot with `force-for-plugin: true` added, and strips any `outputStyle` setting that pointed at the same name. The swap is all-or-nothing: a style that dropped hush's mechanics or answers to a shipped preset's name is refused, and any failure mid-swap puts the previously active style back. The backup is kept, so `stock` restores as often as it is asked for.
+
+It prints `{ ok, target, name, backedUp, settingsUpdated }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying.
 
 This is the only place in the plugin that touches `output-styles/hush.md`; `craft-style` calls this same script rather than repeating the swap.
 

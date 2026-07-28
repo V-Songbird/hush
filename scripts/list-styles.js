@@ -72,14 +72,28 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
 
   const stockBackupExists = fs.existsSync(hushPath + ".stock");
   const activeOnShelf = activeIndex !== -1;
+  const record = readActiveRecord(hushPath);
 
   return {
     styles: entries,
     activeName: activeFm.name || null,
     activeOnShelf,
     stockBackupExists,
-    restoredOverTakeover: stockBackupExists && activeIndex !== -1 && entries[activeIndex].source === "stock",
+    // The record names what was last activated here, so the slot running
+    // something else means a plugin update wrote over it. With no record —
+    // nothing was ever activated — a backup sitting beside stock says the same.
+    restoredOverTakeover: record
+      ? record.target !== "stock" && (activeFm.name || null) !== record.name
+      : stockBackupExists && activeIndex !== -1 && entries[activeIndex].source === "stock",
   };
+}
+
+function readActiveRecord(hushPath) {
+  try {
+    return JSON.parse(fs.readFileSync(hushPath + ".active.json", "utf-8"));
+  } catch {
+    return null;
+  }
 }
 
 function main() {
@@ -92,4 +106,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { shelf };
+module.exports = { shelf, listMdFiles, readFrontmatter, PRESET_MARKER };

@@ -106,3 +106,37 @@ test("restoredOverTakeover is true only when a backup exists and stock is curren
   assert.strictEqual(result.stockBackupExists, true);
   assert.strictEqual(result.restoredOverTakeover, true);
 });
+
+test("a recorded stock restore is not read as an update overwriting a takeover", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  fs.writeFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "backup");
+  write(path.join(pluginRoot, "output-styles", "hush.md.active.json"), JSON.stringify({ target: "stock", name: "Hush" }));
+  assert.strictEqual(shelf(pluginRoot, projectDir, homeDir).restoredOverTakeover, false);
+});
+
+test("a recorded style the slot no longer runs is read as overwritten", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  fs.writeFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "backup");
+  write(
+    path.join(pluginRoot, "output-styles", "hush.md.active.json"),
+    JSON.stringify({ target: path.join(pluginRoot, "styles", "pirate.md"), name: "Hush Pirate" })
+  );
+  assert.strictEqual(shelf(pluginRoot, projectDir, homeDir).restoredOverTakeover, true);
+});
+
+test("every listed entry carries its provenance", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  write(
+    path.join(projectDir, ".claude", "output-styles", "robo.md"),
+    "---\nname: Robo\ndescription: Robotic voice. Unmeasured variant of Hush.\n---\nbody\n"
+  );
+  const result = shelf(pluginRoot, projectDir, homeDir);
+  assert.deepStrictEqual(
+    result.styles.map((s) => [s.name, s.source]),
+    [
+      ["Hush Pirate", "shipped"],
+      ["Hush (stock)", "stock"],
+      ["Robo", "crafted"],
+    ]
+  );
+});

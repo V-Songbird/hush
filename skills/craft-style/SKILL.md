@@ -22,14 +22,14 @@ Then route:
 
 - **No crafted styles found** → go to step 2 and create one.
 - **Crafted styles found** → ask the user (AskUserQuestion) what to do, listing every crafted style by name and destination alongside `Hush (stock, benchmarked)`: create a new style, edit one of the listed, or switch which style is active (step 5 handles the switch).
-- **A `hush.md.stock` backup exists but the plugin's `hush.md` carries no `Unmeasured` sentence at all** → a plugin update restored stock over a takeover. Say so and offer step 5 before anything else. If `hush.md` carries the shipped-preset sentence instead, a preset holds the slot — that is `hush:pick-style`'s business, not a lost takeover.
+- **`node "${CLAUDE_PLUGIN_ROOT}/scripts/list-styles.js"` reports `restoredOverTakeover: true`** → a plugin update wrote over the style that was active. Say so and offer step 5 before anything else. A preset holding the slot is `hush:pick-style`'s business, not a lost takeover.
 
 ## 2. Gather three inputs
 
 From the invocation arguments, or by asking:
 
 - **Voice** — how the style should sound, in the user's words ("robotic", "pirate", "extremely dry British"). When editing, gather what should change instead.
-- **Name** — a short style name; derive one from the voice if the user doesn't care.
+- **Name** — a short style name, and not one a shipped preset already answers to; derive one from the voice if the user doesn't care.
 - **Destination** — `~/.claude/output-styles/` (every project) or `<project>/.claude/output-styles/` (this project only). Default to user-level.
 
 The filename is the kebab-cased name plus `.md`. If that file already exists and wasn't picked for editing in step 1, show its path and ask before overwriting.
