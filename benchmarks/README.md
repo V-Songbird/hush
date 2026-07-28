@@ -18,7 +18,7 @@ It drives **real headless Claude Code sessions** (`claude -p`) on the same fixed
 > [!NOTE]
 > The numbers move between runs — a handful of reps against a live model, not a powered experiment. Expect single-digit-percent swings on any given task, and more on the noisy ones. `noisy-build` is genuinely bimodal on the bigger model, sometimes running clean and sometimes triggering extra verification turns — judge it by the *per-rep spread*, not just the mean.
 
-**What you should see:** the same *shape* as our published charts — hush **below baseline on the noisy tasks** (`log-triage`, `incident-followup`, `sidecar-follow`, `dep-bump-warnings`), **above baseline on the no-tools ones**, and **far less mid-turn narration** with leaner tool output throughout. You will **not** reproduce our exact figures, and that's expected. The claim holds if the noisy rows win by more than the quiet rows lose, with every task still passing — a run where hush is cheaper on every single task would be the surprising result, not the target.
+**What you should see:** the same *shape* as our published charts — hush **below baseline on the log-heavy tasks** (`log-triage`, `incident-followup`, `incident-pool-leak`), **above baseline on the no-tools ones**, and **far less mid-turn narration** with leaner tool output throughout. You will **not** reproduce our exact figures, and that's expected. The claim holds if the noisy rows win by more than the quiet rows lose, with every task still passing — a run where hush is cheaper on every single task would be the surprising result, not the target.
 
 ## Run it
 
