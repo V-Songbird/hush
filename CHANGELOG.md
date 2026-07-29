@@ -7,6 +7,8 @@ version field by convention).
 
 ## Unreleased
 
+Core and Quiet are now separate switches. `HUSH_CORE=off` keeps the reminders while output arrives whole; `HUSH_QUIET=off` keeps the trimming while the reminders stop. `HUSH_DISABLE=1` still stops everything, and the output style stays its own switch.
+
 The note hush leaves before a compaction now lists every recovery file it can, says how many more there are when the list is capped, and only promises a re-run where a re-run really reproduces the output.
 
 Fixed an issue where a failing run was compressed as if it had passed when the tool wrote its errors in lower case.

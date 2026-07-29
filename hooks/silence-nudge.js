@@ -18,7 +18,9 @@
 // Positive-forward wording only. Naming the unwanted behavior primes it — a
 // clause that describes narrating produces narrating.
 
-const OFF = /^(0|off|false)$/i.test(process.env.HUSH_NUDGE || "");
+const { quietOff, OFF_TOKEN } = require("./lib/gate");
+
+const OFF = OFF_TOKEN.test(process.env.HUSH_NUDGE || "");
 
 const TURN =
   "hush: this turn is silent until the work is done. Everything you learn goes in the final message.";
@@ -31,7 +33,7 @@ function nudgeFor(event) {
 }
 
 function main() {
-  if (process.env.HUSH_DISABLE === "1") return;
+  if (quietOff()) return;
   if (OFF) return;
   let raw = "";
   process.stdin.on("data", (d) => {

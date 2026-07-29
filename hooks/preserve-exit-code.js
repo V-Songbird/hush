@@ -19,6 +19,7 @@
 // (see EXIT_MARKER_RE there) instead of guessing from response shape/regex.
 
 const fs = require("fs");
+const { coreOff } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell"]);
 const MARKER_PREFIX = "[[hush:exit=";
@@ -122,7 +123,7 @@ function shouldSkip(data, command) {
 }
 
 function main() {
-  if (process.env.HUSH_DISABLE === "1") return;
+  if (coreOff()) return;
   const data = readInput();
   if (!WATCHED_TOOLS.has(data.tool_name)) return;
 

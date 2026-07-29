@@ -28,6 +28,7 @@ const os = require("os");
 const path = require("path");
 const { readTailLines, isRealUserPrompt } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
+const { quietOff } = require("./lib/gate");
 
 const BUDGET = (() => {
   const n = parseInt(process.env.HUSH_NARRATION_BUDGET || "", 10);
@@ -128,7 +129,7 @@ function writeState(sessionId, state) {
 }
 
 function main() {
-  if (process.env.HUSH_DISABLE === "1") return;
+  if (quietOff()) return;
   if (process.env.HUSH_NARRATION === "off") return;
   const data = readInput();
   if (data.hook_event_name !== "PostToolUse") return; // Stop (or anything else) is a deliberate no-op — see header

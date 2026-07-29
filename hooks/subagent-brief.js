@@ -15,6 +15,7 @@
 // exactly what a read-only agent produces — the discipline applies most.
 
 const fs = require("fs");
+const { quietOff } = require("./lib/gate");
 
 const BRIEF =
   "Your final message is consumed by the calling agent as a tool result, not read as chat: " +
@@ -32,7 +33,7 @@ function readInput() {
 }
 
 function main() {
-  if (process.env.HUSH_DISABLE === "1") return;
+  if (quietOff()) return;
   if (process.env.HUSH_SUBAGENT === "off") return;
   readInput(); // consume stdin per hook contract; no per-agent gating needed
   process.stdout.write(

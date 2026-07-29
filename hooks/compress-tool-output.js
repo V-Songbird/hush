@@ -14,6 +14,7 @@ const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
 const { combineActions, buildRecord, recoveryGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
 const sidecarStore = require("./lib/sidecar-store");
+const { coreOff } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
 // Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
@@ -1496,7 +1497,7 @@ function hasHushNote(updated) {
 }
 
 function main() {
-  if (process.env.HUSH_DISABLE === "1") return;
+  if (coreOff()) return;
   const data = readInput();
 
   if (isMcpTableTool(data.tool_name)) {

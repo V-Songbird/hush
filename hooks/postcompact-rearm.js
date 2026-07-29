@@ -23,6 +23,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { coreOff } = require("./lib/gate");
 
 function readInput() {
   let raw;
@@ -78,7 +79,7 @@ function unlinkSentinels(sessionId) {
 
 function main() {
   try {
-    if (process.env.HUSH_DISABLE === "1") return;
+    if (coreOff()) return;
     const data = readInput();
     if (data === null) return; // malformed stdin
     if (typeof data.session_id !== "string" || !data.session_id) return;

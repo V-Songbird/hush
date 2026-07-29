@@ -165,17 +165,20 @@ Most people never touch these. A few environment variables tune the caps or turn
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
+| `HUSH_CORE=off` | Turns Core off and leaves Quiet running: command output arrives whole, nothing is parked in a file, nothing is recorded |
+| `HUSH_QUIET=off` | Turns Quiet's reminders off and leaves Core trimming: no mid-turn nudge, no narration budget, no subagent brief. The output style is the other half of Quiet and is a separate switch — see `HUSH_DISABLE` |
 | `HUSH_NARRATION_BUDGET=120` | Words of narration allowed before hush steps in |
 | `HUSH_SIDECAR=off` | Keeps big output inline instead of moving it to a file |
 | `HUSH_DELTA=off` | Shows the whole file again on a re-read instead of just what changed |
 | `HUSH_DEBUG=1` | Turns on the record `/hush:stats` reads from |
 
-There are no compression levels and no profiles. hush has one policy; these switches turn parts of it off, they don't dial it up.
+There are no compression levels and no profiles. hush has one policy; these switches turn parts of it off, they don't dial it up. `HUSH_DISABLE` wins over everything, and a surface switch wins over the smaller switches inside it — `HUSH_QUIET=off` keeps Quiet off even with `HUSH_NUDGE=1` set.
 
 ## Good to know
 
 - **Getting the full output back.** When hush parks something big in a file, the summary names that file — read it and you have every byte. If the file is gone, run the command again; a second run isn't guaranteed to produce the same output as the first, so hush never claims it regenerates what was lost.
 - **Turning it off is two switches.** `HUSH_DISABLE=1` stops everything hush does while a session runs. The output style is separate — it's chosen at session start, so hand the slot back with `/hush:pick-style`, or uninstall.
+- **Core and Quiet come apart.** Want the trimming without the reminders, or the reminders without the trimming? `HUSH_CORE=off` and `HUSH_QUIET=off` are independent, and either one leaves the other working. Quiet has two halves and only one of them is an environment variable: the switch silences Quiet's reminders, while the output style is chosen at session start, so hand that slot back with `/hush:pick-style` when you want it gone too.
 - **Where the parked output lives.** Your operating system's temp folder, in `hush-sidecar`, in a folder of its own for each session, one file per output, written only readable by you where the OS supports that. hush deletes that folder when the session ends, and clears anything a crashed session left behind once it's a day old. Anything you'd hate to see in a temp file, keep out of the terminal.
 - **Windows caveat.** Same atomic writes and the same refusal to follow symlinks, but the read-only-to-you file mode isn't enforceable there — treat parked output as readable by anything running as you.
 - **What `/hush:stats` can tell you.** What hush did to the tool output it handled: bytes in and out of each transform, how many outputs it left alone, how much it parked in recovery files, and how often you read that parked output back. It can't tell you what the session would have cost without it: there's no second, hush-free run of your session to compare against. It's a record of what hush did, not a bill you avoided.

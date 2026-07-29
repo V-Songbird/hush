@@ -24,6 +24,7 @@
 const fs = require("fs");
 const path = require("path");
 const { SIDECAR_ROOT, sessionDir } = require("./lib/sidecar-store");
+const { coreOff } = require("./lib/gate");
 
 const SIDECAR_DIR = SIDECAR_ROOT;
 const SIDECAR_CAP = 20;
@@ -104,7 +105,7 @@ function buildSidecarBlock(sessionId) {
 
 function main() {
   try {
-    if (process.env.HUSH_DISABLE === "1") return;
+    if (coreOff()) return;
     if (process.env.HUSH_COMPACT === "off") return;
     const data = readInput();
     if (data === null) return; // malformed stdin

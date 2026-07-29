@@ -15,6 +15,7 @@
 // an error, and a sidecar left on disk costs nothing but temp space.
 
 const { removeSession, sweepStale } = require("./lib/sidecar-store");
+const { coreOff } = require("./lib/gate");
 
 function readInput() {
   let raw;
@@ -33,7 +34,7 @@ function readInput() {
 
 function main() {
   try {
-    if (process.env.HUSH_DISABLE === "1") return;
+    if (coreOff()) return;
     const data = readInput();
     if (data === null) return; // malformed stdin
     if (typeof data.session_id === "string" && data.session_id) removeSession(data.session_id);
