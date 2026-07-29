@@ -73,11 +73,15 @@ function resolveCarriageReturns(text) {
     .join("\n");
 }
 
+// Keep lines (isKeepLine) never join a repeat run: six identical
+// "ERROR: connection refused" lines are six failures, and folding them into
+// one line plus a count contradicts what the capped-failure footer promises
+// about keeping every failure line in original order.
 function dedupeConsecutive(lines) {
   const out = [];
   let run = 0;
   for (let i = 0; i <= lines.length; i++) {
-    if (i < lines.length && out.length && lines[i] === out[out.length - 1] && lines[i].trim() !== "") {
+    if (i < lines.length && out.length && lines[i] === out[out.length - 1] && lines[i].trim() !== "" && !isKeepLine(lines[i])) {
       run++;
       continue;
     }
@@ -128,8 +132,8 @@ function shareTemplate(aTokens, bTokens) {
 //   1. Only a line that shares its run exemplar's shape is ever dropped: same
 //      token count, >=50% of positions token-identical, >=2 identical anchor
 //      tokens (shareTemplate). The exemplar itself is always kept verbatim.
-//   2. A SIGNAL_RE line (warning/error/failure/deprecation/critical) is never
-//      collapsed — it never joins a run and always breaks one. Over-normalizing
+//   2. A keep line (isKeepLine — warning/error/failure/deprecation/critical) is
+//      never collapsed — it never joins a run and always breaks one. Over-normalizing
 //      distinct errors into one exemplar is the known failure mode this
 //      sidesteps entirely, rather than trying to tune around it.
 //   3. A line naming a prompt-quoted identifier is never collapsed either, on
@@ -144,7 +148,7 @@ function shareTemplate(aTokens, bTokens) {
 function collapseTemplates(lines, relevanceTokens) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
   const tokens = usableRelevanceTokens(lines, relevanceTokens);
-  const exempt = (line) => SIGNAL_RE.test(line) || (tokens.length > 0 && tokens.some((t) => line.toLowerCase().includes(t)));
+  const exempt = (line) => isKeepLine(line) || (tokens.length > 0 && tokens.some((t) => line.toLowerCase().includes(t)));
   const out = [];
   let runStart = -1;
   let anchorTokens = null;
@@ -220,7 +224,7 @@ const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICA
 // rational and expensive: the model can't know the cap preserved every signal
 // line, so it re-runs the command to recover what it thinks it's missing —
 // each extra turn re-sends full context and the compression backfires. But
-// capLines keeps every SIGNAL_RE match by construction, so an omitted span
+// capLines keeps every keep line by construction, so an omitted span
 // PROVABLY contains no warning/error/failure line. State that guarantee in the
 // marker itself: it converts hush's internal knowledge into something the model
 // can act on, so the visible slice is trustworthy and no re-run is needed.
@@ -241,9 +245,11 @@ function omittedMarker(n) {
 
 // Closing line on a capped view of a FAILING run — the same recovery advice
 // the sidecar header gives its own path, for the failures that stay inline.
-// capLines keeps every SIGNAL_RE line by construction, so the first causal
-// error and the failing summary are both above this line: the guarantee is
-// provable, which is why it is stated as one rather than as reassurance.
+// capLines keeps every keep line by construction — and the keep vocabulary is
+// the union of signal and failure evidence, so the first causal error (header,
+// frame and exception alike) and the failing summary are all above this line:
+// the guarantee is provable, which is why it is stated as one rather than as
+// reassurance.
 const FAILURE_RERUN_NOTE =
   "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
   "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
@@ -293,7 +299,7 @@ function capLines(lines, cap, relevanceTokens) {
   if (lines.length <= cap) return lines;
   const signalIdx = new Set();
   lines.forEach((line, i) => {
-    if (SIGNAL_RE.test(line)) signalIdx.add(i);
+    if (isKeepLine(line)) signalIdx.add(i);
   });
   if (relevanceTokens && relevanceTokens.length) {
     const lower = lines.map((l) => l.toLowerCase());
@@ -309,6 +315,14 @@ function capLines(lines, cap, relevanceTokens) {
   const kept = new Set(signalIdx);
   for (let i = 0; i < head && i < lines.length; i++) kept.add(i);
   for (let i = Math.max(0, lines.length - tail); i < lines.length; i++) kept.add(i);
+  // A marker hush inserted (a repeat count, a collapse count) sits directly
+  // after the line it annotates and is the only trace of the occurrences it
+  // stands for — a kept line whose marker got cut silently under-reports
+  // itself. So a marker survives whenever its line does. Markers whose line is
+  // gone are dropped with it; the omission marker already covers that span.
+  for (const i of [...kept]) {
+    for (let j = i + 1; j < lines.length && HUSH_MARKER_RE.test(lines[j]); j++) kept.add(j);
+  }
 
   const sortedKept = [...kept].sort((a, b) => a - b);
   const out = [];
@@ -335,11 +349,35 @@ function capLines(lines, cap, relevanceTokens) {
 const FAILURE_RE =
   /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|err!|not ok|traceback|exception|panic|fatal|✗|✘)([^0-9a-zA-Z]|$)/im;
 
+// A Python traceback's causal location lives in its frame lines, and those
+// match neither vocabulary — only the `Traceback` header and the trailing
+// exception do. Keeping just those two turns "the first causal error survives"
+// into a claim with no file:line in it, so the frame shape itself is a keep
+// line. Anchored and quote-delimited, so it costs nothing on other output.
+const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
+
+// The one KEEP vocabulary, shared by every transform that elides lines
+// (dedupeConsecutive, collapseTemplates, capLines). It is the union of what
+// hush calls signal and what it calls failure evidence: the classification
+// half used to be strictly wider — `not ok`, `✗`, `panic`, `fatal`,
+// `Traceback`, `exception`, `err!`, `failing` classified a run as failed while
+// nothing preserved those same lines — so a capped view could promise every
+// failure line was kept and drop most of them. One vocabulary, one promise.
+function isKeepLine(line) {
+  return SIGNAL_RE.test(line) || FAILURE_RE.test(line) || TRACEBACK_FRAME_RE.test(line);
+}
+
 // A green summary states its own score — "0 failures", "no errors", node's own
 // "fail 0" — and those words are the opposite of failure evidence. Blanking
 // zero-quantified counts before the sniff keeps a passing test run on the pass
 // cap; any non-zero count is left alone and still classifies as a failure.
-const ZERO_COUNT_RE = /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:fail\w*|error\w*)\s*[:=]?\s*0\b/gi;
+//
+// The second branch only blanks when the zero ENDS the phrase — end of line,
+// comma, other punctuation. "Error: 0 tests found" counts a different noun,
+// and blanking it there left no failure token in a line that plainly is one.
+// The lookahead is space/tab-scoped rather than \s so a "# fail 0" ending a
+// line still blanks when more output follows on the next line.
+const ZERO_COUNT_RE = /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:fail\w*|error\w*)\s*[:=]?\s*0\b(?![ \t]*\w)/gi;
 
 function looksLikeFailure(text, exitCode) {
   // Exit-code evidence outranks text sniffing: when preserve-exit-code's

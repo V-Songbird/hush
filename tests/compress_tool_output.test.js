@@ -53,8 +53,17 @@ describe('unit: transforms', () => {
   });
 
   test('dedupeConsecutive collapses repeats with a count marker', () => {
-    const out = dedupeConsecutive(['warn: x', 'warn: x', 'warn: x', 'end']);
-    assert.deepStrictEqual(out, ['warn: x', '[hush: previous line repeated 2x]', 'end']);
+    const out = dedupeConsecutive(['note: x', 'note: x', 'note: x', 'end']);
+    assert.deepStrictEqual(out, ['note: x', '[hush: previous line repeated 2x]', 'end']);
+  });
+
+  // ROADMAP 166: six identical failures are six failures. The capped-failure
+  // footer promises every warning/error/failure line is kept in original order,
+  // so a repeat run of them can never fold into one line plus a count.
+  test('dedupeConsecutive never folds repeated warning/error/failure lines', () => {
+    const six = Array.from({ length: 6 }, () => 'ERROR: connection refused');
+    assert.deepStrictEqual(dedupeConsecutive([...six, 'end']), [...six, 'end']);
+    assert.deepStrictEqual(dedupeConsecutive(['not ok 3 - widget', 'not ok 3 - widget']), ['not ok 3 - widget', 'not ok 3 - widget']);
   });
 
   test('dedupeConsecutive leaves blank lines alone', () => {
@@ -94,6 +103,24 @@ describe('unit: transforms', () => {
     assert.ok(out.includes(lines[50]), 'signal line should survive the cap');
   });
 
+  // A marker is the only trace of what it stands for, so it rides along with
+  // the line it annotates — and is dropped with it when that line goes, where
+  // the omission marker already accounts for the span.
+  test('capLines keeps a hush marker beside the surviving line it annotates', () => {
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`);
+    lines[6] = '[hush: previous line repeated 5x]';
+    const out = capLines(lines, 10);
+    assert.ok(out.includes('line 5'), 'the annotated line sits in the head window');
+    assert.ok(out.includes('[hush: previous line repeated 5x]'), 'and its repeat count came with it');
+  });
+
+  test('capLines drops a hush marker whose own line was cut', () => {
+    const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`);
+    lines[50] = '[hush: previous line repeated 5x]';
+    const out = capLines(lines, 10);
+    assert.ok(!out.includes('[hush: previous line repeated 5x]'));
+  });
+
   test('capLines with no signal lines behaves exactly as a plain head+tail cap', () => {
     const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`);
     const out = capLines(lines, 10);
@@ -127,9 +154,19 @@ describe('unit: transforms', () => {
 
   test('a green summary that states its own zero counts stays a pass', () => {
     assert.strictEqual(looksLikeFailure('# tests 503\n# pass 503\n# fail 0'), false);
+    assert.strictEqual(looksLikeFailure('# fail 0\n# duration_ms 12'), false); // zero ends the LINE, not the text
     assert.strictEqual(looksLikeFailure('Tests: 0 failed, 42 passed'), false);
+    assert.strictEqual(looksLikeFailure('Errors: 0, Warnings: 2'), false);
     assert.strictEqual(looksLikeFailure('Compiled successfully: 0 errors, 0 warnings'), false);
     assert.strictEqual(looksLikeFailure('no errors found'), false);
+  });
+
+  // ROADMAP 166: the zero-count blanking is for a run scoring ITS OWN failures
+  // at zero. When the zero quantifies a different noun the failure token is
+  // real, and blanking it left the line with no evidence in it at all.
+  test('a zero that counts a different noun leaves the failure token standing', () => {
+    assert.strictEqual(looksLikeFailure('Error: 0 tests found', undefined), true);
+    assert.strictEqual(looksLikeFailure("ERROR: 0 matches for required pattern 'main'", undefined), true);
   });
 
   test('a non-zero count in that same shape still classifies as a failure', () => {
@@ -701,9 +738,10 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.match(updated, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
-    // 60-line cap, its own omission markers, and the one-line template-collapse
-    // recovery footer this log's same-shape runs earn.
-    assert.ok(updated.split('\n').length <= 62, `capped view was ${updated.split('\n').length} lines`);
+    // 60-line cap, its own omission markers, the one-line template-collapse
+    // recovery footer this log's same-shape runs earn, and the repeat marker
+    // kept beside the last surviving deduped line of the head window.
+    assert.ok(updated.split('\n').length <= 63, `capped view was ${updated.split('\n').length} lines`);
   });
 
   test('no transcript_path falls back to normal compression (fail-safe)', () => {
@@ -2176,6 +2214,42 @@ describe('unit: failure digest', () => {
       else process.env.HUSH_TEMPLATE = prev;
     }
   }
+
+  // ROADMAP 166: the footer promises EVERY warning/error/failure line survives,
+  // so the vocabulary that preserves lines has to cover the whole vocabulary
+  // that classifies a run as failed — `not ok`, `Traceback`, `panic`, `✗` and
+  // the rest used to classify without preserving.
+  test('every "not ok" line of a capped failing TAP run survives, not just the ones reading as signal', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => `ok ${i + 1} - renders row ${i + 1}`);
+    for (let i = 9; i < 400; i += 10) lines[i] = `not ok ${i + 1} - renders row ${i + 1}`;
+    lines.push('# fail 40');
+    const out = inline(lines.join('\n'), 1);
+    for (let i = 9; i < 400; i += 10) {
+      assert.ok(out.includes(`not ok ${i + 1} - renders row ${i + 1}`), `not ok ${i + 1} survived the cap`);
+    }
+    assert.ok(out.split('\n').length < 400, 'and it is still a compressed view');
+  });
+
+  test('a mid-file traceback keeps its header, its causal frame, and its exception', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => `[info] compiled module ${i} of 400`);
+    lines.splice(200, 0,
+      'Traceback (most recent call last):',
+      '  File "app/main.py", line 42, in run',
+      '    handler(payload)',
+      'ValueError: bad payload');
+    const out = inline(lines.join('\n'), 1);
+    assert.ok(out.includes('Traceback (most recent call last):'), 'the header survives');
+    assert.ok(out.includes('  File "app/main.py", line 42, in run'), 'the causal file:line survives');
+    assert.ok(out.includes('ValueError: bad payload'), 'the exception survives');
+  });
+
+  test('repeated identical errors stay repeated — the count is not folded away', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => `[info] compiled module ${i} of 400`);
+    lines.splice(200, 0, ...Array.from({ length: 6 }, () => 'ERROR: connection refused'));
+    const out = inline(lines.join('\n'), 1);
+    assert.strictEqual(out.split('ERROR: connection refused').length - 1, 6, 'all six occurrences are visible');
+    assert.ok(!out.includes('previous line repeated'), 'and no repeat marker stands in for them');
+  });
 
   test('a capped failing run keeps the first causal error, the final summary, and the way back', () => {
     const out = inline(failingLog());
