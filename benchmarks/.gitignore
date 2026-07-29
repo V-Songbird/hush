@@ -1,2 +1,7 @@
 # Your local run output — transcripts, per-run JSON, generated reports.
+# Full of your paths and your machine's name, so it stays on your machine.
 results/
+
+# records/ is deliberately NOT ignored: those are the sanitized, hashed,
+# write-once copies a published number is generated from. Keep them.
+records/*/published/

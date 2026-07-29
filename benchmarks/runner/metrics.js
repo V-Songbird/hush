@@ -121,6 +121,30 @@ function runCheck(check, finalText, workDir) {
   throw new Error(`unknown check type ${check.type}`);
 }
 
+// Reject a run that cannot honestly be a data point, before it reaches the
+// averages. Two shapes, both of which arrive looking like success:
+//
+//   * A rate-limited call. The CLI reports subtype "success", exits 0, and
+//     hands back "You've hit your session limit ..." AS the model's answer, at
+//     cost 0. Left alone it lands in the averages as a very terse reply and
+//     silently poisons the batch.
+//   * Any call that billed nothing. Every real headless call costs something;
+//     a zero or missing cost means the call did not happen the way we think it
+//     did, so its token and word counts do not describe a session either.
+//
+// Throwing records the run as an error, which keeps it out of every report and
+// lets --resume re-run it.
+function assertUsableRun(parsed) {
+  for (const p of parsed) {
+    if (/you\s*['’]?ve hit your (session|usage|weekly) limit/i.test(p.finalText || '')) {
+      throw new Error(`rate limited: ${String(p.finalText).trim().slice(0, 120)}`);
+    }
+    if (!(p.costUsd > 0)) {
+      throw new Error(`zero-cost call (cost=${p.costUsd}, subtype=${p.resultSubtype}) — not a usable data point`);
+    }
+  }
+}
+
 // Probe 9 Spec 1 ingestion: read hush's HUSH_DEBUG=1 per-decision manifest
 // for a session, if one was written. Fail-soft by design — a run with the
 // debug flag off, an arm without hush's hooks loaded, or a baseline run all
@@ -148,4 +172,4 @@ function readDebugManifest(sessionId) {
   return { entries: lines.length, byAction, bytesIn, bytesOut };
 }
 
-module.exports = { parseTranscript, runCheck, readDebugManifest };
+module.exports = { parseTranscript, runCheck, readDebugManifest, assertUsableRun };

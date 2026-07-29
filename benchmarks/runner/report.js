@@ -5,6 +5,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { segmentReport } = require('./stats.js');
+const { barChartSvg, armColors, esc } = require('./chart.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const argv = process.argv.slice(2);
@@ -65,6 +67,34 @@ md += `\nDeltas vs baseline — cost: ${others.map((a) => `${a} ${delta(byArm[a]
 md += `output tokens: ${others.map((a) => `${a} ${delta(byArm[a].outTok, byArm.baseline?.outTok)}`).join(', ')}; `;
 md += `context traffic: ${others.map((a) => `${a} ${delta(byArm[a].traffic, byArm.baseline?.traffic)}`).join(', ')}.\n`;
 
+// ---------- per-segment distributions ----------
+// The overall table above is a headline. This is the evidence: one
+// distribution per segment, never a single suite-wide average, because a win
+// on noisy output and a loss on a quiet Q&A do not belong in the same number.
+const SEGMENT_METRICS = [
+  ['cost', 'Cost USD', 4],
+  ['contextTraffic', 'Context traffic tok', 0],
+  ['outputTokens', 'Output tok', 0],
+  ['narrationWords', 'Narration words', 0],
+];
+md += `\n## Distributions by segment\n`;
+for (const [metric, label, digits] of SEGMENT_METRICS) {
+  md += `\n### ${label}\n\n| Segment | Arm | n | median | mean | p25–p75 | 95% CI | vs baseline (median) | win rate | worst task | pass |\n`;
+  md += `|---|---|---|---|---|---|---|---|---|---|---|\n`;
+  for (const { segment, arms: byArm } of segmentReport(runs, { metric })) {
+    for (const a of ARMS) {
+      const s = byArm[a];
+      if (!s) continue;
+      const v = s.vsBaseline;
+      const pctd = (x) => (Number.isFinite(x) ? `${x >= 0 ? '+' : ''}${x.toFixed(1)}%` : '—');
+      md += `| ${segment} | ${a} | ${s.n} | ${fmt(s.median, digits)} | ${fmt(s.mean, digits)} | `
+        + `${fmt(s.p25, digits)}–${fmt(s.p75, digits)} | ${s.ci95 ? `${fmt(s.ci95[0], digits)}–${fmt(s.ci95[1], digits)}` : '—'} | `
+        + `${v ? pctd(v.medianDeltaPct) : '—'} | ${v && Number.isFinite(v.winRate) ? `${Math.round(v.winRate * 100)}%` : '—'} | `
+        + `${v?.maxRegression ? `${v.maxRegression.task} ${pctd(v.maxRegression.deltaPct)}` : '—'} | ${fmt(s.passRate * 100)}% |\n`;
+    }
+  }
+}
+
 // Probe 9 Spec 1 ingestion: only present when a run used --hush-debug, so
 // this is fail-soft by construction — no debugManifest anywhere, no section.
 function debugSummary(rs) {
@@ -90,40 +120,10 @@ for (const t of TASKS) {
 fs.writeFileSync(path.join(dir, 'report.md'), md);
 
 // ---------- html ----------
-// Colors are assigned by arm, not hard-coded to any particular plugin name:
-// baseline stays neutral grey, hush its blue, any extra arm gets the next hue.
-const FIXED = { baseline: '#8a8f98', hush: '#4c9be8' };
-const EXTRA = ['#e8a04c', '#6ac47a', '#b07be8', '#e86a8a'];
-const COLORS = {};
-let ei = 0;
-for (const a of ARMS) COLORS[a] = FIXED[a] || EXTRA[ei++ % EXTRA.length];
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const COLORS = armColors(ARMS);
 
-function barChart(title, unit, values /* task -> arm -> number */) {
-  const cats = Object.keys(values);
-  const max = Math.max(...cats.flatMap((c) => ARMS.map((a) => values[c][a] || 0)), 1);
-  const W = 940, H = 320, padL = 70, padB = 90, padT = 30;
-  const plotW = W - padL - 20, plotH = H - padT - padB;
-  const groupW = plotW / cats.length, barW = Math.min(26, (groupW - 14) / ARMS.length);
-  let bars = '', labels = '';
-  cats.forEach((c, i) => {
-    ARMS.forEach((a, j) => {
-      const v = values[c][a] || 0;
-      const h = (v / max) * plotH;
-      const x = padL + i * groupW + (groupW - barW * ARMS.length) / 2 + j * barW;
-      bars += `<rect x="${x.toFixed(1)}" y="${(padT + plotH - h).toFixed(1)}" width="${(barW - 3).toFixed(1)}" height="${h.toFixed(1)}" fill="${COLORS[a] || '#999'}"><title>${esc(c)} · ${a}: ${Math.round(v)}</title></rect>`;
-    });
-    labels += `<text x="${(padL + i * groupW + groupW / 2).toFixed(1)}" y="${H - padB + 16}" transform="rotate(28 ${(padL + i * groupW + groupW / 2).toFixed(1)} ${H - padB + 16})" font-size="11" fill="#444" text-anchor="start">${esc(c)}</text>`;
-  });
-  let axis = '';
-  for (let k = 0; k <= 4; k++) {
-    const v = (max / 4) * k, y = padT + plotH - (plotH / 4) * k;
-    axis += `<line x1="${padL}" x2="${W - 20}" y1="${y}" y2="${y}" stroke="#e5e5e5"/><text x="${padL - 8}" y="${y + 4}" font-size="10" fill="#777" text-anchor="end">${Math.round(v)}</text>`;
-  }
-  const legend = ARMS.map((a, j) =>
-    `<rect x="${padL + j * 110}" y="6" width="10" height="10" fill="${COLORS[a] || '#999'}"/><text x="${padL + j * 110 + 15}" y="15" font-size="11" fill="#333">${a}</text>`).join('');
-  return `<h3>${esc(title)} <span class="unit">(${unit})</span></h3><svg viewBox="0 0 ${W} ${H}" role="img">${axis}${bars}${labels}${legend}</svg>`;
-}
+const barChart = (title, unit, values /* task -> arm -> number */) =>
+  `<h3>${esc(title)} <span class="unit">(${unit})</span></h3>${barChartSvg(title, unit, values, ARMS, { colors: COLORS, heading: false })}`;
 
 const chartOf = (metric) => Object.fromEntries(TASKS.map((t) => [t,
   Object.fromEntries(ARMS.map((a) => [a, byTaskArm[t][a][metric] || 0]))]));

@@ -7,7 +7,9 @@
 //   node runner/run.js --tag mine  --reps 2 --model haiku          # default subset
 //   node runner/run.js --tag full  --full --reps 2 --model haiku   # whole suite
 //   node runner/run.js --tag byo   --rival-dir /path/to/other-plugin
-//   node runner/run.js --tag dbg   --hush-debug   # attach hush's decision manifest to each hush-arm record
+//   node runner/run.js --tag abl   --ablations   # add Core-only and Quiet-only arms
+//   node runner/run.js --tag rep   --seed 12345  # replay an earlier run's arm order
+//   node runner/run.js --tag dbg   --hush-debug  # attach hush's decision manifest to each hush-arm record
 //
 // Two arms ship by default: `baseline` (plain Claude Code) and `hush` (this
 // plugin). The hush plugin dir is resolved RELATIVE to this harness — no
@@ -18,7 +20,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { parseTranscript, runCheck, readDebugManifest } = require('./metrics.js');
+const { parseTranscript, runCheck, readDebugManifest, assertUsableRun } = require('./metrics.js');
+const { makeRng, shuffled, hashSeed } = require('./stats.js');
+const { writeRecord } = require('./records.js');
 
 const ROOT = path.resolve(__dirname, '..');            // hush/benchmarks
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
@@ -40,6 +44,15 @@ const concurrency = Number(flag('concurrency', CONFIG.concurrency));
 // timing measurement nobody asked for.
 const hushDebug = argv.includes('--hush-debug');
 const resume = argv.includes('--resume');
+// Build the queue, resolve the arms, write the batch manifest — then stop,
+// without spawning a single billable session. The way to check your flags,
+// your ablation arms and your seed before you spend anything.
+const dryRun = argv.includes('--dry-run');
+// Arm order is shuffled inside every task+rep block so no arm always runs
+// first into a cold cache. The seed is printed, recorded, and replayable with
+// --seed, so "randomized" never means "unreproducible". Resolved below, once
+// the tag's directory is known — a --resume reads it back from there.
+const seedFlag = flag('seed', null);
 
 // --- arms -------------------------------------------------------------------
 // The hush plugin lives one directory up from this harness; resolve it there
@@ -78,18 +91,32 @@ function flagAll(name) {
   for (let i = 0; i < argv.length; i++) if (argv[i] === `--${name}`) out.push(argv[i + 1]);
   return out;
 }
+function addArm(name, dir, settings, env) {
+  ARMS[name] = {
+    pluginDirs: [path.resolve(dir)],
+    ...(settings ? { settings: path.resolve(settings) } : {}),
+    env: env || {},
+  };
+}
+
 const rivalDirs = flagAll('rival-dir');
 const rivalNames = flagAll('rival-name');
 const rivalSettingsList = flagAll('rival-settings');
 const rivalEnvs = flagAll('rival-env');
 rivalDirs.forEach((dir, i) => {
   const name = rivalNames[i] || (rivalDirs.length > 1 ? `rival${i + 1}` : 'rival');
-  ARMS[name] = {
-    pluginDirs: [path.resolve(dir)],
-    ...(rivalSettingsList[i] ? { settings: path.resolve(rivalSettingsList[i]) } : {}),
-    env: parseRivalEnv(rivalEnvs[i] || null),
-  };
+  addArm(name, dir, rivalSettingsList[i], parseRivalEnv(rivalEnvs[i] || null));
 });
+
+// Ablation arms: hush against itself with one surface switched off, so a win
+// can be attributed to a surface instead of to "the plugin". Same plugin dir,
+// same settings, same arm plumbing as a rival — only the env differs.
+//   hush-core-only   Core on, Quiet off  — compression, exit codes, compaction
+//   hush-quiet-only  Quiet on, Core off  — turn nudge, narration meter, brief
+if (argv.includes('--ablations')) {
+  addArm('hush-core-only', HUSH_DIR, path.join(ROOT, 'settings-hush.json'), { HUSH_QUIET: 'off' });
+  addArm('hush-quiet-only', HUSH_DIR, path.join(ROOT, 'settings-hush.json'), { HUSH_CORE: 'off' });
+}
 
 const armNames = (flag('arms', Object.keys(ARMS).join(','))).split(',');
 
@@ -103,8 +130,41 @@ const tasks = taskIds
     ? TASKS
     : TASKS.filter((t) => CONFIG.defaultTasks.includes(t.id));
 
+// Segments are what the report groups by; a task without a known one would
+// quietly land in an "unsegmented" bucket, so fail here instead.
+for (const t of tasks) {
+  if (!CONFIG.segments[t.segment]) throw new Error(`task ${t.id} has unknown segment "${t.segment}"`);
+}
+
 const outDir = path.join(ROOT, 'results', tag);
 for (const d of ['runs', 'transcripts']) fs.mkdirSync(path.join(outDir, d), { recursive: true });
+
+// The batch manifest lives here as well as in the records, because this path
+// is keyed on the one thing a --resume always has: the tag. Without it the
+// seed would only be discoverable from inside the record directory you need
+// the seed to find, and an unqualified --resume would fork the batch in two.
+const planFile = path.join(outDir, 'batch.json');
+
+function resumeSeed() {
+  try {
+    const seed = JSON.parse(fs.readFileSync(planFile, 'utf8')).seed;
+    if (seed != null) return String(seed);
+  } catch { /* no manifest, or an unreadable one */ }
+  throw new Error(
+    `--resume cannot find the seed of the batch it is resuming (${path.relative(ROOT, planFile)} is missing or `
+    + 'unreadable). Pass --seed <seed> from the original run\'s output, or start a fresh batch without --resume.');
+}
+
+const seed = seedFlag != null ? String(seedFlag) : resume ? resumeSeed() : String(Date.now());
+
+// One batch = one interleaved set of arms run together. Cost is NOT comparable
+// across batches (a warm prompt cache roughly halves it), so every record
+// carries the batch it came from and the claim generator refuses a mix. The id
+// is derived, not stamped with the clock, so a --resume on the same tag lands
+// back in the same batch instead of forking a new one.
+const batchKey = [tag, seed, model, reps, armNames.join('+'), tasks.map((t) => t.id).join('+')].join('|');
+const batchId = `${tag}-${hashSeed(batchKey).toString(16).padStart(8, '0')}`;
+const recordDir = path.join(ROOT, 'records', batchId);
 
 // Workdirs live OUTSIDE the repo, in the OS temp dir. Claude Code injects
 // ambient git status / recent commits into the system prompt for any cwd
@@ -209,7 +269,18 @@ function completedRun(key) {
   } catch { return null; }
 }
 
-async function oneRun(task, arm, rep) {
+// Retain a sanitized, hashed, write-once copy alongside the raw result. This
+// is the auditable half: `results/` is yours and stays local, `records/` is
+// publishable and is the only thing runner/publish.js will read.
+function retain(key, record) {
+  try {
+    writeRecord(recordDir, key, record);
+  } catch (err) {
+    console.log(`RETAIN-SKIP ${key}  ${err.message}`);
+  }
+}
+
+async function oneRun(task, arm, rep, orderIndex) {
   const key = `${task.id}__${arm}__r${rep}`;
   const done = completedRun(key);
   if (done) {
@@ -238,20 +309,15 @@ async function oneRun(task, arm, rep) {
   fs.writeFileSync(path.join(outDir, 'transcripts', `${key}.jsonl`), calls.join('\n'));
 
   let record;
+  const provenance = { key, batchId, seed, orderIndex, task: task.id, segment: task.segment, arm, rep };
   try {
     const parsed = calls.map((s) => parseTranscript(s));
     const last = parsed[parsed.length - 1];
-    // A rate-limited call is not a failed call — the CLI reports subtype
-    // "success", exits 0, and returns "You've hit your session limit ..." as
-    // the model's answer, at cost 0. Left alone it lands in the averages as a
-    // very terse final message, silently poisoning the batch. Fail it loudly
-    // so it records as an error and --resume re-runs it.
-    const limited = parsed.find((p) => /you've hit your (session|usage) limit/i.test(p.finalText || ''));
-    if (limited) throw new Error(`rate limited: ${limited.finalText.trim().slice(0, 120)}`);
+    assertUsableRun(parsed);
     const sum = (f) => parsed.reduce((n, p) => n + (p[f] || 0), 0);
     const check = runCheck(task.check, last.finalText, workDir);
     record = {
-      key, task: task.id, category: task.category, arm, rep, model,
+      ...provenance, category: task.category, model,
       turnsRun: calls.length, wallMs, check,
       outputStyle: parsed[0].outputStyle,
       costUsd: parsed.reduce((n, p) => n + (p.costUsd || 0), 0),
@@ -268,9 +334,10 @@ async function oneRun(task, arm, rep) {
       debugManifest: hushDebug ? readDebugManifest(last.sessionId) : null,
     };
   } catch (err) {
-    record = { key, task: task.id, arm, rep, wallMs, error: String(err), stderr: stderrAll.slice(0, 2000) };
+    record = { ...provenance, model, wallMs, error: String(err), stderr: stderrAll.slice(0, 2000) };
   }
   fs.writeFileSync(path.join(outDir, 'runs', `${key}.json`), JSON.stringify(record, null, 2));
+  retain(key, record);
   const ok = record.check ? (record.check.pass ? 'PASS' : 'FAIL') : 'ERR ';
   console.log(`${ok} ${key}  cost=$${record.costUsd ?? '?'}  out=${record.usage?.output_tokens ?? '?'}tok  traffic=${record.contextTraffic ?? '?'}  ${Math.round(wallMs / 1000)}s`);
   return record;
@@ -278,17 +345,44 @@ async function oneRun(task, arm, rep) {
 
 // --- pool -------------------------------------------------------------------
 async function main() {
+  // Arms are interleaved inside each task+rep block and shuffled there, so no
+  // arm systematically runs first (into a cold cache) or last (into a warm
+  // one). Same seed, same order, every time.
+  const rng = makeRng(seed);
   const queue = [];
-  for (const task of tasks) for (const arm of armNames) for (let r = 1; r <= reps; r++) queue.push([task, arm, r]);
+  for (const task of tasks) {
+    for (let r = 1; r <= reps; r++) {
+      for (const arm of shuffled(armNames, rng)) queue.push([task, arm, r]);
+    }
+  }
   console.log(`${queue.length} runs (${tasks.length} tasks x ${armNames.length} arms x ${reps} reps), model=${model}, tag=${tag}`);
   console.log(`arms: ${armNames.join(', ')}`);
+  console.log(`batch ${batchId} · seed ${seed} (replay this order with --seed ${seed})`);
+  const manifest = {
+    batchId, seed, model, reps, tag,
+    arms: armNames,
+    tasks: tasks.map((t) => ({ id: t.id, segment: t.segment })),
+    order: queue.map(([t, a, r]) => `${t.id}__${a}__r${r}`),
+    startedAt: new Date().toISOString(),
+  };
+  // The tag-scoped copy is what a later --resume reads the seed back from, so
+  // it is written on a dry run too: planning a batch is how you get its seed.
+  fs.writeFileSync(planFile, JSON.stringify(manifest, null, 2));
+  if (!dryRun) retain('batch', manifest);
+
+  if (dryRun) {
+    console.log('\ndry run — nothing was spawned, nothing was billed. Planned order:');
+    queue.forEach(([t, a, r], i) => console.log(`  ${String(i).padStart(3)} ${t.id} [${t.segment}] ${a} r${r}`));
+    return;
+  }
 
   const results = [];
   let idx = 0;
   async function worker() {
     while (idx < queue.length) {
-      const [task, arm, r] = queue[idx++];
-      results.push(await oneRun(task, arm, r));
+      const i = idx++;
+      const [task, arm, r] = queue[i];
+      results.push(await oneRun(task, arm, r, i));
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
@@ -296,7 +390,9 @@ async function main() {
   const failures = results.filter((r) => !r.check || !r.check.pass);
   console.log(`\ndone: ${results.length - failures.length}/${results.length} passed ground truth`);
   if (failures.length) console.log('non-passing:', failures.map((f) => f.key).join(', '));
+  console.log(`records retained in ${path.relative(ROOT, recordDir)}`);
   console.log(`\nnext: node runner/report.js --tag ${tag}`);
+  console.log(`      node runner/publish.js --records ${path.relative(ROOT, recordDir)}`);
 }
 
 main();

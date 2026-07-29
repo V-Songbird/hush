@@ -2,6 +2,7 @@
   {
     "id": "bugfix-expiry",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "bugfix-expiry",
     "prompt": "My auth is letting expired tokens slip through and the test suite is red. Can you dig in, fix the bug, and get the tests passing?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -9,6 +10,7 @@
   {
     "id": "bugfix-pagination",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "bugfix-pagination",
     "prompt": "Pagination is handing back the wrong rows and the tests are failing. Can you figure out what's off and get them green?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -16,6 +18,7 @@
   {
     "id": "checkout-bug",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "checkout-bug",
     "prompt": "Checkout totals come out wrong when someone stacks a flat-amount coupon with a non-USD currency, and the tests are failing. Can you track down what's causing it and fix it?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -23,6 +26,7 @@
   {
     "id": "refactor-rename",
     "category": "tool",
+    "segment": "coding",
     "fixture": "refactor-rename",
     "prompt": "We renamed our public API from calcTotal to computeTotal. Can you update everything that still uses the old name and make sure the tests pass?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -30,6 +34,7 @@
   {
     "id": "noisy-build",
     "category": "tool",
+    "segment": "noisy-output",
     "fixture": "noisy-build",
     "prompt": "My build is drowning in warnings and I'm pretty sure there's a real error buried somewhere in there. Can you run it, find what's actually breaking, and get it building clean?",
     "check": { "type": "tests", "cmd": "node build.js" }
@@ -37,6 +42,7 @@
   {
     "id": "explain-rerender",
     "category": "qa",
+    "segment": "coding",
     "fixture": null,
     "prompt": "Why does my React child component re-render every time even though I'm passing it the same props?",
     "check": {
@@ -48,6 +54,7 @@
   {
     "id": "explain-rebase",
     "category": "qa",
+    "segment": "coding",
     "fixture": null,
     "prompt": "What's the actual difference between git rebase and merge, and when should I reach for each?",
     "check": {
@@ -59,6 +66,7 @@
   {
     "id": "write-validator",
     "category": "qa",
+    "segment": "coding",
     "fixture": null,
     "prompt": "Write me a Python function that validates email addresses.",
     "check": {
@@ -71,6 +79,7 @@
   {
     "id": "incident-pool-leak",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "incident-pool-leak",
     "prompt": "Service tipped over around 2am and paged me. I pulled the app and worker logs from that window — something's leaking DB connections under failure and I can't tell where. Tests are red too, can you dig in and fix it?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -78,6 +87,7 @@
   {
     "id": "coupon-currency-flaky",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "coupon-currency-flaky",
     "prompt": "Finance flagged that some carts are landing a cent or two off when a promo stacks with another discount. Most look fine so it's hard to spot a pattern. Can you dig through the pricing test failures and figure out what's actually wrong?",
     "check": { "type": "tests", "cmd": "node --test" }
@@ -85,6 +95,7 @@
   {
     "id": "dep-bump-warnings",
     "category": "tool",
+    "segment": "noisy-output",
     "fixture": "dep-bump-warnings",
     "prompt": "Bumped a couple of packages this morning and now the build's spitting out a screen full of warnings. Pretty sure at least one of them isn't just noise. Can you get it building clean again?",
     "check": { "type": "tests", "cmd": "node build.js" }
@@ -92,6 +103,7 @@
   {
     "id": "repo-summary",
     "category": "tool",
+    "segment": "search-heavy",
     "fixture": "repo-summary",
     "prompt": "I just inherited this repo — can you walk me through how it's put together? The main pieces and how they fit.",
     "check": {
@@ -101,8 +113,21 @@
     }
   },
   {
+    "id": "call-site-sweep",
+    "category": "tool",
+    "segment": "search-heavy",
+    "fixture": "call-site-sweep",
+    "prompt": "We're retiring the two-argument form of formatAmount — the second parameter is that legacy rounding flag. Can you sweep the repo and tell me how many call sites still pass it, and which file has the most of them?",
+    "check": {
+      "type": "keywords",
+      "require": 2,
+      "patterns": ["\\b17\\b", "quarterly", "legacy|deprecat|second (arg|parameter)"]
+    }
+  },
+  {
     "id": "log-triage",
     "category": "tool",
+    "segment": "noisy-output",
     "fixture": "log-triage",
     "prompt": "Prod fell over last night and the logs are a mess. Can you dig through logs/app.log and tell me what actually happened?",
     "check": {
@@ -114,6 +139,7 @@
   {
     "id": "incident-followup",
     "category": "tool",
+    "segment": "debugging",
     "fixture": "log-triage",
     "prompts": [
       "Prod fell over last night and the logs are a mess. Can you dig through logs/app.log and tell me what actually happened?",
@@ -127,8 +153,21 @@
     }
   },
   {
+    "id": "runbook-edit",
+    "category": "tool",
+    "segment": "doc-editing",
+    "fixture": "runbook-edit",
+    "prompts": [
+      "Our rollback procedure changed — we now have to drain the job queue before restarting the API replicas. Can you work that into docs/runbook.md so the on-call steps are right?",
+      "Priya Raman owns the queue now, so she needs to be in the escalation contacts too — handle @priya, channel #queue-oncall.",
+      "Last one: the production admin port moved from 8081 to 9090. Can you update every mention of it in the runbook?"
+    ],
+    "check": { "type": "tests", "cmd": "node verify.js" }
+  },
+  {
     "id": "sidecar-follow",
     "category": "tool",
+    "segment": "noisy-output",
     "fixture": "sidecar-follow",
     "prompt": "There's a logs/test-output.log from last night's CI run sitting in this repo — hundreds of lines and I don't have time to scroll through it all. Can you go through it and give me the rundown: how the run went overall (how many passed), and call out by name anything that didn't?",
     "check": {
