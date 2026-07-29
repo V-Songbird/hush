@@ -12,7 +12,7 @@ const os = require("os");
 const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
-const { combineActions, buildRecord, recoveryGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
+const { combineActions, buildRecord, recoveryGap, sizeGap, fieldGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
 const sidecarStore = require("./lib/sidecar-store");
 const { coreOff } = require("./lib/gate");
 
@@ -219,12 +219,17 @@ const TEMPLATE_COLLAPSE_NOTE =
 // agent re-run the command hunting for what it couldn't see — the cap
 // destroying signal cost more tool calls than the cap ever saved. Deliberately
 // broad regex: over-matching just keeps a few extra lines, never worse.
-// The trailing `\w*(?:Error|Warning)\b` catches compound runtime names —
+// The trailing `(?:Error|Warning)\b` catches compound runtime names —
 // ReferenceError, TypeError, SyntaxError, RangeError — that a bare `\bERROR\b`
 // misses because the "Error" suffix sits mid-word (no word boundary before
 // it). Over-matching a stray "NoError"-style token only keeps a few extra
 // lines, never fewer, so the broad form is safe by the same logic as the rest.
-const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|\w*(?:Error|Warning)\b/i;
+// Deliberately UNANCHORED on the left: a leading `\w*` matches the same set of
+// lines (it can always match empty, and nothing here reads the matched text)
+// while making the pattern backtrack quadratically on a long run of word
+// characters — one 256KB line of base64 or minified JS measured at 68 seconds,
+// against this hook's own 5-second budget.
+const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
 // this gap." On a completeness task ("report EVERY warning") that distrust is
@@ -938,10 +943,10 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 // error > failure > critical > warning > deprecation — each line counts once,
 // under whichever category wins.
 const CENSUS_CATEGORIES = [
-  { singular: "error", plural: "errors", re: /\w*Error\b|\bERR(?:OR)?\b/i },
+  { singular: "error", plural: "errors", re: /Error\b|\bERR(?:OR)?\b/i },
   { singular: "failure", plural: "failures", re: /\bFAIL(?:URE|ED)?\b/i },
   { singular: "critical", plural: "criticals", re: /\bCRITICAL\b/i },
-  { singular: "warning", plural: "warnings", re: /\w*Warning\b|\bWARN(?:ING)?\b/i },
+  { singular: "warning", plural: "warnings", re: /Warning\b|\bWARN(?:ING)?\b/i },
   { singular: "deprecation", plural: "deprecations", re: /\bDEPRECATED\b/i },
 ];
 
@@ -1411,13 +1416,33 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   return out;
 }
 
+// preserve-exit-code's wrapper marker is hush's own protocol text, and the one
+// rewrite that is not a compression bargain: stripping it is mandatory, so a
+// response carrying one is exempt from the size invariant below. Dropping back
+// to the original there would leak `[[hush:exit=N]]` into the model's context
+// raw, which is the single thing extractWrappedExit exists to prevent.
+function mustSanitize(response) {
+  if (typeof response === "string") return response.includes("[[hush:exit=");
+  if (response && typeof response === "object") {
+    for (const field of ["stdout", "stderr", "output"]) {
+      if (typeof response[field] === "string" && response[field].includes("[[hush:exit=")) return true;
+    }
+  }
+  return false;
+}
+
 // Every handled tool output leaves through here: the transform's decision
 // side-channel becomes one manifest record (see lib/transform-manifest.js),
-// the record is checked against the recovery boundary, and the rewrite is
-// emitted only if the record backs it. A record that removed detail without
-// naming where it is recoverable from is a bug in the transform, not something
-// to hand the model: the rewrite is dropped, the original output stands, and
-// the record says why.
+// the record is checked against every product invariant a transform can
+// violate, and the rewrite is emitted only if the record backs it on all of
+// them — recovery named for what was removed, no field of a structured
+// response dropped, and actually smaller than what it replaces.
+//
+// A rewrite that fails any of those is a bug in the transform, not something to
+// hand the model. There is exactly one fallback and it is the same for all
+// three: the rewrite is dropped, the ORIGINAL output stands untouched, and the
+// record carries the reason. Checked here rather than at each call site so a
+// transform added later inherits the boundary instead of restating it.
 function deliver(decision, updated, data) {
   const record = buildRecord({
     ...decision,
@@ -1426,10 +1451,14 @@ function deliver(decision, updated, data) {
   });
   let out = updated;
   if (out !== undefined) {
-    const gap = recoveryGap(record);
-    if (gap) {
-      record.action = "rejected-no-recovery";
-      record.fallback = gap;
+    const fail = (action, reason) => (reason ? { action, reason } : null);
+    const failure =
+      fail("rejected-no-recovery", recoveryGap(record)) ||
+      fail("rejected-field-loss", fieldGap(data.tool_response, out)) ||
+      (mustSanitize(data.tool_response) ? null : fail("rejected-not-smaller", sizeGap(record)));
+    if (failure) {
+      record.action = failure.action;
+      record.fallback = failure.reason;
       record.bytesOut = record.bytesIn;
       out = undefined;
     }
@@ -1724,6 +1753,7 @@ module.exports = {
   FAILURE_RERUN_NOTE,
   TEMPLATE_COLLAPSE_NOTE,
   looksLikeFailure,
+  isKeepLine,
   exitNote,
   isFileDump,
   isLogPath,

@@ -15,6 +15,13 @@
 // os.tmpdir() inside the hook resolves there and the whole tree can be
 // snapshotted before and after. Fixtures the hooks only READ (transcripts)
 // live outside that tree so they never appear in the diff.
+//
+// The matrix is keyed on REGISTRATION — script plus the event it is registered
+// for — and the key set is derived from hooks.json rather than written out
+// here, so registering an existing script on a second event, or adding a new
+// script entirely, fails this file until it has a payload of its own. One
+// script registered twice is two entries in the contract, and the two can
+// behave differently.
 
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
@@ -190,6 +197,23 @@ function cases() {
 
 const ALL = cases();
 
+/** Every `script.js@Event` pair hooks.json actually registers. */
+function registeredPairs() {
+  const hooks = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, 'hooks.json'), 'utf-8'));
+  const pairs = new Set();
+  for (const [event, list] of Object.entries(hooks.hooks)) {
+    for (const entry of list) {
+      for (const h of entry.hooks || []) {
+        const m = /([a-z-]+\.js)/.exec(h.command || '');
+        if (m) pairs.add(`${m[1]}@${event}`);
+      }
+    }
+  }
+  return pairs;
+}
+
+const pairOf = (c) => `${c.name}@${c.input.hook_event_name}`;
+
 describe('HUSH_DISABLE=1 conformance across every hook', () => {
   for (const c of ALL) {
     const label = c.label || c.name;
@@ -199,6 +223,9 @@ describe('HUSH_DISABLE=1 conformance across every hook', () => {
       const before = snapshot(temp);
       const r = runHookIn(c.name, temp, c.input, { ...LOUD, HUSH_DISABLE: '1' });
       assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+      // No stdout at all is the whole contract in one assertion: every channel
+      // a hook has — updated tool input or output, injected additional
+      // context, a decision — travels as JSON on stdout and nowhere else.
       assert.strictEqual(r.stdout, '', `stdout leaked: ${r.stdout}`);
       assert.deepStrictEqual(snapshot(temp), before, 'filesystem changed under a disabled session');
     });
@@ -215,18 +242,51 @@ describe('HUSH_DISABLE=1 conformance across every hook', () => {
     });
   }
 
-  test('every hook registered in hooks.json is covered', () => {
-    const hooks = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, 'hooks.json'), 'utf-8'));
-    const registered = new Set();
-    for (const list of Object.values(hooks.hooks)) {
-      for (const entry of list) {
-        for (const h of entry.hooks || []) {
-          const m = /([a-z-]+\.js)/.exec(h.command || '');
-          if (m) registered.add(m[1]);
-        }
-      }
-    }
-    const covered = new Set(ALL.map((c) => c.name));
+  test('every hook REGISTRATION in hooks.json has a payload here, event by event', () => {
+    const registered = registeredPairs();
+    const covered = new Set(ALL.map(pairOf));
     assert.deepStrictEqual([...registered].sort(), [...covered].sort());
+  });
+
+  test('each case really is registered for the event its payload names', () => {
+    const registered = registeredPairs();
+    for (const c of ALL) {
+      assert.ok(c.input.hook_event_name, `${c.name} has no hook_event_name to key on`);
+      assert.ok(registered.has(pairOf(c)), `${pairOf(c)} is exercised here but registered nowhere in hooks.json`);
+    }
+  });
+
+  // The shared cases run against a TEMP that already holds a note sentinel, so
+  // the once-per-session injected context never fires there. This one uses a
+  // clean TEMP, where a single enabled run emits BOTH channels at once — which
+  // is what makes "stdout is empty" above a statement about the injected
+  // context as well as about the rewrite.
+  test('a disabled run silences the injected-context channel, not only the rewrite', () => {
+    const session = freshSessionId();
+    const bare = () => {
+      const dir = path.join(SCRATCH_ROOT, `bare-${session}-${++seq}`);
+      fs.mkdirSync(dir, { recursive: true });
+      return dir;
+    };
+    const input = {
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      session_id: session,
+      transcript_path: TRANSCRIPT,
+      tool_input: { command: 'node build.js' },
+      tool_response: NOISY_OUTPUT,
+    };
+
+    const onDir = bare();
+    const on = runHookIn('compress-tool-output.js', onDir, input, LOUD);
+    const emitted = JSON.parse(on.stdout).hookSpecificOutput;
+    assert.ok(typeof emitted.updatedToolOutput === 'string', 'no rewritten output to be silenced');
+    assert.ok(typeof emitted.additionalContext === 'string', 'no injected context to be silenced');
+    assert.notDeepStrictEqual(snapshot(onDir), {}, 'no state to be silenced');
+
+    const offDir = bare();
+    const off = runHookIn('compress-tool-output.js', offDir, input, { ...LOUD, HUSH_DISABLE: '1' });
+    assert.strictEqual(off.stdout, '', `stdout leaked: ${off.stdout}`);
+    assert.deepStrictEqual(snapshot(offDir), {}, 'a disabled run created state');
   });
 });

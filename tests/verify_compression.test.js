@@ -205,6 +205,124 @@ describe('unit: adversarial edits', () => {
   });
 });
 
+// A denser durable document, carrying one instance of every shape the verifier
+// knows how to lose: frontmatter, headings, a fenced block, a URL with a query,
+// a markdown link, bare paths, inline code, several flavours of identifier,
+// negations of both spellings, and numbers in and out of code.
+const CORPUS = [
+  '---',
+  'name: notes',
+  'model: opus',
+  '---',
+  '',
+  '# Retry policy',
+  '',
+  'The agent must never write to the original file, and cannot skip the backup.',
+  'Timeout is 30s for each retry, see [the retry doc](./docs/retry.md).',
+  'Set NODE_ENV and $HOME before running buildAll() or build_all_targets.',
+  'Read https://example.com/api/v2?page=3 for the field list.',
+  'Usually the cache holds; run step A before step B.',
+  'Keep at most 5 retries and at least 2 workers.',
+  '',
+  '## Limits',
+  '',
+  '- `--max-old-space-size` is capped at 4096.',
+  '- Config lives at ./config/app.yaml.',
+  '',
+  '```js',
+  'const retries = 5;',
+  '```',
+  '',
+].join('\n');
+
+const swap = (from, to) => CORPUS.replace(from, to);
+
+// Every drift shape the verifier must catch, and the bucket it must land in.
+const DRIFT = [
+  { name: 'a dropped section heading', field: 'headings', text: () => swap('## Limits\n\n', '') },
+  { name: 'a demoted heading level', field: 'headings', text: () => swap('## Limits', '### Limits') },
+  { name: 'a truncated URL query string', field: 'urls', text: () => swap('https://example.com/api/v2?page=3', 'https://example.com/api/v2') },
+  { name: 'a repointed link target', field: 'linkTargets', text: () => swap('./docs/retry.md', './docs/other.md') },
+  { name: 'a dropped file path', field: 'paths', text: () => swap('./config/app.yaml', 'the config file') },
+  { name: 'a dropped bullet that carried a path', field: 'paths', text: () => swap('- Config lives at ./config/app.yaml.\n', '') },
+  { name: 'a dropped environment variable', field: 'identifiers', text: () => swap('$HOME', 'the home directory') },
+  { name: 'a dropped snake_case identifier', field: 'identifiers', text: () => swap('build_all_targets', 'the target builder') },
+  { name: 'a dropped call-shaped identifier', field: 'identifiers', text: () => swap('buildAll()', 'the builder') },
+  { name: 'a negation removed through a contraction', field: 'negations', text: () => swap('cannot skip the backup', 'may skip the backup') },
+  { name: 'a changed limit', field: 'numbers', text: () => swap('4096', '2048') },
+  { name: 'an edit inside the fenced block', field: 'codeBlocks', text: () => swap('const retries = 5;', 'const retries = 3;') },
+  { name: 'a dropped inline-code flag', field: 'inlineCode', text: () => swap('`--max-old-space-size`', 'the heap flag') },
+  { name: 'a mutated frontmatter value', field: 'frontmatter', text: () => swap('model: opus', 'model: sonnet') },
+];
+
+// The drift the verifier does NOT catch, and never claimed to: nothing here
+// reads meaning, so a rewrite that preserves every token while inverting what
+// the tokens say passes. This list is the ceiling, written down so it cannot
+// widen by accident — an entry added to it is the verifier getting weaker, and
+// has to be argued for rather than noticed later.
+const CEILING = [
+  { name: 'a dropped qualifier', text: () => swap('Usually the cache holds', 'The cache holds') },
+  { name: 'reordered dependencies', text: () => swap('run step A before step B', 'run step B before step A') },
+  { name: 'numbers swapped between the things they count', text: () => swap('at most 5 retries and at least 2 workers', 'at most 2 retries and at least 5 workers') },
+  { name: 'a changed unit on an unchanged number', text: () => swap('30s', '30m') },
+  { name: 'an inverted comparison', text: () => swap('at most 5 retries', 'at least 5 retries') },
+  { name: 'a rebound pronoun', text: () => swap('The agent must never write', 'It must never write') },
+  { name: 'a changed code-fence language', text: () => swap('```js', '```ts') },
+  { name: 'a claim invented from nothing', text: () => `${CORPUS}\nThe agent also emails the report to the on-call engineer.\n` },
+];
+
+describe('adversarial: semantic drift the verifier must catch', () => {
+  test('the corpus is clean against itself', () => {
+    assert.strictEqual(verify(CORPUS, CORPUS).ok, true);
+  });
+
+  for (const c of DRIFT) {
+    test(`${c.name} is caught, as ${c.field}`, () => {
+      const result = verify(CORPUS, c.text());
+      assert.strictEqual(result.ok, false, 'the drift passed');
+      assert.ok(result.missing[c.field].length > 0, `caught, but not as ${c.field}: ${JSON.stringify(result.missing)}`);
+    });
+  }
+
+  test('every bucket the verifier reports has a drift shape exercising it', () => {
+    const buckets = Object.keys(verify(CORPUS, CORPUS).missing).sort();
+    const exercised = [...new Set(DRIFT.map((c) => c.field))].sort();
+    assert.deepStrictEqual(exercised, buckets, 'a reported bucket has no adversarial case');
+  });
+});
+
+describe('adversarial: the drift that passes mechanically, by design', () => {
+  for (const c of CEILING) {
+    test(`${c.name} passes — no script here reads meaning`, () => {
+      assert.strictEqual(verify(CORPUS, c.text()).ok, true, 'this now fails: the ceiling moved, update the list deliberately');
+    });
+  }
+
+  test('the ceiling is exactly this list', () => {
+    assert.deepStrictEqual(
+      CEILING.map((c) => c.name),
+      [
+        'a dropped qualifier',
+        'reordered dependencies',
+        'numbers swapped between the things they count',
+        'a changed unit on an unchanged number',
+        'an inverted comparison',
+        'a rebound pronoun',
+        'a changed code-fence language',
+        'a claim invented from nothing',
+      ]
+    );
+  });
+
+  test('the check is one-directional: it reports loss, never invention', () => {
+    // Stated once, plainly, because it is the ceiling most easily mistaken for
+    // a bug: an addition is only ever caught when it changes a COUNTED thing —
+    // a negation, or the frontmatter block.
+    assert.strictEqual(verify(CORPUS, `${CORPUS}\nAnd another paragraph entirely.\n`).ok, true);
+    assert.strictEqual(verify(CORPUS, `${CORPUS}\nDo not trust the cache.\n`).ok, false);
+  });
+});
+
 describe('unit: target check', () => {
   const never = () => false;
 

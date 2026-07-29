@@ -721,11 +721,15 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
 
   // Mirror the real fixture: long, with periodic consecutive-dupe noise so the
   // hook always emits (dedupe changes the text) even under the enumerate cap.
+  // The repeated line is long enough that folding three copies behind one
+  // repeat marker is a net saving — a fold that costs more bytes than it saves
+  // is a rewrite deliver() rejects, and the original would ship instead.
+  const DUPE = 'note: deferred until the link step for this module completes';
   const bigLog = (() => {
     const out = [];
     for (let i = 0; i < 900; i++) {
       out.push(`[${i}] compile mod_${i} ... ok`);
-      if (i % 8 === 0) { out.push('note: deferred'); out.push('note: deferred'); out.push('note: deferred'); }
+      if (i % 8 === 0) { out.push(DUPE); out.push(DUPE); out.push(DUPE); }
     }
     return out.join('\n');
   })();

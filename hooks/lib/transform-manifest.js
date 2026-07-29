@@ -46,6 +46,7 @@ const ACTIONS = {
   'shell-guard-skip': { lossy: false, fallback: 'shell output may already be truncated by the host' },
   'rejected-not-smaller': { lossy: false, fallback: 'rewrite was not smaller than the input' },
   'rejected-no-recovery': { lossy: false, fallback: 'transform removed detail without a recovery location' },
+  'rejected-field-loss': { lossy: false, fallback: 'rewrite dropped a field the response arrived with' },
 };
 
 // One line per multi-field object response (stdout/stderr/output combined)
@@ -96,10 +97,15 @@ function buildRecord(d) {
   };
 }
 
-// The trust boundary: transformed output is never emitted without matching
-// recovery metadata when detail was removed. Returns the reason a record fails
-// that, or null when it holds. A lossy action that happened to drop nothing
-// this time (a cap under its own limit) has nothing to recover and passes.
+// The trust boundary, in three predicates. Each returns the reason a record
+// fails one product invariant, or null when it holds; deliver() runs all of
+// them over every rewrite and ships the untouched original whenever one fires.
+// They live here, beside the record shape, so a new transform inherits the
+// whole boundary instead of restating a slice of it at its own call site.
+
+// Invariant: a lossy transform without a retrievable full original is
+// rejected. A lossy action that happened to drop nothing this time (a cap
+// under its own limit) has nothing to recover and passes.
 function recoveryGap(record) {
   const spec = ACTIONS[record.action];
   if (!spec || !spec.lossy || record.omitted <= 0) return null;
@@ -108,6 +114,28 @@ function recoveryGap(record) {
     return `${record.action} names ${record.recovery} recovery with no path`;
   }
   return null;
+}
+
+// Invariant: a transform that is not smaller is rejected. Markers cost bytes —
+// a repeat count, an omission marker, a capped-failure footer — and on short or
+// near-empty lines they can cost more than the lines they stand for. A rewrite
+// that buys no context back is not worth the model re-reading a rephrased view
+// of what it already had.
+function sizeGap(record) {
+  if (record.bytesOut < record.bytesIn) return null;
+  return `rewrite was ${record.bytesOut} bytes against ${record.bytesIn} in`;
+}
+
+const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+// Invariant: a structured transform preserves every field or does not run.
+// Checked on the delivered shape rather than inside each renderer, so a
+// transform that learns to rewrite an object response cannot drop a field the
+// model was going to be shown.
+function fieldGap(original, updated) {
+  if (!isPlainObject(original) || !isPlainObject(updated)) return null;
+  const missing = Object.keys(original).filter((k) => !(k in updated));
+  return missing.length ? `rewrite dropped ${missing.length} field(s) the response arrived with: ${missing.join(', ')}` : null;
 }
 
 // Same sessionId sanitization as narration-meter.js's statePath.
@@ -149,4 +177,8 @@ function appendRecord(record) {
   }
 }
 
-module.exports = { ACTIONS, ACTION_PRIORITY, combineActions, buildRecord, recoveryGap, debugManifestPath, appendRecord };
+module.exports = {
+  ACTIONS, ACTION_PRIORITY, combineActions, buildRecord,
+  recoveryGap, sizeGap, fieldGap,
+  debugManifestPath, appendRecord,
+};

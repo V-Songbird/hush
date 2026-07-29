@@ -7,6 +7,10 @@ version field by convention).
 
 ## Unreleased
 
+Fixed an issue where a trimmed view could reach you longer than the output it replaced. Any view that isn't smaller — or that would drop a field the result arrived with — is dropped, and the original output is passed through untouched.
+
+Fixed an issue where a single very long line, such as a minified bundle or a base64 blob, could stall the compression hook.
+
 Core and Quiet are now separate switches. `HUSH_CORE=off` keeps the reminders while output arrives whole; `HUSH_QUIET=off` keeps the trimming while the reminders stop. `HUSH_DISABLE=1` still stops everything, and the output style stays its own switch.
 
 The note hush leaves before a compaction now lists every recovery file it can, says how many more there are when the list is capped, and only promises a re-run where a re-run really reproduces the output.

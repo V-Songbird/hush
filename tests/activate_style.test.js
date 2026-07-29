@@ -301,6 +301,96 @@ test("stripping outputStyle keeps the rest of the settings file as the user wrot
   assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), '{\n    "env": {\n        "A": "1"\n    }\n}\n');
 });
 
+// --- adversarial rollback -------------------------------------------------
+//
+// The happy path proves a swap lands. These prove the swap is all-or-nothing
+// when it does not: an interrupted activation, a slot that cannot be written,
+// and a second activation arriving on top of a half-finished one.
+
+function preset(pluginRoot, file, name, body) {
+  const p = path.join(pluginRoot, "styles", file);
+  write(p, `---\nname: ${name}\ndescription: Unmeasured preset shipped with Hush.\n---\n${body}\n`);
+  return p;
+}
+
+// safeWriteFileSync writes a dot-prefixed `.tmp` beside its target and renames
+// it into place, so a half-written swap is visible as a leftover temp file.
+function strays(pluginRoot) {
+  return fs.readdirSync(path.join(pluginRoot, "output-styles")).filter((f) => f.endsWith(".tmp"));
+}
+
+test("a slot that cannot be written leaves the previous style active and named", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const first = preset(pluginRoot, "pirate.md", "Hush Pirate", "ARR body");
+  const second = preset(pluginRoot, "rock.md", "Hush Rock", "rock body");
+  activate(first, { pluginRoot, projectDir, homeDir });
+  const active = slot(pluginRoot);
+  const record = path.join(pluginRoot, "output-styles", "hush.md.active.json");
+  const before = fs.readFileSync(record, "utf-8");
+
+  const realRename = fs.renameSync;
+  fs.renameSync = (from, to) => {
+    if (String(to).endsWith("hush.md")) throw new Error("slot is not writable");
+    return realRename(from, to);
+  };
+  try {
+    assert.throws(() => activate(second, { pluginRoot, projectDir, homeDir }), /slot is not writable/);
+  } finally {
+    fs.renameSync = realRename;
+  }
+
+  assert.strictEqual(slot(pluginRoot), active, "the slot moved under a failed write");
+  assert.strictEqual(fs.readFileSync(record, "utf-8"), before, "the record names a style that never took the slot");
+  assert.deepStrictEqual(strays(pluginRoot), [], "a partial write was left behind");
+});
+
+test("a second activation over a half-finished one still refuses, and the slot never drifts", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const first = preset(pluginRoot, "pirate.md", "Hush Pirate", "ARR body");
+  const second = preset(pluginRoot, "rock.md", "Hush Rock", "rock body");
+  const third = preset(pluginRoot, "opera.md", "Hush Opera", "aria body");
+  activate(first, { pluginRoot, projectDir, homeDir });
+  const active = slot(pluginRoot);
+  const stock = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8");
+
+  // Interrupt: the record path is replaced by a directory, so the swap gets
+  // as far as the slot and cannot finish.
+  const record = path.join(pluginRoot, "output-styles", "hush.md.active.json");
+  fs.unlinkSync(record);
+  write(path.join(record, "blocker"), "x");
+
+  assert.throws(() => activate(second, { pluginRoot, projectDir, homeDir }));
+  assert.strictEqual(slot(pluginRoot), active);
+
+  // A second attempt arriving on top of that half-finished one hits the same
+  // wall, and neither the slot nor the pristine backup drifts.
+  assert.throws(() => activate(third, { pluginRoot, projectDir, homeDir }));
+  assert.strictEqual(slot(pluginRoot), active);
+  assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), stock);
+  assert.deepStrictEqual(strays(pluginRoot), []);
+
+  // Clear the interruption and the next activation completes normally, with
+  // the slot and the record naming the same style.
+  fs.rmSync(record, { recursive: true });
+  const result = activate(third, { pluginRoot, projectDir, homeDir });
+  assert.strictEqual(result.name, "Hush Opera");
+  assert.match(slot(pluginRoot), /name: Hush Opera/);
+  assert.strictEqual(JSON.parse(fs.readFileSync(record, "utf-8")).name, "Hush Opera");
+  assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), stock);
+});
+
+test("a refused variant leaves no temp file and no record behind", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const variantPath = path.join(projectDir, ".claude", "output-styles", "bogus.md");
+  write(variantPath, "---\nname: Bogus\ndescription: Unmeasured variant of Hush.\nkeep-coding-instructions: true\n---\nsay whatever\n");
+
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /did not keep hush's mechanics/);
+
+  assert.deepStrictEqual(strays(pluginRoot), []);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.active.json")), false);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.stock")), false);
+});
+
 test("an outputStyle setting pointing elsewhere is left untouched", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const presetPath = path.join(pluginRoot, "styles", "pirate.md");
