@@ -145,11 +145,16 @@ for (const d of ['runs', 'transcripts']) fs.mkdirSync(path.join(outDir, d), { re
 // the seed to find, and an unqualified --resume would fork the batch in two.
 const planFile = path.join(outDir, 'batch.json');
 
-function resumeSeed() {
+function readPlan() {
   try {
-    const seed = JSON.parse(fs.readFileSync(planFile, 'utf8')).seed;
-    if (seed != null) return String(seed);
-  } catch { /* no manifest, or an unreadable one */ }
+    return JSON.parse(fs.readFileSync(planFile, 'utf8'));
+  } catch { return null; } // no manifest, or an unreadable one
+}
+
+const plan = readPlan();
+
+function resumeSeed() {
+  if (plan && plan.seed != null) return String(plan.seed);
   throw new Error(
     `--resume cannot find the seed of the batch it is resuming (${path.relative(ROOT, planFile)} is missing or `
     + 'unreadable). Pass --seed <seed> from the original run\'s output, or start a fresh batch without --resume.');
@@ -165,6 +170,39 @@ const seed = seedFlag != null ? String(seedFlag) : resume ? resumeSeed() : Strin
 const batchKey = [tag, seed, model, reps, armNames.join('+'), tasks.map((t) => t.id).join('+')].join('|');
 const batchId = `${tag}-${hashSeed(batchKey).toString(16).padStart(8, '0')}`;
 const recordDir = path.join(ROOT, 'records', batchId);
+
+// The tag's manifest is the batch's identity, and both directions have to hold
+// or the tag stops meaning one batch.
+//
+// Resuming under different flags is not resuming: the seed carries over but
+// every other ingredient of the batch key does not, so the records land in a
+// second records/ directory while completedRun() happily reuses the first
+// batch's run files (it keys on filename alone) — two half-batches, neither
+// publishable. A fresh plan on a tag that already has a manifest is the same
+// break from the other end: it would overwrite the seed every later bare
+// --resume reads, and the first batch would no longer be reachable through the
+// tag at all. Refusing costs a flag; the alternative costs a paid batch.
+function batchDrift() {
+  const differs = [
+    ['seed', plan.seed, seed],
+    ['model', plan.model, model],
+    ['reps', plan.reps, reps],
+    ['arms', (plan.arms || []).join(','), armNames.join(',')],
+    ['tasks', (plan.tasks || []).map((t) => t.id).join(','), tasks.map((t) => t.id).join(',')],
+  ].filter(([, was, now]) => String(was) !== String(now));
+  return differs.map(([name, was, now]) => `${name} was ${was || '(none)'}, this run has ${now || '(none)'}`)
+    .join('; ') || 'the batch key differs';
+}
+
+if (plan && plan.batchId && plan.batchId !== batchId) {
+  throw new Error(resume
+    ? `--resume does not reproduce batch ${plan.batchId} — these flags compute ${batchId}. ${batchDrift()}. `
+      + 'Re-run --resume with the flags the batch was planned under, or drop --resume to start a new batch on a new tag.'
+    : `tag "${tag}" already carries batch ${plan.batchId}, and this run is batch ${batchId}. ${batchDrift()}. `
+      + `Overwriting ${path.relative(ROOT, planFile)} would leave the first batch's seed unreachable through the tag `
+      + `and re-point every later --resume. Use a different --tag, add --resume to continue ${plan.batchId}, `
+      + `or delete ${path.relative(ROOT, planFile)} to reuse the tag.`);
+}
 
 // Workdirs live OUTSIDE the repo, in the OS temp dir. Claude Code injects
 // ambient git status / recent commits into the system prompt for any cwd

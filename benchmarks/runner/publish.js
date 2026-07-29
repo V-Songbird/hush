@@ -71,6 +71,24 @@ function suiteTable(runs, arms) {
   return md;
 }
 
+// Every number in the claim set that is actually a COST, and nothing else.
+// The claim set is full of numbers that are not money — run counts, `n`, token
+// traffic, latencies, and percentage deltas that collide with dollar figures
+// at two decimal places — so a public dollar figure gets traced against this
+// list rather than against the markdown. Built from the same two functions the
+// cost tables render from, so it cannot drift away from what they print.
+function costFigures(runs, arms) {
+  const out = [];
+  for (const { arms: byArm } of segmentReport(runs, { metric: 'cost' })) {
+    for (const s of Object.values(byArm)) out.push(s.median, s.mean, s.p25, s.p75, ...(s.ci95 || []));
+  }
+  for (const arm of arms) {
+    const c = summarize(runs.filter((r) => r.arm === arm).map(METRICS.cost));
+    out.push(c.mean, c.median);
+  }
+  return out.filter(Number.isFinite);
+}
+
 function chartValues(runs, metric, arms, scale = 1) {
   const report = segmentReport(runs, { metric });
   const out = {};
@@ -80,10 +98,41 @@ function chartValues(runs, metric, arms, scale = 1) {
   return out;
 }
 
-/** The whole claim set as strings — no disk, so tests can read it directly. */
-function buildClaims(runs) {
+// Deleting a record is the documented way to discard a run, so hash-stamping
+// makes the set tamper-evident against EDITS only — a batch quietly thinned of
+// its inconvenient runs would publish without a word, and the remaining rows
+// would look like a complete arm. The batch manifest planned every key before
+// the first session was spawned, and it sits in the same directory, so compare
+// against it. A run that errored still wrote a record and counts as present;
+// a run whose record is simply gone does not.
+//
+// razor: no manifest, no check — records written before the manifest existed
+// still publish. Upgrade path if that matters: refuse a record set whose
+// batchId names no manifest at all.
+function assertBatchComplete(runs, batches, batchId) {
+  const manifest = (batches || []).find((b) => b.batchId === batchId);
+  if (!manifest || !Array.isArray(manifest.order)) return;
+  const present = new Set(runs.map((r) => r.key));
+  const missing = manifest.order.filter((k) => !present.has(k));
+  if (!missing.length) return;
+  const named = missing.slice(0, 5).join(', ') + (missing.length > 5 ? `, +${missing.length - 5} more` : '');
+  throw new Error(
+    `batch ${batchId} is incomplete: ${missing.length} of ${manifest.order.length} planned runs have no record `
+    + `(${named}). Publish the whole batch, or re-run the missing keys — a batch thinned after the fact is not evidence.`);
+}
+
+/**
+ * The whole claim set as strings — no disk, so tests can read it directly.
+ *
+ * `allRuns` is every record in the set, errored ones included: a failed run is
+ * still a record on disk, and completeness is about which records exist, not
+ * which ones produced a number. Statistics see only the usable ones.
+ */
+function buildClaims(allRuns, batches = []) {
+  const runs = allRuns.filter((r) => !r.error);
   if (!runs.length) throw new Error('no records to publish');
   const batchId = assertOneBatch(runs);
+  assertBatchComplete(allRuns, batches, batchId);
   const arms = armNames(runs);
   const models = [...new Set(runs.map((r) => r.model).filter(Boolean))];
   const seeds = [...new Set(runs.map((r) => r.seed).filter((s) => s != null))];
@@ -110,7 +159,7 @@ function buildClaims(runs) {
     'narration-by-segment.svg': barChartSvg('Mid-turn narration by segment', 'words, median',
       chartValues(runs, 'narrationWords', arms), arms, { colors }),
   };
-  return { markdown: md, charts, batchId, arms, segments };
+  return { markdown: md, charts, batchId, arms, segments, costs: costFigures(runs, arms) };
 }
 
 function main() {
@@ -119,8 +168,8 @@ function main() {
   const recordsDir = path.resolve(flag('records', path.join(__dirname, '..', 'records')));
   const outDir = path.resolve(flag('out', path.join(recordsDir, 'published')));
 
-  const { runs } = readRecords(recordsDir);
-  const claims = buildClaims(runs.filter((r) => !r.error));
+  const { runs, batches } = readRecords(recordsDir);
+  const claims = buildClaims(runs, batches);
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'claims.md'), claims.markdown);
   for (const [name, svg] of Object.entries(claims.charts)) fs.writeFileSync(path.join(outDir, name), svg + '\n');
@@ -130,4 +179,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { buildClaims, assertOneBatch, metricTable, suiteTable, chartValues };
+module.exports = { buildClaims, assertOneBatch, assertBatchComplete, costFigures, metricTable, suiteTable, chartValues };

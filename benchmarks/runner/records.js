@@ -27,9 +27,19 @@ const SECRET_RULES = [
 ];
 
 // Absolute paths, both platforms, plus UNC shares.
+//
+// `C:\Program Files\My App\out.log` and `C:\Users\John Smith\...` are ordinary
+// Windows paths, and a rule that stopped at the first space left the surname
+// and the whole directory tail in a publishable record. So a space is consumed
+// only when the text after it is still path — more non-space characters
+// followed by another separator. `C:\tmp\a.log and then` stops at `a.log`,
+// because "and then" reaches no separator. A path rule that ate the rest of
+// the sentence would be a different bug, and the two cases below pin both ends.
+const WIN_TAIL = /(?:[^\s"'|<>,;)]|[ \t]+(?=[^\s"'|<>,;)]*[\\/]))*/.source;
+const UNC_TAIL = /(?:[^\s"'|<>]|[ \t]+(?=[^\s"'|<>]*[\\/]))+/.source;
 const PATH_RULES = [
-  [/\\\\[A-Za-z0-9._-]+\\[^\s"'|<>]+/g, '<path>'],
-  [/\b[A-Za-z]:[\\/][^\s"'|<>,;)]*/g, '<path>'],
+  [new RegExp(`\\\\\\\\[A-Za-z0-9._-]+\\\\${UNC_TAIL}`, 'g'), '<path>'],
+  [new RegExp(`\\b[A-Za-z]:[\\\\/]${WIN_TAIL}`, 'g'), '<path>'],
   [/(^|[\s"'(=[])\/(?:Users|home|root|tmp|var|mnt|opt|usr|private|etc|Volumes)\/[^\s"'|<>,;)\]]*/g, '$1<path>'],
 ];
 

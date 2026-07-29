@@ -315,6 +315,23 @@ describe('records are sanitized before anything is written', () => {
     assert.ok(!clean('share \\\\FILESRV\\build\\out.log').includes('FILESRV'));
   });
 
+  test('a Windows path with spaces is scrubbed whole, tail and all', () => {
+    // The drive-letter rule used to stop at the first space, so a `Program
+    // Files` path or a `C:\Users\John Smith\...` profile left the surname and
+    // the whole directory tail in a publishable record.
+    assert.strictEqual(clean('wrote C:\\Program Files\\My App\\out.log fine'), 'wrote <path> fine');
+    assert.strictEqual(clean('read C:\\Users\\John Smith\\notes.txt for details'), 'read <path> for details');
+    assert.ok(!clean('finalText: saved to C:\\Users\\John Smith\\Desktop\\out.md').includes('Smith'));
+    assert.strictEqual(clean('share \\\\FILESRV\\Build Output\\out.log now'), 'share <path> now');
+  });
+
+  test('the path rule stops at the path, not at the end of the sentence', () => {
+    // A rule that ate everything after a drive letter would be a different bug.
+    assert.strictEqual(clean('opened C:\\tmp\\a.log and then gave up'), 'opened <path> and then gave up');
+    assert.strictEqual(clean('cd C:\\tmp then run the build'), 'cd <path> then run the build');
+    assert.strictEqual(clean('logs at C:/Users/x/y.log, then done'), 'logs at <path>, then done');
+  });
+
   test('the username and the machine name go', () => {
     assert.strictEqual(clean('user songbird on DEV-BOX-01'), 'user <user> on <host>');
     assert.strictEqual(clean('SONGBIRD logged in'), '<user> logged in');
@@ -495,6 +512,58 @@ describe('published claims are generated from records', () => {
     assert.throws(() => publish.buildClaims([]), /no records/);
   });
 
+  // Deletion is the documented discard path, so the per-record hash makes the
+  // set tamper-evident against edits only. The batch manifest is what makes a
+  // thinned batch visible — and it sits unread in the same directory.
+  describe('a batch thinned after the fact does not publish', () => {
+    const manifest = () => ({
+      batchId: 'synthetic-0001', seed: '12345', model: 'haiku', reps: 2, tag: 'synthetic',
+      arms: ['baseline', 'hush'],
+      order: runs.map((r) => r.key),
+    });
+
+    test('records missing against the manifest are named and refused', () => {
+      const thinned = runs.filter((r) => !(r.arm === 'baseline' && r.task === 'log-triage'));
+      assert.throws(() => publish.buildClaims(thinned, [manifest()]),
+        /batch synthetic-0001 is incomplete: 2 of 16 planned runs have no record/);
+      assert.throws(() => publish.buildClaims(thinned, [manifest()]), /log-triage__baseline__r1/);
+      // Without the manifest the same thinned set publishes — that is the defect.
+      assert.doesNotThrow(() => publish.buildClaims(thinned));
+    });
+
+    test('a run that errored is present, not missing', () => {
+      // An errored run still wrote a record; it just carries no numbers. It
+      // must not read as a deletion, and it must not reach the statistics.
+      const withError = runs.map((r) => (r.key === 'log-triage__baseline__r1'
+        ? { key: r.key, batchId: r.batchId, seed: r.seed, task: r.task, segment: r.segment, arm: r.arm, error: 'rate limited' }
+        : r));
+      const { markdown } = publish.buildClaims(withError, [manifest()]);
+      assert.match(markdown, /Generated from 15 retained run records/);
+    });
+
+    test('a complete batch publishes as before', () => {
+      assert.doesNotThrow(() => publish.buildClaims(runs, [manifest()]));
+    });
+
+    test('end to end: the manifest is read back off disk beside the records', () => {
+      const dir = tmp('publish-batch');
+      try {
+        for (const r of runs) records.writeRecord(dir, r.key, r);
+        records.writeRecord(dir, 'batch', manifest());
+        const { runs: back, batches } = records.readRecords(dir);
+        assert.strictEqual(batches.length, 1, 'the manifest came back as a run record');
+        assert.doesNotThrow(() => publish.buildClaims(back, batches));
+
+        const file = path.join(dir, 'noisy-build__hush__r2.json');
+        fs.chmodSync(file, 0o666);
+        fs.rmSync(file);
+        const after = records.readRecords(dir);
+        assert.throws(() => publish.buildClaims(after.runs, after.batches),
+          /1 of 16 planned runs have no record \(noisy-build__hush__r2\)/);
+      } finally { rmTree(dir); }
+    });
+  });
+
   test('end to end: write records, read them back, publish from disk', () => {
     const dir = tmp('publish');
     try {
@@ -577,10 +646,56 @@ describe('batch provenance makes a splice detectable', () => {
       assert.strictEqual(seed2, seed1, '--resume invented a new seed');
       assert.strictEqual(batch2, batch1, '--resume forked the batch — its records would split in two');
       assert.ok(fs.existsSync(path.join(resDir, 'batch.json')), 'the tag-scoped manifest was not written');
+    } finally { rmTree(resDir); }
+  });
 
-      // A run that is not resuming is a new batch, clock-seeded as before.
-      const [batch3] = batchLine(planRun(tag));
-      assert.notStrictEqual(batch3, batch1, 'a fresh run should not silently join an old batch');
+  test('--resume under drifted flags is refused, naming what moved', () => {
+    const tag = `resume-drift-${process.pid}`;
+    const resDir = path.join(BENCH, 'results', tag);
+    try {
+      const [batch1] = batchLine(planRun(tag));
+      assert.ok(batch1, 'no batch to drift from');
+
+      // More reps: same seed, different batch key. Resuming here would write
+      // records into a second directory while completedRun() re-used the first
+      // batch's run files, leaving both halves incomplete.
+      const drifted = planRun(tag, '--resume', '--reps', '3');
+      assert.notStrictEqual(drifted.status, 0, '--resume forked the batch under different flags');
+      assert.match(drifted.stderr, /--resume does not reproduce batch/);
+      assert.match(drifted.stderr, new RegExp(batch1));
+      assert.match(drifted.stderr, new RegExp(`reps was ${CONFIG.reps}, this run has 3`));
+
+      // Adding an arm is the same break by another route.
+      const ablated = planRun(tag, '--resume', '--ablations');
+      assert.notStrictEqual(ablated.status, 0, '--resume forked the batch when an arm was added');
+      assert.match(ablated.stderr, /arms was baseline,hush, this run has baseline,hush,hush-core-only,hush-quiet-only/);
+
+      // And the original flags still resume cleanly.
+      const [batch2] = batchLine(planRun(tag, '--resume'));
+      assert.strictEqual(batch2, batch1);
+    } finally { rmTree(resDir); }
+  });
+
+  test('a fresh plan never overwrites another batch\'s manifest on the same tag', () => {
+    const tag = `resume-clobber-${process.pid}`;
+    const resDir = path.join(BENCH, 'results', tag);
+    try {
+      const [batch1, seed1] = batchLine(planRun(tag));
+      assert.ok(batch1 && seed1);
+
+      // A second fresh plan on the same tag is a different batch (here pinned
+      // with an explicit seed rather than left to the clock). Writing its
+      // manifest would strand batch1's seed.
+      const clobber = planRun(tag, '--seed', '999');
+      assert.notStrictEqual(clobber.status, 0, 'a fresh plan overwrote an existing batch manifest');
+      assert.match(clobber.stderr, new RegExp(`already carries batch ${batch1}`));
+      assert.match(clobber.stderr, /Use a different --tag/);
+      assert.strictEqual(JSON.parse(fs.readFileSync(path.join(resDir, 'batch.json'), 'utf8')).seed, seed1,
+        'the first batch\'s seed no longer reaches through the tag');
+
+      // The tag still resumes the batch it belongs to.
+      const [batch2] = batchLine(planRun(tag, '--resume'));
+      assert.strictEqual(batch2, batch1);
     } finally { rmTree(resDir); }
   });
 
