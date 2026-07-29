@@ -53,6 +53,12 @@ node --test tests/*.test.js
 
 PRs that change script behavior without updating tests will not be merged.
 
+Before a release, also run the pre-1.0 readiness gate. It runs the tests behind each of the ten readiness points, names the evidence it used, and exits non-zero on any point it cannot prove — about 20 seconds:
+
+```
+node scripts/readiness-gate.js
+```
+
 ---
 
 ## Git hooks
