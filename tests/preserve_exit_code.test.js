@@ -176,6 +176,25 @@ describe('hook: end to end', () => {
     assert.match(hookOutput(r).hookSpecificOutput.updatedInput.command, /exit 0$/);
   });
 
+  // The standing contract: command execution stays native. Wrapping happens
+  // only in a session where the permission engine never evaluates the rewritten
+  // command, so every ordinary session must see its command byte-identical on
+  // both shells. HUSH_WRAP is cleared explicitly — runHook inherits the
+  // developer's environment, and an ambient HUSH_WRAP=1 would make this pass
+  // for the wrong reason.
+  test('a default session executes the command natively — no wrapping on either shell', () => {
+    for (const tool of ['Bash', 'PowerShell']) {
+      for (const mode of ['default', 'acceptEdits', 'plan', undefined]) {
+        const r = runHook(
+          'preserve-exit-code.js',
+          { tool_name: tool, permission_mode: mode, tool_input: { command: 'npm test' } },
+          { HUSH_WRAP: '' }
+        );
+        assert.strictEqual(hookOutput(r), null, `${tool} / ${String(mode)}`);
+      }
+    }
+  });
+
   test('other tool_input fields survive the rewrite untouched', () => {
     const r = runHook('preserve-exit-code.js', {
       tool_name: 'Bash',
@@ -214,5 +233,82 @@ describe('hook: end to end', () => {
     });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout.trim(), '');
+  });
+});
+
+// String assertions cannot tell a trailer that records the RIGHT exit code
+// from one that silently records a wrong one, so these run the wrapped command
+// through a real shell and read the marker back. Skipped where there is no
+// bash to run them in.
+const { spawnSync } = require('child_process');
+const path = require('path');
+
+function markerOf(stdout) {
+  const m = /\[\[hush:exit=\s*(-?\d+)\s*\]\]/.exec((stdout || '').replace(/\r/g, ''));
+  return m ? Number(m[1]) : null;
+}
+
+// `bash` on PATH is not necessarily a shell that can run the wrapper: on
+// Windows it commonly resolves to the WSL launcher, which runs the command but
+// answers with no trailer at all. So the shell is chosen by canary — the first
+// candidate that round-trips a wrapped `echo` with the code the trailer is
+// supposed to report — and the suite skips when nothing qualifies. Git for
+// Windows can be installed anywhere, so its bash is located through the git on
+// PATH rather than guessed at.
+function findBash() {
+  const candidates = ['bash'];
+  const execPath = (spawnSync('git', ['--exec-path'], { encoding: 'utf-8' }).stdout || '').trim();
+  if (execPath) {
+    candidates.unshift(path.join(execPath, '..', '..', '..', 'bin', 'bash.exe'));
+  }
+  for (const bin of candidates) {
+    const r = spawnSync(bin, ['-c', wrapBash('echo canary')], { encoding: 'utf-8' });
+    if (!r.error && markerOf(r.stdout) === 0 && /canary/.test(r.stdout || '')) return bin;
+  }
+  return null;
+}
+const BASH = findBash();
+
+function recordedExit(command) {
+  const r = spawnSync(BASH, ['-c', wrapBash(command)], { encoding: 'utf-8' });
+  return { marker: markerOf(r.stdout), toolExit: r.status };
+}
+
+describe('shell conformance: what the wrapper actually records', { skip: BASH ? false : 'no POSIX shell available here' }, () => {
+  test('a failing final command is recorded, and the tool call still succeeds', () => {
+    assert.deepStrictEqual(recordedExit('echo hi\nfalse'), { marker: 1, toolExit: 0 });
+  });
+
+  test('a trailing subshell exit is recorded, not swallowed', () => {
+    assert.deepStrictEqual(recordedExit('echo hi\n( exit 5 )'), { marker: 5, toolExit: 0 });
+    assert.deepStrictEqual(recordedExit('echo hi; ( exit 5 )'), { marker: 5, toolExit: 0 });
+  });
+
+  test('an ERR trap runs and the failing code still lands in the marker', () => {
+    assert.deepStrictEqual(recordedExit("trap 'echo trapped' ERR\necho hi\nfalse"), { marker: 1, toolExit: 0 });
+  });
+
+  test('a signal death arrives as 128+N', () => {
+    assert.deepStrictEqual(recordedExit("echo hi\nbash -c 'kill -9 $$'"), { marker: 137, toolExit: 0 });
+    assert.deepStrictEqual(recordedExit("echo hi\nbash -c 'kill -15 $$'"), { marker: 143, toolExit: 0 });
+  });
+
+  // A masked pipeline is the shell's own semantics, not the wrapper's: without
+  // `set -o pipefail`, `$?` is the LAST element's status. Preserving native
+  // semantics means reporting what the shell reports.
+  test('a masked pipeline reports what the shell reports', () => {
+    assert.deepStrictEqual(recordedExit('echo hi\nfalse | true'), { marker: 0, toolExit: 0 });
+  });
+
+  // The two shapes the trailer cannot observe: both end the shell before it
+  // runs. Neither invents a code — no marker at all, and the non-zero status
+  // reaches Claude Code as a tool failure (which hush's PostToolUse hook never
+  // sees), so the failure output arrives whole instead of wrongly labelled.
+  test('an explicit exit ends the shell before the trailer — no marker, non-zero status', () => {
+    assert.deepStrictEqual(recordedExit('echo hi\nexit 5'), { marker: null, toolExit: 5 });
+  });
+
+  test('set -e ends the shell before the trailer — no marker, non-zero status', () => {
+    assert.deepStrictEqual(recordedExit('set -e\necho hi\nfalse\necho unreached'), { marker: null, toolExit: 1 });
   });
 });

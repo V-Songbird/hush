@@ -7,6 +7,12 @@ version field by convention).
 
 ## Unreleased
 
+Fixed an issue where a failing run was compressed as if it had passed when the tool wrote its errors in lower case.
+
+Fixed an issue where a very large failing output was trimmed with no recovery file to read the rest from. A capped view of a failing run also now says how to get the omitted lines back.
+
+An exit code that carries a signal now names it — `exit 137 (SIGKILL)`.
+
 `/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back.
 
 Output parked in a file now goes to a folder of its own for each session, and that folder is deleted when the session ends. Anything a crashed session left behind is cleared once it's a day old.

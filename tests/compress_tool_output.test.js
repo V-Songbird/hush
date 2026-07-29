@@ -25,6 +25,8 @@ const {
   firstLine,
   extractWrappedExit,
   signalCensus,
+  exitNote,
+  FAILURE_RERUN_NOTE,
 } = require('../hooks/compress-tool-output');
 
 describe('unit: transforms', () => {
@@ -110,6 +112,46 @@ describe('unit: transforms', () => {
     assert.strictEqual(looksLikeFailure('Traceback (most recent call last):'), true);
     assert.strictEqual(looksLikeFailure('✗ should retry'), true);
     assert.strictEqual(looksLikeFailure('111 tests passed'), false);
+  });
+
+  // One vocabulary decides failed-ness. It used to be case-sensitive while the
+  // keep-line signal pattern was not, so a lowercase toolchain diagnostic was
+  // "signal worth keeping" and "a passing run" at the same time — and got the
+  // 60-line pass cap.
+  test('lowercase toolchain failures classify as failures', () => {
+    assert.strictEqual(looksLikeFailure("src/app.ts(12,5): error TS2304: Cannot find name 'configure'."), true);
+    assert.strictEqual(looksLikeFailure('Build failed with exit code 1'), true);
+    assert.strictEqual(looksLikeFailure('2 failing, 40 passing'), true);
+    assert.strictEqual(looksLikeFailure('npm ERR! code ELIFECYCLE'), true);
+  });
+
+  test('a green summary that states its own zero counts stays a pass', () => {
+    assert.strictEqual(looksLikeFailure('# tests 503\n# pass 503\n# fail 0'), false);
+    assert.strictEqual(looksLikeFailure('Tests: 0 failed, 42 passed'), false);
+    assert.strictEqual(looksLikeFailure('Compiled successfully: 0 errors, 0 warnings'), false);
+    assert.strictEqual(looksLikeFailure('no errors found'), false);
+  });
+
+  test('a non-zero count in that same shape still classifies as a failure', () => {
+    assert.strictEqual(looksLikeFailure('Tests: 3 failed, 39 passed'), true);
+    assert.strictEqual(looksLikeFailure('0 warnings, 2 errors'), true);
+    assert.strictEqual(looksLikeFailure('# pass 501\n# fail 2'), true);
+  });
+
+  test('exit-code evidence outranks the text sniff in both directions', () => {
+    assert.strictEqual(looksLikeFailure('error TS2304: Cannot find name', 0), false);
+    assert.strictEqual(looksLikeFailure('# fail 0', 1), true);
+  });
+
+  // The two vocabularies stay separate (a WARN line is kept but is not a
+  // failure); what they may never do again is disagree about a failure.
+  test('the failure classifier and the keep-line signal pattern agree on failures', () => {
+    for (const s of ['error TS2304: Cannot find name', 'Build failed with exit code 1', 'npm ERR! code ELIFECYCLE']) {
+      assert.strictEqual(looksLikeFailure(s), true, s);
+      const lines = Array.from({ length: 200 }, (_, i) => `progress: step ${i} of 200 done`);
+      lines[100] = s;
+      assert.ok(capLines(lines, 10).includes(s), `kept past the cap: ${s}`);
+    }
   });
 
   test('compress caps failing output more generously than passing output', () => {
@@ -1944,4 +1986,84 @@ describe('every transform is accounted for, and no lossy view ships without reco
       }
     });
   }
+});
+
+// A compressed failing run has to answer three things without a re-run: what
+// broke first, how it ended, and how to get the rest back.
+describe('unit: failure digest', () => {
+  const FIRST = "src/boot.ts(41,7): error TS2304: Cannot find name 'configure'.";
+  const SUMMARY = 'Build failed with exit code 1';
+
+  // The causal error sits at line 300 — well past the cap's head window — so
+  // its survival proves the signal-keeping rule, not head-of-output luck.
+  function failingLog() {
+    const lines = Array.from({ length: 700 }, (_, i) => `[info] compiled module ${i} of 700`);
+    lines[300] = FIRST;
+    lines.push(SUMMARY);
+    return lines.join('\n');
+  }
+
+  function inline(text, exitCode) {
+    const prev = process.env.HUSH_TEMPLATE;
+    process.env.HUSH_TEMPLATE = 'off'; // template collapse would mask the cap under test
+    try {
+      return compress(text, exitCode, false, false, [], 1, null, true, false, {});
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_TEMPLATE;
+      else process.env.HUSH_TEMPLATE = prev;
+    }
+  }
+
+  test('a capped failing run keeps the first causal error, the final summary, and the way back', () => {
+    const out = inline(failingLog());
+    assert.ok(out.includes(FIRST), 'the first causal error survives the cap');
+    assert.ok(out.includes(SUMMARY), 'the final summary survives the cap');
+    assert.ok(out.includes(FAILURE_RERUN_NOTE), 'the view states how to recover the rest');
+    assert.ok(out.split('\n').length < 700, 'and it is still a compressed view');
+  });
+
+  test('the causal error survives with no exit code available at all', () => {
+    // The default session never wraps, so text is the only evidence there is.
+    const out = inline(failingLog(), undefined);
+    assert.ok(out.includes(FIRST));
+    assert.ok(out.includes(FAILURE_RERUN_NOTE));
+  });
+
+  test('a passing run of the same size gets no failure guidance', () => {
+    const clean = Array.from({ length: 700 }, (_, i) => `[info] compiled module ${i} of 700`).join('\n');
+    const out = inline(clean, 0);
+    assert.ok(!out.includes(FAILURE_RERUN_NOTE));
+  });
+
+  test('a failing run small enough to pass whole gets no guidance either', () => {
+    const out = inline('boom\nError: nope', 1);
+    assert.ok(!out.includes('[hush hook: this run failed'));
+    assert.strictEqual(out, 'boom\nError: nope');
+  });
+});
+
+describe('unit: exit code and signal', () => {
+  test('a signal death is named beside its 128+N code', () => {
+    assert.strictEqual(exitNote(137), '[hush: exit 137 (SIGKILL)]');
+    assert.strictEqual(exitNote(143), '[hush: exit 143 (SIGTERM)]');
+    assert.strictEqual(exitNote(130), '[hush: exit 130 (SIGINT)]');
+    assert.strictEqual(exitNote(139), '[hush: exit 139 (SIGSEGV)]');
+  });
+
+  test('an ordinary exit code stands alone — nothing is inferred', () => {
+    for (const code of [0, 1, 2, 5, 128, 127, 255]) {
+      assert.strictEqual(exitNote(code), `[hush: exit ${code}]`);
+    }
+  });
+
+  test('end to end: the trailer surfaces the signal name to the model', () => {
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      tool_input: { command: 'node stress.js' },
+      tool_response: 'starting\nKilled\n[[hush:exit=\n137\n]]',
+    });
+    const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(out, /\[hush: exit 137 \(SIGKILL\)\]$/);
+    assert.ok(!out.includes('[[hush:exit='), 'the raw marker never reaches the model');
+  });
 });

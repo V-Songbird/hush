@@ -201,6 +201,15 @@ function omittedMarker(n) {
   return `[hush hook: ${n} lines omitted from this view, none with warnings/errors/failures]`;
 }
 
+// Closing line on a capped view of a FAILING run — the same recovery advice
+// the sidecar header gives its own path, for the failures that stay inline.
+// capLines keeps every SIGNAL_RE line by construction, so the first causal
+// error and the failing summary are both above this line: the guarantee is
+// provable, which is why it is stated as one rather than as reassurance.
+const FAILURE_RERUN_NOTE =
+  "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
+  "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
+
 // Every line this file inserts into a line-oriented view opens this way (the
 // omission marker above, the dedupe and template-collapse markers, the grep
 // summary header). Used only for manifest accounting — see compress().
@@ -260,13 +269,32 @@ function capLines(lines, cap, relevanceTokens) {
   return out;
 }
 
-// Deliberately simple: word-boundary failure sniff, exit-code field wins when present.
-// False positives only make the cap more generous — safe direction.
-const FAILURE_RE = /(^|[^0-9a-zA-Z])(FAIL(ED|URE)?|fail(ed|ure)?s?:|Error|error:|ERR!|✗|✘|not ok|Traceback|exception|panic|fatal)([^0-9a-zA-Z]|$)/m;
+// One vocabulary decides failed-ness for every path that needs it (cap
+// selection and the sidecar's shell-window exception). It is the FAILURE half
+// of SIGNAL_RE's alternation — a WARN or DEPRECATED line is signal worth
+// keeping, never evidence that the run itself failed — matched
+// case-insensitively like SIGNAL_RE is: `error TS2304` out of tsc and `Build
+// failed with exit code 1` out of a build tool are failures on every real
+// toolchain, and a case-sensitive pattern read both as passes and handed them
+// the 60-line pass cap while SIGNAL_RE simultaneously read them as signal.
+// Beyond those, false positives only make the cap more generous — safe
+// direction.
+const FAILURE_RE =
+  /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|err!|not ok|traceback|exception|panic|fatal|✗|✘)([^0-9a-zA-Z]|$)/im;
+
+// A green summary states its own score — "0 failures", "no errors", node's own
+// "fail 0" — and those words are the opposite of failure evidence. Blanking
+// zero-quantified counts before the sniff keeps a passing test run on the pass
+// cap; any non-zero count is left alone and still classifies as a failure.
+const ZERO_COUNT_RE = /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:fail\w*|error\w*)\s*[:=]?\s*0\b/gi;
 
 function looksLikeFailure(text, exitCode) {
+  // Exit-code evidence outranks text sniffing: when preserve-exit-code's
+  // trailer (or an MCP exec wrapper) reported a real code, a log full of the
+  // word "error" is still a passing run, and a silent log with code 1 is still
+  // a failure.
   if (typeof exitCode === "number") return exitCode !== 0;
-  return FAILURE_RE.test(text);
+  return FAILURE_RE.test(String(text).replace(ZERO_COUNT_RE, ""));
 }
 
 // A command that just dumps a whole file's contents (cat/type/Get-Content,
@@ -331,6 +359,29 @@ function extractWrappedExit(text) {
 
   const cleanText = text.replace(EXIT_MARKER_ANY_RE, "").replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "");
   return { exitCode: lastValid ? parseInt(lastValid[1], 10) : null, cleanText };
+}
+
+// A shell reports a signal death as 128+N, so the trailer's own number already
+// carries the cause — "exit 137" is a kill, "exit 143" a terminate (both
+// verified live through the bash wrapper). Naming the signal beside the code
+// keeps the native semantics intact and legible in one line; nothing is
+// inferred beyond the arithmetic.
+//
+// The table is the SHELL's POSIX numbering, deliberately not Node's
+// os.constants.signals: that is the HOST's table (win32 numbers SIGABRT 22,
+// not 6) while a bash trailer reports POSIX numbers wherever it runs.
+// PowerShell has no signal channel to derive anything from — a process killed
+// on Windows surfaces an ordinary exit code, and a pure-cmdlet command leaves
+// $LASTEXITCODE unset (a malformed marker, no code at all) — so on that shell
+// the code stands alone and no signal is ever claimed.
+const SIGNALS = {
+  1: "SIGHUP", 2: "SIGINT", 3: "SIGQUIT", 4: "SIGILL", 6: "SIGABRT",
+  8: "SIGFPE", 9: "SIGKILL", 11: "SIGSEGV", 13: "SIGPIPE", 15: "SIGTERM",
+};
+
+function exitNote(exitCode) {
+  const sig = SIGNALS[exitCode - 128];
+  return sig ? `[hush: exit ${exitCode} (${sig})]` : `[hush: exit ${exitCode}]`;
 }
 
 // When the user's prompt explicitly asks to enumerate EVERY / ALL / EACH of
@@ -903,13 +954,20 @@ function containsSecret(text) {
   return SECRET_RES.some((re) => re.test(text));
 }
 
-function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
+function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed) {
   if (process.env.HUSH_SIDECAR === "off") return null;
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
   // A shell output at/above the host-truncation size was likely already cut by
   // Claude Code (see SIDECAR_SHELL_MAX): step aside to the inline cap so hush
   // adds no truncated "full" file and no competing pointer.
-  if (hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX) return null;
+  //
+  // A FAILING run is the exception. That output is evidence, and above this
+  // size the inline cap is otherwise the ONLY surviving copy of it — a 40KB
+  // failing build log reaches the model as a couple of dozen lines with nowhere
+  // to recover the rest from. It gets the recovery copy, and the header drops
+  // the "in full" claim it can no longer make.
+  const partial = !!(hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX);
+  if (partial && !failed) return null;
   try {
     // Scan before ever touching disk. A scanner exception falls into the same
     // catch as every I/O failure below and returns null (fail-open for the
@@ -921,9 +979,11 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
     const dir = sidecarStore.sessionDir(sessionId);
     const file = path.join(dir, `${cheapHash(cleaned)}.txt`);
     const d = buildSidecarDigest(cleaned, relevanceTokens);
+    const p = file.replace(/\\/g, "/");
+    const saved = partial ? `was saved to ${p} as hush received it` : `was saved in full to ${p}`;
     const header =
       `[hush hook: this output is ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}) ` +
-      `and was saved in full to ${file.replace(/\\/g, "/")}; the digest below keeps the head, tail, ` +
+      `and ${saved}; the digest below keeps the head, tail, ` +
       `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
       `For anything else — including any total or count you report — Read that file with ` +
       `offset/limit around the L<n> numbers you need. ` +
@@ -1127,8 +1187,11 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   const cleaned = resolveCarriageReturns(stripAnsi(original));
   const linesIn = cleaned.split("\n").length;
   if (decision) decision.linesIn = linesIn;
+  // Classified once, up front: the same answer picks the cap below AND decides
+  // whether the sidecar's shell-window guard steps aside (see maybeSidecar).
+  const failed = looksLikeFailure(cleaned, exitCode);
   if (!enumerate && !noSidecar) {
-    const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate);
+    const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed);
     if (side !== null) {
       if (decision) {
         decision.action = "sidecar";
@@ -1142,14 +1205,14 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
     // Sidecar was skipped specifically by the shell-truncation guard (large
     // enough to qualify, but the host may have already cut the tail) — note
     // that even though the output falls through to the ordinary cap below.
-    if (decision && hostMayTruncate && cleaned.length >= SIDECAR_MIN_CHARS && cleaned.length >= SIDECAR_SHELL_MAX) {
+    if (decision && !failed && hostMayTruncate && cleaned.length >= SIDECAR_MIN_CHARS && cleaned.length >= SIDECAR_SHELL_MAX) {
       decision.action = "shell-guard-skip";
     }
   }
   const s = typeof scale === "number" ? scale : 1;
   const cap = enumerate
     ? CAP_ENUMERATE
-    : isDump || looksLikeFailure(cleaned, exitCode)
+    : isDump || failed
       ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
       : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
   // Enumeration carve-out means "nothing is elided" — same reason it skips the
@@ -1159,7 +1222,9 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   const dedupedLen = lines.length;
   if (!enumerate) lines = collapseTemplates(lines);
   const beforeCapLen = lines.length;
+  const capped = beforeCapLen > cap; // capLines' own no-op guard is `length <= cap`
   lines = capLines(lines, cap, relevanceTokens);
+  if (failed && capped) lines.push(FAILURE_RERUN_NOTE);
   const out = lines.join("\n");
   // Line accounting for the manifest, derived from the view itself rather than
   // threaded out of dedupe/collapse/cap separately: a line hush keeps is kept
@@ -1170,7 +1235,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // only make recovery metadata MORE required, never less.
   if (decision) decision.omitted = Math.max(0, linesIn - lines.filter((l) => !HUSH_MARKER_RE.test(l)).length);
   if (decision && !decision.action) {
-    if (beforeCapLen > cap) decision.action = "cap"; // capLines' own no-op guard is `length <= cap`
+    if (capped) decision.action = "cap";
     else if (beforeCapLen < dedupedLen) decision.action = "template-collapse";
     else if (enumerate) decision.action = "enumerate-passthrough";
     else if (out === original) decision.action = "passthrough";
@@ -1403,7 +1468,7 @@ function main() {
     const exitCode = wrapped ? wrapped.exitCode : undefined;
     const decision = { bytesIn: response.length };
     let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
-    if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
+    if (wrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
     decision.bytesOut = out.length;
     if (!decision.recovery) decision.recovery = "rerun-command";
     if (out !== response) updated = out;
@@ -1432,7 +1497,7 @@ function main() {
         const fieldWrapped = extractWrappedExit(next[field]);
         const decision = {};
         let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
-        if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
+        if (fieldWrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;
         linesIn += decision.linesIn || 0;
@@ -1485,7 +1550,9 @@ module.exports = {
   collapseTemplates,
   capLines,
   omittedMarker,
+  FAILURE_RERUN_NOTE,
   looksLikeFailure,
+  exitNote,
   isFileDump,
   isLogPath,
   isGeneratedPath,

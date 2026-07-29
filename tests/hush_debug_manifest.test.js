@@ -168,6 +168,35 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
     assert.strictEqual(entry.action, 'shell-guard-skip');
   });
 
+  // A failing run is the one output whose detail is evidence, so it takes the
+  // recovery copy even past the host-truncation size the guard above steps
+  // aside at — otherwise the inline cap is the only surviving record of it.
+  test('sidecar — a FAILING shell output past the host-truncation size still gets a recovery copy', () => {
+    const id = sid('fail-sidecar');
+    const lines = Array.from({ length: 900 }, (_, i) => `line ${i} of the fixture, unique content`);
+    lines[400] = "src/boot.ts(41,7): error TS2304: Cannot find name 'configure'.";
+    lines.push('Build failed with exit code 1');
+    const body = lines.join('\n');
+    assert.ok(body.length >= 28000, 'fixture must clear SIDECAR_SHELL_MAX for this test to mean anything');
+
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const [entry] = readManifest(id);
+    assert.strictEqual(entry.action, 'sidecar');
+    assert.strictEqual(entry.recovery, 'sidecar');
+    assert.strictEqual(entry.retention, 'session');
+    assert.strictEqual(entry.retrieval, false);
+    assert.ok(entry.recoveryPath, 'the record names where the full failure output went');
+    assert.ok(entry.omitted > 0);
+    assert.strictEqual(entry.preserved + entry.omitted, entry.linesIn);
+    assert.strictEqual(fs.readFileSync(entry.recoveryPath, 'utf-8'), body, 'the complete failure output is on disk');
+
+    // The header claims only what it can: at this size the host may have cut
+    // the tail before hush ever saw it, so "in full" is not on offer.
+    const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(out, /was saved to \S+ as hush received it/);
+    assert.doesNotMatch(out, /saved in full/);
+  });
+
   test('object response (stdout/stderr) still emits exactly one combined line', () => {
     const id = sid('object');
     const body = uniqueLines(200);
