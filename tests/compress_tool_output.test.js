@@ -1840,3 +1840,99 @@ describe('host tool-results read capping', () => {
     );
   });
 });
+
+// ROADMAP 164: every Core transform routes through the one manifest record,
+// and a rewrite that removed detail is only ever emitted alongside recovery
+// metadata that says where the detail still is.
+describe('every transform is accounted for, and no lossy view ships without recovery', () => {
+  const { debugManifestPath } = require('../hooks/compress-tool-output');
+  const sessions = [];
+  const sidecarFiles = [];
+  after(() => {
+    for (const id of sessions) fs.rmSync(debugManifestPath(id), { force: true });
+    for (const f of sidecarFiles) fs.rmSync(f, { force: true });
+  });
+
+  function newSession(label) {
+    const id = `hush-164-${label}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessions.push(id);
+    return id;
+  }
+
+  const shellLines = (n) => Array.from({ length: n }, (_, i) => `step ${i}: emitted chunk ${'m'.repeat(30)} for target ${i * 7}`).join('\n');
+  const grepLines = () => {
+    const lines = [];
+    for (const f of ['src/a.js', 'src/b.js'])
+      for (let i = 1; i <= 40; i++) lines.push(`${f}:${i}: const value_${i} = ${'x'.repeat(60)};`);
+    return lines.join('\n');
+  };
+  const logLines = (n) => Array.from({ length: n }, (_, i) => `INFO request ${i}`).join('\n');
+
+  const cases = [
+    { label: 'shell-cap', env: {}, input: { tool_name: 'Bash', tool_response: shellLines(200) } },
+    { label: 'shell-object', env: {}, input: { tool_name: 'PowerShell', tool_response: { stdout: shellLines(200), stderr: '', interrupted: false } } },
+    { label: 'shell-sidecar', env: { HUSH_SIDECAR: 'on' }, input: { tool_name: 'Bash', tool_response: shellLines(400) } },
+    {
+      label: 'read-log', env: {},
+      input: {
+        tool_name: 'Read', tool_input: { file_path: 'C:\\repo\\logs\\svc.log' },
+        tool_response: { type: 'text', file: { filePath: 'C:\\repo\\logs\\svc.log', content: logLines(300), numLines: 300, totalLines: 300 } },
+      },
+    },
+    {
+      label: 'read-source', env: {},
+      input: {
+        tool_name: 'Read', tool_input: { file_path: 'C:\\repo\\src\\app.js' },
+        tool_response: { type: 'text', file: { filePath: 'C:\\repo\\src\\app.js', content: logLines(300), numLines: 300, totalLines: 300 } },
+      },
+    },
+    {
+      label: 'grep', env: {},
+      input: { tool_name: 'Grep', tool_input: { pattern: 'value', output_mode: 'content' }, tool_response: { mode: 'content', content: grepLines(), numLines: 80 } },
+    },
+    {
+      label: 'mcp-table', env: {},
+      input: {
+        tool_name: 'mcp__idea__search_regex',
+        tool_response: JSON.stringify(Array.from({ length: 30 }, (_, i) => ({ file: `src/F${i}.kt`, line: i, column: i % 3, snippet: `val x${i} = compute(${i}) // padded padded padded`, matchType: 'TEXT' }))),
+      },
+    },
+    {
+      label: 'mcp-exec', env: {},
+      input: {
+        tool_name: 'mcp__idea__execute_run_configuration',
+        tool_response: [{ type: 'text', text: JSON.stringify({ exitCode: 0, output: shellLines(400) }) }],
+      },
+    },
+  ];
+
+  for (const c of cases) {
+    test(`${c.label}: one record, and recovery metadata whenever detail was removed`, () => {
+      const id = newSession(c.label);
+      const res = runHook('compress-tool-output.js', { ...c.input, session_id: id }, { HUSH_DEBUG: '1', ...c.env });
+      const file = debugManifestPath(id);
+      assert.strictEqual(fs.existsSync(file), true, 'the transform left a record');
+      const records = fs.readFileSync(file, 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+      assert.strictEqual(records.length, 1, 'exactly one record per handled tool output');
+      const r = records[0];
+      if (r.recovery === 'sidecar') sidecarFiles.push(r.recoveryPath);
+
+      assert.strictEqual(r.preserved + r.omitted, r.linesIn, 'the record accounts for every input line');
+      assert.ok(r.bytesOut <= r.bytesIn, 'a transform never delivers more than it was given');
+
+      const out = hookOutput(res);
+      if (out && r.omitted > 0) {
+        assert.ok(r.recovery, `${c.label} shipped a lossy view with no recovery location`);
+        if (r.recovery === 'sidecar' || r.recovery === 'source-file') {
+          assert.ok(r.recoveryPath, `${c.label} named ${r.recovery} recovery with no path`);
+        }
+        if (r.recovery === 'sidecar') {
+          assert.strictEqual(fs.existsSync(r.recoveryPath), true, 'the recovery file is on disk before the view referencing it is delivered');
+        }
+      }
+      if (!out) {
+        assert.strictEqual(r.bytesIn, r.bytesOut, 'no rewrite emitted means no bytes claimed');
+      }
+    });
+  }
+});

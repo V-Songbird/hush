@@ -12,7 +12,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { runHook, hookOutput } = require('./helpers');
-const { debugManifestPath } = require('../hooks/compress-tool-output');
+const { debugManifestPath, deliver } = require('../hooks/compress-tool-output');
+const { buildRecord, recoveryGap } = require('../hooks/lib/transform-manifest');
 
 const sids = [];
 function sid(label) {
@@ -295,6 +296,261 @@ describe('Probe 9 Spec 2: adversarial no-op fixtures', () => {
     const [entry] = readManifest(id);
     assert.strictEqual(entry.action, 'passthrough');
     assert.strictEqual(entry.bytesIn, entry.bytesOut);
+  });
+});
+
+// ROADMAP 164: one manifest contract for every Core transform, and the
+// recovery boundary that goes with it.
+describe('transform manifest: the record contract', () => {
+  const RECORD_KEYS = [
+    'action', 'bytesIn', 'bytesOut', 'fallback', 'linesIn', 'omitted',
+    'preserved', 'recovery', 'recoveryPath', 'retention', 'session', 'tool',
+  ];
+  const sidecarFiles = [];
+  after(() => { for (const f of sidecarFiles) fs.rmSync(f, { force: true }); });
+
+  function only(id) {
+    const entries = readManifest(id);
+    assert.strictEqual(entries.length, 1, `expected exactly one record, got ${entries.length}`);
+    const e = entries[0];
+    assert.deepStrictEqual(Object.keys(e).sort(), RECORD_KEYS, 'every record carries the whole contract');
+    assert.strictEqual(e.session, id, 'the record names the session that owns it');
+    assert.strictEqual(e.preserved + e.omitted, e.linesIn, 'preserved and omitted account for every input line');
+    if (e.recovery === 'sidecar') sidecarFiles.push(e.recoveryPath);
+    return e;
+  }
+
+  test('cap — omitted lines, recoverable by re-running the command', () => {
+    const id = sid('rec-cap');
+    const body = uniqueLines(200);
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1', HUSH_TEMPLATE: 'off' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'cap');
+    assert.strictEqual(e.tool, 'Bash');
+    assert.ok(e.omitted > 0, 'a capped view left lines out');
+    assert.strictEqual(e.recovery, 'rerun-command');
+    assert.strictEqual(e.retention, 'none');
+    assert.strictEqual(e.fallback, null);
+  });
+
+  test('sidecar — the recovery location is the file on disk, with its retention state', () => {
+    const id = sid('rec-sidecar');
+    const body = uniqueLines(500);
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'sidecar');
+    assert.strictEqual(e.recovery, 'sidecar');
+    assert.ok(e.recoveryPath, 'the record names where the full output went');
+    assert.strictEqual(fs.existsSync(e.recoveryPath), true, 'the named recovery file is really there');
+    assert.strictEqual(fs.readFileSync(e.recoveryPath, 'utf8'), body, 'and it holds the full input');
+    assert.strictEqual(e.retention, 'os-temp');
+    assert.ok(e.omitted > 0);
+  });
+
+  test('a record is metadata only — no line of the output is ever in it', () => {
+    const id = sid('rec-metadata');
+    const secretish = ['unmistakable-payload-marker-alpha', ...Array.from({ length: 400 }, (_, i) => `row ${i} unmistakable-payload-marker-beta`)].join('\n');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: secretish }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    const serialized = JSON.stringify(e);
+    assert.doesNotMatch(serialized, /unmistakable-payload-marker/, 'counts and paths only, never content');
+  });
+
+  test('passthrough — nothing omitted, nothing to recover', () => {
+    const id = sid('rec-pass');
+    const content = Array.from({ length: 500 }, (_, i) => `const x${i} = ${i};`).join('\n');
+    runHook('compress-tool-output.js', {
+      tool_name: 'Read', session_id: id,
+      tool_input: { file_path: 'C:\\repo\\src\\big.js' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\src\\big.js', content, numLines: 500, startLine: 1, totalLines: 500 } },
+    }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'passthrough');
+    assert.strictEqual(e.omitted, 0);
+    assert.strictEqual(e.preserved, e.linesIn);
+  });
+
+  test('a Read hush does compress names the file itself as the recovery location', () => {
+    const id = sid('rec-read');
+    // Short lines on purpose: over the line cap, under the sidecar floor, so
+    // this exercises the inline path rather than the sidecar's own recovery.
+    const content = Array.from({ length: 300 }, (_, i) => `INFO request ${i}`).join('\n');
+    assert.ok(content.length < 15000, 'fixture must stay under the sidecar floor');
+    runHook('compress-tool-output.js', {
+      tool_name: 'Read', session_id: id,
+      tool_input: { file_path: 'C:\\repo\\logs\\app.log' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\logs\\app.log', content, numLines: 300, startLine: 1, totalLines: 300 } },
+    }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.ok(e.omitted > 0);
+    assert.strictEqual(e.recovery, 'source-file');
+    assert.strictEqual(e.recoveryPath, 'C:\\repo\\logs\\app.log');
+  });
+
+  test('grep-collapse — omitted match lines, recoverable by re-running the search', () => {
+    const id = sid('rec-grep');
+    const lines = [];
+    for (const f of ['src/a.js', 'src/b.js']) {
+      for (let i = 1; i <= 40; i++) lines.push(`${f}:${i}: const value_${i} = ${'x'.repeat(60)};`);
+    }
+    const content = lines.join('\n');
+    runHook('compress-tool-output.js', {
+      tool_name: 'Grep', session_id: id, tool_input: { pattern: 'value_', path: 'src' },
+      tool_response: { mode: 'content', content, numLines: lines.length },
+    }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'grep-collapse');
+    assert.strictEqual(e.omitted, 74, 'both files keep 3 of 40 matches');
+    assert.strictEqual(e.recovery, 'rerun-command');
+    assert.strictEqual(e.recoveryPath, 'src');
+  });
+
+  test('shell-guard-skip — the record states why the transform stepped aside', () => {
+    const id = sid('rec-fallback');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(900) }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'shell-guard-skip');
+    assert.match(e.fallback, /truncated by the host/);
+  });
+
+  test('delta — a changed re-read points back at the file it read', () => {
+    const id = sid('rec-delta');
+    const filePath = 'C:\\repo\\logs\\delta.log';
+    const first = Array.from({ length: 80 }, (_, i) => `2026-07-28 INFO steady line ${i}`);
+    const read = (lines) => runHook('compress-tool-output.js', {
+      tool_name: 'Read', session_id: id, tool_input: { file_path: filePath },
+      tool_response: { type: 'text', file: { filePath, content: lines.join('\n'), numLines: lines.length, startLine: 1, totalLines: lines.length } },
+    }, { HUSH_DEBUG: '1' });
+    read(first);
+    const second = [...first];
+    second[40] = '2026-07-28 INFO steady line 40 (rewritten)';
+    read(second);
+    const entries = readManifest(id);
+    const e = entries[entries.length - 1];
+    assert.strictEqual(e.action, 'delta');
+    assert.ok(e.omitted > 0, 'unchanged lines are not shown');
+    assert.strictEqual(e.recovery, 'source-file');
+    assert.strictEqual(e.recoveryPath, filePath);
+    assert.strictEqual(e.preserved + e.omitted, e.linesIn);
+  });
+
+  test('mcp-table — lossless, so nothing is omitted and nothing needs recovering', () => {
+    const id = sid('rec-mcp');
+    const rs = Array.from({ length: 30 }, (_, i) => ({
+      file: `src/File${i}.kt`, line: i + 1, column: i % 3,
+      snippet: `val x${i} = compute(${i}) // padding padding padding for width`, matchType: 'TEXT',
+    }));
+    runHook('compress-tool-output.js', { tool_name: 'mcp__idea__search_regex', session_id: id, tool_response: JSON.stringify(rs) }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'mcp-table');
+    assert.strictEqual(e.omitted, 0);
+    assert.ok(e.bytesOut < e.bytesIn);
+  });
+});
+
+describe('transform manifest: the recovery boundary', () => {
+  test('a lossy transform that omitted lines without a recovery location is a gap', () => {
+    const gap = recoveryGap(buildRecord({ tool: 'Bash', action: 'cap', linesIn: 100, omitted: 40 }));
+    assert.match(gap, /cap omitted 40 lines with no recovery location/);
+  });
+
+  test('naming a file-backed recovery without the path is a gap too', () => {
+    assert.match(
+      recoveryGap(buildRecord({ action: 'sidecar', linesIn: 100, omitted: 90, recovery: 'sidecar' })),
+      /no path/
+    );
+    assert.match(
+      recoveryGap(buildRecord({ action: 'delta', linesIn: 100, omitted: 90, recovery: 'source-file' })),
+      /no path/
+    );
+  });
+
+  test('no gap when the record backs the view', () => {
+    assert.strictEqual(recoveryGap(buildRecord({ action: 'cap', linesIn: 100, omitted: 40, recovery: 'rerun-command' })), null);
+    assert.strictEqual(recoveryGap(buildRecord({ action: 'sidecar', linesIn: 100, omitted: 90, recovery: 'sidecar', recoveryPath: '/tmp/x.txt' })), null);
+  });
+
+  test('a lossy transform that happened to omit nothing has nothing to recover', () => {
+    assert.strictEqual(recoveryGap(buildRecord({ action: 'cap', linesIn: 100, omitted: 0 })), null);
+  });
+
+  test('a dedupe-only view is lossy too — a line stated as a count is not in the view', () => {
+    assert.match(recoveryGap(buildRecord({ action: 'scrub-only', linesIn: 100, omitted: 3 })), /no recovery location/);
+    assert.match(recoveryGap(buildRecord({ action: 'enumerate-passthrough', linesIn: 100, omitted: 3 })), /no recovery location/);
+  });
+
+  test('the two actions that keep every input line never need recovery metadata', () => {
+    for (const action of ['passthrough', 'mcp-table']) {
+      assert.strictEqual(recoveryGap(buildRecord({ action, linesIn: 100, omitted: 5 })), null, action);
+    }
+  });
+
+  test('transformed output is not emitted when the record cannot back it', () => {
+    const id = sid('boundary-drop');
+    const writes = [];
+    const original = process.stdout.write;
+    process.stdout.write = (chunk) => { writes.push(String(chunk)); return true; };
+    process.env.HUSH_DEBUG = '1';
+    try {
+      deliver(
+        { action: 'cap', bytesIn: 400, bytesOut: 90, linesIn: 100, omitted: 40 },
+        'a rewritten view with detail removed',
+        { tool_name: 'Bash', session_id: id }
+      );
+    } finally {
+      process.stdout.write = original;
+      delete process.env.HUSH_DEBUG;
+    }
+    assert.deepStrictEqual(writes, [], 'the rewrite is dropped — the original output stands');
+    const [e] = readManifest(id);
+    assert.strictEqual(e.action, 'rejected-no-recovery');
+    assert.match(e.fallback, /no recovery location/);
+    assert.strictEqual(e.bytesOut, e.bytesIn, 'nothing was delivered, so nothing was saved');
+  });
+
+  test('the same view IS emitted once the record names where the detail went', () => {
+    const id = sid('boundary-pass');
+    const writes = [];
+    const original = process.stdout.write;
+    process.stdout.write = (chunk) => { writes.push(String(chunk)); return true; };
+    process.env.HUSH_DEBUG = '1';
+    try {
+      deliver(
+        { action: 'cap', bytesIn: 400, bytesOut: 90, linesIn: 100, omitted: 40, recovery: 'rerun-command' },
+        'a rewritten view with detail removed',
+        { tool_name: 'Bash', session_id: id }
+      );
+    } finally {
+      process.stdout.write = original;
+      delete process.env.HUSH_DEBUG;
+    }
+    assert.strictEqual(writes.length, 1);
+    assert.strictEqual(JSON.parse(writes[0]).hookSpecificOutput.updatedToolOutput, 'a rewritten view with detail removed');
+    const [e] = readManifest(id);
+    assert.strictEqual(e.action, 'cap');
+  });
+
+  test('records are built and checked with the debug gate off — only the file write is gated', () => {
+    const id = sid('boundary-ungated');
+    const writes = [];
+    const original = process.stdout.write;
+    process.stdout.write = (chunk) => { writes.push(String(chunk)); return true; };
+    // Pinned off: an ambient HUSH_DEBUG=1 in the developer's shell would
+    // otherwise turn this gate assertion into a false failure.
+    const prevDebug = process.env.HUSH_DEBUG;
+    delete process.env.HUSH_DEBUG;
+    try {
+      deliver(
+        { action: 'cap', bytesIn: 400, bytesOut: 90, linesIn: 100, omitted: 40 },
+        'a rewritten view with detail removed',
+        { tool_name: 'Bash', session_id: id }
+      );
+    } finally {
+      process.stdout.write = original;
+      if (prevDebug !== undefined) process.env.HUSH_DEBUG = prevDebug;
+    }
+    assert.deepStrictEqual(writes, [], 'the boundary still holds without HUSH_DEBUG');
+    assert.strictEqual(fs.existsSync(debugManifestPath(id)), false, 'and nothing was persisted');
   });
 });
 

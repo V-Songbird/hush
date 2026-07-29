@@ -12,6 +12,7 @@ const os = require("os");
 const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
+const { combineActions, buildRecord, recoveryGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
 // Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
@@ -199,6 +200,11 @@ function omittedMarker(n) {
   return `[hush hook: ${n} lines omitted from this view, none with warnings/errors/failures]`;
 }
 
+// Every line this file inserts into a line-oriented view opens this way (the
+// omission marker above, the dedupe and template-collapse markers, the grep
+// summary header). Used only for manifest accounting — see compress().
+const HUSH_MARKER_RE = /^\[hush(?: hook)?: /;
+
 // Identifiers the user's own prompt names — backticked or quoted spans like
 // `ioredis` or "W1042" — are that turn's signal even when they match no
 // warning/error pattern. A capped view that happens to cut the one entry the
@@ -368,8 +374,9 @@ function requestsEnumeration(prompt) {
 const GREP_MATCH_RE = /^(.*?):(\d+):/;
 const GREP_SINGLE_RE = /^\d+:/;
 
-function compressGrep(content, relevanceTokens, fileLabel) {
+function compressGrep(content, relevanceTokens, fileLabel, decision) {
   const lines = content.split("\n");
+  if (decision) { decision.linesIn = lines.length; decision.omitted = 0; }
   // Same too-common guard capLines applies: a prompt-named span that matches
   // more than RELEVANCE_COMMON lines can't discriminate — and for Grep the
   // quoted SEARCH PATTERN itself sits in every match line by definition, so
@@ -430,7 +437,9 @@ function compressGrep(content, relevanceTokens, fileLabel) {
     `[hush hook: ${omitted} match lines omitted; every matched file is counted below, and every warning/error-shaped match was kept. Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`,
     ...summary,
   ].join("\n");
-  return out.length < content.length ? out : content;
+  if (out.length >= content.length) return content;
+  if (decision) decision.omitted = omitted;
+  return out;
 }
 
 // MCP JSON table-ification (ROADMAP 007 / Probe 7): a measured probe over
@@ -594,7 +603,7 @@ function compressMcpTable(response, decision) {
     if (decision) decision.action = "passthrough";
     return undefined;
   }
-  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; }
+  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; decision.linesIn = text.split("\n").length; }
   const candidate = mcpTableCandidate(text);
   if (!candidate) {
     if (decision) decision.action = "passthrough";
@@ -629,7 +638,12 @@ function compressMcpExec(response, decision) {
     if (decision) decision.action = "passthrough";
     return undefined;
   }
-  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; decision.action = "passthrough"; }
+  if (decision) {
+    decision.bytesIn = text.length;
+    decision.bytesOut = text.length;
+    decision.action = "passthrough";
+    decision.linesIn = text.split("\n").length;
+  }
   if (text.length < MCP_TABLE_MIN_CHARS) return undefined;
   let parsed;
   try {
@@ -639,14 +653,24 @@ function compressMcpExec(response, decision) {
   }
   if (!isPlainObject(parsed) || typeof parsed.output !== "string") return undefined;
   const exitCode = typeof parsed.exitCode === "number" ? parsed.exitCode : undefined;
-  const out = compress(parsed.output, exitCode, false, false, [], 1, null, true, false);
+  // The inner console text is what actually gets transformed, so its line
+  // accounting (not the JSON wrapper's) is what the manifest record carries;
+  // byte sizes stay whole-payload, matching what the model receives.
+  const inner = {};
+  const out = compress(parsed.output, exitCode, false, false, [], 1, null, true, false, inner);
   if (out.length >= parsed.output.length) return undefined;
   const rendered = JSON.stringify({ ...parsed, output: out });
   if (rendered.length >= text.length) {
     if (decision) decision.action = "rejected-not-smaller";
     return undefined;
   }
-  if (decision) { decision.action = "mcp-exec"; decision.bytesOut = rendered.length; }
+  if (decision) {
+    decision.action = "mcp-exec";
+    decision.bytesOut = rendered.length;
+    decision.linesIn = inner.linesIn || 0;
+    decision.omitted = inner.omitted || 0;
+    decision.recovery = "rerun-command";
+  }
   return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
 }
 
@@ -841,7 +865,16 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
     out.push(`L${i + 1}: ${lines[i]}`);
     last = i;
   }
-  return { body: out.join("\n"), total, nonBlank, signalCount: signalIdx.length, census };
+  return {
+    body: out.join("\n"),
+    total,
+    nonBlank,
+    signalCount: signalIdx.length,
+    census,
+    // Manifest accounting: every source line the digest reproduces is one of
+    // these two sets, each rendered verbatim behind its L<n> number.
+    shown: leadSorted.length + structSorted.length,
+  };
 }
 
 // Credential-shaped content is screened out of the sidecar path entirely,
@@ -899,7 +932,9 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
     if (out.length >= cleaned.length) return null;
     fs.mkdirSync(SIDECAR_DIR, { recursive: true });
     if (!fs.existsSync(file)) safeWriteFileSync(file, cleaned);
-    return out;
+    // The written file IS the recovery location for everything the digest
+    // left out — the manifest record carries it (see deliver).
+    return { text: out, file, linesIn: d.total, omitted: Math.max(0, d.total - d.shown) };
   } catch {
     return null; // fall back to the normal capped view
   }
@@ -1007,7 +1042,7 @@ function changedLineIndexes(prevHashes, hashes) {
 // visible: changedIdx carries the vanished tail positions, but they have no
 // line to render, so without the count a shrunk file would report "0 of 45
 // lines shown ... everything else is unchanged" — false, and silently so.
-function renderDelta(lines, changedIdx, prevTotal) {
+function renderDelta(lines, changedIdx, prevTotal, decision) {
   const total = lines.length;
   const removed = typeof prevTotal === "number" && prevTotal > total ? prevTotal - total : 0;
   const signalIdx = [];
@@ -1017,6 +1052,7 @@ function renderDelta(lines, changedIdx, prevTotal) {
   const inRange = changedIdx.filter((i) => i < total);
   const shown = new Set([...inRange, ...signalIdx]);
   const sorted = [...shown].sort((a, b) => a - b);
+  if (decision) { decision.linesIn = total; decision.omitted = total - sorted.length; }
   const out = [
     `[hush hook: this file changed since your last read of it this session — ${sorted.length} of ${total} ` +
       `lines shown below (the changed lines, plus any warnings/errors/failures); ` +
@@ -1048,7 +1084,7 @@ function renderDelta(lines, changedIdx, prevTotal) {
 // it would replace (the same rejected-not-smaller discipline every other
 // rewrite in this file follows). Fail-open: any state-file trouble falls
 // through the same way.
-function maybeDelta(cleaned, filePath, sessionId) {
+function maybeDelta(cleaned, filePath, sessionId, decision) {
   if (process.env.HUSH_DELTA === "off") return null;
   if (typeof filePath !== "string" || !filePath || !sessionId) return null;
   try {
@@ -1072,7 +1108,7 @@ function maybeDelta(cleaned, filePath, sessionId) {
       return null;
     }
 
-    const rendered = renderDelta(cleaned.split("\n"), changedIdx, prev.hashes.length);
+    const rendered = renderDelta(cleaned.split("\n"), changedIdx, prev.hashes.length, decision);
     state[filePath] = { hashes, rereads };
     writeDeltaState(sessionId, state);
     if (rendered.length >= cleaned.length) return null;
@@ -1089,11 +1125,19 @@ function maybeDelta(cleaned, filePath, sessionId) {
 function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision) {
   const original = String(text);
   const cleaned = resolveCarriageReturns(stripAnsi(original));
+  const linesIn = cleaned.split("\n").length;
+  if (decision) decision.linesIn = linesIn;
   if (!enumerate && !noSidecar) {
     const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate);
     if (side !== null) {
-      if (decision) decision.action = "sidecar";
-      return side;
+      if (decision) {
+        decision.action = "sidecar";
+        decision.omitted = side.omitted;
+        decision.recovery = "sidecar";
+        decision.recoveryPath = side.file;
+        decision.retention = "os-temp";
+      }
+      return side.text;
     }
     // Sidecar was skipped specifically by the shell-truncation guard (large
     // enough to qualify, but the host may have already cut the tail) — note
@@ -1117,6 +1161,14 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   const beforeCapLen = lines.length;
   lines = capLines(lines, cap, relevanceTokens);
   const out = lines.join("\n");
+  // Line accounting for the manifest, derived from the view itself rather than
+  // threaded out of dedupe/collapse/cap separately: a line hush keeps is kept
+  // verbatim and everything hush adds is a bracketed [hush marker, so the
+  // non-marker output lines are exactly the input lines this view preserved.
+  // An input line that itself opens with a [hush marker (re-reading a digest)
+  // counts as one of hush's own — that overstates omission slightly, which can
+  // only make recovery metadata MORE required, never less.
+  if (decision) decision.omitted = Math.max(0, linesIn - lines.filter((l) => !HUSH_MARKER_RE.test(l)).length);
   if (decision && !decision.action) {
     if (beforeCapLen > cap) decision.action = "cap"; // capLines' own no-op guard is `length <= cap`
     else if (beforeCapLen < dedupedLen) decision.action = "template-collapse";
@@ -1127,55 +1179,31 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   return out;
 }
 
-// HUSH_DEBUG=1 manifest: one JSON line per handled tool output, appended to
-// tmpdir/hush-debug-<session_id>.jsonl. "Ran but kept the original" (cap
-// no-op, rejected MCP table, untouched Read) is otherwise invisible to any
-// harness measuring hush — this makes every decision, including the
-// do-nothing ones, observable without changing what any path produces.
-// Same sessionId sanitization as narration-meter.js's statePath.
-function debugManifestPath(sessionId) {
-  const safe = String(sessionId || "unknown").replace(/[^a-zA-Z0-9-]/g, "_");
-  return path.join(os.tmpdir(), `hush-debug-${safe}.jsonl`);
-}
-
-function logDecision(entry, sessionId) {
-  if (process.env.HUSH_DEBUG !== "1") return;
-  try {
-    const file = debugManifestPath(sessionId);
-    // Same residual defense as claimSessionNote: refuse a pre-planted symlink
-    // at the manifest path before appending to it. The lstat check alone
-    // still leaves a TOCTOU gap between the check and the write — an
-    // O_NOFOLLOW open closes it atomically on the platforms that honor the
-    // flag (see safe-write.js's header for why win32 can't and the lstat
-    // check is the accepted residual there).
-    try {
-      if (fs.lstatSync(file).isSymbolicLink()) return;
-    } catch (e) {
-      if (e.code !== "ENOENT") return;
+// Every handled tool output leaves through here: the transform's decision
+// side-channel becomes one manifest record (see lib/transform-manifest.js),
+// the record is checked against the recovery boundary, and the rewrite is
+// emitted only if the record backs it. A record that removed detail without
+// naming where it is recoverable from is a bug in the transform, not something
+// to hand the model: the rewrite is dropped, the original output stands, and
+// the record says why.
+function deliver(decision, updated, data) {
+  const record = buildRecord({
+    ...decision,
+    tool: decision.tool || data.tool_name,
+    session: data.session_id,
+  });
+  let out = updated;
+  if (out !== undefined) {
+    const gap = recoveryGap(record);
+    if (gap) {
+      record.action = "rejected-no-recovery";
+      record.fallback = gap;
+      record.bytesOut = record.bytesIn;
+      out = undefined;
     }
-    const O_NOFOLLOW = typeof fs.constants.O_NOFOLLOW === "number" ? fs.constants.O_NOFOLLOW : 0;
-    const fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_APPEND | O_NOFOLLOW, 0o600);
-    try {
-      fs.writeSync(fd, JSON.stringify(entry) + "\n");
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    /* fail-open: the debug manifest is best-effort observability, never a
-       reason to alter or block the actual compression decision. */
   }
-}
-
-// One line per multi-field object response (stdout/stderr/output combined)
-// rather than one per field — priority order picks the most significant
-// thing that happened across the fields that were actually processed.
-const ACTION_PRIORITY = [
-  "sidecar", "shell-guard-skip", "cap", "template-collapse",
-  "mcp-table", "rejected-not-smaller", "enumerate-passthrough", "scrub-only", "passthrough",
-];
-function combineActions(actions) {
-  for (const a of ACTION_PRIORITY) if (actions.includes(a)) return a;
-  return actions[0];
+  appendRecord(record);
+  emit(out, data.session_id);
 }
 
 function extractExitCode(response) {
@@ -1243,21 +1271,13 @@ function main() {
   if (isMcpTableTool(data.tool_name)) {
     const decision = {};
     const result = compressMcpTable(data.tool_response, decision);
-    logDecision(
-      { tool: data.tool_name, bytesIn: decision.bytesIn || 0, bytesOut: decision.bytesOut ?? decision.bytesIn ?? 0, action: decision.action || "passthrough" },
-      data.session_id
-    );
-    return emit(result, data.session_id);
+    return deliver(decision, result, data);
   }
 
   if (isMcpExecTool(data.tool_name) && process.env.HUSH_MCP_EXEC !== "off") {
     const decision = {};
     const result = compressMcpExec(data.tool_response, decision);
-    logDecision(
-      { tool: data.tool_name, bytesIn: decision.bytesIn || 0, bytesOut: decision.bytesOut ?? decision.bytesIn ?? 0, action: decision.action || "passthrough" },
-      data.session_id
-    );
-    return emit(result, data.session_id);
+    return deliver(decision, result, data);
   }
 
   if (EDIT_TOOLS.has(data.tool_name)) {
@@ -1303,12 +1323,12 @@ function main() {
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
     const hostRead = isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
+      const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length };
       if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead)) {
-        const decision = {};
         let out;
         if (!sideRead && !hostRead && !enumerate) {
           const cleaned = resolveCarriageReturns(stripAnsi(file.content));
-          const delta = maybeDelta(cleaned, filePath, data.session_id);
+          const delta = maybeDelta(cleaned, filePath, data.session_id, decision);
           if (delta !== null) {
             decision.action = "delta";
             out = delta;
@@ -1317,7 +1337,13 @@ function main() {
         if (out === undefined) {
           out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead || hostRead, undefined, decision);
         }
-        logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
+        decision.bytesOut = out.length;
+        // Whatever this view left out is still on disk, at the path Read was
+        // given — the sidecar path (set by compress) wins when there is one.
+        if (!decision.recovery) {
+          decision.recovery = "source-file";
+          decision.recoveryPath = filePath || null;
+        }
         if (out !== file.content) {
           updated = {
             ...response,
@@ -1326,9 +1352,11 @@ function main() {
         }
       } else {
         // Watched (Read is in WATCHED_TOOLS) but not a shape hush ever
-        // touches — still a handled output, so it still gets one line.
-        logDecision({ tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, action: "passthrough" }, data.session_id);
+        // touches — still a handled output, so it still gets one record.
+        decision.action = "passthrough";
+        decision.linesIn = file.content.split("\n").length;
       }
+      return deliver(decision, updated, data);
     }
     return emit(updated, data.session_id);
   }
@@ -1344,21 +1372,24 @@ function main() {
     const contextual =
       ti["-A"] !== undefined || ti["-B"] !== undefined || ti["-C"] !== undefined || ti.context !== undefined || ti.multiline === true;
     let out = content;
+    const decision = { tool: "Grep", bytesIn: content.length, linesIn: content.split("\n").length };
     if (process.env.HUSH_GREP !== "off" && !enumerate && !contextual && content.length >= GREP_MIN_CHARS) {
       const label =
         (typeof ti.path === "string" && ti.path) ||
         (response.filenames && response.filenames[0]) ||
         undefined;
-      out = compressGrep(content, relevance, label);
+      out = compressGrep(content, relevance, label, decision);
     }
-    logDecision(
-      { tool: "Grep", bytesIn: content.length, bytesOut: out.length, action: out === content ? "passthrough" : "grep-collapse" },
-      data.session_id
-    );
+    decision.bytesOut = out.length;
+    decision.action = out === content ? "passthrough" : "grep-collapse";
+    // Collapsed match lines are still in the files on disk, reachable exactly
+    // the way this view's own marker says: re-run the search narrower.
+    decision.recovery = "rerun-command";
+    decision.recoveryPath = (typeof ti.path === "string" && ti.path) || null;
     if (out !== content) {
       updated = { ...response, content: out, numLines: out.split("\n").length };
     }
-    return emit(updated, data.session_id);
+    return deliver(decision, updated, data);
   }
 
   const isDump = isFileDump(firstLine(data.tool_input && data.tool_input.command));
@@ -1370,11 +1401,13 @@ function main() {
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
-    const decision = {};
+    const decision = { bytesIn: response.length };
     let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
     if (wrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
-    logDecision({ tool: data.tool_name, bytesIn: response.length, bytesOut: out.length, action: decision.action || "passthrough" }, data.session_id);
+    decision.bytesOut = out.length;
+    if (!decision.recovery) decision.recovery = "rerun-command";
     if (out !== response) updated = out;
+    return deliver(decision, updated, data);
   } else if (response && typeof response === "object") {
     const wrapped =
       extractWrappedExit(response.stdout) || extractWrappedExit(response.stderr) || extractWrappedExit(response.output);
@@ -1383,7 +1416,16 @@ function main() {
     let changed = false;
     let bytesIn = 0;
     let bytesOut = 0;
+    let linesIn = 0;
+    let omitted = 0;
     const actions = [];
+    // One record for the whole response: the fields are summed, and a sidecar
+    // written for one of them is the recovery location the record names.
+    // razor: with two sidecar-sized fields the record names the last one —
+    // every digest still carries its own file pointer inline, so nothing is
+    // unreachable; a per-field record list is ROADMAP 165's call, not this
+    // one's, since it changes the one-line-per-tool-output shape.
+    const combined = {};
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
         bytesIn += next[field].length;
@@ -1393,16 +1435,27 @@ function main() {
         if (fieldWrapped && exitCode !== null) out += `\n[hush: exit ${exitCode}]`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;
+        linesIn += decision.linesIn || 0;
+        omitted += decision.omitted || 0;
+        if (decision.recovery === "sidecar") {
+          combined.recovery = "sidecar";
+          combined.recoveryPath = decision.recoveryPath;
+          combined.retention = decision.retention;
+        }
         if (out !== next[field]) {
           next[field] = out;
           changed = true;
         }
       }
     }
-    if (actions.length) {
-      logDecision({ tool: data.tool_name, bytesIn, bytesOut, action: combineActions(actions) }, data.session_id);
-    }
     if (changed) updated = next;
+    if (actions.length) {
+      return deliver(
+        { ...combined, bytesIn, bytesOut, linesIn, omitted, action: combineActions(actions), recovery: combined.recovery || "rerun-command" },
+        updated,
+        data
+      );
+    }
   }
 
   emit(updated, data.session_id);
@@ -1445,6 +1498,10 @@ module.exports = {
   extractWrappedExit,
   claimSessionNote,
   hasHushNote,
+  deliver,
+  // Re-exported from lib/transform-manifest.js, which owns the record shape:
+  // scripts and tests that only need the manifest path keep one import.
+  debugManifestPath,
   NOTE_TEXT,
   isMcpTableTool,
   mcpTableCandidate,
@@ -1455,7 +1512,6 @@ module.exports = {
   compressMcpExec,
   compressGrep,
   isHostToolResultsPath,
-  debugManifestPath,
   containsSecret,
   deltaStatePath,
   readDeltaState,

@@ -28,7 +28,8 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { debugManifestPath, NOTE_TEXT } = require("../hooks/compress-tool-output");
+const { debugManifestPath } = require("../hooks/lib/transform-manifest");
+const { NOTE_TEXT } = require("../hooks/compress-tool-output");
 
 const DEFAULT_PROJECTS_DIR = path.join(os.homedir(), ".claude", "projects");
 
