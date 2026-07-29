@@ -42,12 +42,32 @@ function readInput() {
 // Matches narration-meter.js's statePath (and compress-tool-output.js's
 // deltaStatePath) sanitization exactly, so this unlinks the same files those
 // modules read/write.
+//
+// Re-arming is deletion, and deletion is total: every tracked entry is
+// disarmed, never carried forward as still-live. That is what makes the
+// liveness question answerable without inspecting state — a delta baseline
+// whose watched file has since been deleted, and a state file whose JSON no
+// longer parses, both go the same way as a healthy one, so neither can
+// survive compaction as a live entry. Nothing here re-arms per entry, and
+// nothing here trusts state content.
+//
+// The one thing worth verifying is the target: session_id arrives from stdin
+// and the note sentinel embeds it raw (claimSessionNote does the same), so a
+// traversal-shaped id would resolve outside the temp directory. Anything that
+// does not resolve inside tmpdir is not a file hush wrote, and hush does not
+// delete it.
+function insideTmp(p) {
+  const root = path.resolve(os.tmpdir()) + path.sep;
+  return path.resolve(p).startsWith(root);
+}
+
 function unlinkSentinels(sessionId) {
   const notePath = path.join(os.tmpdir(), `hush-note-${sessionId}`);
   const safe = String(sessionId).replace(/[^a-zA-Z0-9-]/g, "_");
   const meterPath = path.join(os.tmpdir(), `hush-meter-${safe}.json`);
   const deltaPath = path.join(os.tmpdir(), `hush-delta-${safe}.json`);
   for (const p of [notePath, meterPath, deltaPath]) {
+    if (!insideTmp(p)) continue;
     try {
       fs.unlinkSync(p);
     } catch {
@@ -70,4 +90,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { readInput, unlinkSentinels };
+module.exports = { readInput, unlinkSentinels, insideTmp };

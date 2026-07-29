@@ -1100,7 +1100,8 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, fail
       `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
       `For anything else — including any total or count you report — Read that file with ` +
       `offset/limit around the L<n> numbers you need. ` +
-      `If that file no longer exists, re-run the command instead.]`;
+      `If that file no longer exists, re-run the command — a second run is not guaranteed ` +
+      `to reproduce this output.]`;
     const out = `${header}\n${d.body}`;
     // A near-line-free payload (e.g. one giant minified-JSON line) leaves
     // buildSidecarDigest's head/tail trim nothing to cut — the digest would

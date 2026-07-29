@@ -7,6 +7,8 @@ version field by convention).
 
 ## Unreleased
 
+The note hush leaves before a compaction now lists every recovery file it can, says how many more there are when the list is capped, and only promises a re-run where a re-run really reproduces the output.
+
 Fixed an issue where a failing run was compressed as if it had passed when the tool wrote its errors in lower case.
 
 Fixed an issue where a very large failing output was trimmed with no recovery file to read the rest from. A capped view of a failing run also now says how to get the omitted lines back.
