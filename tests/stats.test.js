@@ -1,7 +1,9 @@
 'use strict';
 
-// ROADMAP 064: /hush:stats — reads the HUSH_DEBUG manifest plus transcript
-// usage records for an honest per-session savings rollup.
+// ROADMAP 064/170: /hush:stats — reads the HUSH_DEBUG manifest plus transcript
+// usage records and reports observed compression activity. No net-savings
+// figure, clamped or otherwise: what hush's absence would have cost is not
+// measurable from one run, so it is never printed.
 
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
@@ -24,6 +26,7 @@ const {
   buildReport,
   renderText,
   formatBytes,
+  formatDelta,
 } = require('../scripts/stats');
 
 const STATS_SCRIPT = path.join(__dirname, '..', 'scripts', 'stats.js');
@@ -66,10 +69,16 @@ describe('formatBytes', () => {
   test('1MB and above', () => assert.strictEqual(formatBytes(2 * 1024 * 1024), '2.0MB'));
 });
 
+describe('formatDelta', () => {
+  test('a shrunk output reads as negative', () => assert.strictEqual(formatDelta(-2048), '-2.0KB'));
+  test('a grown output reads as positive, never as a saving', () => assert.strictEqual(formatDelta(2048), '+2.0KB'));
+  test('no change is plain zero', () => assert.strictEqual(formatDelta(0), '0B'));
+});
+
 // --- rollupByAction ------------------------------------------------------------
 
 describe('rollupByAction', () => {
-  test('aggregates by action and computes bytesSaved', () => {
+  test('aggregates by action and computes a signed bytesDelta', () => {
     const entries = [
       { action: 'cap', bytesIn: 1000, bytesOut: 200 },
       { action: 'cap', bytesIn: 500, bytesOut: 100 },
@@ -80,12 +89,17 @@ describe('rollupByAction', () => {
     assert.strictEqual(cap.count, 2);
     assert.strictEqual(cap.bytesIn, 1500);
     assert.strictEqual(cap.bytesOut, 300);
-    assert.strictEqual(cap.bytesSaved, 1200);
+    assert.strictEqual(cap.bytesDelta, -1200);
     const pass = rows.find((r) => r.action === 'passthrough');
-    assert.strictEqual(pass.bytesSaved, 0);
+    assert.strictEqual(pass.bytesDelta, 0);
   });
 
-  test('sorts biggest saver first', () => {
+  test('an action that grew its output keeps the positive delta, unclamped', () => {
+    const rows = rollupByAction([{ action: 'marker-added', bytesIn: 100, bytesOut: 160 }]);
+    assert.strictEqual(rows[0].bytesDelta, 60);
+  });
+
+  test('sorts the biggest reduction first', () => {
     const entries = [
       { action: 'small-save', bytesIn: 100, bytesOut: 90 },
       { action: 'big-save', bytesIn: 1000, bytesOut: 10 },
@@ -109,7 +123,7 @@ describe('summarizeSession', () => {
     assert.deepStrictEqual(s, { sessionId: id, manifestFound: false });
   });
 
-  test('manifest with a real compression decision: raw and net savings, note overhead netted once', () => {
+  test('manifest with a real compression decision: observed bytes in and out, note text reported separately', () => {
     const id = sid('with-manifest');
     const body = Array.from({ length: 200 }, (_, i) => `line ${i} of fixture, unique content here`).join('\n');
     runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
@@ -117,22 +131,82 @@ describe('summarizeSession', () => {
     const s = summarizeSession(id);
     assert.strictEqual(s.manifestFound, true);
     assert.strictEqual(s.decisions, 1);
-    assert.ok(s.rawSaved > 0);
+    assert.strictEqual(s.bytesDelta, s.bytesOut - s.bytesIn);
+    assert.ok(s.bytesDelta < 0, 'the view is smaller than the input it was built from');
+    assert.strictEqual(s.smaller, 1);
     // This body's repeated shape triggers a visible [hush hook: ...] marker,
-    // which claims the session note — noteOverhead must reflect that, and
-    // netSaved must be exactly rawSaved minus it.
-    assert.strictEqual(s.noteOverhead, noteOverheadFor(id));
-    assert.strictEqual(s.netSaved, Math.max(0, s.rawSaved - s.noteOverhead));
+    // which claims the session note. The note is hush's own added text: it is
+    // reported as its own number and never subtracted from the byte delta.
+    assert.strictEqual(s.noteBytes, noteOverheadFor(id));
+    assert.strictEqual(s.netSaved, undefined, 'no net-savings figure is computed at all');
+    assert.strictEqual(s.rawSaved, undefined);
   });
 
-  test('a short clean passthrough never claims the session note: noteOverhead is 0', () => {
+  test('a short clean passthrough: zero delta, no note text, counted as unchanged', () => {
     const id = sid('passthrough-only');
     runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: 'ok\ndone' }, { HUSH_DEBUG: '1' });
     const s = summarizeSession(id);
     assert.strictEqual(s.manifestFound, true);
-    assert.strictEqual(s.rawSaved, 0);
-    assert.strictEqual(s.noteOverhead, 0);
-    assert.strictEqual(s.netSaved, 0);
+    assert.strictEqual(s.bytesDelta, 0);
+    assert.strictEqual(s.unchanged, 1);
+    assert.strictEqual(s.smaller, 0);
+    assert.strictEqual(s.noteBytes, 0);
+  });
+
+  test('an output hush made larger is counted as larger, not clamped to zero', () => {
+    const id = sid('grew');
+    fs.writeFileSync(
+      debugManifestPath(id),
+      JSON.stringify({ tool: 'Bash', action: 'cap', session: id, bytesIn: 100, bytesOut: 160, retention: 'none', fallback: null, retrieval: false }) + '\n'
+    );
+    const s = summarizeSession(id);
+    assert.strictEqual(s.bytesDelta, 60);
+    assert.strictEqual(s.larger, 1);
+  });
+
+  test('sidecar work reports recovery storage as an upper bound, and a declined transform as a fallback', () => {
+    const id = sid('recovery');
+    const body = Array.from({ length: 500 }, (_, i) => `row ${i} ${'payload '.repeat(4)}`).join('\n');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const s = summarizeSession(id);
+    assert.strictEqual(s.recoveryWrites, 1);
+    assert.strictEqual(s.recoveryBytesAtMost, s.bytesIn, 'the parked copy is bounded by the input it came from');
+    assert.strictEqual(s.fallbacks, 0);
+
+    const guarded = sid('fallback');
+    const huge = Array.from({ length: 900 }, (_, i) => `line ${i} ${'x'.repeat(80)}`).join('\n');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: guarded, tool_response: huge }, { HUSH_DEBUG: '1' });
+    assert.strictEqual(summarizeSession(guarded).fallbacks, 1);
+  });
+
+  test('retrieval: a Read of a parked file counts, an ordinary Read does not', () => {
+    const id = sid('retrieval');
+    const parked = path.join(os.tmpdir(), 'hush-sidecar', id, 'abc123.txt');
+    const content = Array.from({ length: 300 }, (_, i) => `parked line ${i}`).join('\n');
+    runHook('compress-tool-output.js', {
+      tool_name: 'Read', session_id: id, tool_input: { file_path: parked },
+      tool_response: { type: 'text', file: { filePath: parked, content, numLines: 300, startLine: 1, totalLines: 300 } },
+    }, { HUSH_DEBUG: '1' });
+    runHook('compress-tool-output.js', {
+      tool_name: 'Read', session_id: id, tool_input: { file_path: 'C:\\repo\\src\\app.js' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\src\\app.js', content, numLines: 300, startLine: 1, totalLines: 300 } },
+    }, { HUSH_DEBUG: '1' });
+    assert.strictEqual(summarizeSession(id).retrievals, 1);
+  });
+
+  test('records written before retrieval tracking report it as unavailable, never as zero', () => {
+    const id = sid('old-records');
+    fs.writeFileSync(
+      debugManifestPath(id),
+      JSON.stringify({ tool: 'Bash', action: 'cap', bytesIn: 1000, bytesOut: 200 }) + '\n'
+    );
+    const s = summarizeSession(id);
+    assert.strictEqual(s.decisions, 1);
+    assert.strictEqual(s.bytesDelta, -800, 'old records still yield the bytes they do carry');
+    assert.strictEqual(s.retrievals, null);
+    assert.strictEqual(s.recoveryWrites, 0);
+    assert.strictEqual(s.fallbacks, 0);
+    assert.match(renderText({ ok: true, sessionId: id, session: s, usageByModel: null }), /read back: unavailable/);
   });
 
   test('empty manifest (gate on, nothing handled) reports zero decisions, not "not found"', () => {
@@ -332,8 +406,18 @@ describe('buildReport + renderText', () => {
     ]);
     const report = buildReport({ sessionId: id, transcriptPath: file });
     const text = renderText(report);
-    assert.match(text, /Decisions logged: 1/);
+    assert.match(text, /Tool outputs handled: 1/);
+    assert.match(text, /Observed bytes:/);
     assert.match(text, /claude-sonnet-5/);
+  });
+
+  test('the rendered report makes no savings claim and states what it cannot measure', () => {
+    const id = sid('report-no-claims');
+    const body = Array.from({ length: 200 }, (_, i) => `line ${i} of fixture, unique content here`).join('\n');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const text = renderText(buildReport({ sessionId: id, transcriptPath: null }));
+    assert.doesNotMatch(text, /sav(ed|ings)/i, 'no line claims a saving');
+    assert.match(text, /Not measurable: what this session would have cost without hush/);
   });
 });
 

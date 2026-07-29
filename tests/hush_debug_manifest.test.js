@@ -311,7 +311,7 @@ describe('Probe 9 Spec 2: adversarial no-op fixtures', () => {
 describe('transform manifest: the record contract', () => {
   const RECORD_KEYS = [
     'action', 'bytesIn', 'bytesOut', 'fallback', 'linesIn', 'omitted',
-    'preserved', 'recovery', 'recoveryPath', 'retention', 'session', 'tool',
+    'preserved', 'recovery', 'recoveryPath', 'retention', 'retrieval', 'session', 'tool',
   ];
   function only(id) {
     const entries = readManifest(id);

@@ -7,6 +7,8 @@ version field by convention).
 
 ## Unreleased
 
+`/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back — in place of a single savings figure.
+
 Output parked in a file now goes to a folder of its own for each session, and that folder is deleted when the session ends. Anything a crashed session left behind is cleared once it's a day old.
 
 `HUSH_DISABLE=1` now stops everything hush does while a session runs — every hook, reminder, and file it would write. The output style is a separate switch: `/hush:pick-style` hands the slot back to stock.

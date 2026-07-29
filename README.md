@@ -178,7 +178,7 @@ There are no compression levels and no profiles. hush has one policy; these swit
 - **Turning it off is two switches.** `HUSH_DISABLE=1` stops everything hush does while a session runs. The output style is separate — it's chosen at session start, so hand the slot back with `/hush:pick-style`, or uninstall.
 - **Where the parked output lives.** Your operating system's temp folder, in `hush-sidecar`, in a folder of its own for each session, one file per output, written only readable by you where the OS supports that. hush deletes that folder when the session ends, and clears anything a crashed session left behind once it's a day old. Anything you'd hate to see in a temp file, keep out of the terminal.
 - **Windows caveat.** Same atomic writes and the same refusal to follow symlinks, but the read-only-to-you file mode isn't enforceable there — treat parked output as readable by anything running as you.
-- **What `/hush:stats` can tell you.** How many bytes hush took out of tool output, minus the text it added back. It can't tell you what the session would have cost without it: there's no second, hush-free run of your session to compare against. It's a record of what hush did, not a bill you avoided.
+- **What `/hush:stats` can tell you.** What hush did to the tool output it handled: bytes in and out of each transform, how many outputs it left alone, how much it parked in recovery files, and how often you read that parked output back. It can't tell you what the session would have cost without it: there's no second, hush-free run of your session to compare against. It's a record of what hush did, not a bill you avoided.
 
 ## License
 

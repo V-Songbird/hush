@@ -88,6 +88,11 @@ function buildRecord(d) {
     // "none": nothing was persisted, so nothing has to be cleaned up.
     retention: d.retention || 'none',
     fallback: d.fallback || spec.fallback || null,
+    // True when this tool call read back output hush had already parked — the
+    // one number that says whether a recovery location was ever used. Always
+    // present, so a consumer can tell a record that measured it from an older
+    // one that never did.
+    retrieval: d.retrieval === true,
   };
 }
 

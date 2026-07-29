@@ -1323,7 +1323,7 @@ function main() {
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
     const hostRead = isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
-      const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length };
+      const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, retrieval: sideRead };
       if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead)) {
         let out;
         if (!sideRead && !hostRead && !enumerate) {

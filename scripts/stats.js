@@ -16,14 +16,23 @@
 // report, and this script says so plainly instead of printing all-zero
 // numbers that would read as "hush saved nothing."
 //
-// Honesty adjustment: never claim credit for overhead hush itself created. A
-// manifest line's bytesOut is measured AFTER any hush marker text is
-// written into it, so per-decision savings are already net of everything
-// that decision itself added. The one overhead NOT captured by any single
-// decision is the session-wide NOTE_TEXT note (additionalContext, injected
-// at most once per session, outside any tool result body) — its own
-// sentinel file (claimSessionNote in compress-tool-output.js) says whether
-// it actually fired, so that's read directly rather than guessed at.
+// This is an activity report, not a savings claim. Every number it prints is
+// something the runtime observed: bytes in and out of each transform, how many
+// outputs got smaller, how many transforms declined, how much was parked into
+// recovery files, how often parked output was read back. What hush's absence
+// would have cost is not observable — there is no second, hush-free run of the
+// session — so no such figure is printed, estimated, or implied. Anything the
+// records cannot answer is labelled unavailable instead of filled in with a
+// zero, and records written before a field existed are treated the same way.
+//
+// Overhead is reported, never netted away. A manifest line's bytesOut is
+// measured AFTER any hush marker text is written into it, so the byte deltas
+// already carry what each decision added. The one addition NOT captured by any
+// decision is the session-wide NOTE_TEXT note (additionalContext, injected at
+// most once per session, outside any tool result body) — its own sentinel file
+// (claimSessionNote in compress-tool-output.js) says whether it actually
+// fired, so that's read directly rather than guessed at, and it is stated on
+// its own line rather than subtracted from anything.
 
 const fs = require("fs");
 const os = require("os");
@@ -69,8 +78,8 @@ function rollupByAction(entries) {
     row.bytesOut += e.bytesOut || 0;
   }
   return [...byAction.values()]
-    .map((r) => ({ ...r, bytesSaved: r.bytesIn - r.bytesOut }))
-    .sort((a, b) => b.bytesSaved - a.bytesSaved);
+    .map((r) => ({ ...r, bytesDelta: r.bytesOut - r.bytesIn }))
+    .sort((a, b) => a.bytesDelta - b.bytesDelta);
 }
 
 function summarizeSession(sessionId) {
@@ -78,22 +87,53 @@ function summarizeSession(sessionId) {
   if (entries === null) return { sessionId, manifestFound: false };
 
   const byAction = rollupByAction(entries);
-  const rawBytesIn = byAction.reduce((n, r) => n + r.bytesIn, 0);
-  const rawBytesOut = byAction.reduce((n, r) => n + r.bytesOut, 0);
-  const rawSaved = rawBytesIn - rawBytesOut;
-  const noteOverhead = noteOverheadFor(sessionId);
-  const netSaved = Math.max(0, rawSaved - noteOverhead);
+  const bytesIn = byAction.reduce((n, r) => n + r.bytesIn, 0);
+  const bytesOut = byAction.reduce((n, r) => n + r.bytesOut, 0);
+
+  let smaller = 0;
+  let unchanged = 0;
+  let larger = 0;
+  let fallbacks = 0;
+  let recoveryWrites = 0;
+  let recoveryBytes = 0;
+  // null, not 0: a manifest whose records predate retrieval tracking cannot
+  // answer this, and "0 retrievals" would be an answer.
+  let retrievals = null;
+  for (const e of entries) {
+    const bi = e.bytesIn || 0;
+    const bo = typeof e.bytesOut === "number" ? e.bytesOut : bi;
+    if (bo < bi) smaller++;
+    else if (bo > bi) larger++;
+    else unchanged++;
+    if (e.fallback) fallbacks++;
+    if (e.retention === "session") {
+      recoveryWrites++;
+      recoveryBytes += bi;
+    }
+    if ("retrieval" in e) {
+      if (retrievals === null) retrievals = 0;
+      if (e.retrieval) retrievals++;
+    }
+  }
 
   return {
     sessionId,
     manifestFound: true,
     decisions: entries.length,
     byAction,
-    rawBytesIn,
-    rawBytesOut,
-    rawSaved,
-    noteOverhead,
-    netSaved,
+    bytesIn,
+    bytesOut,
+    bytesDelta: bytesOut - bytesIn,
+    smaller,
+    unchanged,
+    larger,
+    fallbacks,
+    recoveryWrites,
+    // Upper bound, not a measurement: a parked copy is the cleaned input, which
+    // is never larger than the input the record counted.
+    recoveryBytesAtMost: recoveryBytes,
+    retrievals,
+    noteBytes: noteOverheadFor(sessionId),
   };
 }
 
@@ -263,6 +303,12 @@ function formatBytes(n) {
   return `${(n / (1024 * 1024)).toFixed(1)}MB`;
 }
 
+// Signed, because a transform that made an output bigger has to read as bigger.
+function formatDelta(n) {
+  if (n === 0) return "0B";
+  return `${n < 0 ? "-" : "+"}${formatBytes(Math.abs(n))}`;
+}
+
 function buildReport(target) {
   const { sessionId, transcriptPath } = target;
   if (!sessionId) {
@@ -285,22 +331,36 @@ function renderText(report) {
     out.push("Manifest found but empty — hush hasn't handled a tool output yet this session.");
   } else {
     const s = report.session;
-    out.push(`Decisions logged: ${s.decisions}`);
+    out.push(`Tool outputs handled: ${s.decisions}`);
     for (const row of s.byAction) {
-      out.push(`  ${row.action}: ${row.count}x, ${formatBytes(row.bytesIn)} -> ${formatBytes(row.bytesOut)} (saved ${formatBytes(row.bytesSaved)})`);
+      out.push(`  ${row.action}: ${row.count}x, ${formatBytes(row.bytesIn)} -> ${formatBytes(row.bytesOut)} (${formatDelta(row.bytesDelta)})`);
     }
-    out.push(`Raw savings: ${formatBytes(s.rawSaved)} (${formatBytes(s.rawBytesIn)} -> ${formatBytes(s.rawBytesOut)})`);
-    if (s.noteOverhead > 0) {
-      out.push(`Session note overhead (hush's own one-time injected note): -${formatBytes(s.noteOverhead)}`);
+    out.push(`Observed bytes: ${formatBytes(s.bytesIn)} in -> ${formatBytes(s.bytesOut)} out (${formatDelta(s.bytesDelta)})`);
+    out.push(`Outputs made smaller: ${s.smaller}; returned unchanged: ${s.unchanged}; made larger: ${s.larger}`);
+    out.push(`Transforms that declined and left the output alone: ${s.fallbacks}`);
+    if (s.recoveryWrites > 0) {
+      out.push(
+        `Parked into recovery files: ${s.recoveryWrites} output(s), at most ${formatBytes(s.recoveryBytesAtMost)} on disk (the parked copy is never larger than the input)`
+      );
+    } else {
+      out.push("Parked into recovery files: none this session");
     }
-    out.push(`Net savings: ${formatBytes(s.netSaved)}`);
+    if (s.retrievals === null) {
+      out.push("Parked output read back: unavailable — these records predate retrieval tracking");
+    } else {
+      out.push(`Parked output read back: ${s.retrievals} time(s)`);
+    }
+    if (s.noteBytes > 0) {
+      out.push(`Text hush added outside tool output: ${formatBytes(s.noteBytes)} (its one-time session note)`);
+    }
+    out.push("Not measurable: what this session would have cost without hush — there is no hush-free run of it to compare against.");
   }
   if (report.usageByModel === null) {
     out.push("No transcript found — per-model token breakdown unavailable.");
   } else if (report.usageByModel.length === 0) {
     out.push("Transcript found but no usable usage records yet.");
   } else {
-    out.push("Per-model token usage (deduped by message id):");
+    out.push("Per-model token usage for the whole session, deduped by message id (what the models used, not what hush changed):");
     for (const m of report.usageByModel) {
       out.push(
         `  ${m.model}: ${m.apiCalls} calls, in ${m.inputTokens}, out ${m.outputTokens}, cache-read ${m.cacheReadTokens}, cache-write ${m.cacheCreationTokens}`
@@ -350,4 +410,5 @@ module.exports = {
   buildReport,
   renderText,
   formatBytes,
+  formatDelta,
 };
