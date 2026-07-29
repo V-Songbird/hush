@@ -19,10 +19,10 @@
 //     them), so the summary can drop their content without losing anything.
 
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
+const { SIDECAR_ROOT, sessionDir } = require("./lib/sidecar-store");
 
-const SIDECAR_DIR = path.join(os.tmpdir(), "hush-sidecar");
+const SIDECAR_DIR = SIDECAR_ROOT;
 const SIDECAR_CAP = 20;
 
 const STATIC_BLOCK =
@@ -46,21 +46,23 @@ function readInput() {
   }
 }
 
-// This session's sidecar files only (sess8 prefix match), forward-slashed,
-// capped — or null when there's nothing to point at.
+// This session's sidecar files only — its own directory under the sidecar
+// root — forward-slashed, capped, or null when there's nothing to point at.
+// These paths stay valid across the compaction this hook is announcing:
+// sidecars are removed at session end, never at compaction.
 function buildSidecarBlock(sessionId) {
   if (typeof sessionId !== "string" || !sessionId) return null;
-  const sess8 = sessionId.slice(0, 8);
+  const dir = sessionDir(sessionId);
   let files;
   try {
-    files = fs.readdirSync(SIDECAR_DIR);
+    files = fs.readdirSync(dir);
   } catch {
-    return null;
+    return null; // no directory: this session has parked nothing
   }
   const paths = files
-    .filter((f) => f.startsWith(`${sess8}-`) && f.endsWith(".txt"))
+    .filter((f) => f.endsWith(".txt"))
     .slice(0, SIDECAR_CAP)
-    .map((f) => path.join(SIDECAR_DIR, f).replace(/\\/g, "/"));
+    .map((f) => path.join(dir, f).replace(/\\/g, "/"));
   if (!paths.length) return null;
   return (
     `Full tool outputs from this session are preserved on disk (shown in-conversation only as ` +
@@ -87,4 +89,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { STATIC_BLOCK, buildSidecarBlock, readInput, SIDECAR_DIR, SIDECAR_CAP };
+module.exports = { STATIC_BLOCK, buildSidecarBlock, readInput, SIDECAR_DIR, SIDECAR_CAP, sessionDir };

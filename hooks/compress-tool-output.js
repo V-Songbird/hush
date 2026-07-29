@@ -13,6 +13,7 @@ const path = require("path");
 const { lastUserPromptText } = require("./lib/transcript");
 const { safeWriteFileSync } = require("./lib/safe-write");
 const { combineActions, buildRecord, recoveryGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
+const sidecarStore = require("./lib/sidecar-store");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
 // Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
@@ -736,7 +737,8 @@ function pressureScale(transcriptBytes) {
 // never need the follow at all. Fail-open: any filesystem trouble falls back
 // to the normal capped view. The enumeration carve-out is exempt — its whole
 // point is that nothing is elided. Files are content-addressed (idempotent on
-// re-fire) and, like the meter's state files, left to OS temp cleaning.
+// re-fire) inside a directory this session owns, and are deleted when the
+// session ends (see lib/sidecar-store.js).
 const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
 // Upper bound for SHELL outputs only. Claude Code truncates a Bash/PowerShell
 // result to ~29KB for the hook (and the model) once it trips its own
@@ -752,7 +754,7 @@ const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
 // the file's full content to the hook (its own limits are far larger), so a big
 // lockfile/log Read is complete and the sidecar is genuinely full and helpful.
 const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 28000);
-const SIDECAR_DIR = path.join(os.tmpdir(), "hush-sidecar");
+const SIDECAR_DIR = sidecarStore.SIDECAR_ROOT;
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
@@ -913,8 +915,11 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
     // catch as every I/O failure below and returns null (fail-open for the
     // hook's output, but never a reason to persist ambiguous content).
     if (containsSecret(cleaned)) return null;
-    const name = (sessionId ? `${String(sessionId).slice(0, 8)}-` : "") + `${cheapHash(cleaned)}.txt`;
-    const file = path.join(SIDECAR_DIR, name);
+    // The session's own directory carries ownership, so the name is just the
+    // content hash: two sessions producing identical output now get a file
+    // each, and neither's cleanup can remove the other's recovery location.
+    const dir = sidecarStore.sessionDir(sessionId);
+    const file = path.join(dir, `${cheapHash(cleaned)}.txt`);
     const d = buildSidecarDigest(cleaned, relevanceTokens);
     const header =
       `[hush hook: this output is ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}) ` +
@@ -930,7 +935,7 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
     // Bail before ever touching disk and let compress() fall through to the
     // ordinary inline cap, which is a no-op here too but at least isn't larger.
     if (out.length >= cleaned.length) return null;
-    fs.mkdirSync(SIDECAR_DIR, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true });
     if (!fs.existsSync(file)) safeWriteFileSync(file, cleaned);
     // The written file IS the recovery location for everything the digest
     // left out — the manifest record carries it (see deliver).
@@ -947,12 +952,7 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate) {
 // behavior, by construction) but never re-sidecar them, or the middle of the
 // file would become unreachable. Range reads (offset/limit) come back small
 // and pass untouched — that's the intended path the digest teaches.
-function isSidecarPath(filePath) {
-  return (
-    typeof filePath === "string" &&
-    path.resolve(path.dirname(filePath.trim())) === path.resolve(SIDECAR_DIR)
-  );
-}
+const isSidecarPath = sidecarStore.isSidecarPath;
 
 // Claude Code's own large-output persistence writes the RAW result to
 // .claude/projects/<slug>/<session>/tool-results/<id>.txt and hands the model
@@ -1135,7 +1135,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
         decision.omitted = side.omitted;
         decision.recovery = "sidecar";
         decision.recoveryPath = side.file;
-        decision.retention = "os-temp";
+        decision.retention = "session";
       }
       return side.text;
     }

@@ -43,12 +43,12 @@ const freshSessionId = () => `d${crypto.randomBytes(4).toString('hex')}${++seq}`
 function plantedTemp(sessionId, tag) {
   const dir = path.join(SCRATCH_ROOT, `temp-${sessionId}-${tag}`);
   const safe = sessionId.replace(/[^a-zA-Z0-9-]/g, '_');
-  fs.mkdirSync(path.join(dir, 'hush-sidecar'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'hush-sidecar', safe), { recursive: true });
   fs.writeFileSync(path.join(dir, `hush-note-${sessionId}`), '');
   fs.writeFileSync(path.join(dir, `hush-meter-${safe}.json`), '{}');
   fs.writeFileSync(path.join(dir, `hush-delta-${safe}.json`), '{}');
   fs.writeFileSync(path.join(dir, `hush-debug-${safe}.jsonl`), '');
-  fs.writeFileSync(path.join(dir, 'hush-sidecar', `${sessionId.slice(0, 8)}-planted.txt`), 'kept\n');
+  fs.writeFileSync(path.join(dir, 'hush-sidecar', safe, 'planted.txt'), 'kept\n');
   return dir;
 }
 
@@ -110,9 +110,9 @@ const TRANSCRIPT = writeFixture(
 );
 
 /**
- * The seven hooks, each with a payload that provably triggers it. `writes`
- * marks the hooks whose enabled run is expected to touch disk rather than
- * (or as well as) print.
+ * Every hook, each with a payload that provably triggers it. `writes` marks
+ * the hooks whose enabled run is expected to touch disk rather than (or as
+ * well as) print.
  */
 function cases() {
   const c = [];
@@ -177,6 +177,14 @@ function cases() {
     writes: true,
     silentWhenEnabled: true, // its whole job is deletion; it never prints
   });
+  const endSession = freshSessionId();
+  c.push({
+    name: 'session-end-cleanup.js',
+    session: endSession,
+    input: { hook_event_name: 'SessionEnd', session_id: endSession, reason: 'exit' },
+    writes: true,
+    silentWhenEnabled: true, // deletion only, and SessionEnd output goes nowhere
+  });
   return c;
 }
 
@@ -207,7 +215,7 @@ describe('HUSH_DISABLE=1 conformance across every hook', () => {
     });
   }
 
-  test('all seven hooks registered in hooks.json are covered', () => {
+  test('every hook registered in hooks.json is covered', () => {
     const hooks = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, 'hooks.json'), 'utf-8'));
     const registered = new Set();
     for (const list of Object.values(hooks.hooks)) {

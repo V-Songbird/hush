@@ -14,6 +14,7 @@ const path = require('path');
 const { runHook, hookOutput } = require('./helpers');
 const { debugManifestPath, deliver } = require('../hooks/compress-tool-output');
 const { buildRecord, recoveryGap } = require('../hooks/lib/transform-manifest');
+const { sessionDir } = require('../hooks/lib/sidecar-store');
 
 const sids = [];
 function sid(label) {
@@ -21,8 +22,14 @@ function sid(label) {
   sids.push(id);
   return id;
 }
+// Every test session takes its manifest file AND its sidecar directory with
+// it: a sidecar-writing test that leaves the file behind grows tmpdir on every
+// run of the suite.
 after(() => {
-  for (const id of sids) fs.rmSync(debugManifestPath(id), { force: true });
+  for (const id of sids) {
+    fs.rmSync(debugManifestPath(id), { force: true });
+    fs.rmSync(sessionDir(id), { recursive: true, force: true });
+  }
 });
 
 function readManifest(sessionId) {
@@ -306,9 +313,6 @@ describe('transform manifest: the record contract', () => {
     'action', 'bytesIn', 'bytesOut', 'fallback', 'linesIn', 'omitted',
     'preserved', 'recovery', 'recoveryPath', 'retention', 'session', 'tool',
   ];
-  const sidecarFiles = [];
-  after(() => { for (const f of sidecarFiles) fs.rmSync(f, { force: true }); });
-
   function only(id) {
     const entries = readManifest(id);
     assert.strictEqual(entries.length, 1, `expected exactly one record, got ${entries.length}`);
@@ -316,7 +320,6 @@ describe('transform manifest: the record contract', () => {
     assert.deepStrictEqual(Object.keys(e).sort(), RECORD_KEYS, 'every record carries the whole contract');
     assert.strictEqual(e.session, id, 'the record names the session that owns it');
     assert.strictEqual(e.preserved + e.omitted, e.linesIn, 'preserved and omitted account for every input line');
-    if (e.recovery === 'sidecar') sidecarFiles.push(e.recoveryPath);
     return e;
   }
 
@@ -343,7 +346,7 @@ describe('transform manifest: the record contract', () => {
     assert.ok(e.recoveryPath, 'the record names where the full output went');
     assert.strictEqual(fs.existsSync(e.recoveryPath), true, 'the named recovery file is really there');
     assert.strictEqual(fs.readFileSync(e.recoveryPath, 'utf8'), body, 'and it holds the full input');
-    assert.strictEqual(e.retention, 'os-temp');
+    assert.strictEqual(e.retention, 'session');
     assert.ok(e.omitted > 0);
   });
 

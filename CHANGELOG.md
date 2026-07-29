@@ -7,6 +7,8 @@ version field by convention).
 
 ## Unreleased
 
+Output parked in a file now goes to a folder of its own for each session, and that folder is deleted when the session ends. Anything a crashed session left behind is cleared once it's a day old.
+
 `HUSH_DISABLE=1` now stops everything hush does while a session runs — every hook, reminder, and file it would write. The output style is a separate switch: `/hush:pick-style` hands the slot back to stock.
 
 Fixed an issue where converting a structured result to a table could drop fields sitting beside the records — totals, cursors, and warnings are now kept, or the conversion doesn't run.

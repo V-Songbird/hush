@@ -83,10 +83,9 @@ function buildRecord(d) {
     omitted,
     recovery: d.recovery || null,
     recoveryPath: d.recoveryPath || null,
-    // "os-temp" is the honest current state of a sidecar file: written under
-    // the OS temp dir and left to OS temp cleaning.
-    // razor: no lifecycle beyond that — a session-scoped retention state and
-    // its cleanup are ROADMAP 165's, which registers files through this field.
+    // "session": the file lives in a directory the naming session owns and is
+    // deleted when that session ends (see hooks/lib/sidecar-store.js).
+    // "none": nothing was persisted, so nothing has to be cleaned up.
     retention: d.retention || 'none',
     fallback: d.fallback || spec.fallback || null,
   };

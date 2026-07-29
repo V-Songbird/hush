@@ -916,7 +916,12 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
 describe('secrets guard: credential-shaped content is never persisted to a sidecar', () => {
   const { compress: comp, containsSecret } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
-  const sideDir = path.join(os.tmpdir(), 'hush-sidecar');
+  // Every case in this block runs as session 'secrettest', so counting inside
+  // that session's own directory is exact: a leftover from a crashed run in
+  // another session's directory can no longer move this number.
+  const { sessionDir } = require('../hooks/lib/sidecar-store');
+  const sideDir = sessionDir('secrettest');
+  after(() => fs.rmSync(sideDir, { recursive: true, force: true }));
   function withSidecarOn(fn) {
     const prev = process.env.HUSH_SIDECAR;
     delete process.env.HUSH_SIDECAR;
@@ -977,7 +982,9 @@ describe('secrets guard: credential-shaped content is never persisted to a sidec
     assert.match(out, /saved in full to/, 'clean content still gets the sidecar treatment');
     assert.strictEqual(sidecarFileCount(), before + 1, 'exactly one new sidecar file appeared');
     const m = out.match(/saved in full to ([^;]+);/);
-    if (m) fs.rmSync(m[1].trim(), { force: true });
+    assert.ok(m, 'the digest names the file it wrote');
+    assert.strictEqual(path.dirname(path.resolve(m[1].trim())), path.resolve(sideDir), 'written inside the session namespace');
+    fs.rmSync(m[1].trim(), { force: true });
   });
 });
 
@@ -987,10 +994,12 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
   const os2 = require('os');
   const sideDir = path.join(os2.tmpdir(), 'hush-sidecar');
 
-  test('isSidecarPath matches only files directly under the sidecar dir', () => {
+  test('isSidecarPath matches files under the sidecar root, session namespace included', () => {
+    assert.strictEqual(isSidecarPath(path.join(sideDir, 'sess1234', 'abc123.txt')), true);
     assert.strictEqual(isSidecarPath(path.join(sideDir, 'abc123.txt')), true);
     assert.strictEqual(isSidecarPath('/var/logs/app.log'), false);
     assert.strictEqual(isSidecarPath(path.join(os2.tmpdir(), 'other', 'abc.txt')), false);
+    assert.strictEqual(isSidecarPath(sideDir), false, 'the root itself is not a sidecar file');
     assert.strictEqual(isSidecarPath(undefined), false);
   });
 

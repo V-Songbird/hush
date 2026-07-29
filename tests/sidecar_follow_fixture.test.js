@@ -14,6 +14,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { compress } = require('../hooks/compress-tool-output');
+const { sessionDir } = require('../hooks/lib/sidecar-store');
 
 const FIXTURE = path.join(__dirname, '..', 'benchmarks', 'fixtures', 'sidecar-follow', 'logs', 'test-output.log');
 const TASKS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'tasks.json'), 'utf8'));
@@ -33,8 +34,9 @@ describe('sidecar-follow eval task definition', () => {
   });
 
   describe('digest shape: the census surfaces a failure among many passes, but the names require a follow-up read', () => {
-    const created = [];
-    after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+    const SESSION = 'sidecar-follow-fixture-test';
+    // The whole session namespace goes, the way session end takes it.
+    after(() => fs.rmSync(sessionDir(SESSION), { recursive: true, force: true }));
 
     test('census reports exactly 2 failures among ~700 lines', () => {
       const content = fs.readFileSync(FIXTURE, 'utf8');
@@ -42,12 +44,11 @@ describe('sidecar-follow eval task definition', () => {
       delete process.env.HUSH_SIDECAR;
       let digest;
       try {
-        digest = compress(content, undefined, true, false, [], 1, 'sidecar-follow-fixture-test');
+        digest = compress(content, undefined, true, false, [], 1, SESSION);
       } finally {
         process.env.HUSH_SIDECAR = prev;
       }
       const m = digest.match(/saved in full to ([^;]+);/);
-      if (m) created.push(m[1].trim());
 
       assert.match(digest, /this output is \d+ non-empty lines \(2 failures\)/, 'census names exactly 2 failures');
       assert.match(digest, /Signal lines \(2 total: 2 failures\)/);

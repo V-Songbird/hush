@@ -8,7 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const { HOOKS_DIR } = require('./helpers');
-const { STATIC_BLOCK, buildSidecarBlock, SIDECAR_DIR, SIDECAR_CAP } = require('../hooks/precompact-summary');
+const { STATIC_BLOCK, buildSidecarBlock, SIDECAR_CAP, sessionDir } = require('../hooks/precompact-summary');
 
 /** Run precompact-summary.js with raw stdin (not necessarily JSON); returns spawnSync result. */
 function runRaw(stdinData, env) {
@@ -24,22 +24,22 @@ function runHook(stdinObj, env) {
   return runRaw(JSON.stringify(stdinObj), env);
 }
 
-// Unique 12-hex-char session ids so each test's sess8 prefix (first 8 chars)
-// never collides with another test's sidecar fixtures.
+// Unique session ids so no test can see another's sidecar directory.
 const freshSessionId = () => crypto.randomBytes(6).toString('hex');
 
-const createdFiles = [];
+const createdDirs = new Set();
 
 function writeSidecarFile(sessionId, suffix) {
-  fs.mkdirSync(SIDECAR_DIR, { recursive: true });
-  const file = path.join(SIDECAR_DIR, `${sessionId.slice(0, 8)}-${suffix}.txt`);
+  const dir = sessionDir(sessionId);
+  fs.mkdirSync(dir, { recursive: true });
+  createdDirs.add(dir);
+  const file = path.join(dir, `${suffix}.txt`);
   fs.writeFileSync(file, 'full output');
-  createdFiles.push(file);
   return file;
 }
 
 after(() => {
-  for (const f of createdFiles) fs.rmSync(f, { force: true });
+  for (const d of createdDirs) fs.rmSync(d, { recursive: true, force: true });
 });
 
 describe('precompact-summary hook', () => {
@@ -53,6 +53,12 @@ describe('precompact-summary hook', () => {
     const other = freshSessionId();
     writeSidecarFile(other, 'aaa');
     const r = runHook({ hook_event_name: 'PreCompact' });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout.trim(), STATIC_BLOCK);
+  });
+
+  test('a session that parked nothing has no directory and gets the static block only', () => {
+    const r = runHook({ hook_event_name: 'PreCompact', session_id: freshSessionId() });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout.trim(), STATIC_BLOCK);
   });
@@ -101,7 +107,7 @@ describe('precompact-summary hook', () => {
     const r = runHook({ hook_event_name: 'PreCompact', session_id: session });
     assert.strictEqual(r.status, 0);
     const block = buildSidecarBlock(session);
-    const listedCount = (r.stdout.match(new RegExp(`${session.slice(0, 8)}-n\\d+\\.txt`, 'g')) || []).length;
+    const listedCount = (r.stdout.match(/\bn\d+\.txt/g) || []).length;
     assert.strictEqual(listedCount, SIDECAR_CAP);
     assert.ok(block);
   });
