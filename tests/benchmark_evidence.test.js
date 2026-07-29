@@ -387,6 +387,34 @@ describe('records are write-once and hash-stamped', () => {
     } finally { rmTree(dir); }
   });
 
+  test('a record with an undefined-valued key still verifies on read', () => {
+    const dir = tmp('rec-undef-key');
+    try {
+      // An API reply with no output_tokens, a run built with seed: undefined —
+      // JSON.stringify drops the key, so the hash must drop it too.
+      records.writeRecord(dir, 'a__hush__r1', { costUsd: 0.5, seed: undefined, usage: { output_tokens: undefined } });
+      const { runs } = records.readRecords(dir);
+      assert.ok(records.verifyRecord(runs[0]));
+      assert.ok(!('seed' in runs[0]), 'the written record stays clean, no null filler');
+    } finally { rmTree(dir); }
+  });
+
+  test('a record with an undefined array element still verifies on read', () => {
+    const dir = tmp('rec-undef-elem');
+    try {
+      // JSON.stringify writes an undefined element as null — a different rule
+      // from the object case, and the hash has to follow this one too. A hole
+      // in a sparse array is written the same way, so it hashes the same way.
+      const sparse = ['a', 'b', 'c'];
+      delete sparse[1];
+      records.writeRecord(dir, 'a__hush__r1', { costUsd: 0.5, steps: ['a', undefined, 'c'], sparse });
+      const { runs } = records.readRecords(dir);
+      assert.ok(records.verifyRecord(runs[0]));
+      assert.deepStrictEqual(runs[0].steps, ['a', null, 'c']);
+      assert.deepStrictEqual(runs[0].sparse, ['a', null, 'c']);
+    } finally { rmTree(dir); }
+  });
+
   test('a second write to the same name is refused, and the first survives', () => {
     const dir = tmp('rec-once');
     try {

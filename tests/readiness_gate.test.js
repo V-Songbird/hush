@@ -290,9 +290,8 @@ describe('falsifiability: a complete evidence set passes, and each break costs i
   });
 
   test('point 10 flips when a record carries no batch, seed or segment', () => {
-    // The key is left out rather than set to undefined: records.js hashes an
-    // undefined value as null but drops the key on write, so such a record can
-    // never verify again (reported, not fixed here — it is 175's module).
+    // The key is left out rather than set to undefined; records.js now hashes
+    // both shapes the same way, so either would do.
     const anonymous = synthRuns().map((r) => {
       if (r.key !== 'noisy-build__hush__r1') return r;
       const { seed, ...rest } = r;

@@ -80,11 +80,21 @@ function sanitizeRecord(value, identity = localIdentity()) {
 
 // --- hashing and write-once -------------------------------------------------
 
-/** Key-order-independent JSON, so the hash is over content, not formatting. */
+/**
+ * Key-order-independent JSON, so the hash is over content, not formatting.
+ *
+ * `undefined` has to be handled exactly the way JSON.stringify handles it, or
+ * a record hashes one way going in and a different way coming back out, and
+ * then never verifies again: an undefined-valued *key* is dropped entirely,
+ * an undefined (or missing) *array element* becomes null.
+ */
 function canonical(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (Array.isArray(value)) {
+    return `[${Array.from(value, (v) => (v === undefined ? 'null' : canonical(v))).join(',')}]`;
+  }
   if (value && typeof value === 'object') {
-    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;
+    return `{${Object.keys(value).sort().filter((k) => value[k] !== undefined)
+      .map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;
   }
   return JSON.stringify(value === undefined ? null : value);
 }
