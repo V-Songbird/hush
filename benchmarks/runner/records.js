@@ -36,32 +36,40 @@ const SECRET_RULES = [
 //   mid-path  — more non-space characters and then another separator, so
 //               `My App\out.log` stays inside the path;
 //   end-path  — no separator left, but the segment being built carries no file
-//               extension and the next word is capitalised, which is the
-//               Windows convention for a directory name (`C:\Users\John
-//               Smith`, `\\FILESRV\Build Output`, `...\My Documents`).
+//               extension and the next word opens with a capital or a caseless
+//               letter, which is how a directory is named (`C:\Users\John
+//               Smith`, `\\FILESRV\Build Output`, `...\My Documents`). The
+//               class is Unicode, not ASCII: `C:\Users\Ana Álvarez`,
+//               `C:\Users\Иван Петров` and `C:\Users\山田 太郎` are ordinary
+//               profile paths, and CJK has no case at all, hence `\p{Lo}`.
 //
 // Prose after a path is lower-case, so `C:\tmp\a.log fine` and `C:\tmp then
 // run the build` still stop at the path. A rule that ate the rest of the
 // sentence would be a different bug, and the cases below pin both ends.
 //
-// razor: the two shapes this cannot decide are a capitalised word of prose
-// after an extensionless path (`cd C:\tmp Then restart` over-redacts, which is
-// the safe direction here) and a lower-case or post-extension final segment
-// (`C:\Users\john smith`, `C:\Users\john.doe Smith` still leak the tail).
-// Deciding either needs the filesystem, and a record is routinely sanitized on
-// a machine that never had those paths; the upgrade path is to pass the run's
+// razor: over-redaction here is unbounded, not one word — the end-path branch
+// chains through title case and through caps, so `cd C:\tmp Then Run The Build
+// And Deploy It now` and `cd C:\tmp THEN RUN` both collapse to `<path>`. Worse
+// than the lost bytes: two paths in one phrase merge into a single `<path>`
+// (`compare C:\old New C:\new now` -> `compare <path> now`), so the record no
+// longer shows there were two. Under-redaction survives in the other
+// direction — a lower-case or post-extension final segment still leaks
+// (`C:\Users\john smith`, `C:\Users\john.doe Smith`, `C:\Users\J. Smith` ->
+// `<path> Smith`, `C:\v1.0 Release Notes` -> `<path> Release Notes`). Deciding
+// any of these needs the filesystem, and a record is routinely sanitized on a
+// machine that never had those paths; the upgrade path is to pass the run's
 // own known roots in as literals to escape and strip.
 const pathTail = (stop, rep) => {
   const c = `[^\\s${stop}]`;
   return `(?:${c}`
     + `|[ \\t]+(?=${c}*[\\\\/])`
-    + `|(?<![.][^\\\\/]{0,64})[ \\t]+(?!${c}*[\\\\/])(?=[A-Z]))${rep}`;
+    + `|(?<![.][^\\\\/]{0,64})[ \\t]+(?!${c}*[\\\\/])(?=[\\p{Lu}\\p{Lt}\\p{Lo}]))${rep}`;
 };
 const PATH_RULES = [
-  [new RegExp(`\\\\\\\\[A-Za-z0-9._-]+\\\\${pathTail(`"'|<>`, '+')}`, 'g'), '<path>'],
-  [new RegExp(`\\b[A-Za-z]:[\\\\/]${pathTail(`"'|<>,;)`, '*')}`, 'g'), '<path>'],
+  [new RegExp(`\\\\\\\\[A-Za-z0-9._-]+\\\\${pathTail(`"'|<>`, '+')}`, 'gu'), '<path>'],
+  [new RegExp(`\\b[A-Za-z]:[\\\\/]${pathTail(`"'|<>,;)`, '*')}`, 'gu'), '<path>'],
   [new RegExp(`(^|[\\s"'(=[])\\/(?:Users|home|root|tmp|var|mnt|opt|usr|private|etc|Volumes)`
-    + `\\/${pathTail(`"'|<>,;)\\]`, '*')}`, 'g'), '$1<path>'],
+    + `\\/${pathTail(`"'|<>,;)\\]`, '*')}`, 'gu'), '$1<path>'],
 ];
 
 // Anything long and unbroken enough to be a credential. Deliberately blunt:

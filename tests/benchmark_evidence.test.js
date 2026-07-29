@@ -334,6 +334,19 @@ describe('records are sanitized before anything is written', () => {
     assert.strictEqual(clean('cd /Users/John Smith/My Documents'), 'cd <path>');
   });
 
+  test('a non-English profile name goes the same way as an English one', () => {
+    // `C:\Users\<display name>` is where the surname lives on every locale, and
+    // an ASCII-only capital class left it in the record for most of the world.
+    assert.strictEqual(clean('cwd is C:\\Users\\Ana Smith'), 'cwd is <path>');
+    assert.strictEqual(clean('cwd is C:\\Users\\Ana \u00c1lvarez'), 'cwd is <path>');
+    assert.strictEqual(clean('saved C:\\Users\\Jos\u00e9 \u00c1ngel today'), 'saved <path> today');
+    assert.strictEqual(clean('cwd is C:\\Users\\\u0418\u0432\u0430\u043d \u041f\u0435\u0442\u0440\u043e\u0432'), 'cwd is <path>');
+    // CJK has no case at all, so a capital-letter class can never match it.
+    assert.strictEqual(clean('cwd is C:\\Users\\\u5c71\u7530 \u592a\u90ce'), 'cwd is <path>');
+    assert.strictEqual(clean('cd /Users/Ana \u00c1lvarez/Escritorio'), 'cd <path>');
+    assert.strictEqual(clean('share \\\\SRV\\\u0420\u0435\u0441\u0443\u0440\u0441\u044b \u041e\u0431\u0449\u0438\u0435'), 'share <path>');
+  });
+
   test('the path rule stops at the path, not at the end of the sentence', () => {
     // A rule that ate everything after a drive letter would be a different bug.
     assert.strictEqual(clean('opened C:\\tmp\\a.log and then gave up'), 'opened <path> and then gave up');
