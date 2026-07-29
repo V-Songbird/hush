@@ -74,13 +74,19 @@ function snapshot(dir) {
 
 // Every per-hook flag a surface owns is forced ON, so a surface switch is the
 // only thing that can produce silence — which is exactly the precedence rule
-// under test. HUSH_DISABLE, HUSH_CORE and HUSH_QUIET are pinned to their
-// default-on state so an ambient value in the developer's shell cannot decide
-// the result; each case overrides what it means to test.
+// under test. HUSH_SIDECAR is pinned alongside them because the disk half of
+// the active-control assertion depends on it. HUSH_DISABLE, HUSH_CORE and
+// HUSH_QUIET are pinned to their default-on state so an ambient value in the
+// developer's shell cannot decide the result; each case overrides what it
+// means to test.
 const BASE = {
   HUSH_DEBUG: '1',
   HUSH_WRAP: '1',
   HUSH_NUDGE: '1',
+  HUSH_COMPACT: 'on',
+  HUSH_NARRATION: 'on',
+  HUSH_SUBAGENT: 'on',
+  HUSH_SIDECAR: 'on',
   HUSH_DISABLE: '0',
   HUSH_CORE: '',
   HUSH_QUIET: '',
