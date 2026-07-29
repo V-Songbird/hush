@@ -30,17 +30,38 @@ const SECRET_RULES = [
 //
 // `C:\Program Files\My App\out.log` and `C:\Users\John Smith\...` are ordinary
 // Windows paths, and a rule that stopped at the first space left the surname
-// and the whole directory tail in a publishable record. So a space is consumed
-// only when the text after it is still path — more non-space characters
-// followed by another separator. `C:\tmp\a.log and then` stops at `a.log`,
-// because "and then" reaches no separator. A path rule that ate the rest of
-// the sentence would be a different bug, and the two cases below pin both ends.
-const WIN_TAIL = /(?:[^\s"'|<>,;)]|[ \t]+(?=[^\s"'|<>,;)]*[\\/]))*/.source;
-const UNC_TAIL = /(?:[^\s"'|<>]|[ \t]+(?=[^\s"'|<>]*[\\/]))+/.source;
+// and the whole directory tail in a publishable record. So the tail below has
+// two ways to swallow a space, and neither can match a space the other can:
+//
+//   mid-path  — more non-space characters and then another separator, so
+//               `My App\out.log` stays inside the path;
+//   end-path  — no separator left, but the segment being built carries no file
+//               extension and the next word is capitalised, which is the
+//               Windows convention for a directory name (`C:\Users\John
+//               Smith`, `\\FILESRV\Build Output`, `...\My Documents`).
+//
+// Prose after a path is lower-case, so `C:\tmp\a.log fine` and `C:\tmp then
+// run the build` still stop at the path. A rule that ate the rest of the
+// sentence would be a different bug, and the cases below pin both ends.
+//
+// razor: the two shapes this cannot decide are a capitalised word of prose
+// after an extensionless path (`cd C:\tmp Then restart` over-redacts, which is
+// the safe direction here) and a lower-case or post-extension final segment
+// (`C:\Users\john smith`, `C:\Users\john.doe Smith` still leak the tail).
+// Deciding either needs the filesystem, and a record is routinely sanitized on
+// a machine that never had those paths; the upgrade path is to pass the run's
+// own known roots in as literals to escape and strip.
+const pathTail = (stop, rep) => {
+  const c = `[^\\s${stop}]`;
+  return `(?:${c}`
+    + `|[ \\t]+(?=${c}*[\\\\/])`
+    + `|(?<![.][^\\\\/]{0,64})[ \\t]+(?!${c}*[\\\\/])(?=[A-Z]))${rep}`;
+};
 const PATH_RULES = [
-  [new RegExp(`\\\\\\\\[A-Za-z0-9._-]+\\\\${UNC_TAIL}`, 'g'), '<path>'],
-  [new RegExp(`\\b[A-Za-z]:[\\\\/]${WIN_TAIL}`, 'g'), '<path>'],
-  [/(^|[\s"'(=[])\/(?:Users|home|root|tmp|var|mnt|opt|usr|private|etc|Volumes)\/[^\s"'|<>,;)\]]*/g, '$1<path>'],
+  [new RegExp(`\\\\\\\\[A-Za-z0-9._-]+\\\\${pathTail(`"'|<>`, '+')}`, 'g'), '<path>'],
+  [new RegExp(`\\b[A-Za-z]:[\\\\/]${pathTail(`"'|<>,;)`, '*')}`, 'g'), '<path>'],
+  [new RegExp(`(^|[\\s"'(=[])\\/(?:Users|home|root|tmp|var|mnt|opt|usr|private|etc|Volumes)`
+    + `\\/${pathTail(`"'|<>,;)\\]`, '*')}`, 'g'), '$1<path>'],
 ];
 
 // Anything long and unbroken enough to be a credential. Deliberately blunt:

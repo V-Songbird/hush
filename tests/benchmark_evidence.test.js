@@ -325,11 +325,22 @@ describe('records are sanitized before anything is written', () => {
     assert.strictEqual(clean('share \\\\FILESRV\\Build Output\\out.log now'), 'share <path> now');
   });
 
+  test('the last spaced segment goes too, when the path ends the phrase', () => {
+    // Nothing follows the surname to prove it is still path, and `stderr` and
+    // `finalText` phrase it this way constantly.
+    assert.strictEqual(clean('cwd is C:\\Users\\John Smith'), 'cwd is <path>');
+    assert.strictEqual(clean('saved under C:\\Users\\John Smith\\My Documents'), 'saved under <path>');
+    assert.strictEqual(clean('share \\\\FILESRV\\Build Output'), 'share <path>');
+    assert.strictEqual(clean('cd /Users/John Smith/My Documents'), 'cd <path>');
+  });
+
   test('the path rule stops at the path, not at the end of the sentence', () => {
     // A rule that ate everything after a drive letter would be a different bug.
     assert.strictEqual(clean('opened C:\\tmp\\a.log and then gave up'), 'opened <path> and then gave up');
     assert.strictEqual(clean('cd C:\\tmp then run the build'), 'cd <path> then run the build');
     assert.strictEqual(clean('logs at C:/Users/x/y.log, then done'), 'logs at <path>, then done');
+    assert.strictEqual(clean('wrote C:\\tmp\\a.log fine'), 'wrote <path> fine');
+    assert.strictEqual(clean('cd /home/x/work && ls'), 'cd <path> && ls');
   });
 
   test('the username and the machine name go', () => {
