@@ -7,7 +7,7 @@ version field by convention).
 
 ## Unreleased
 
-`/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back — in place of a single savings figure.
+`/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back.
 
 Output parked in a file now goes to a folder of its own for each session, and that folder is deleted when the session ends. Anything a crashed session left behind is cleared once it's a day old.
 

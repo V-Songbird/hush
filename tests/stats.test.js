@@ -176,7 +176,11 @@ describe('summarizeSession', () => {
     const guarded = sid('fallback');
     const huge = Array.from({ length: 900 }, (_, i) => `line ${i} ${'x'.repeat(80)}`).join('\n');
     runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: guarded, tool_response: huge }, { HUSH_DEBUG: '1' });
-    assert.strictEqual(summarizeSession(guarded).fallbacks, 1);
+    const guardedSummary = summarizeSession(guarded);
+    assert.strictEqual(guardedSummary.fallbacks, 1);
+    const rendered = renderText({ ok: true, sessionId: guarded, session: guardedSummary, usageByModel: null });
+    assert.match(rendered, /Transform steps that declined: 1/);
+    assert.doesNotMatch(rendered, /left the output alone/, 'a declined step never claims the output was untouched');
   });
 
   test('retrieval: a Read of a parked file counts, an ordinary Read does not', () => {
@@ -191,7 +195,30 @@ describe('summarizeSession', () => {
       tool_name: 'Read', session_id: id, tool_input: { file_path: 'C:\\repo\\src\\app.js' },
       tool_response: { type: 'text', file: { filePath: 'C:\\repo\\src\\app.js', content, numLines: 300, startLine: 1, totalLines: 300 } },
     }, { HUSH_DEBUG: '1' });
-    assert.strictEqual(summarizeSession(id).retrievals, 1);
+    const s = summarizeSession(id);
+    assert.strictEqual(s.retrievals, 1);
+    assert.match(
+      renderText({ ok: true, sessionId: id, session: s, usageByModel: null }),
+      /Parked output read back: 1 time\(s\)$/m,
+      'every record measured it — the count needs no coverage caveat'
+    );
+  });
+
+  test('a manifest mixing pre-tracking and tracked records says how much of the session the count covers', () => {
+    const id = sid('mixed-records');
+    fs.writeFileSync(
+      debugManifestPath(id),
+      JSON.stringify({ tool: 'Bash', action: 'cap', bytesIn: 1000, bytesOut: 200 }) + '\n' +
+        JSON.stringify({ tool: 'Read', action: 'sidecar', bytesIn: 900, bytesOut: 100, retrieval: true }) + '\n'
+    );
+    const s = summarizeSession(id);
+    assert.strictEqual(s.retrievals, 1);
+    assert.strictEqual(s.retrievalMeasured, 1);
+    assert.strictEqual(s.decisions, 2);
+    assert.match(
+      renderText({ ok: true, sessionId: id, session: s, usageByModel: null }),
+      /Parked output read back: 1 time\(s\), counted over the 1 outputs that measured it/
+    );
   });
 
   test('records written before retrieval tracking report it as unavailable, never as zero', () => {

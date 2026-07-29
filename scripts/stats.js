@@ -99,6 +99,9 @@ function summarizeSession(sessionId) {
   // null, not 0: a manifest whose records predate retrieval tracking cannot
   // answer this, and "0 retrievals" would be an answer.
   let retrievals = null;
+  // How many records could answer it at all — below `decisions` means the
+  // count covers part of the session, which the report has to say.
+  let retrievalMeasured = 0;
   for (const e of entries) {
     const bi = e.bytesIn || 0;
     const bo = typeof e.bytesOut === "number" ? e.bytesOut : bi;
@@ -112,6 +115,7 @@ function summarizeSession(sessionId) {
     }
     if ("retrieval" in e) {
       if (retrievals === null) retrievals = 0;
+      retrievalMeasured++;
       if (e.retrieval) retrievals++;
     }
   }
@@ -133,6 +137,7 @@ function summarizeSession(sessionId) {
     // is never larger than the input the record counted.
     recoveryBytesAtMost: recoveryBytes,
     retrievals,
+    retrievalMeasured,
     noteBytes: noteOverheadFor(sessionId),
   };
 }
@@ -337,7 +342,10 @@ function renderText(report) {
     }
     out.push(`Observed bytes: ${formatBytes(s.bytesIn)} in -> ${formatBytes(s.bytesOut)} out (${formatDelta(s.bytesDelta)})`);
     out.push(`Outputs made smaller: ${s.smaller}; returned unchanged: ${s.unchanged}; made larger: ${s.larger}`);
-    out.push(`Transforms that declined and left the output alone: ${s.fallbacks}`);
+    // Not "left the output alone": a declined step can sit beside another that
+    // did shrink the same output (the shell guard standing down while the
+    // inline cap still ran), so this says only that a step declined.
+    out.push(`Transform steps that declined: ${s.fallbacks}`);
     if (s.recoveryWrites > 0) {
       out.push(
         `Parked into recovery files: ${s.recoveryWrites} output(s), at most ${formatBytes(s.recoveryBytesAtMost)} on disk (the parked copy is never larger than the input)`
@@ -347,6 +355,10 @@ function renderText(report) {
     }
     if (s.retrievals === null) {
       out.push("Parked output read back: unavailable — these records predate retrieval tracking");
+    } else if (s.retrievalMeasured < s.decisions) {
+      // Mixed manifest: older records can't answer, so a bare count would read
+      // as covering the whole session.
+      out.push(`Parked output read back: ${s.retrievals} time(s), counted over the ${s.retrievalMeasured} outputs that measured it`);
     } else {
       out.push(`Parked output read back: ${s.retrievals} time(s)`);
     }
