@@ -396,7 +396,22 @@ describe('template collapse: the view states its own recovery', () => {
     assert.ok(out.includes('similar lines collapsed'), 'the fixture really collapses');
     assert.strictEqual(out.split(TEMPLATE_COLLAPSE_NOTE).length - 1, 1, 'stated once per view, not once per run');
     assert.match(TEMPLATE_COLLAPSE_NOTE, /offset\/limit/, 'the retrieval route is the one that returns source verbatim');
-    assert.match(TEMPLATE_COLLAPSE_NOTE, /no warning\/error\/failure line and no line naming a prompt-quoted identifier is ever collapsed/);
+    assert.match(TEMPLATE_COLLAPSE_NOTE, /no warning\/error\/failure line is ever collapsed/);
+    // The prompt-named half is conditional in the code (a span matching more
+    // than RELEVANCE_COMMON lines is dropped as too common), so the footer
+    // states the exception instead of claiming an absolute it cannot keep.
+    assert.match(TEMPLATE_COLLAPSE_NOTE, /unless the quote matches too many lines to single any out/);
+  });
+
+  // ROADMAP 167 invariant 2, end to end: a uniform failing run used to collapse
+  // to one line under a footer swearing no failure line is ever collapsed.
+  test('a uniform run of failing lines is never collapsed, however identical the shape', () => {
+    const lines = Array.from({ length: 400 }, (_, i) => `not ok ${i + 1} - renders the widget tree`);
+    lines.push('# fail 400');
+    const out = compress(lines.join('\n'), 1, false, false, [], 1, null, true, false, {});
+    assert.ok(!out.includes('similar lines collapsed'), 'nothing collapsed');
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE), 'so the collapse footer makes no claim here');
+    assert.strictEqual((out.match(/^not ok /gm) || []).length, 400, 'every failing line is visible');
   });
 
   test('a view with nothing collapsed makes no recovery claim', () => {

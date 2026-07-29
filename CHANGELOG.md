@@ -15,7 +15,7 @@ Fixed an issue where a very large failing output was trimmed with no recovery fi
 
 A shortened search result now keeps the matches it left out: the complete match list is saved to a file for the session, and the summary tells you where. When it can't be saved, the summary asks for a narrower re-run instead of naming a file.
 
-A view with repeated lines collapsed now says how to get those lines back, and states what can never be collapsed — no warning, error, or failure line, and no line naming something you quoted in your prompt.
+A view with repeated lines collapsed now says how to get those lines back, and states what can never be collapsed — no warning, error, or failure line, and no line naming something you quoted in your prompt unless that quote matches too many lines to single any out.
 
 An exit code that carries a signal now names it — `exit 137 (SIGKILL)`.
 

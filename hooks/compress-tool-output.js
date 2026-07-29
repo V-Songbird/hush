@@ -199,9 +199,15 @@ function collapseTemplates(lines, relevanceTokens) {
 // the one route that returns source text verbatim in every case — see the
 // isRangeRead guard in main() — so that is what it names, with "re-run into a
 // file" as the shell half.
+//
+// The prompt-named half carries its own caveat (invariant 3 above): a quoted
+// span matching more than RELEVANCE_COMMON lines is dropped as too common to
+// discriminate, so an absolute "never collapsed" was a promise the code did
+// not keep. One clause states the exception rather than hiding it.
 const TEMPLATE_COLLAPSE_NOTE =
   "[hush hook: each collapse above kept its run's first line verbatim and dropped only later lines of the same shape; " +
-  "no warning/error/failure line and no line naming a prompt-quoted identifier is ever collapsed. " +
+  "no warning/error/failure line is ever collapsed, and no line naming something quoted in your prompt — " +
+  "unless the quote matches too many lines to single any out. " +
   "For the dropped lines themselves, Read the source file with offset/limit — ranged reads are returned verbatim — " +
   "or re-run the command into a file and read that.]";
 
