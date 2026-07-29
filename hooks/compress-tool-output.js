@@ -444,6 +444,10 @@ function firstLine(command) {
 // hook — two markers can legitimately land in one tool result.
 const EXIT_MARKER_ANY_RE = /\[\[hush:exit=[^[\]]*\]\]/g;
 const EXIT_MARKER_VALID_RE = /\[\[hush:exit=\s*(-?\d+)\s*\]\]/g;
+// The same pattern without /g, for the one caller that asks "is there a marker
+// here at all?" rather than replacing them. Derived from ANY's source so the
+// two can never drift, and non-global so a .test() carries no lastIndex state.
+const EXIT_MARKER_PRESENT_RE = new RegExp(EXIT_MARKER_ANY_RE.source);
 
 // Returns null when no hush marker appears at all (nothing to strip, caller
 // uses the old regex-sniffing heuristic). Otherwise always strips every
@@ -1421,12 +1425,18 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
 // response carrying one is exempt from the size invariant below. Dropping back
 // to the original there would leak `[[hush:exit=N]]` into the model's context
 // raw, which is the single thing extractWrappedExit exists to prevent.
+//
+// Keyed on the STRIPPABLE marker, not on the `[[hush:exit=` prefix: the host
+// truncates raw output around 29KB and can cut a real marker mid-text, and
+// hush's own source or docs dumped to stdout carry the bare prefix as
+// literal text. In both cases the stripper removes nothing, so exempting the
+// size invariant would ship a growing rewrite AND still leave the prefix in
+// front of the model — the worst of both.
 function mustSanitize(response) {
-  if (typeof response === "string") return response.includes("[[hush:exit=");
+  const strippable = (v) => typeof v === "string" && EXIT_MARKER_PRESENT_RE.test(v);
+  if (typeof response === "string") return strippable(response);
   if (response && typeof response === "object") {
-    for (const field of ["stdout", "stderr", "output"]) {
-      if (typeof response[field] === "string" && response[field].includes("[[hush:exit=")) return true;
-    }
+    return ["stdout", "stderr", "output"].some((field) => strippable(response[field]));
   }
   return false;
 }
@@ -1459,7 +1469,16 @@ function deliver(decision, updated, data) {
     if (failure) {
       record.action = failure.action;
       record.fallback = failure.reason;
+      // The rewrite is gone and the original ships whole, so the view omitted
+      // nothing. Line accounting left describing the dropped rewrite would
+      // overstate omission for output that was never trimmed, and the manifest
+      // is the trust artifact. Retention only resets when nothing was actually
+      // persisted: a sidecar already written is still on disk and the session
+      // still has to clean it up, whichever view shipped.
       record.bytesOut = record.bytesIn;
+      record.omitted = 0;
+      record.preserved = record.linesIn;
+      if (!record.recoveryPath) record.retention = "none";
       out = undefined;
     }
   }

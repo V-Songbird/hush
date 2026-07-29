@@ -1314,6 +1314,86 @@ describe('census-grade sidecar digests', () => {
   });
 });
 
+// The preservation vocabulary, pinned to literal sample lines rather than to
+// the predicate that recognises them. isKeepLine, SIGNAL_RE and
+// CENSUS_CATEGORIES are the code under test here, so nothing below may consult
+// them: every assertion runs on what compress() actually ships. Deleting any
+// single alternative from SIGNAL_RE, FAILURE_RE, TRACEBACK_FRAME_RE or a
+// CENSUS_CATEGORIES pattern has to fail at least one test in this block.
+describe('the keep vocabulary, pinned category by category', () => {
+  const { compress: comp3 } = require('../hooks/compress-tool-output');
+  const NL = String.fromCharCode(10);
+  const created = [];
+  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+
+  // Varying token counts, so no two neighbours share a template and the cap —
+  // not the collapse — is what decides which lines survive.
+  const filler = (i) => ['info', 'step', String(i)].concat(Array.from({ length: i % 5 }, () => 'ok')).join(' ');
+  /** 200 filler lines with one sample buried at 100 — past the head, short of the tail. */
+  const cappedView = (sample) => {
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    lines[100] = sample;
+    return comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+  };
+
+  const KEEP_SAMPLES = [
+    ['WARN', 'WARN cache ratio above the configured threshold'],
+    ['WARNING', 'WARNING stale lockfile still in use'],
+    ['ERR', 'ERR 42 socket closed by peer'],
+    ['ERROR', 'ERROR redis ECONNREFUSED on attempt three'],
+    ['FAIL', 'FAIL assertion in suite alpha'],
+    ['FAILURE', 'FAILURE building target beta'],
+    ['FAILED', 'FAILED to bind the configured port'],
+    ['DEPRECATED', 'DEPRECATED formatAmount takes one argument now'],
+    ['CRITICAL', 'CRITICAL disk at ninety nine percent'],
+    ['compound *Error', 'ReferenceError: retries is not defined'],
+    ['compound *Warning', 'DeprecationWarning: Buffer() is obsolete'],
+    ['traceback frame', '  File "app/handler.py", line 42'],
+  ];
+
+  for (const [label, sample] of KEEP_SAMPLES) {
+    test(`a ${label} line survives the cap from the middle of the output`, () => {
+      assert.ok(cappedView(sample).includes(sample), `${label} was cut: ${sample}`);
+    });
+  }
+
+  test('the control: an ordinary line in the same position is cut', () => {
+    const plain = 'notice compaction finished cleanly';
+    const out = cappedView(plain);
+    assert.ok(!out.includes(plain), 'nothing was cut, so the samples above prove nothing');
+    assert.match(out, /lines omitted from this view/);
+  });
+
+  // The census runs off SIGNAL_RE's own match set, so this one fixture pins
+  // both alternations at once: drop an alternative from either and the totals
+  // or the named counts move.
+  test('the sidecar digest census names every category on one mixed fixture', () => {
+    const lines = Array.from({ length: 1500 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    const samples = [
+      'ERR 42 socket closed by peer',
+      'ERROR redis ECONNREFUSED on attempt three',
+      'ReferenceError: retries is not defined',
+      'FAIL assertion in suite alpha',
+      'FAILURE building target beta',
+      'FAILED to bind the configured port',
+      'CRITICAL disk at ninety nine percent',
+      'WARN cache ratio above the configured threshold',
+      'WARNING stale lockfile still in use',
+      'DeprecationWarning: Buffer() is obsolete',
+      'DEPRECATED formatAmount takes one argument now',
+    ];
+    samples.forEach((s, i) => { lines[100 + i * 100] = s; });
+    const digest = withSidecar(() => comp3(lines.join(NL), 0, true, false, [], 1, 'censusvocab'));
+    pathFrom(digest);
+    const census = '3 errors, 3 failures, 1 critical, 3 warnings, 1 deprecation';
+    assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
+    assert.ok(digest.includes(`Signal lines (11 total: ${census}):`), 'the digest census drifted');
+    for (const s of samples) assert.ok(digest.includes(s), `digest dropped the ${s.split(' ')[0]} sample`);
+  });
+});
+
 describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
   const { compress } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);

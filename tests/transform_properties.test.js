@@ -502,10 +502,24 @@ describe('deliver(): one boundary, one fallback', () => {
     assert.strictEqual(shipped(lossy({ bytesIn: 504, bytesOut: 5 }), missingField, data), undefined);
   });
 
-  test('fieldGap judges plain objects only — a string or array rewrite is not a field drop', () => {
+  // The response side decides whether there were fields to lose: a string or
+  // array response never had any. The rewrite side is judged either way —
+  // replacing an object with a non-object loses every field there was.
+  // Deliberately shallow: top-level keys only, no nested walk.
+  test('fieldGap judges any rewrite of an object response, and nothing else', () => {
     assert.strictEqual(fieldGap('abc', 'ab'), null);
     assert.strictEqual(fieldGap([{ a: 1 }], [{ b: 2 }]), null);
     assert.match(fieldGap({ a: 1, b: 2 }, { a: 1 }), /dropped 1 field/);
+    assert.match(fieldGap({ a: 1, b: 2 }, 'gone'), /losing every field: a, b/);
+    assert.match(fieldGap({ a: 1, b: 2 }, ['a', 'b']), /replaced a 2-field response with an? array/);
+    assert.match(fieldGap({ a: 1 }, null), /with a null/);
+    assert.strictEqual(fieldGap({ a: { deep: 1 } }, { a: {} }), null, 'nested keys stay out of scope');
+  });
+
+  test('an object response rewritten to a string is dropped, not delivered', () => {
+    const response = { stdout: 'a'.repeat(500), stderr: 'boom', exitCode: 1 };
+    const data = { tool_name: 'Bash', tool_response: response };
+    assert.strictEqual(shipped(lossy({ bytesIn: 504, bytesOut: 5 }), 'a...', data), undefined);
   });
 
   test('the exit-code wrapper is stripped even when stripping it costs bytes', () => {
@@ -570,6 +584,58 @@ describe('e2e: main() routes every path through the same boundary', () => {
     assert.strictEqual(rec[0].action, 'rejected-not-smaller');
     assert.strictEqual(rec[0].bytesOut, rec[0].bytesIn);
     assert.match(rec[0].fallback, /bytes against/);
+    // The original ships whole, so the record may not claim lines were left out.
+    assert.strictEqual(rec[0].omitted, 0, 'a rejected rewrite still reported omission');
+    assert.strictEqual(rec[0].preserved, rec[0].linesIn);
+    assert.strictEqual(rec[0].retention, 'none');
+  });
+
+  // The size exemption belongs to output a marker will actually be stripped
+  // FROM. A bare `[[hush:exit=` with no closing `]]` strips to nothing — the
+  // host truncates raw output around 29KB and can cut a real marker mid-text,
+  // and hush's own source or docs dumped to stdout carry the literal prefix.
+  test('a bare exit-marker prefix earns no size exemption — the same payload without it is refused', () => {
+    const dir = temp('bareprefix');
+    const r = runHookIn('compress-tool-output.js', dir, {
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      session_id: 'bareprefix',
+      tool_input: { command: 'node build.js' },
+      tool_response: 'a\na\na\na\na\na\na\na\n[[hush:exit=',
+    });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.strictEqual(r.stdout, '', `a growing rewrite shipped, raw prefix and all: ${r.stdout}`);
+    const rec = records(dir);
+    assert.strictEqual(rec[0].action, 'rejected-not-smaller');
+    assert.strictEqual(rec[0].bytesOut, rec[0].bytesIn);
+  });
+
+  test('a bare exit-marker prefix in one field earns no exemption for growth in another', () => {
+    const dir = temp('bareprefix-obj');
+    const r = runHookIn('compress-tool-output.js', dir, {
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      session_id: 'bareprefixobj',
+      tool_input: { command: 'node build.js' },
+      tool_response: { stdout: 'a\na\na\na\na\na\na\na', stderr: '[[hush:exit=', exitCode: 0 },
+    });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.strictEqual(r.stdout, '', `a growing rewrite shipped, raw prefix and all: ${r.stdout}`);
+    assert.strictEqual(records(dir)[0].action, 'rejected-not-smaller');
+  });
+
+  test('a complete marker still buys the exemption — stripping it is not a bargain', () => {
+    const dir = temp('realmarker');
+    const r = runHookIn('compress-tool-output.js', dir, {
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      session_id: 'realmarker',
+      tool_input: { command: 'node build.js' },
+      tool_response: 'a\na\na\na\na\na\na\na\n[[hush:exit=0]]',
+    });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.notStrictEqual(r.stdout, '', 'the sanitizing rewrite was dropped, so the raw wrapper reaches the model');
+    assert.ok(!r.stdout.includes('[[hush:exit='), 'the wrapper marker survived into the view');
   });
 
   test('a genuinely smaller rewrite still ships, with its recovery named', () => {

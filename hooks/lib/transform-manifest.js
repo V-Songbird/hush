@@ -132,9 +132,27 @@ const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 // Checked on the delivered shape rather than inside each renderer, so a
 // transform that learns to rewrite an object response cannot drop a field the
 // model was going to be shown.
+//
+// Two shapes of loss, one predicate. An object rewritten to a string, an array
+// or a primitive has lost EVERY field it arrived with — the same loss the key
+// check catches, one step larger — and a guard that read that as "not a
+// structured rewrite, nothing to say" was exempting the worst case it exists
+// for. Only the response side is judged: a string or array response was never
+// a field-bearing shape, so whatever replaces it cannot drop a field.
+//
+// razor: shallow by design — top-level keys only. A transform that rewrites a
+// nested object is not something any current path does, and the marginal
+// judgement (is a renamed inner key a loss?) is not one this guard can make.
+// Upgrade path if a nested renderer ever lands: walk both trees in step and
+// report the first path present in `original` and absent from `updated`.
 function fieldGap(original, updated) {
-  if (!isPlainObject(original) || !isPlainObject(updated)) return null;
-  const missing = Object.keys(original).filter((k) => !(k in updated));
+  if (!isPlainObject(original)) return null;
+  const keys = Object.keys(original);
+  if (!isPlainObject(updated)) {
+    const shape = Array.isArray(updated) ? 'array' : updated === null ? 'null' : typeof updated;
+    return `rewrite replaced a ${keys.length}-field response with a ${shape}, losing every field: ${keys.join(', ')}`;
+  }
+  const missing = keys.filter((k) => !(k in updated));
   return missing.length ? `rewrite dropped ${missing.length} field(s) the response arrived with: ${missing.join(', ')}` : null;
 }
 
