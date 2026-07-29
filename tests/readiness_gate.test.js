@@ -289,6 +289,48 @@ describe('falsifiability: a complete evidence set passes, and each break costs i
     assert.match(point(report, 8).missing, /1 README figure\(s\) no record produces: \$9\.99/);
   });
 
+  // $9.99 collides with nothing, so it proves the check runs, not that it
+  // discriminates. These records top out at $0.44 and the claim set prints the
+  // coding segment's +50.0% regression — a figure tracer that reads every
+  // number in the markdown lets that percentage back a $50.00 cost claim.
+  test('point 8 flips on a cost figure that only matches a percentage delta', () => {
+    const report = runFixture(fixtureRoot('pctcollision', {
+      readme: README_FIXTURE.replace('$0.42', '$50.00'),
+    }));
+    assert.deepStrictEqual(flipped(complete(), report), [8]);
+    assert.match(point(report, 8).missing, /1 README figure\(s\) no record produces: \$50\.00/);
+  });
+
+  test('a dollar figure traces to a cost, never to a percentage, a count or a latency', () => {
+    const claims = buildClaims(synthRuns());
+    assert.ok(claims.markdown.includes('+50.0%'), 'the fixture needs its colliding delta');
+    assert.strictEqual(gate.figureIsGenerated('$50.00', claims), false, 'a percentage backed a cost claim');
+    assert.strictEqual(gate.figureIsGenerated('$4.00', claims), false, 'a run count backed a cost claim');
+    assert.strictEqual(gate.figureIsGenerated('$0.42', claims), true, 'the baseline median stopped tracing');
+    assert.strictEqual(gate.figureIsGenerated('$0.29', claims), true, "hush's noisy-segment median stopped tracing");
+  });
+
+  test('an evidence run inherits no HUSH_* variable from the developer\'s shell', () => {
+    const root = fixtureRoot('envstrip', { runs: [] });
+    fs.mkdirSync(path.join(root, 'tests'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'tests', 'env.test.js'),
+      "require('node:test').test('no ambient tuning', () => {\n"
+      + "  const leaked = Object.keys(process.env).filter((k) => k.startsWith('HUSH_'));\n"
+      + "  require('node:assert').deepStrictEqual(leaked, [], 'leaked: ' + leaked.join(', '));\n"
+      + '});\n');
+    const ambient = { HUSH_TEMPLATE: 'off', HUSH_SIDECAR: 'off', HUSH_CAP_PASS: '5', HUSH_DISABLE: '1' };
+    const prev = Object.fromEntries(Object.keys(ambient).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, ambient);
+    try {
+      assert.strictEqual(gate.runTestFile('tests/env.test.js', root).pass, true,
+        'an ambient HUSH_* variable reached the evidence run');
+    } finally {
+      for (const [k, v] of Object.entries(prev)) {
+        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+      }
+    }
+  });
+
   test('point 10 flips when a record carries no batch, seed or segment', () => {
     // The key is left out rather than set to undefined; records.js now hashes
     // both shapes the same way, so either would do.

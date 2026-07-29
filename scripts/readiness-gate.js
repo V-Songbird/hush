@@ -38,8 +38,10 @@ function runTestFile(file, root) {
   // A nested runner inherits the parent's IPC wiring otherwise.
   delete env.NODE_TEST_CONTEXT;
   delete env.NODE_CHANNEL_FD;
-  // A release gate must not inherit the developer's ambient off switches.
-  for (const k of ['HUSH_DISABLE', 'HUSH_CORE', 'HUSH_QUIET', 'HUSH_DEBUG']) delete env[k];
+  // A release gate must not inherit the developer's shell at all: not the off
+  // switches, not the tuning knobs (HUSH_TEMPLATE, HUSH_SIDECAR, HUSH_CAP_*)
+  // that quietly change what a transform does under the evidence tests.
+  for (const k of Object.keys(env)) if (k.startsWith('HUSH_')) delete env[k];
   const started = Date.now();
   const r = spawnSync(process.execPath, ['--test', '--test-reporter=tap', path.join(root, file)],
     { cwd: root, encoding: 'utf8', env, timeout: 600000 });
@@ -90,7 +92,9 @@ function retained(ctx) {
   let value;
   try {
     const { runs, batches } = readRecords(path.join(ctx.root, RECORDS_DIR));
-    value = { runs: runs.filter((r) => !r.error), batches, error: null };
+    // Errored runs stay in: they are records on disk, and the completeness
+    // check publish.js runs needs to see them as present rather than missing.
+    value = { runs, batches, error: null };
   } catch (err) {
     value = { runs: [], batches: [], error: err.code === 'ENOENT' ? 'directory does not exist' : err.message };
   }
@@ -103,11 +107,21 @@ const moneyFigures = (text) => [...new Set(text.match(/\$\d+\.\d+/g) || [])];
 /** A readable sample of a long figure list — the count is the point, not the roll call. */
 const someOf = (list, n = 6) => (list.length > n ? `${list.slice(0, n).join(', ')} and ${list.length - n} more` : list.join(', '));
 
-/** True when a published figure is some number in the generated claims, at the figure's own precision. */
-function figureIsGenerated(figure, markdown) {
+/**
+ * True when a published dollar figure is a COST the claim set generated, at
+ * the figure's own precision.
+ *
+ * Traced against the claim set's cost list, never against every number in the
+ * markdown: that page is full of numbers that are not money — percentage
+ * deltas, run counts, `n`, token traffic, latencies — and at two decimal places
+ * a `+50.0%` regression happily backs a `$50.00` README claim it has nothing to
+ * do with. This point exists precisely to fail a cost figure the records do not
+ * produce, so the collision has to be impossible rather than unlikely.
+ */
+function figureIsGenerated(figure, claims) {
   const want = Number(figure.slice(1));
   const digits = (figure.split('.')[1] || '').length;
-  return (markdown.match(/\d+(?:\.\d+)?/g) || []).some((n) => Number(Number(n).toFixed(digits)) === want);
+  return (claims.costs || []).some((c) => Number(c.toFixed(digits)) === want);
 }
 
 // --- the ten points ----------------------------------------------------------
@@ -220,7 +234,7 @@ function optionalSurfacesStayCold(ctx) {
 function claimsComeFromRecords(ctx) {
   const claim = 'every public performance figure in README.md is regenerated from hash-verified run records, '
     + 'per workload segment, from one batch';
-  const { runs, error } = retained(ctx);
+  const { runs, batches, error } = retained(ctx);
   let readme = '';
   try { readme = ctx.read('README.md'); } catch { /* reported below through the figure count */ }
   const figures = moneyFigures(readme);
@@ -239,12 +253,14 @@ function claimsComeFromRecords(ctx) {
   const covered = new Set(runs.map((r) => r.segment).filter(Boolean));
   const uncovered = segments.filter((s) => !covered.has(s));
 
-  const claims = buildClaims(runs); // throws when the records span two batches
+  // Throws when the records span two batches, or when the batch manifest
+  // planned runs whose records are no longer there.
+  const claims = buildClaims(runs, batches);
   evidence.push(`benchmarks/runner/publish.js — regenerated ${claims.segments.length} segment tables from batch ${claims.batchId}`);
 
   let published = null;
   try { published = ctx.read(PUBLISHED_CLAIMS); } catch { /* absence is reported below */ }
-  const untraceable = figures.filter((f) => !figureIsGenerated(f, claims.markdown));
+  const untraceable = figures.filter((f) => !figureIsGenerated(f, claims));
 
   const gaps = [
     uncovered.length && `no records for segment(s) ${uncovered.join(', ')}`,
