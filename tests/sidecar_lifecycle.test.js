@@ -105,6 +105,16 @@ describe('sidecar storage: a session owns its namespace', () => {
     assert.ok(isSidecarPath(fileA), 'a namespaced path is still recognized as a sidecar read');
   });
 
+  test('ids differing only in case share a directory where the filesystem folds case, and not where it does not', () => {
+    const upper = path.resolve(sessionDir('ABCD1234'));
+    const lower = path.resolve(sessionDir('abcd1234'));
+    if (process.platform === 'win32') {
+      assert.strictEqual(upper, lower, 'NTFS ignores case, so one id must not be able to delete the other');
+    } else {
+      assert.notStrictEqual(upper, lower, 'posix keeps case distinct, so the ids stay separate namespaces');
+    }
+  });
+
   test('a session id with separators in it stays one directory under the root', () => {
     const dir = path.resolve(sessionDir('../../escape/attempt'));
     assert.strictEqual(path.dirname(dir), path.resolve(SIDECAR_ROOT));
