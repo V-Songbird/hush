@@ -11,6 +11,10 @@ Fixed an issue where a failing run was compressed as if it had passed when the t
 
 Fixed an issue where a very large failing output was trimmed with no recovery file to read the rest from. A capped view of a failing run also now says how to get the omitted lines back.
 
+A shortened search result now keeps the matches it left out: the complete match list is saved to a file for the session, and the summary tells you where. When it can't be saved, the summary asks for a narrower re-run instead of naming a file.
+
+A view with repeated lines collapsed now says how to get those lines back, and states what can never be collapsed — no warning, error, or failure line, and no line naming something you quoted in your prompt.
+
 An exit code that carries a signal now names it — `exit 137 (SIGKILL)`.
 
 `/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back.

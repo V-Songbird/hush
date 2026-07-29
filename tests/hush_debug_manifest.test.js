@@ -419,7 +419,7 @@ describe('transform manifest: the record contract', () => {
     assert.strictEqual(e.recoveryPath, 'C:\\repo\\logs\\app.log');
   });
 
-  test('grep-collapse — omitted match lines, recoverable by re-running the search', () => {
+  test('grep-collapse — omitted match lines, parked where the view says they are', () => {
     const id = sid('rec-grep');
     const lines = [];
     for (const f of ['src/a.js', 'src/b.js']) {
@@ -433,8 +433,26 @@ describe('transform manifest: the record contract', () => {
     const e = only(id);
     assert.strictEqual(e.action, 'grep-collapse');
     assert.strictEqual(e.omitted, 74, 'both files keep 3 of 40 matches');
+    assert.strictEqual(e.recovery, 'sidecar');
+    assert.strictEqual(e.retention, 'session');
+    assert.strictEqual(fs.readFileSync(e.recoveryPath, 'utf8'), content, 'the complete match list is on disk');
+  });
+
+  test('grep-collapse — with nowhere to park the matches, the record falls back to the re-run', () => {
+    const id = sid('rec-grep-norun');
+    const lines = [];
+    for (const f of ['src/a.js', 'src/b.js']) {
+      for (let i = 1; i <= 40; i++) lines.push(`${f}:${i}: const value_${i} = ${'x'.repeat(60)};`);
+    }
+    runHook('compress-tool-output.js', {
+      tool_name: 'Grep', session_id: id, tool_input: { pattern: 'value_', path: 'src' },
+      tool_response: { mode: 'content', content: lines.join('\n'), numLines: lines.length },
+    }, { HUSH_DEBUG: '1', HUSH_SIDECAR: 'off' });
+    const e = only(id);
+    assert.strictEqual(e.action, 'grep-collapse');
     assert.strictEqual(e.recovery, 'rerun-command');
     assert.strictEqual(e.recoveryPath, 'src');
+    assert.strictEqual(e.retention, 'none');
   });
 
   test('shell-guard-skip — the record states why the transform stepped aside', () => {

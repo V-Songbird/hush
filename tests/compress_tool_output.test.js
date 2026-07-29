@@ -322,6 +322,58 @@ describe('unit: collapseTemplates', () => {
       if (prev === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prev;
     }
   });
+
+  // ROADMAP 167 invariant 3: the collapse footer claims prompt-named lines are
+  // never collapsed, so they have to be exempt here the way they already are in
+  // capLines and compressGrep.
+  test('a prompt-named line breaks a run instead of vanishing into it', () => {
+    const lines = [
+      ...Array.from({ length: 6 }, (_, i) => `INFO worker-${i} processing job ${i}`),
+      'INFO worker-9 processing job 9999 ioredis',
+      ...Array.from({ length: 6 }, (_, i) => `INFO worker-${i + 10} processing job ${i + 10}`),
+    ];
+    const out = collapseTemplates(lines, ['ioredis']);
+    assert.ok(out.includes('INFO worker-9 processing job 9999 ioredis'), 'the prompt-named line survives verbatim');
+    assert.strictEqual(out.filter((l) => l.includes('similar lines collapsed')).length, 2, 'and splits the run in two');
+  });
+
+  test('a too-common prompt span does not exempt the whole log from collapsing', () => {
+    const lines = Array.from({ length: 60 }, (_, i) => `INFO worker-${i} processing job ${i}`);
+    const out = collapseTemplates(lines, ['processing']);
+    assert.deepStrictEqual(out, [
+      'INFO worker-0 processing job 0',
+      '[hush hook: 59 similar lines collapsed (same shape, varying values)]',
+    ]);
+  });
+});
+
+// ROADMAP 167: the collapse markers state what happened; the view still owed
+// the model a way to get the collapsed lines back.
+describe('template collapse: the view states its own recovery', () => {
+  const { TEMPLATE_COLLAPSE_NOTE } = require('../hooks/compress-tool-output');
+
+  const run = (text) => compress(text, 0, false, false, [], 1, null, true, false, {});
+
+  test('a collapsed view carries the recovery footer exactly once, naming the ranged read', () => {
+    const out = run(Array.from({ length: 30 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n'));
+    assert.ok(out.includes('similar lines collapsed'), 'the fixture really collapses');
+    assert.strictEqual(out.split(TEMPLATE_COLLAPSE_NOTE).length - 1, 1, 'stated once per view, not once per run');
+    assert.match(TEMPLATE_COLLAPSE_NOTE, /offset\/limit/, 'the retrieval route is the one that returns source verbatim');
+    assert.match(TEMPLATE_COLLAPSE_NOTE, /no warning\/error\/failure line and no line naming a prompt-quoted identifier is ever collapsed/);
+  });
+
+  test('a view with nothing collapsed makes no recovery claim', () => {
+    const out = run(Array.from({ length: 30 }, (_, i) => `line ${i}: ${'unique-'.repeat(i % 5 + 1)}payload`).join('\n'));
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE));
+  });
+
+  test('the footer is dropped when stating it would cost more than the collapse saved', () => {
+    const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
+    const out = run(tiny);
+    assert.ok(out.includes('similar lines collapsed'), 'the collapse still happens');
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE), 'but a 6-line log is not worth a paragraph of guidance');
+    assert.ok(out.length < tiny.length, 'and the view never grows past what it was given');
+  });
 });
 
 describe('unit: extractWrappedExit', () => {
@@ -649,7 +701,9 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.match(updated, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
-    assert.ok(updated.split('\n').length <= 61);
+    // 60-line cap, its own omission markers, and the one-line template-collapse
+    // recovery footer this log's same-shape runs earn.
+    assert.ok(updated.split('\n').length <= 62, `capped view was ${updated.split('\n').length} lines`);
   });
 
   test('no transcript_path falls back to normal compression (fail-safe)', () => {
@@ -1778,6 +1832,115 @@ describe('grep match-list compression', () => {
       null,
       'HUSH_GREP=off'
     );
+  });
+});
+
+// ROADMAP 167: elided matches used to exist nowhere but the files they came
+// from, so the view could only advise a re-run. They are parked now, and the
+// marker names the copy only when the copy is really there.
+describe('grep elision: the omitted matches are persisted', () => {
+  const H = require('../hooks/compress-tool-output.js');
+  const { sessionDir } = require('../hooks/lib/sidecar-store');
+
+  const sessions = [];
+  after(() => { for (const id of sessions) fs.rmSync(sessionDir(id), { recursive: true, force: true }); });
+
+  function newSession(label) {
+    const id = `hush-167-${label}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessions.push(id);
+    return id;
+  }
+
+  // This file pins HUSH_SIDECAR=off for the inline-cap suites; persistence
+  // tests need it back on, without depending on ambient env either way.
+  function sidecarOn(fn) {
+    const prev = process.env.HUSH_SIDECAR;
+    delete process.env.HUSH_SIDECAR;
+    try {
+      return fn();
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev;
+    }
+  }
+
+  const matchList = (files, per, body = (i) => `const value_${i} = ${'x'.repeat(60)};`) => {
+    const lines = [];
+    for (const f of files) for (let i = 1; i <= per; i++) lines.push(`${f}:${i}: ${body(i)}`);
+    return lines.join('\n');
+  };
+
+  const savedPath = (out) => {
+    const m = out.match(/The complete match list was saved to (\S+) —/);
+    return m ? m[1] : null;
+  };
+
+  test('the complete match list lands on disk and the summary points at it', () => {
+    const id = newSession('persist');
+    const content = matchList(['src/a.js', 'src/b.js'], 40);
+    const decision = {};
+    const out = sidecarOn(() => H.compressGrep(content, [], 'src', decision, id));
+
+    const named = savedPath(out);
+    assert.ok(named, `the summary names the parked copy: ${out.split('\n').filter((l) => l.startsWith('[hush'))[0]}`);
+    assert.strictEqual(fs.existsSync(named), true, 'and the file is there before the view referencing it is delivered');
+    assert.strictEqual(fs.readFileSync(named, 'utf8'), content, 'holding every match line, verbatim');
+    assert.strictEqual(decision.recovery, 'sidecar');
+    assert.strictEqual(decision.retention, 'session');
+    assert.strictEqual(path.dirname(path.resolve(decision.recoveryPath)), path.resolve(sessionDir(id)));
+    assert.ok(out.length < content.length, 'the view is still smaller than what it replaced');
+  });
+
+  test('the same result twice in one session reuses the one file', () => {
+    const id = newSession('idempotent');
+    const content = matchList(['src/a.js'], 60);
+    sidecarOn(() => H.compressGrep(content, [], 'src', {}, id));
+    sidecarOn(() => H.compressGrep(content, [], 'src', {}, id));
+    assert.strictEqual(fs.readdirSync(sessionDir(id)).length, 1);
+  });
+
+  test('with persistence off, the marker offers the re-run and claims no file', () => {
+    const id = newSession('off');
+    const content = matchList(['src/a.js', 'src/b.js'], 40);
+    const decision = {};
+    const prev = process.env.HUSH_SIDECAR;
+    process.env.HUSH_SIDECAR = 'off';
+    let out;
+    try {
+      out = H.compressGrep(content, [], 'src', decision, id);
+    } finally {
+      if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev;
+    }
+    assert.ok(out.includes('match lines omitted'), 'the collapse still happens');
+    assert.strictEqual(savedPath(out), null, 'no path is claimed');
+    assert.ok(out.includes('re-run with a narrower pattern'), 'the honest instruction takes its place');
+    assert.strictEqual(decision.recovery, undefined, 'and the record is left to name the re-run');
+    assert.strictEqual(fs.existsSync(sessionDir(id)), false, 'nothing was written');
+  });
+
+  test('credential-shaped matches are never parked — the view falls back to the re-run', () => {
+    const id = newSession('secret');
+    const content = matchList(['src/keys.js'], 60, (i) => `const key_${i} = "sk-ABCDEFGHIJKLMNOP${i}0000";`);
+    const decision = {};
+    const out = sidecarOn(() => H.compressGrep(content, [], 'src', decision, id));
+    assert.strictEqual(savedPath(out), null, 'a secret-bearing match list is not written out');
+    assert.ok(out.includes('re-run with a narrower pattern'));
+    assert.strictEqual(decision.recovery, undefined);
+    assert.strictEqual(fs.existsSync(sessionDir(id)), false, 'nothing reached disk');
+  });
+
+  test('end to end: the delivered Grep view names a file that exists', () => {
+    const id = newSession('hook');
+    const content = matchList(['src/a.js', 'src/b.js'], 40);
+    const res = runHook('compress-tool-output.js', {
+      tool_name: 'Grep', session_id: id,
+      tool_input: { pattern: 'value_', path: 'src', output_mode: 'content' },
+      tool_response: { mode: 'content', content, numLines: content.split('\n').length },
+    }, { HUSH_SIDECAR: 'on' });
+    const updated = hookOutput(res).hookSpecificOutput.updatedToolOutput;
+    const named = savedPath(updated.content);
+    assert.ok(named, 'the delivered view names the parked copy');
+    assert.strictEqual(fs.readFileSync(named, 'utf8'), content);
+    assert.strictEqual(updated.numLines, updated.content.split('\n').length);
   });
 });
 

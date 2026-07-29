@@ -120,11 +120,31 @@ function shareTemplate(aTokens, bTokens) {
   return same / aTokens.length >= 0.5 && anchors >= 2;
 }
 
-// A SIGNAL_RE line never joins a run and always breaks one — over-normalizing
-// distinct errors into one exemplar is the known failure mode this sidesteps
-// entirely, rather than trying to tune around it.
-function collapseTemplates(lines) {
+// INVARIANTS of template collapse — what may be collapsed, and what never may
+// (ROADMAP 167). Stated here because the view's own footer
+// (TEMPLATE_COLLAPSE_NOTE) states them to the model, and a promise the code
+// does not keep is worse than no promise:
+//
+//   1. Only a line that shares its run exemplar's shape is ever dropped: same
+//      token count, >=50% of positions token-identical, >=2 identical anchor
+//      tokens (shareTemplate). The exemplar itself is always kept verbatim.
+//   2. A SIGNAL_RE line (warning/error/failure/deprecation/critical) is never
+//      collapsed — it never joins a run and always breaks one. Over-normalizing
+//      distinct errors into one exemplar is the known failure mode this
+//      sidesteps entirely, rather than trying to tune around it.
+//   3. A line naming a prompt-quoted identifier is never collapsed either, on
+//      the same terms capLines and compressGrep use it: high-precision spans
+//      only, and a span matching more than RELEVANCE_COMMON lines is dropped as
+//      too common to discriminate.
+//   4. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
+//      the run is emitted verbatim.
+//
+// Anything outside 2-4 is fair game, and the dropped lines are NOT recoverable
+// from the view — only from the source, which is what the footer names.
+function collapseTemplates(lines, relevanceTokens) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
+  const tokens = usableRelevanceTokens(lines, relevanceTokens);
+  const exempt = (line) => SIGNAL_RE.test(line) || (tokens.length > 0 && tokens.some((t) => line.toLowerCase().includes(t)));
   const out = [];
   let runStart = -1;
   let anchorTokens = null;
@@ -144,24 +164,42 @@ function collapseTemplates(lines) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (SIGNAL_RE.test(line)) {
+    if (exempt(line)) {
       if (runLen > 0) flushRun();
       out.push(line);
       continue;
     }
-    const tokens = templateTokens(line);
-    if (runLen > 0 && shareTemplate(anchorTokens, tokens)) {
+    const lineTokens = templateTokens(line);
+    if (runLen > 0 && shareTemplate(anchorTokens, lineTokens)) {
       runLen++;
       continue;
     }
     if (runLen > 0) flushRun();
     runStart = i;
-    anchorTokens = tokens;
+    anchorTokens = lineTokens;
     runLen = 1;
   }
   if (runLen > 0) flushRun();
   return out;
 }
+
+// The one line a collapsed view owes the model: which lines could not have
+// been collapsed (so the visible slice can be trusted for signal), and where
+// the collapsed ones actually are. Stated once per view rather than per run —
+// the per-run marker stays cheap, and a view with a dozen collapses does not
+// repeat 300 characters of guidance a dozen times.
+//
+// The retrieval instruction has to be true for BOTH sources this transform
+// runs on: a shell command (nothing on disk to read) and a watched Read (the
+// file is there, but a plain re-read gets compressed again). A ranged read is
+// the one route that returns source text verbatim in every case — see the
+// isRangeRead guard in main() — so that is what it names, with "re-run into a
+// file" as the shell half.
+const TEMPLATE_COLLAPSE_NOTE =
+  "[hush hook: each collapse above kept its run's first line verbatim and dropped only later lines of the same shape; " +
+  "no warning/error/failure line and no line naming a prompt-quoted identifier is ever collapsed. " +
+  "For the dropped lines themselves, Read the source file with offset/limit — ranged reads are returned verbatim — " +
+  "or re-run the command into a file and read that.]";
 
 // Lines that look like they carry the task's actual signal (warnings, errors,
 // deprecations) survive the cap regardless of position — only surrounding
@@ -234,6 +272,21 @@ function extractRelevanceTokens(prompt) {
     if (s && !spans.includes(s)) spans.push(s);
   }
   return spans.slice(0, RELEVANCE_MAX_TOKENS);
+}
+
+// The too-common guard, in the shape the line-by-line transforms need it: a
+// prompt-named span matching more than RELEVANCE_COMMON lines cannot
+// discriminate — for a Grep the quoted SEARCH PATTERN itself sits in every
+// match line by definition — so it is dropped rather than exempting the whole
+// view from compression.
+function usableRelevanceTokens(lines, relevanceTokens) {
+  if (!relevanceTokens || !relevanceTokens.length) return [];
+  const lower = lines.map((l) => l.toLowerCase());
+  return relevanceTokens.filter((tok) => {
+    let hits = 0;
+    for (const l of lower) if (l.includes(tok)) hits++;
+    return hits > 0 && hits <= RELEVANCE_COMMON;
+  });
 }
 
 function capLines(lines, cap, relevanceTokens) {
@@ -414,34 +467,39 @@ function requestsEnumeration(prompt) {
 }
 
 // Grep content-mode results: the matches ARE the deliverable, so nothing
-// disappears silently — each matched file keeps its first few match lines,
-// every SIGNAL_RE or prompt-named line survives regardless, the rest collapse
-// to one per-file count line, and the marker states the rule. Lines that
-// don't parse as matches (multiline-match continuations, separators) are kept
-// verbatim. Two line formats exist: `path:line:` for directory searches and
-// bare `line:` when a single explicit file was searched — whichever parses
-// more lines wins, decided once per result so an ambiguous line can't flip
-// mid-list. The non-greedy prefix backtracks across Windows drive-letter
-// colons (`C:\x.js:12:` parses as path `C:\x.js`).
+// disappears silently. Lines that don't parse as matches (multiline-match
+// continuations, separators) are kept verbatim. Two line formats exist:
+// `path:line:` for directory searches and bare `line:` when a single explicit
+// file was searched — whichever parses more lines wins, decided once per
+// result so an ambiguous line can't flip mid-list. The non-greedy prefix
+// backtracks across Windows drive-letter colons (`C:\x.js:12:` parses as path
+// `C:\x.js`).
+//
+// INVARIANTS of the search elision — what may be elided, and what never may
+// (ROADMAP 167). The emitted marker states these, so they are contracts:
+//
+//   1. Every matched file keeps its first GREP_KEEP_PER_FILE match lines, in
+//      order, verbatim — with their path:line coordinates intact, so any kept
+//      match is one targeted Read away from its own context.
+//   2. Every SIGNAL_RE match line and every match line naming a prompt-quoted
+//      identifier survives regardless of position (usableRelevanceTokens
+//      applies the too-common guard first).
+//   3. No matched file ever vanishes: a file whose extra matches were elided
+//      is named in the summary with its exact total and shown counts, and the
+//      aggregate omitted count is stated.
+//   4. Nothing that failed to parse as a match line is ever elided.
+//   5. The elided match lines are persisted verbatim before the view naming
+//      them is built (persistGrepMatches), so the retrieval instruction points
+//      at a file that already exists. When they cannot be persisted — sidecar
+//      off, secret-shaped content, or any write failure — the marker drops the
+//      pointer and offers the re-run instead, and the record says so.
 const GREP_MATCH_RE = /^(.*?):(\d+):/;
 const GREP_SINGLE_RE = /^\d+:/;
 
-function compressGrep(content, relevanceTokens, fileLabel, decision) {
+function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) {
   const lines = content.split("\n");
   if (decision) { decision.linesIn = lines.length; decision.omitted = 0; }
-  // Same too-common guard capLines applies: a prompt-named span that matches
-  // more than RELEVANCE_COMMON lines can't discriminate — and for Grep the
-  // quoted SEARCH PATTERN itself sits in every match line by definition, so
-  // without this guard relevance-forcing would exempt the whole result.
-  let tokens = [];
-  if (relevanceTokens && relevanceTokens.length) {
-    const lower = lines.map((l) => l.toLowerCase());
-    tokens = relevanceTokens.filter((tok) => {
-      let hits = 0;
-      for (const l of lower) if (l.includes(tok)) hits++;
-      return hits > 0 && hits <= RELEVANCE_COMMON;
-    });
-  }
+  const tokens = usableRelevanceTokens(lines, relevanceTokens);
   let multiHits = 0;
   let singleHits = 0;
   for (const l of lines) {
@@ -484,13 +542,31 @@ function compressGrep(content, relevanceTokens, fileLabel, decision) {
   const summary = [...perFile.entries()]
     .filter(([, s]) => s.total > s.shown)
     .map(([file, s]) => `${file}: ${s.total} matches, ${s.shown} shown`);
-  const out = [
-    ...kept,
-    `[hush hook: ${omitted} match lines omitted; every matched file is counted below, and every warning/error-shaped match was kept. Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`,
-    ...summary,
-  ].join("\n");
+  // Written BEFORE the marker that names it, and only named when the write
+  // actually landed — a retrieval instruction pointing at a file that isn't
+  // there is worse than the re-run advice it replaced.
+  const saved = persistGrepMatches(content, sessionId);
+  const marker = saved
+    ? `[hush hook: ${omitted} match lines omitted from this view; every matched file is counted below, and every warning/error-shaped match was kept. ` +
+      `The complete match list was saved to ${saved.replace(/\\/g, "/")} — Read that file for the omitted matches ` +
+      `(offset/limit returns an exact slice). If it is gone, re-run the search.]`
+    : `[hush hook: ${omitted} match lines omitted from this view; every matched file is counted below, and every warning/error-shaped match was kept. ` +
+      `Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`;
+  const out = [...kept, marker, ...summary].join("\n");
+  // razor: a rewrite rejected here leaves the persisted copy behind unread —
+  // bounded (it is this session's own directory, deleted at SessionEnd) and
+  // rare (the summary would have to be bigger than the whole match list).
+  // Upgrade path if it ever matters: size-check against the prospective path
+  // first, since the file name is a pure function of the content.
   if (out.length >= content.length) return content;
-  if (decision) decision.omitted = omitted;
+  if (decision) {
+    decision.omitted = omitted;
+    if (saved) {
+      decision.recovery = "sidecar";
+      decision.recoveryPath = saved;
+      decision.retention = "session";
+    }
+  }
   return out;
 }
 
@@ -954,6 +1030,47 @@ function containsSecret(text) {
   return SECRET_RES.some((re) => re.test(text));
 }
 
+// The one place a sidecar file's name is decided, for every caller that parks
+// content: this session's own directory carries ownership and cleanup, and the
+// name is just the content hash, so re-firing on identical output reuses the
+// file instead of multiplying it. Returns null when the content must not be
+// persisted at all — the secret screen runs here, strictly before any caller
+// can be handed a path to write to.
+function sidecarTarget(content, sessionId) {
+  if (process.env.HUSH_SIDECAR === "off") return null;
+  try {
+    if (containsSecret(content)) return null;
+    return path.join(sidecarStore.sessionDir(sessionId), `${cheapHash(content)}.txt`);
+  } catch {
+    return null;
+  }
+}
+
+// Materializes a sidecarTarget. Returns true only when the file is on disk
+// afterwards (safeWriteFileSync throws on any refusal or I/O failure), so no
+// caller can print a path for a write that never landed.
+function writeSidecar(file, content) {
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    if (!fs.existsSync(file)) safeWriteFileSync(file, content);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ROADMAP 167: the elided half of a collapsed match list has nowhere else to
+// live — re-running the search regenerates it from files still on disk, but
+// only if the exact invocation is reproduced and nothing changed underneath.
+// Parking the complete list turns retrieval into one Read. Returns the path
+// when the copy is really there, null when it is not — the caller words its
+// marker from that answer, never the other way round.
+function persistGrepMatches(content, sessionId) {
+  const file = sidecarTarget(content, sessionId);
+  if (!file) return null;
+  return writeSidecar(file, content) ? file : null;
+}
+
 function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed) {
   if (process.env.HUSH_SIDECAR === "off") return null;
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
@@ -969,15 +1086,11 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, fail
   const partial = !!(hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX);
   if (partial && !failed) return null;
   try {
-    // Scan before ever touching disk. A scanner exception falls into the same
-    // catch as every I/O failure below and returns null (fail-open for the
-    // hook's output, but never a reason to persist ambiguous content).
-    if (containsSecret(cleaned)) return null;
-    // The session's own directory carries ownership, so the name is just the
-    // content hash: two sessions producing identical output now get a file
-    // each, and neither's cleanup can remove the other's recovery location.
-    const dir = sidecarStore.sessionDir(sessionId);
-    const file = path.join(dir, `${cheapHash(cleaned)}.txt`);
+    // sidecarTarget scans for secrets before ever handing back a path, so a
+    // credential-shaped payload falls through to the ordinary inline cap
+    // rather than being written out "cleaned".
+    const file = sidecarTarget(cleaned, sessionId);
+    if (!file) return null;
     const d = buildSidecarDigest(cleaned, relevanceTokens);
     const p = file.replace(/\\/g, "/");
     const saved = partial ? `was saved to ${p} as hush received it` : `was saved in full to ${p}`;
@@ -995,8 +1108,7 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, fail
     // Bail before ever touching disk and let compress() fall through to the
     // ordinary inline cap, which is a no-op here too but at least isn't larger.
     if (out.length >= cleaned.length) return null;
-    fs.mkdirSync(dir, { recursive: true });
-    if (!fs.existsSync(file)) safeWriteFileSync(file, cleaned);
+    if (!writeSidecar(file, cleaned)) return null;
     // The written file IS the recovery location for everything the digest
     // left out — the manifest record carries it (see deliver).
     return { text: out, file, linesIn: d.total, omitted: Math.max(0, d.total - d.shown) };
@@ -1220,12 +1332,21 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // completeness request ("list every compiled module") asked to see.
   let lines = dedupeConsecutive(cleaned.split("\n"));
   const dedupedLen = lines.length;
-  if (!enumerate) lines = collapseTemplates(lines);
+  if (!enumerate) lines = collapseTemplates(lines, relevanceTokens);
   const beforeCapLen = lines.length;
+  const collapsed = beforeCapLen < dedupedLen;
   const capped = beforeCapLen > cap; // capLines' own no-op guard is `length <= cap`
   lines = capLines(lines, cap, relevanceTokens);
   if (failed && capped) lines.push(FAILURE_RERUN_NOTE);
-  const out = lines.join("\n");
+  let out = lines.join("\n");
+  // The collapse markers themselves say nothing about how to get the collapsed
+  // lines back; the footer does, once per view. Appended after the join, so it
+  // never enters the line accounting below, and only when the collapse still
+  // pays for it — a view that grew to state its own recovery would be a worse
+  // deal than not collapsing at all.
+  if (collapsed && out.length + TEMPLATE_COLLAPSE_NOTE.length + 1 < cleaned.length) {
+    out += `\n${TEMPLATE_COLLAPSE_NOTE}`;
+  }
   // Line accounting for the manifest, derived from the view itself rather than
   // threaded out of dedupe/collapse/cap separately: a line hush keeps is kept
   // verbatim and everything hush adds is a bracketed [hush marker, so the
@@ -1236,7 +1357,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   if (decision) decision.omitted = Math.max(0, linesIn - lines.filter((l) => !HUSH_MARKER_RE.test(l)).length);
   if (decision && !decision.action) {
     if (capped) decision.action = "cap";
-    else if (beforeCapLen < dedupedLen) decision.action = "template-collapse";
+    else if (collapsed) decision.action = "template-collapse";
     else if (enumerate) decision.action = "enumerate-passthrough";
     else if (out === original) decision.action = "passthrough";
     else decision.action = "scrub-only"; // ansi/CR/dupe/exit-marker cleanup only
@@ -1443,14 +1564,18 @@ function main() {
         (typeof ti.path === "string" && ti.path) ||
         (response.filenames && response.filenames[0]) ||
         undefined;
-      out = compressGrep(content, relevance, label, decision);
+      out = compressGrep(content, relevance, label, decision, data.session_id);
     }
     decision.bytesOut = out.length;
     decision.action = out === content ? "passthrough" : "grep-collapse";
-    // Collapsed match lines are still in the files on disk, reachable exactly
-    // the way this view's own marker says: re-run the search narrower.
-    decision.recovery = "rerun-command";
-    decision.recoveryPath = (typeof ti.path === "string" && ti.path) || null;
+    // compressGrep names the parked copy when it managed to write one. Without
+    // it, the collapsed match lines are still in the files on disk, reachable
+    // exactly the way this view's own marker then says: re-run the search
+    // narrower.
+    if (!decision.recovery) {
+      decision.recovery = "rerun-command";
+      decision.recoveryPath = (typeof ti.path === "string" && ti.path) || null;
+    }
     if (out !== content) {
       updated = { ...response, content: out, numLines: out.split("\n").length };
     }
@@ -1551,6 +1676,7 @@ module.exports = {
   capLines,
   omittedMarker,
   FAILURE_RERUN_NOTE,
+  TEMPLATE_COLLAPSE_NOTE,
   looksLikeFailure,
   exitNote,
   isFileDump,
