@@ -4,7 +4,7 @@
     <img src="assets/logo.svg" alt="hush" width="240" />
   </picture>
   <h1>hush</h1>
-  <p><strong>Shuts Claude up so your session stops costing money to read.</strong></p>
+  <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
   <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across half the suite and peaks at 266 words, silent in 13 of 30 sessions. The hush lane is close to a flat line — silent in 27 of 30, and no remaining spike tops 25 words" width="700" />
 
@@ -23,7 +23,7 @@
 
 ## What is this?
 
-You've seen it: "Let me start by looking at the codebase." "Now I'll check the config." Four hundred lines of build output you didn't ask for, and — eventually — the one sentence you actually needed. Every word of that is billed.
+Claude talks a lot while it works. "Let me look at the codebase." "Now I'll check the config." Then four hundred lines of build output you never asked for — and, right at the end, the one sentence you actually needed.
 
 hush doesn't ask Claude to "be more concise" and hope for the best. It trims the actual bulk — logs, command output, narration — at the source, before any of it hits your bill. It's a specialist, and it says so on the tin: it earns its keep in sessions that read logs, run builds, and keep going turn after turn, because that's where the noise lives. Ask it a one-shot question with no tools involved and there's nothing to trim — you'll pay hush's own small overhead for the quieter reply.
 
@@ -38,7 +38,7 @@ And the one message you do get is built to be read on an empty tank. Answer firs
 
 ## How it works
 
-Five small habits, picked up the moment it's installed:
+hush picks up five small habits the moment you install it:
 
 | Moment | What happens |
 | --- | --- |
@@ -48,7 +48,7 @@ Five small habits, picked up the moment it's installed:
 | Really large output (a huge log, a giant lockfile) | Parked in a local file behind a short summary, so it isn't re-sent in full every turn |
 | Re-reading a file that changed on its own | Shown as the added and removed lines, not the whole file again |
 
-That's the whole list. No workflow to learn, no dial to find first — it's just how Claude behaves now.
+That's the whole list. No workflow to learn, no dial to find first. It's simply how Claude behaves now.
 
 All five are the default experience: **Core** trims the machine output, **Quiet** handles the silence and the answer-first final message. Two more surfaces sit off to the side until you name them — **Voices**, the style shelf (`/hush:pick-style`, `/hush:craft-style`), and **Draft**, the document rewriter (`/hush:hush-compress`). Neither switches itself on, and nothing rewrites a file of yours unless you run that last command.
 
@@ -61,13 +61,13 @@ Inside Claude Code, run:
 /plugin install hush@foundry
 ```
 
-Takes effect at your next session — nothing to configure. hush works in the background.
+It kicks in at your next session — nothing to configure. hush works quietly in the background.
 
 Running [razor](https://github.com/V-Songbird/razor) too? Good instinct — the pair is measured in [Better together](#better-together) below.
 
 ## What you can do
 
-hush runs itself; these commands are extras:
+hush runs itself. These commands are just extras:
 
 | You want to… | Command |
 | --- | --- |
@@ -79,9 +79,9 @@ hush runs itself; these commands are extras:
 > [!IMPORTANT]
 > `hush-compress` never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) and refuses to overwrite one that's already there. Frontmatter is carried across byte for byte, and a verifier flags every number, path, link, code block, identifier, and dropped "not" it can't account for in the draft. It catches likely omissions; it can't prove the shorter file still means the same thing. That's the review's job, and it's yours.
 
-`/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it says so.
+`/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it'll tell you so.
 
-`/hush:pick-style` is the shelf. Every style on it ships with the same silent machinery underneath, and they differ only in what that one last message is *for*:
+`/hush:pick-style` is the shelf. Every style on it runs the same silent machinery underneath — they differ only in what that one last message is *for*:
 
 | Style | What the final message does |
 | --- | --- |
@@ -104,11 +104,11 @@ We put hush up against plain Claude Code and two rivals — caveman, which tells
 
 <p align="center"><img src="assets/bench-hero.svg" alt="Average bill across the benchmark suite: no plugin $0.179, a 'be brief' plugin $0.175, an 'efficiency mode' plugin $0.170, hush $0.159. hush takes $0.019 off the bill; asking Claude to be brief takes off $0.004" width="700"></p>
 
-**Being brief isn't enough.** Asking Claude to talk less saves under half a cent. An efficiency mode saves about one. hush saves two. Asking politely and actually doing the work are two different things.
+**Being brief isn't enough.** Asking Claude to talk less saves under half a cent. An efficiency mode saves about one cent. hush saves two. Asking politely and actually doing the work turn out to be very different things.
 
 <p align="center"><img src="assets/bench-anatomy.svg" alt="One average session itemised: what Claude read — files, logs, command output — $0.155; what Claude wrote back, the reply, $0.024; the session $0.179. A plugin that only shortens the reply is working on the $0.024" width="700"></p>
 
-**Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on two cents of an eighteen-cent session. hush trims the logs and output before they hit your bill.
+**Almost the whole bill is what Claude *reads*,** not what it writes back. A plugin that only shortens the reply is working on two cents of an eighteen-cent session. hush trims the logs and output before they ever hit your bill.
 
 <p align="center"><img src="assets/bench-sidecar.svg" alt="A multi-turn debugging session — triage an outage, dig a version out of a huge lockfile, write the handoff: no plugin $0.43, a 'be brief' plugin $0.42, an 'efficiency mode' plugin $0.41, hush $0.28. hush takes $0.15 off the bill" width="700"></p>
 
@@ -116,9 +116,9 @@ We put hush up against plain Claude Code and two rivals — caveman, which tells
 
 <p align="center"><img src="assets/bench-chatter.svg" alt="The same three-turn job — triage an outage, dig a version from a huge lockfile, write the handoff — with every reply drawn at actual size. A typical run with no plugin fills 634 words; a typical hush run fills 286, a visibly shorter column. Both passed the same check" width="700"></p>
 
-**And you read a third less.** Across the suite the replies come to 95 words against 145 — one message at the end, outcome first, instead of pieces arriving while Claude works.
+**And you read a third less.** Across the suite the replies come to 95 words against 145 — one message at the end, answer first, instead of pieces trickling in while Claude works.
 
-**And it mostly says nothing until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 27 sessions out of 30. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And it mostly stays quiet until it's done.** That's the waveform at the top of this page — every session in the suite, one spike per run. hush is silent in 27 sessions out of 30. It isn't a gag order: Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
 
 ### The full picture
 
@@ -152,7 +152,7 @@ Every job passed its correctness check in every setup — not one cheaper-but-wr
 
 ### Better together
 
-We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/razor) — against the rival pair, caveman with ponytail. Ours came out cheapest on both models and was the only setup that never turned in a wrong answer; the rival pair managed to cost more than running no plugin at all. The difference is enforcement: caveman and ponytail *ask* — talk less, build lean — and asking works right up until the model forgets. hush and razor fire on every session, whether Claude is in the mood or not.
+We ran the pair too — hush alongside [razor](https://github.com/V-Songbird/razor) — against the rival pair, caveman with ponytail. Ours came out cheapest on both models, and was the only setup that never turned in a wrong answer. The rival pair actually managed to cost more than running no plugin at all. The difference is enforcement: caveman and ponytail *ask* — talk less, build lean — and asking works right up until the model forgets. hush and razor fire on every session, whether Claude is in the mood or not.
 
 ## Under the hood
 
