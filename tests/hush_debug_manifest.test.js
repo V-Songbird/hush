@@ -209,65 +209,6 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
   });
 });
 
-describe('HUSH_DEBUG manifest: MCP table decisions', () => {
-  function records(n = 30) {
-    return Array.from({ length: n }, (_, i) => ({
-      file: `src/main/kotlin/pkg/File${i}.kt`, line: i + 1, column: i % 3,
-      snippet: `val x${i} = compute(${i}) // padding padding padding for width`,
-      matchType: 'TEXT',
-    }));
-  }
-  function errorRecords(n = 40) {
-    // Every record is SIGNAL_RE-shaped (WARNING severity, one ERROR) — this
-    // is hush's flagship target (get_file_problems-style diagnostics), where
-    // the now-removed verbatim exemption used to route every record around
-    // the table and reliably produce output BIGGER than the input.
-    // renderMcpTable is lossless, so all of them flatten into rows same as
-    // any other homogeneous payload.
-    return Array.from({ length: n }, (_, i) => ({
-      file: `src/main/kotlin/pkg/File${i}.kt`, line: i + 1, column: i % 3,
-      snippet: `unresolved reference to compute in module ${i}`,
-      severity: i === 0 ? 'ERROR' : 'WARNING',
-      matchType: 'TEXT',
-    }));
-  }
-
-  test('mcp-table — a big homogeneous payload renders smaller as a table', () => {
-    const id = sid('mcp-table');
-    const rs = records();
-    const text = JSON.stringify(rs);
-    runHook('compress-tool-output.js', { tool_name: 'mcp__idea__search_regex', session_id: id, tool_response: text }, { HUSH_DEBUG: '1' });
-    const [entry] = readManifest(id);
-    assert.strictEqual(entry.action, 'mcp-table');
-    assert.strictEqual(entry.bytesIn, text.length);
-    assert.ok(entry.bytesOut < entry.bytesIn);
-  });
-
-  test('mcp-table — regression: an all-WARNING/ERROR diagnostics payload (the flagship target) still renders smaller, not rejected', () => {
-    const id = sid('mcp-diagnostics');
-    const rs = errorRecords();
-    const text = JSON.stringify(rs);
-    assert.ok(text.length >= 2048, 'fixture must clear the MCP table eligibility floor');
-    const r = runHook('compress-tool-output.js', { tool_name: 'mcp__idea__search_regex', session_id: id, tool_response: text }, { HUSH_DEBUG: '1' });
-    const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
-    assert.match(updated, /MCP JSON records rendered as a schema table/);
-    const [entry] = readManifest(id);
-    assert.strictEqual(entry.action, 'mcp-table');
-    assert.strictEqual(entry.bytesIn, text.length);
-    const savings = 1 - entry.bytesOut / entry.bytesIn;
-    assert.ok(savings >= 0.4, `expected >=40% smaller, got ${(savings * 100).toFixed(1)}%`);
-  });
-
-  test('passthrough — a measured MCP tool below the eligibility floor', () => {
-    const id = sid('mcp-small');
-    const text = JSON.stringify(records(2));
-    runHook('compress-tool-output.js', { tool_name: 'mcp__idea__search_regex', session_id: id, tool_response: text }, { HUSH_DEBUG: '1' });
-    const [entry] = readManifest(id);
-    assert.strictEqual(entry.action, 'passthrough');
-    assert.strictEqual(entry.bytesIn, entry.bytesOut);
-  });
-});
-
 describe('Probe 9 Spec 2: adversarial no-op fixtures', () => {
   const created = [];
   after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
@@ -463,38 +404,19 @@ describe('transform manifest: the record contract', () => {
     assert.match(e.fallback, /truncated by the host/);
   });
 
-  test('delta — a changed re-read points back at the file it read', () => {
-    const id = sid('rec-delta');
-    const filePath = 'C:\\repo\\logs\\delta.log';
-    const first = Array.from({ length: 80 }, (_, i) => `2026-07-28 INFO steady line ${i}`);
-    const read = (lines) => runHook('compress-tool-output.js', {
+  test('a capped log read points back at the file it read', () => {
+    const id = sid('rec-read');
+    const filePath = 'C:\\repo\\logs\\app.log';
+    const lines = Array.from({ length: 300 }, (_, i) => `2026-07-28 INFO steady line ${i}`);
+    runHook('compress-tool-output.js', {
       tool_name: 'Read', session_id: id, tool_input: { file_path: filePath },
       tool_response: { type: 'text', file: { filePath, content: lines.join('\n'), numLines: lines.length, startLine: 1, totalLines: lines.length } },
     }, { HUSH_DEBUG: '1' });
-    read(first);
-    const second = [...first];
-    second[40] = '2026-07-28 INFO steady line 40 (rewritten)';
-    read(second);
-    const entries = readManifest(id);
-    const e = entries[entries.length - 1];
-    assert.strictEqual(e.action, 'delta');
-    assert.ok(e.omitted > 0, 'unchanged lines are not shown');
+    const e = only(id);
+    assert.ok(e.omitted > 0, 'the capped view leaves lines out');
     assert.strictEqual(e.recovery, 'source-file');
     assert.strictEqual(e.recoveryPath, filePath);
     assert.strictEqual(e.preserved + e.omitted, e.linesIn);
-  });
-
-  test('mcp-table — lossless, so nothing is omitted and nothing needs recovering', () => {
-    const id = sid('rec-mcp');
-    const rs = Array.from({ length: 30 }, (_, i) => ({
-      file: `src/File${i}.kt`, line: i + 1, column: i % 3,
-      snippet: `val x${i} = compute(${i}) // padding padding padding for width`, matchType: 'TEXT',
-    }));
-    runHook('compress-tool-output.js', { tool_name: 'mcp__idea__search_regex', session_id: id, tool_response: JSON.stringify(rs) }, { HUSH_DEBUG: '1' });
-    const e = only(id);
-    assert.strictEqual(e.action, 'mcp-table');
-    assert.strictEqual(e.omitted, 0);
-    assert.ok(e.bytesOut < e.bytesIn);
   });
 });
 
@@ -510,7 +432,7 @@ describe('transform manifest: the recovery boundary', () => {
       /no path/
     );
     assert.match(
-      recoveryGap(buildRecord({ action: 'delta', linesIn: 100, omitted: 90, recovery: 'source-file' })),
+      recoveryGap(buildRecord({ action: 'cap', linesIn: 100, omitted: 90, recovery: 'source-file' })),
       /no path/
     );
   });
@@ -529,10 +451,8 @@ describe('transform manifest: the recovery boundary', () => {
     assert.match(recoveryGap(buildRecord({ action: 'enumerate-passthrough', linesIn: 100, omitted: 3 })), /no recovery location/);
   });
 
-  test('the two actions that keep every input line never need recovery metadata', () => {
-    for (const action of ['passthrough', 'mcp-table']) {
-      assert.strictEqual(recoveryGap(buildRecord({ action, linesIn: 100, omitted: 5 })), null, action);
-    }
+  test('the action that keeps every input line never needs recovery metadata', () => {
+    assert.strictEqual(recoveryGap(buildRecord({ action: 'passthrough', linesIn: 100, omitted: 5 })), null);
   });
 
   test('transformed output is not emitted when the record cannot back it', () => {
@@ -620,13 +540,13 @@ describe('Probe 9 Spec 4: passthrough invariant (byte-identical, end to end)', (
     assert.strictEqual(hookOutput(r), null, 'no rewrite at all — untouched shape, untouched bytes');
   });
 
-  test('a non-watched, non-MCP tool never gets touched, regardless of size', () => {
+  test('a non-watched tool never gets touched, regardless of size', () => {
     const big = 'z'.repeat(50000);
     const r = runHook('compress-tool-output.js', { tool_name: 'TodoWrite', tool_response: big });
     assert.strictEqual(hookOutput(r), null);
   });
 
-  test('an unmeasured MCP tool method: response passes through untouched, whatever its size', () => {
+  test('an MCP tool response passes through untouched, whatever its size', () => {
     const big = JSON.stringify({ results: Array.from({ length: 50 }, (_, i) => ({ a: i, b: `x${i}` })) });
     const r = runHook('compress-tool-output.js', { tool_name: 'mcp__idea__read_file', tool_response: big });
     assert.strictEqual(hookOutput(r), null);

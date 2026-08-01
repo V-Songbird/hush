@@ -1,6 +1,6 @@
 {
   "name": "hush",
-  "description": "Cuts the cost of noisy, log-heavy sessions at the harness level — hooks compress tool output and a terse output style trims narration; measured in headless benchmark runs over seeded fixture repos, where the win lands on log and multi-turn work and short no-tool tasks cost a little more.",
+  "description": "Trims command output, logs, and Claude's play-by-play before they reach your context, so long, noisy sessions cost less. Install and forget — nothing to configure. Short, no-tool questions cost a little more.",
   "license": "MIT",
   "author": {
     "name": "Victor Villegas",

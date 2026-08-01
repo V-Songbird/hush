@@ -1,6 +1,0 @@
-{
-  "name": "ledger-ui",
-  "version": "2.4.0",
-  "private": true,
-  "main": "src/reports/quarterly.js"
-}

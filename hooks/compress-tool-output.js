@@ -17,11 +17,6 @@ const sidecarStore = require("./lib/sidecar-store");
 const { coreOff } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
-// Edit/Write/MultiEdit never get their own output touched (see EDIT_TOOLS
-// below) — watched only so a re-read delta on the same path can tell "the
-// session changed this itself" apart from "this changed for some other
-// reason", per the re-read delta's correctness guard.
-const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
 
 // Caps are in lines. Passing output is mostly noise (install trees, progress
 // logs); failing output is evidence, so it keeps ~4x more.
@@ -31,13 +26,13 @@ const CAP_FAIL = intEnv("HUSH_CAP_FAIL", 250);
 // normal noisy build/log passes whole — no omission markers at all — so a model
 // asked to report EVERY item has nothing elided to distrust. Still bounded, so
 // a pathological megaline dump can't blow context.
-const CAP_ENUMERATE = intEnv("HUSH_CAP_ENUMERATE", 2000);
+const CAP_ENUMERATE = 2000;
 // Grep content-mode results below this size pass whole; above it, each
 // matched file keeps its first few match lines and the rest collapse to a
 // per-file count (compressGrep). Corpus-measured: the mass is in the >=4KB
 // tail, and per-file counts keep the file map intact.
-const GREP_MIN_CHARS = intEnv("HUSH_GREP_MIN", 4000);
-const GREP_KEEP_PER_FILE = intEnv("HUSH_GREP_KEEP", 3);
+const GREP_MIN_CHARS = 4000;
+const GREP_KEEP_PER_FILE = 3;
 
 function intEnv(name, fallback) {
   const n = parseInt(process.env[name] || "", 10);
@@ -102,7 +97,7 @@ function dedupeConsecutive(lines) {
 // what stops two lines merging on a shared timestamp or short flag alone.
 // Comparison is always against the run's first line (its exemplar), so the
 // whole run stays anchored to one shape instead of drifting line to line.
-const TEMPLATE_MIN_RUN = intEnv("HUSH_TEMPLATE_MIN_RUN", 5);
+const TEMPLATE_MIN_RUN = 5;
 
 function templateTokens(line) {
   return line.trim().split(/\s+/).filter(Boolean);
@@ -393,7 +388,7 @@ const ZERO_COUNT_RE = /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:
 
 function looksLikeFailure(text, exitCode) {
   // Exit-code evidence outranks text sniffing: when preserve-exit-code's
-  // trailer (or an MCP exec wrapper) reported a real code, a log full of the
+  // trailer reported a real code, a log full of the
   // word "error" is still a passing run, and a silent log with code 1 is still
   // a failure.
   if (typeof exitCode === "number") return exitCode !== 0;
@@ -622,238 +617,6 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
     }
   }
   return out;
-}
-
-// MCP JSON table-ification (ROADMAP 007 / Probe 7): a measured probe over
-// 6,739 real MCP tool_results on this machine found 429 eligible (>=2KB,
-// homogeneous JSON-record array) payloads with a MEDIAN 27.9% char savings
-// rendering as a schema-header + tab-rows table instead of raw JSON — gate
-// (>=100 eligible, >=15% median) passed. Scoped by MCP METHOD suffix, not
-// server prefix, so it survives whatever alias a user's MCP config gives the
-// JetBrains server (measured as "idea" here, "jetbrains" elsewhere); only
-// methods with >=20 measured eligible payloads are included.
-const MCP_TABLE_MIN_CHARS = 2048;
-const MCP_TABLE_MIN_RECORDS = 5;
-const MCP_TABLE_KEY_SHARE = 0.8;
-const MCP_TABLE_RE =
-  /^mcp__.+__(get_file_problems|search_regex|search_in_files_by_text|search_in_files_by_regex|build_project|get_run_configurations|search_text)$/;
-
-function isMcpTableTool(toolName) {
-  return typeof toolName === "string" && MCP_TABLE_RE.test(toolName);
-}
-
-// JetBrains MCP payloads are usually a bare array of records, or an object
-// wrapping one (`{results:[...]}`); a shallow (depth<=2) search covers both
-// without guessing at every possible field name. A wrapper's OTHER fields
-// (`total`, `next_cursor`, a `warnings` array) are payload too — rendering
-// only the records array would drop them silently — so every field walked past
-// on the way to the array is collected into `siblings` (dotted labels at
-// depth), and the caller decides whether they can be stated faithfully.
-function findMcpRecordsArray(parsed, depth, prefix, siblings) {
-  if (Array.isArray(parsed)) return parsed;
-  if (depth >= 2 || !parsed || typeof parsed !== "object") return null;
-  const collect = (obj, skipKey) => {
-    for (const k of Object.keys(obj)) if (k !== skipKey) siblings.push([prefix + k, obj[k]]);
-  };
-  for (const key of Object.keys(parsed)) {
-    const val = parsed[key];
-    if (Array.isArray(val) && val.length >= MCP_TABLE_MIN_RECORDS) {
-      collect(parsed, key);
-      return val;
-    }
-  }
-  for (const key of Object.keys(parsed)) {
-    const val = parsed[key];
-    if (val && typeof val === "object" && !Array.isArray(val)) {
-      // Only the winning branch pushes (the failing one returns before any
-      // collect call), so there is nothing to unwind on a miss.
-      const found = findMcpRecordsArray(val, depth + 1, `${prefix}${key}.`, siblings);
-      if (found) {
-        collect(parsed, key);
-        return found;
-      }
-    }
-  }
-  return null;
-}
-
-// A sibling is representable when one short line can state it exactly, which
-// means scalars only. Anything nested, long, or tab/newline-bearing would have
-// to be summarized or reflowed, and a summarized field is precisely the data
-// loss this guard exists to prevent — null rejects the whole conversion and
-// the raw JSON goes through untouched. Losing the rewrite is fine; losing a
-// field is not.
-const MCP_SIBLING_MAX_CHARS = 120;
-
-function renderMcpSiblings(siblings) {
-  if (!siblings.length) return "";
-  const parts = [];
-  for (const [key, val] of siblings) {
-    if (val !== null && typeof val === "object") return null;
-    const text = typeof val === "string" ? val : String(val);
-    if (text.length > MCP_SIBLING_MAX_CHARS || /[\t\n\r]/.test(text)) return null;
-    parts.push(`${key}=${text}`);
-  }
-  return "wrapper: " + parts.join(", ");
-}
-
-function isPlainObject(v) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-
-// Eligibility mirrors the probe exactly: >=2KB text, a JSON-parseable array
-// of >=5 objects whose keys overlap (intersection/union) >=80%.
-function mcpTableCandidate(text) {
-  if (typeof text !== "string" || text.length < MCP_TABLE_MIN_CHARS) return null;
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  const siblings = [];
-  const records = findMcpRecordsArray(parsed, 0, "", siblings);
-  if (!records || records.length < MCP_TABLE_MIN_RECORDS || !records.every(isPlainObject)) return null;
-  const wrapper = renderMcpSiblings(siblings);
-  if (wrapper === null) return null; // a wrapper field no short line can state exactly
-  const keySets = records.map((r) => new Set(Object.keys(r)));
-  const union = new Set();
-  keySets.forEach((s) => s.forEach((k) => union.add(k)));
-  let intersection = new Set(keySets[0]);
-  for (let i = 1; i < keySets.length; i++) {
-    intersection = new Set([...intersection].filter((k) => keySets[i].has(k)));
-  }
-  if (!union.size || intersection.size / union.size < MCP_TABLE_KEY_SHARE) return null;
-  return { records, columns: [...union], wrapper };
-}
-
-function tableCell(v) {
-  if (v === undefined) return "";
-  if (typeof v === "string") return v.replace(/[\t\n\r]+/g, " ");
-  if (typeof v === "object") return JSON.stringify(v).replace(/[\t\n\r]+/g, " ");
-  return String(v);
-}
-
-// Lossless: every record becomes a row, all values present, zero rows
-// dropped, and any wrapper the records array was nested in contributes its own
-// verbatim `wrapper: k=v, ...` line (mcpTableCandidate rejects the whole
-// conversion when a wrapper field cannot be stated that exactly). Only the
-// column classification (constant vs variable) is derived; nothing is elided
-// or summarized. The header is count-based, naming its own provenance,
-// matching every other [hush hook: ...] marker in this file.
-function renderMcpTable(records, columns, wrapper) {
-  const constantCols = [];
-  const variableCols = [];
-  for (const col of columns) {
-    if (!records.length) {
-      variableCols.push(col);
-      continue;
-    }
-    const values = records.map((r) => JSON.stringify(r[col]));
-    if (values.every((v) => v === values[0])) constantCols.push(col);
-    else variableCols.push(col);
-  }
-  const out = [`[hush hook: ${records.length} MCP JSON records rendered as a schema table below.]`];
-  if (wrapper) out.push(wrapper);
-  if (records.length) {
-    if (constantCols.length) out.push("constant: " + constantCols.map((c) => `${c}=${tableCell(records[0][c])}`).join(", "));
-    out.push(variableCols.join("\t"));
-    for (const r of records) out.push(variableCols.map((c) => tableCell(r[c])).join("\t"));
-  }
-  return out.join("\n");
-}
-
-// MCP tool_response is a bare array of content blocks (Part 2 fact #6), or
-// occasionally a plain string; nothing else.
-function extractMcpText(response) {
-  if (typeof response === "string") return response;
-  if (Array.isArray(response)) {
-    const text = response
-      .filter((b) => b && b.type === "text" && typeof b.text === "string")
-      .map((b) => b.text)
-      .join("\n");
-    return text || null;
-  }
-  return null;
-}
-
-// `decision` mirrors compress()'s side-channel: mutated with the action token
-// and byte counts, never affecting the return value.
-function compressMcpTable(response, decision) {
-  const text = extractMcpText(response);
-  if (text === null) {
-    if (decision) decision.action = "passthrough";
-    return undefined;
-  }
-  if (decision) { decision.bytesIn = text.length; decision.bytesOut = text.length; decision.linesIn = text.split("\n").length; }
-  const candidate = mcpTableCandidate(text);
-  if (!candidate) {
-    if (decision) decision.action = "passthrough";
-    return undefined;
-  }
-  const rendered = renderMcpTable(candidate.records, candidate.columns, candidate.wrapper);
-  if (rendered.length >= text.length) {
-    if (decision) decision.action = "rejected-not-smaller";
-    return undefined;
-  }
-  if (decision) { decision.action = "mcp-table"; decision.bytesOut = rendered.length; }
-  // The replacement must be a plain string or that same bare content-block
-  // array — an object wrapper ({content:[...]}) throws harness-side
-  // (`e.reduce is not a function`, Part 2 fact #6). Mirror the arrival shape.
-  return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
-}
-
-// JetBrains-style exec results arrive as one JSON blob {exitCode, output}
-// with the whole run's console inside the output string. The wrapper is
-// noise-free; the inner text is ordinary shell output, so it gets exactly the
-// treatment shell output gets — exit-code-aware caps, dedupe, signal kept —
-// and is re-embedded in the same JSON shape it arrived in.
-const MCP_EXEC_RE = /^mcp__.+__(execute_run_configuration|execute_terminal_command)$/;
-
-function isMcpExecTool(toolName) {
-  return typeof toolName === "string" && MCP_EXEC_RE.test(toolName);
-}
-
-function compressMcpExec(response, decision) {
-  const text = extractMcpText(response);
-  if (text === null) {
-    if (decision) decision.action = "passthrough";
-    return undefined;
-  }
-  if (decision) {
-    decision.bytesIn = text.length;
-    decision.bytesOut = text.length;
-    decision.action = "passthrough";
-    decision.linesIn = text.split("\n").length;
-  }
-  if (text.length < MCP_TABLE_MIN_CHARS) return undefined;
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-  if (!isPlainObject(parsed) || typeof parsed.output !== "string") return undefined;
-  const exitCode = typeof parsed.exitCode === "number" ? parsed.exitCode : undefined;
-  // The inner console text is what actually gets transformed, so its line
-  // accounting (not the JSON wrapper's) is what the manifest record carries;
-  // byte sizes stay whole-payload, matching what the model receives.
-  const inner = {};
-  const out = compress(parsed.output, exitCode, false, false, [], 1, null, true, false, inner);
-  if (out.length >= parsed.output.length) return undefined;
-  const rendered = JSON.stringify({ ...parsed, output: out });
-  if (rendered.length >= text.length) {
-    if (decision) decision.action = "rejected-not-smaller";
-    return undefined;
-  }
-  if (decision) {
-    decision.action = "mcp-exec";
-    decision.bytesOut = rendered.length;
-    decision.linesIn = inner.linesIn || 0;
-    decision.omitted = inner.omitted || 0;
-    decision.recovery = "rerun-command";
-  }
-  return Array.isArray(response) ? [{ type: "text", text: rendered }] : rendered;
 }
 
 // Read results are compressed ONLY for log-shaped files: a `.log` (optionally
@@ -1198,153 +961,6 @@ function isHostToolResultsPath(filePath) {
   );
 }
 
-// Re-read delta (ROADMAP 066b, corpus-probed): a watched Read path (log or
-// generated — never source, see the isLogPath/isGeneratedPath callers below)
-// whose content changed since this session last read it gets only the
-// changed lines, plus any SIGNAL_RE lines, instead of the full view again. A
-// local-transcript probe found 12.4% of full-file re-reads changed with no
-// self-edit in between — real, if modest, volume; the sibling idea (a delta
-// on a re-RUN command) measured under its own bar on the same corpus and was
-// deliberately not built. State lives per session, keyed by the exact path
-// string Read was given, and holds only cheap line hashes — never the file's
-// actual content — so there is nothing here for the secrets guard to screen.
-const DELTA_FORCE_FULL_EVERY = 3; // every Nth changed re-read of a path goes out full, not delta
-
-function deltaStatePath(sessionId) {
-  const safe = String(sessionId || "unknown").replace(/[^a-zA-Z0-9-]/g, "_");
-  return path.join(os.tmpdir(), `hush-delta-${safe}.json`);
-}
-
-function readDeltaState(sessionId) {
-  try {
-    return JSON.parse(fs.readFileSync(deltaStatePath(sessionId), "utf-8"));
-  } catch {
-    return {};
-  }
-}
-
-function writeDeltaState(sessionId, state) {
-  try {
-    safeWriteFileSync(deltaStatePath(sessionId), JSON.stringify(state));
-  } catch {
-    /* best effort — losing state just means the next re-read goes out full */
-  }
-}
-
-// Edit/Write/MultiEdit on a path this session is tracking means the next
-// content change is self-caused, not the external-change signal the delta
-// targets — the corpus probe counted those separately and excluded them from
-// the build target. Dropping the entry makes the next read a fresh baseline
-// (full output, no diff), which is exactly the expected shape.
-function invalidateDeltaPath(filePath, sessionId) {
-  if (typeof filePath !== "string" || !filePath || !sessionId) return;
-  const state = readDeltaState(sessionId);
-  if (!(filePath in state)) return;
-  delete state[filePath];
-  writeDeltaState(sessionId, state);
-}
-
-function hashLines(text) {
-  return text.split("\n").map(cheapHash);
-}
-
-// Index-position comparison — exact for the shapes this targets (a log
-// appended to, or a generated file rewritten with mostly the same rows), not
-// a general line-diff. A line inserted or removed mid-file shifts every
-// later hash and the tail reads as "changed" too; that only makes the delta
-// larger, never wrong, since every genuinely different line still shows.
-// Comparing up to the LONGER of the two is what lets a shrunk file register
-// at all — the indexes past the new end have no line to render, so renderDelta
-// turns them into the header's removed-line count instead.
-function changedLineIndexes(prevHashes, hashes) {
-  const out = [];
-  const max = Math.max(prevHashes.length, hashes.length);
-  for (let i = 0; i < max; i++) {
-    if (prevHashes[i] !== hashes[i]) out.push(i);
-  }
-  return out;
-}
-
-// `prevTotal` (the previous read's line count) is what makes a deletion
-// visible: changedIdx carries the vanished tail positions, but they have no
-// line to render, so without the count a shrunk file would report "0 of 45
-// lines shown ... everything else is unchanged" — false, and silently so.
-function renderDelta(lines, changedIdx, prevTotal, decision) {
-  const total = lines.length;
-  const removed = typeof prevTotal === "number" && prevTotal > total ? prevTotal - total : 0;
-  const signalIdx = [];
-  lines.forEach((l, i) => {
-    if (SIGNAL_RE.test(l)) signalIdx.push(i);
-  });
-  const inRange = changedIdx.filter((i) => i < total);
-  const shown = new Set([...inRange, ...signalIdx]);
-  const sorted = [...shown].sort((a, b) => a - b);
-  if (decision) { decision.linesIn = total; decision.omitted = total - sorted.length; }
-  const out = [
-    `[hush hook: this file changed since your last read of it this session — ${sorted.length} of ${total} ` +
-      `lines shown below (the changed lines, plus any warnings/errors/failures); ` +
-      (removed
-        ? `${removed} lines were removed since the last read (the file shrank from ${prevTotal} to ${total} lines); every other line is unchanged. `
-        : `everything else is unchanged. `) +
-      `Read it again without offset/limit for the full file.]`,
-  ];
-  let last = -1;
-  for (const i of sorted) {
-    if (i - last > 1) out.push(`  ... ${i - last - 1} unchanged lines ...`);
-    out.push(`L${i + 1}: ${lines[i]}`);
-    last = i;
-  }
-  if (total - 1 - last > 0) out.push(`  ... ${total - 1 - last} unchanged lines ...`);
-  // Hash-only state knows how MANY lines vanished, never which. When nothing
-  // inside the new range changed, the cut was a pure tail cut and the marker
-  // can say where; a mid-file cut shifts every later line, so those already
-  // render as changed above and the header's shrink count carries the rest.
-  if (removed && !inRange.length) out.push(`  ... ${removed} lines removed from the end of the file since the last read ...`);
-  return out.join("\n");
-}
-
-// Returns the delta text, or null whenever the caller should fall through to
-// the ordinary compress() view instead: delta turned off, no session to key
-// state on, first read of this path this session (nothing to diff against
-// yet), content identical to the last read, this is the forced-full Nth
-// changed re-read, or the delta isn't actually smaller than the cleaned text
-// it would replace (the same rejected-not-smaller discipline every other
-// rewrite in this file follows). Fail-open: any state-file trouble falls
-// through the same way.
-function maybeDelta(cleaned, filePath, sessionId, decision) {
-  if (process.env.HUSH_DELTA === "off") return null;
-  if (typeof filePath !== "string" || !filePath || !sessionId) return null;
-  try {
-    const state = readDeltaState(sessionId);
-    const prev = state[filePath];
-    const hashes = hashLines(cleaned);
-
-    if (!prev) {
-      state[filePath] = { hashes, rereads: 0 };
-      writeDeltaState(sessionId, state);
-      return null;
-    }
-
-    const changedIdx = changedLineIndexes(prev.hashes, hashes);
-    if (!changedIdx.length) return null;
-
-    const rereads = (prev.rereads || 0) + 1;
-    if (rereads % DELTA_FORCE_FULL_EVERY === 0) {
-      state[filePath] = { hashes, rereads: 0 };
-      writeDeltaState(sessionId, state);
-      return null;
-    }
-
-    const rendered = renderDelta(cleaned.split("\n"), changedIdx, prev.hashes.length, decision);
-    state[filePath] = { hashes, rereads };
-    writeDeltaState(sessionId, state);
-    if (rendered.length >= cleaned.length) return null;
-    return rendered;
-  } catch {
-    return null;
-  }
-}
-
 // `decision`, when passed, is mutated with the single action token that
 // classifies what this call actually did (see HUSH_DEBUG below) — purely an
 // observation side-channel: the return value is identical whether or not a
@@ -1548,23 +1164,6 @@ function main() {
   if (coreOff()) return;
   const data = readInput();
 
-  if (isMcpTableTool(data.tool_name)) {
-    const decision = {};
-    const result = compressMcpTable(data.tool_response, decision);
-    return deliver(decision, result, data);
-  }
-
-  if (isMcpExecTool(data.tool_name) && process.env.HUSH_MCP_EXEC !== "off") {
-    const decision = {};
-    const result = compressMcpExec(data.tool_response, decision);
-    return deliver(decision, result, data);
-  }
-
-  if (EDIT_TOOLS.has(data.tool_name)) {
-    invalidateDeltaPath(data.tool_input && data.tool_input.file_path, data.session_id);
-    return; // Edit/Write/MultiEdit output is never compressed — this is a state side effect only
-  }
-
   if (!WATCHED_TOOLS.has(data.tool_name)) return;
 
   const response = data.tool_response;
@@ -1596,27 +1195,13 @@ function main() {
     // slice must come back verbatim or the follow-up loop never resolves. Host
     // tool-results files stated that first; logs, generated files and hush's
     // own sidecars need it for exactly the same reason, so a ranged Read of
-    // any watched path passes through untouched. (No delta either: a slice
-    // covers different lines than whatever was hashed last time, so there is
-    // nothing sound to diff it against — exactly the scope the corpus probe
-    // measured.)
+    // any watched path passes through untouched.
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
     const hostRead = isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
       const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, retrieval: sideRead };
       if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead)) {
-        let out;
-        if (!sideRead && !hostRead && !enumerate) {
-          const cleaned = resolveCarriageReturns(stripAnsi(file.content));
-          const delta = maybeDelta(cleaned, filePath, data.session_id, decision);
-          if (delta !== null) {
-            decision.action = "delta";
-            out = delta;
-          }
-        }
-        if (out === undefined) {
-          out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead || hostRead, undefined, decision);
-        }
+        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead || hostRead, undefined, decision);
         decision.bytesOut = out.length;
         // Whatever this view left out is still on disk, at the path Read was
         // given — the sidecar path (set by compress) wins when there is one.
@@ -1791,21 +1376,7 @@ module.exports = {
   // scripts and tests that only need the manifest path keep one import.
   debugManifestPath,
   NOTE_TEXT,
-  isMcpTableTool,
-  mcpTableCandidate,
-  renderMcpTable,
-  extractMcpText,
-  compressMcpTable,
-  isMcpExecTool,
-  compressMcpExec,
   compressGrep,
   isHostToolResultsPath,
   containsSecret,
-  deltaStatePath,
-  readDeltaState,
-  writeDeltaState,
-  invalidateDeltaPath,
-  changedLineIndexes,
-  renderDelta,
-  maybeDelta,
 };

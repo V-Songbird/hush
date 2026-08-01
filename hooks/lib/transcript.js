@@ -1,9 +1,9 @@
 'use strict';
 
-// Shared transcript-tail helpers. Both hush hooks (narration-meter and
-// compress-tool-output) need to read the current turn's real human prompt from
-// the session JSONL; keep the tail-read and the turn-boundary schema in ONE
-// place so the origin.kind/isMeta rules can't drift between the two.
+// Shared transcript-tail helpers. compress-tool-output needs the current
+// turn's real human prompt from the session JSONL; the tail-read and the
+// turn-boundary schema live here so the origin.kind/isMeta rules have one home
+// rather than being restated at a call site.
 
 const fs = require('fs');
 

@@ -5,13 +5,25 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
-## Unreleased
+## 1.0.0 — 2026-08-01
+
+Removed `/hush:hush-compress`. hush no longer rewrites memory files — it trims tool output and keeps sessions quiet, and nothing else.
+
+Removed `/hush:stats`. The dashboard needed `HUSH_DEBUG=1` set before the work you wanted measured, and then reported what hush did rather than what you saved. `HUSH_DEBUG=1` still writes the record it read from.
+
+hush now watches four tools — `Bash`, `PowerShell`, `Read` and `Grep`. Results from an editor's own tools arrive whole.
+
+Removed the mid-turn word counter. The reminder Claude gets on every tool result is what keeps it quiet now, and one less process starts on each tool call.
+
+There are two settings now: `HUSH_DISABLE=1` turns hush off for a session, and `HUSH_DEBUG=1` writes a record of what it did. Four undocumented caps became fixed values.
+
+Re-reading a file that changed now gives you the ordinary shortened view instead of a changed-lines-only view.
+
+The benchmark suite, its fixture repos, and its run records no longer ship with the plugin — installing hush no longer downloads any of them. The suite and every record behind the published numbers live in the marketplace repo, linked from the README.
 
 Fixed an issue where a trimmed view could reach you longer than the output it replaced. Any view that isn't smaller — or that would drop a field the result arrived with — is dropped, and the original output is passed through untouched.
 
 Fixed an issue where a single very long line, such as a minified bundle or a base64 blob, could stall the compression hook.
-
-Core and Quiet are now separate switches. `HUSH_CORE=off` keeps the reminders while output arrives whole; `HUSH_QUIET=off` keeps the trimming while the reminders stop. `HUSH_DISABLE=1` still stops everything, and the output style stays its own switch.
 
 The note hush leaves before a compaction now lists every recovery file it can, says how many more there are when the list is capped, and only promises a re-run where a re-run really reproduces the output.
 
@@ -25,23 +37,15 @@ A view with repeated lines collapsed now says how to get those lines back, and s
 
 An exit code that carries a signal now names it — `exit 137 (SIGKILL)`.
 
-`/hush:stats` now reports what hush did — bytes in and out of each transform, outputs left alone, bytes parked in recovery files, and how often parked output was read back.
-
 Output parked in a file now goes to a folder of its own for each session, and that folder is deleted when the session ends. Anything a crashed session left behind is cleared once it's a day old.
 
 `HUSH_DISABLE=1` now stops everything hush does while a session runs — every hook, reminder, and file it would write. The output style is a separate switch: `/hush:pick-style` hands the slot back to stock.
 
-Fixed an issue where converting a structured result to a table could drop fields sitting beside the records — totals, cursors, and warnings are now kept, or the conversion doesn't run.
-
-Fixed an issue where re-reading a file that had lines deleted could report no change. Deletions are now shown as deletions.
-
 A ranged read (`Read` with an offset or a limit) now passes through untouched — you get exactly the lines you asked for.
-
-`/hush:hush-compress` refuses an unsupported file type or an existing `.hush.md` candidate before it reads anything, copies frontmatter across byte for byte, and won't hand you a draft the verifier can't clear.
 
 Switching styles now validates the new style before touching the active slot and puts the old one back if anything fails, so a failed switch can't leave you without a style. Restoring stock works as many times as you like, and `/hush:pick-style` shows where each style on the list came from.
 
-The README, plugin description, and benchmark docs describe hush as a specialist for noisy, log-heavy, multi-turn work that costs a little more on short, quiet tasks, and name the benchmark rows where it wins and loses. They also cover where parked output is stored and how to read it back, the two switches that turn hush off, and what `/hush:stats` can and can't tell you.
+The README describes hush as a specialist for noisy, log-heavy, multi-turn work that costs a little more on short, quiet tasks, names the benchmark rows where it wins and loses, and says plainly that a failing command is only trimmed in `bypassPermissions` mode or with `HUSH_WRAP=1`.
 
 The built-in Hush style is now written for tired and ADHD readers: it opens with the answer, reaches for the everyday word instead of the technical one, and holds every reply to 12 lines and 15 words a sentence.
 

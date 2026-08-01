@@ -5,9 +5,9 @@
 //   HUSH_CORE=off   Core off — compression, exit-code preservation, the
 //                   compaction note, its re-arm, and session-end cleanup all
 //                   stop; Quiet keeps injecting.
-//   HUSH_QUIET=off  Quiet off — the turn nudge, the narration meter, and the
-//                   subagent brief all stop; Core keeps compressing, writing
-//                   sidecars, and recording transforms.
+//   HUSH_QUIET=off  Quiet off — the turn nudge and the subagent brief both
+//                   stop; Core keeps compressing, writing sidecars, and
+//                   recording transforms.
 //   HUSH_DISABLE=1  beats both, in every combination.
 //
 // Precedence is pinned here too: a surface switch beats every per-hook flag
@@ -46,8 +46,6 @@ function plantedTemp(sessionId) {
   const safe = sessionId.replace(/[^a-zA-Z0-9-]/g, '_');
   fs.mkdirSync(path.join(dir, 'hush-sidecar', safe), { recursive: true });
   fs.writeFileSync(path.join(dir, `hush-note-${sessionId}`), '');
-  fs.writeFileSync(path.join(dir, `hush-meter-${safe}.json`), '{}');
-  fs.writeFileSync(path.join(dir, `hush-delta-${safe}.json`), '{}');
   fs.writeFileSync(path.join(dir, `hush-debug-${safe}.jsonl`), '');
   fs.writeFileSync(path.join(dir, 'hush-sidecar', safe, 'planted.txt'), 'kept\n');
   return dir;
@@ -84,7 +82,6 @@ const BASE = {
   HUSH_WRAP: '1',
   HUSH_NUDGE: '1',
   HUSH_COMPACT: 'on',
-  HUSH_NARRATION: 'on',
   HUSH_SUBAGENT: 'on',
   HUSH_SIDECAR: 'on',
   HUSH_DISABLE: '0',
@@ -184,12 +181,6 @@ function cases() {
       label: 'silence-nudge.js (PostToolUse)',
       input: { hook_event_name: 'PostToolUse' },
     })),
-    mk((session) => ({
-      surface: 'quiet',
-      name: 'narration-meter.js',
-      input: { hook_event_name: 'PostToolUse', session_id: session, transcript_path: TRANSCRIPT },
-      writes: true,
-    })),
     mk(() => ({
       surface: 'quiet',
       name: 'subagent-brief.js',
@@ -273,7 +264,6 @@ describe('HUSH_DISABLE=1 beats every Core/Quiet combination', () => {
 
 describe('a surface switch outranks the per-hook flags inside it', () => {
   const nudge = ALL.find((c) => c.label === 'silence-nudge.js (PostToolUse)');
-  const meter = ALL.find((c) => c.name === 'narration-meter.js');
   const brief = ALL.find((c) => c.name === 'subagent-brief.js');
   const compact = ALL.find((c) => c.name === 'precompact-summary.js');
   const compress = ALL.find((c) => c.name === 'compress-tool-output.js');
@@ -284,8 +274,6 @@ describe('a surface switch outranks the per-hook flags inside it', () => {
   });
 
   test('an on-valued per-hook flag does not resurrect either surface', () => {
-    assertActive(meter, { HUSH_NARRATION: 'on' });
-    assertInert(meter, { HUSH_NARRATION: 'on', HUSH_QUIET: 'off' });
     assertActive(brief, { HUSH_SUBAGENT: 'on' });
     assertInert(brief, { HUSH_SUBAGENT: 'on', HUSH_QUIET: 'off' });
     assertActive(compact, { HUSH_COMPACT: 'on' });

@@ -16,7 +16,7 @@
 // gate: recoveryGap is a correctness check on what gets emitted, so it cannot
 // depend on an env var. Only the on-disk manifest append stays behind
 // HUSH_DEBUG=1 — no measured I/O cost check has been run on always-on manifest
-// writing (see scripts/stats.js's header), so persisting stays opt-in.
+// writing, so persisting stays opt-in.
 
 const fs = require('fs');
 const os = require('os');
@@ -34,14 +34,11 @@ const ACTIONS = {
   sidecar: { lossy: true },
   cap: { lossy: true },
   'template-collapse': { lossy: true },
-  delta: { lossy: true },
   'grep-collapse': { lossy: true },
-  'mcp-exec': { lossy: true },
   'scrub-only': { lossy: true },
   'enumerate-passthrough': { lossy: true },
-  // The two that keep every input line by construction: mcp-table renders
-  // every record as a row, and passthrough returns the input unchanged.
-  'mcp-table': { lossy: false },
+  // The one that keeps every input line by construction: passthrough returns
+  // the input unchanged.
   passthrough: { lossy: false },
   'shell-guard-skip': { lossy: false, fallback: 'shell output may already be truncated by the host' },
   'rejected-not-smaller': { lossy: false, fallback: 'rewrite was not smaller than the input' },
@@ -56,7 +53,7 @@ const ACTIONS = {
 // the first reported action for anything else.
 const ACTION_PRIORITY = [
   'sidecar', 'shell-guard-skip', 'cap', 'template-collapse',
-  'mcp-table', 'rejected-not-smaller', 'enumerate-passthrough', 'scrub-only', 'passthrough',
+  'rejected-not-smaller', 'enumerate-passthrough', 'scrub-only', 'passthrough',
 ];
 
 function combineActions(actions) {
@@ -156,7 +153,7 @@ function fieldGap(original, updated) {
   return missing.length ? `rewrite dropped ${missing.length} field(s) the response arrived with: ${missing.join(', ')}` : null;
 }
 
-// Same sessionId sanitization as narration-meter.js's statePath.
+// The sessionId sanitization every hush temp path shares.
 function debugManifestPath(sessionId) {
   const safe = String(sessionId || 'unknown').replace(/[^a-zA-Z0-9-]/g, '_');
   return path.join(os.tmpdir(), `hush-debug-${safe}.jsonl`);

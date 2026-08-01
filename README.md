@@ -34,23 +34,22 @@ And the one message you do get is built to be read on an empty tank. Answer firs
 - **Cheaper noisy sessions.** The two biggest sources of bulk — machine output and narration — get shrunk, so the long, loud sessions cost less.
 - **Easier to read.** The answer sits at the top of one final message, not buried in a play-by-play.
 - **Your files are never touched, and big output is saved before it's shortened.** Anything large enough to be parked out of the chat is written whole to a local file the summary points at. Smaller trims keep the lines that carry signal — errors, warnings, failures — and drop the repetitive middle, and a failing command gets far more room than a clean one.
-- **Zero setup.** Install it and the trimming and the quiet final message are on. Voices and the document rewriter wait until you ask for them by name.
+- **Zero setup.** Install it and the trimming and the quiet final message are on. There is nothing to configure and nothing to learn.
 
 ## How it works
 
-hush picks up five small habits the moment you install it:
+hush picks up three small habits the moment you install it:
 
 | Moment | What happens |
 | --- | --- |
 | Progress narration | Swapped for one clean summary at the end |
 | Command output & log files | Trimmed as they come in — a short tail from a clean run, up to 250 lines from a failing one, with the error and warning lines pulled through |
-| Mid-turn rambling | Caught by a running word count and cut off the moment it starts |
 | Really large output (a huge log, a giant lockfile) | Parked in a local file behind a short summary, so it isn't re-sent in full every turn |
-| Re-reading a file that changed on its own | Shown as the added and removed lines, not the whole file again |
 
 That's the whole list. No workflow to learn, no dial to find first. It's simply how Claude behaves now.
 
-All five are the default experience: **Core** trims the machine output, **Quiet** handles the silence and the answer-first final message. Two more surfaces sit off to the side until you name them — **Voices**, the style shelf (`/hush:pick-style`, `/hush:craft-style`), and **Draft**, the document rewriter (`/hush:hush-compress`). Neither switches itself on, and nothing rewrites a file of yours unless you run that last command.
+> [!IMPORTANT]
+> **A command that fails is not trimmed on a default install.** When a command exits non-zero, Claude Code gives hush no way to replace that output, so the whole thing arrives as-is. hush can only trim a failing command when the session runs in `bypassPermissions` mode, or when you set `HUSH_WRAP=1`. The benchmark figures below were measured with `HUSH_WRAP=1` — read the rows about builds and failures with that in mind.
 
 ## Install
 
@@ -67,19 +66,12 @@ Running [razor](https://github.com/V-Songbird/razor) too? Good instinct — the 
 
 ## What you can do
 
-hush runs itself. These commands are just extras:
+hush runs itself. Two commands sit off to the side, for when you want the final message in a different voice:
 
 | You want to… | Command |
 | --- | --- |
-| Draft a shorter `CLAUDE.md` or notes file, for you to review and swap in | `/hush:hush-compress <path>` |
-| See what hush trimmed this session | `/hush:stats` |
 | Try one of the output styles hush ships, or hand back to stock | `/hush:pick-style` |
 | Build an output style in your own voice on hush's silent frame | `/hush:craft-style` |
-
-> [!IMPORTANT]
-> `hush-compress` never touches your original — it writes a copy alongside it (`CLAUDE.md` → `CLAUDE.hush.md`) and refuses to overwrite one that's already there. Frontmatter is carried across byte for byte, and a verifier flags every number, path, link, code block, identifier, and dropped "not" it can't account for in the draft. It catches likely omissions; it can't prove the shorter file still means the same thing. That's the review's job, and it's yours.
-
-`/hush:stats` needs `HUSH_DEBUG=1` set before the work you want measured. Without it there's nothing to report — and it'll tell you so.
 
 `/hush:pick-style` is the shelf. Every style on it runs the same silent machinery underneath — they differ only in what that one last message is *for*:
 
@@ -94,7 +86,7 @@ hush runs itself. These commands are just extras:
 
 Ask for a pirate and you get a pirate — `be` for is, `ye` for you, dropped g's, the whole way through, with the paths and the error text still exact. The trick is that your voice gets written into every line of the style file, not just the line that names it: Claude answers in the register it was handed. `craft-style` does that part for you. Want it terser than stock's readability rules allow? Ask for maximum compression — the skill strips the readability frame Rock-style, keeps the silence and the exact-facts contract, and tells you what you traded.
 
-Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
+Both commands ask before they swap, both take effect at your next session, and stock hush is always one command away. Updating the plugin hands the style slot back to stock, so re-pick your style after an update. One honest caveat: only the built-in style is benchmarked — the presets and anything you craft are unmeasured, and the numbers on this page belong to stock.
 
 **See them side by side.** Same bug, same fix, five sign-offs — [`styles/README.md`](styles/README.md).
 
@@ -145,10 +137,9 @@ Every job, every setup — the wins **and** the ties and losses. Cheapest per ro
 
 Every job passed its correctness check in every setup — not one cheaper-but-wrong answer.
 
-> [!IMPORTANT]
-> Read the rows, not just the last one. hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and it **loses** on short, low-output jobs, where its own overhead is bigger than anything it can trim: $0.077 against $0.060 on a no-tools explanation, $0.135 against $0.109 on a small bug fix. The average is the average of *this* suite with every job weighted the same. Your bill will follow whichever rows look like your work.
+Read the rows, not just the last one. hush wins where there's noise to cut — logs, long sessions, multi-turn debugging — and it **loses** on short, low-output jobs, where its own overhead is bigger than anything it can trim: $0.077 against $0.060 on a no-tools explanation, $0.135 against $0.109 on a small bug fix. The average is the average of *this* suite with every job weighted the same. Your bill will follow whichever rows look like your work.
 
-*How we tested: same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — headless agent sessions driven end to end, never a single generated reply — costs read from the API, not estimated. The repos are purpose-built fixtures, not open-source checkouts, and one of the 15 jobs runs across several turns. Numbers move a few percent between runs. Reproduce it yourself — see [benchmarks/](benchmarks/).*
+*How we tested: same jobs, four setups, several runs each in fresh throwaway workspaces, on Sonnet — headless agent sessions driven end to end, never a single generated reply — costs read from the API, not estimated. The repos are purpose-built fixtures, not open-source checkouts, and one of the 15 jobs runs across several turns. Numbers move a few percent between runs. Reproduce it yourself — the suite and every run record live in [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ### Better together
 
@@ -160,28 +151,21 @@ Every trim above happens locally as Claude works — read the plugin's files if 
 
 ## Settings
 
-Most people never touch these. A few environment variables tune the caps or turn parts off:
+Most people never touch these. There are two:
 
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
-| `HUSH_CORE=off` | Turns Core off and leaves Quiet running: command output arrives whole, nothing is parked in a file, nothing is recorded |
-| `HUSH_QUIET=off` | Turns Quiet's reminders off and leaves Core trimming: no mid-turn nudge, no narration budget, no subagent brief. The output style is the other half of Quiet and is a separate switch — see `HUSH_DISABLE` |
-| `HUSH_NARRATION_BUDGET=120` | Words of narration allowed before hush steps in |
-| `HUSH_SIDECAR=off` | Keeps big output inline instead of moving it to a file |
-| `HUSH_DELTA=off` | Shows the whole file again on a re-read instead of just what changed |
-| `HUSH_DEBUG=1` | Turns on the record `/hush:stats` reads from |
+| `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
 
-There are no compression levels and no profiles. hush has one policy; these switches turn parts of it off, they don't dial it up. `HUSH_DISABLE=1` wins over everything, and a surface switch wins over the smaller switches inside it — `HUSH_QUIET=off` keeps every one of Quiet's reminders off, no matter how the individual reminders are tuned.
+There are no compression levels and no profiles. hush has one policy.
 
 ## Good to know
 
 - **Getting the full output back.** When hush parks something big in a file, the summary names that file — read it and you have every byte. If the file is gone, run the command again; a second run isn't guaranteed to produce the same output as the first, so hush never claims it regenerates what was lost.
 - **Turning it off is two switches.** `HUSH_DISABLE=1` stops everything hush does while a session runs. The output style is separate — it's chosen at session start, so hand the slot back with `/hush:pick-style`, or uninstall.
-- **Core and Quiet come apart.** Want the trimming without the reminders, or the reminders without the trimming? `HUSH_CORE=off` and `HUSH_QUIET=off` are independent — either one leaves the other running.
 - **Where the parked output lives.** Your operating system's temp folder, in `hush-sidecar`, in a folder of its own for each session, one file per output, written only readable by you where the OS supports that. hush deletes that folder when the session ends, and clears anything a crashed session left behind once it's a day old. Anything you'd hate to see in a temp file, keep out of the terminal.
 - **Windows caveat.** Same atomic writes and the same refusal to follow symlinks, but the read-only-to-you file mode isn't enforceable there — treat parked output as readable by anything running as you.
-- **What `/hush:stats` can tell you.** What hush did to the tool output it handled: bytes in and out of each transform, how many outputs it left alone, how much it parked in recovery files, and how often you read that parked output back. It can't tell you what the session would have cost without it: there's no second, hush-free run of your session to compare against. It's a record of what hush did, not a bill you avoided.
 
 ## License
 

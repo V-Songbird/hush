@@ -52,8 +52,6 @@ function plantedTemp(sessionId, tag) {
   const safe = sessionId.replace(/[^a-zA-Z0-9-]/g, '_');
   fs.mkdirSync(path.join(dir, 'hush-sidecar', safe), { recursive: true });
   fs.writeFileSync(path.join(dir, `hush-note-${sessionId}`), '');
-  fs.writeFileSync(path.join(dir, `hush-meter-${safe}.json`), '{}');
-  fs.writeFileSync(path.join(dir, `hush-delta-${safe}.json`), '{}');
   fs.writeFileSync(path.join(dir, `hush-debug-${safe}.jsonl`), '');
   fs.writeFileSync(path.join(dir, 'hush-sidecar', safe, 'planted.txt'), 'kept\n');
   return dir;
@@ -147,13 +145,6 @@ function cases() {
     label: 'silence-nudge.js (PostToolUse)',
     session: freshSessionId(),
     input: { hook_event_name: 'PostToolUse' },
-  });
-  const meterSession = freshSessionId();
-  c.push({
-    name: 'narration-meter.js',
-    session: meterSession,
-    input: { hook_event_name: 'PostToolUse', session_id: meterSession, transcript_path: TRANSCRIPT },
-    writes: true,
   });
   c.push({
     name: 'preserve-exit-code.js',

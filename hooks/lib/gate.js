@@ -7,8 +7,7 @@
 //   HUSH_CORE=off    Core surface off — tool-output compression, exit-code
 //                    preservation, the compaction note and its re-arm, and
 //                    session-end cleanup
-//   HUSH_QUIET=off   Quiet surface off — the turn nudge, the narration meter,
-//                    and the subagent brief
+//   HUSH_QUIET=off   Quiet surface off — the turn nudge and the subagent brief
 //
 // A surface switch beats every per-hook flag inside that surface, so
 // HUSH_NUDGE=1 cannot resurrect a Quiet that is off. Per-hook flags still

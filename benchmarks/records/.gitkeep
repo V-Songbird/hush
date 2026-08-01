@@ -1,2 +1,0 @@
-Retained run records land here, one directory per batch. They are sanitized,
-hashed, and written once — see benchmarks/README.md.

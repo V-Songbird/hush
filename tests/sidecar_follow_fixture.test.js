@@ -1,13 +1,9 @@
 'use strict';
 
-// Probe 9, Spec 3: sidecar-follow eval task (benchmarks/tasks.json id
-// "sidecar-follow", fixture benchmarks/fixtures/sidecar-follow/). This is a
-// free, local, non-API check that the fixture actually has the shape the
-// task's check assumes — it never invokes `claude`, just compress() directly
-// on the fixture file, the same log-shaped transform a Read of it gets.
-//
-// The eval task itself is DEFINITION ONLY: run it later with
-//   node runner/run.js --tasks sidecar-follow --model <model>
+// A ~700-line test log, the shape a real Read of a build log has. This is a
+// free, local, non-API check — it never invokes `claude`, just compress()
+// directly on the fixture file, the same log-shaped transform a Read of it
+// gets.
 
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
@@ -16,15 +12,10 @@ const path = require('path');
 const { compress } = require('../hooks/compress-tool-output');
 const { sessionDir } = require('../hooks/lib/sidecar-store');
 
-const FIXTURE = path.join(__dirname, '..', 'benchmarks', 'fixtures', 'sidecar-follow', 'logs', 'test-output.log');
-const TASKS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'tasks.json'), 'utf8'));
+const FIXTURE = path.join(__dirname, 'fixtures', 'sidecar-follow-test-output.log');
 
-describe('sidecar-follow eval task definition', () => {
-  test('the task and its fixture both exist', () => {
-    const task = TASKS.find((t) => t.id === 'sidecar-follow');
-    assert.ok(task, 'tasks.json must define sidecar-follow');
-    assert.strictEqual(task.fixture, 'sidecar-follow');
-    assert.strictEqual(task.check.type, 'keywords');
+describe('a long test log follows through to the sidecar', () => {
+  test('the fixture exists', () => {
     assert.ok(fs.existsSync(FIXTURE), 'fixture log file must exist');
   });
 

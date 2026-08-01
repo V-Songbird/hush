@@ -33,7 +33,7 @@ const SIDECAR_ROOT = path.join(os.tmpdir(), 'hush-sidecar');
 // long enough that no plausible session loses a file it still points at.
 const STALE_MS = 24 * 60 * 60 * 1000;
 
-// Same sessionId sanitization as narration-meter.js's statePath — the id
+// The sessionId sanitization every hush temp path shares — the id
 // becomes a single path segment, so anything that isn't [A-Za-z0-9-] (path
 // separators and traversal included) is flattened to an underscore.
 // win32 folds the case: `ABCD1234` and `abcd1234` are one directory on NTFS,
