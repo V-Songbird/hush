@@ -75,6 +75,8 @@ The Anchor preset picked up three attention-friendly habits: when work remains f
 
 Added the Anchor style preset — silent while working, then one chunked, signposted report built for limited attention. Tightened the shipped presets so every style keeps hush's silence contract, and style verification now enforces that contract in every mode.
 
+Removed the Standup preset.
+
 ## 0.14.0-alpha — 2026-07-21
 
 Fixed an issue where Claude could report a wrong total after hush condensed a very large output — the digest now counts only non-empty lines and steers any total or count to the full saved copy.

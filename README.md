@@ -151,12 +151,14 @@ Every trim above happens locally as Claude works — read the plugin's files if 
 
 ## Settings
 
-Most people never touch these. There are two:
+Most people never touch these. The two day-to-day ones:
 
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
 | `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
+
+`HUSH_WRAP=1` is a third, situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
 
 There are no compression levels and no profiles. hush has one policy.
 
