@@ -6,14 +6,8 @@
 // by a sentinel file (hush-note-<session_id> in tmpdir) — but compaction
 // summarizes the note away while the sentinel still says "delivered", so
 // markers appearing after compaction arrive unexplained and risk being read
-// as prompt injection. Deleting the sentinel here re-arms delivery on the
-// next marker; deleting the meter's state file too is just cleanup (its
-// turn-boundary anchors are stale post-compaction) — deletion re-arms both
-// cleanly and is harmless if either file never existed. The re-read delta's
-// state file is deleted for the same reason as the meter's: compaction
-// destroys the referent — a line-hash baseline recorded against a summarized
-// transcript no longer corresponds to what the model actually remembers
-// reading, so the next read of any tracked path should go out full again.
+// as prompt injection. Deleting the sentinel re-arms delivery on the next
+// marker, and is harmless if the file never existed.
 //
 // Emits nothing: re-injecting the note unconditionally on every compaction
 // would spend tokens on sessions that never emit another marker. Silence is

@@ -698,7 +698,6 @@ const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
 // the file's full content to the hook (its own limits are far larger), so a big
 // lockfile/log Read is complete and the sidecar is genuinely full and helpful.
 const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 28000);
-const SIDECAR_DIR = sidecarStore.SIDECAR_ROOT;
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
