@@ -943,23 +943,6 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, fail
 // and pass untouched — that's the intended path the digest teaches.
 const isSidecarPath = sidecarStore.isSidecarPath;
 
-// Claude Code's own large-output persistence writes the RAW result to
-// .claude/projects/<slug>/<session>/tool-results/<id>.txt and hands the model
-// a pointer. Reading that file back is the host-side twin of reading a hush
-// sidecar — machine-persisted tool output, never user source — so it gets the
-// same treatment: full reads capped with the generous failure-grade cap and
-// every signal line kept; offset/limit range reads pass untouched. Both path
-// segments are required so a project's own "tool-results" folder never matches.
-const HOST_TOOLRESULTS_RE = /[\\/]\.claude[\\/]projects[\\/].+[\\/]tool-results[\\/][^\\/]+\.txt$/i;
-
-function isHostToolResultsPath(filePath) {
-  return (
-    process.env.HUSH_TOOLRESULTS !== "off" &&
-    typeof filePath === "string" &&
-    HOST_TOOLRESULTS_RE.test(filePath.trim())
-  );
-}
-
 // `decision`, when passed, is mutated with the single action token that
 // classifies what this call actually did (see HUSH_DEBUG below) — purely an
 // observation side-channel: the return value is identical whether or not a
@@ -1191,16 +1174,14 @@ function main() {
     const sideRead = isSidecarPath(filePath);
     // An explicit offset/limit means the model is navigating to a specific
     // slice — often after a capped view's own marker invited it — and that
-    // slice must come back verbatim or the follow-up loop never resolves. Host
-    // tool-results files stated that first; logs, generated files and hush's
-    // own sidecars need it for exactly the same reason, so a ranged Read of
-    // any watched path passes through untouched.
+    // slice must come back verbatim or the follow-up loop never resolves.
+    // Logs, generated files and hush's own sidecars all need it for the same
+    // reason, so a ranged Read of any watched path passes through untouched.
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
-    const hostRead = isHostToolResultsPath(filePath);
     if (file && typeof file.content === "string") {
       const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, retrieval: sideRead };
-      if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead || hostRead)) {
-        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead || hostRead, undefined, decision);
+      if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead)) {
+        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
         decision.bytesOut = out.length;
         // Whatever this view left out is still on disk, at the path Read was
         // given — the sidecar path (set by compress) wins when there is one.
@@ -1376,6 +1357,5 @@ module.exports = {
   debugManifestPath,
   NOTE_TEXT,
   compressGrep,
-  isHostToolResultsPath,
   containsSecret,
 };

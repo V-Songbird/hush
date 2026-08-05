@@ -1657,56 +1657,6 @@ describe('grep elision: the omitted matches are persisted', () => {
   });
 });
 
-describe('host tool-results read capping', () => {
-  const H = require('../hooks/compress-tool-output.js');
-  const HOSTPATH = 'C:/Users/dev/.claude/projects/D--proj-slug/abcd1234-1111-2222-3333-444455556666/tool-results/toolu_01Xy.txt';
-
-  function bigContent(lines) {
-    const out = [];
-    for (let i = 1; i <= lines; i++) out.push(`compile step ${i}: emitted module chunk ${'m'.repeat(40)}`);
-    out[lines - 2] = 'ERROR EBUILD01: ReferenceError: retries is not defined';
-    return out.join('\n');
-  }
-
-  test('isHostToolResultsPath matches only the .claude/projects tool-results shape', () => {
-    assert.ok(H.isHostToolResultsPath(HOSTPATH));
-    assert.ok(H.isHostToolResultsPath(HOSTPATH.replace(/\//g, '\\')));
-    assert.ok(!H.isHostToolResultsPath('D:/myapp/tool-results/data.txt'), 'no .claude/projects ancestor');
-    assert.ok(!H.isHostToolResultsPath('C:/Users/dev/.claude/projects/slug/sess/tool-results/x.log'), 'txt only');
-    assert.ok(!H.isHostToolResultsPath('D:/src/index.js'));
-  });
-
-  test('a full read of a host tool-results file gets the failure-grade cap, signal kept', () => {
-    const content = bigContent(600);
-    const res = runHook('compress-tool-output.js', {
-      tool_name: 'Read',
-      tool_input: { file_path: HOSTPATH },
-      tool_response: { type: 'text', file: { filePath: HOSTPATH, content, numLines: 600, totalLines: 600 } },
-    });
-    const out = hookOutput(res);
-    assert.ok(out, 'expected a rewrite');
-    const updated = out.hookSpecificOutput.updatedToolOutput;
-    assert.ok(updated.file.content.length < content.length);
-    assert.ok(updated.file.content.includes('ReferenceError: retries'), 'signal line survives');
-    assert.ok(updated.file.content.includes('[hush hook:'), 'marker present');
-  });
-
-  test('range reads and HUSH_TOOLRESULTS=off pass through untouched', () => {
-    const content = bigContent(600);
-    const base = {
-      tool_name: 'Read',
-      tool_input: { file_path: HOSTPATH, offset: 100, limit: 400 },
-      tool_response: { type: 'text', file: { filePath: HOSTPATH, content, numLines: 400, totalLines: 600 } },
-    };
-    assert.strictEqual(hookOutput(runHook('compress-tool-output.js', base)), null, 'range read untouched');
-    assert.strictEqual(
-      hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { file_path: HOSTPATH } }, { HUSH_TOOLRESULTS: 'off' })),
-      null,
-      'flag off'
-    );
-  });
-});
-
 // ROADMAP 164: every Core transform routes through the one manifest record,
 // and a rewrite that removed detail is only ever emitted alongside recovery
 // metadata that says where the detail still is.
