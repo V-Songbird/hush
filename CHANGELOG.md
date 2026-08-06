@@ -5,7 +5,7 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
-## Unreleased
+## 1.2.0 — 2026-08-06
 
 The README now opens with a poster of the benchmark waveform, and the cost chart below was rebuilt with bigger type and plain percent chips — same numbers, readable at a glance.
 
