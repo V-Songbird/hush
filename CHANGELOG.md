@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 1.1.0 — 2026-08-06
+
+Removed the trimming of Claude Code's own oversized-output files when Claude reads them back. `HUSH_TOOLRESULTS` no longer does anything.
+
+The README's benchmark section is rebuilt from fresh runs — hush against plain Claude Code across 17 jobs, every chart and figure generated from committed run records, the wins and the losses both. The Settings section now points at the `HUSH_WRAP` switch.
+
 ## 1.0.0 — 2026-08-01
 
 Removed `/hush:hush-compress`. hush no longer rewrites memory files — it trims tool output and keeps sessions quiet, and nothing else.
