@@ -5,7 +5,7 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
-## Unreleased
+## 1.1.1 — 2026-08-06
 
 The README now says what happens to parked output when a session is summarized to free up room: the files stay put and the summary keeps their paths.
 
