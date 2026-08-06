@@ -7,6 +7,8 @@ version field by convention).
 
 ## Unreleased
 
+The README now opens with a poster of the benchmark waveform, and the cost chart below was rebuilt with bigger type and plain percent chips — same numbers, readable at a glance.
+
 The output style's length caps now apply to every part of the final message. An exception that let requested explanations run past them is gone, from the stock style and from the Pirate preset.
 
 The final message's own read-back pass now checks the caps instead of describing them: count the longest sentence, scan for semicolons and brackets, count the lines. Fewer over-long sentences on both models, at the same cost.

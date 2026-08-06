@@ -6,7 +6,7 @@
   <h1>hush</h1>
   <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
-  <img src="assets/bench-narration.svg" alt="Every session in the benchmark suite drawn as a waveform, one spike per run, amplitude is words of play-by-play before the answer. The no-plugin lane spikes across most of the suite and peaks at 320 words, silent in 33 of 85 sessions. The hush lane is close to a flat line — silent in 81 of 85, and no remaining spike tops 24 words" width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with hush run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
 
   <p><em>This is what a session sounds like.</em></p>
 </div>
