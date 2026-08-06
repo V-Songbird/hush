@@ -5,7 +5,7 @@
 // one recurring payload hush's PostToolUse compression can never touch,
 // since a summary replaces prior messages and is re-sent on every later API
 // call. Claude Code builds these instructions from this hook's RAW STDOUT
-// (trimmed, space-joined across all PreCompact hooks), not from
+// (trimmed, newline-joined across all PreCompact hooks), not from
 // hookSpecificOutput JSON — so this prints plain text only, and always
 // exits 0 even on failure (fail-open: a hush crash must never break a
 // session, especially not at the one moment a summary is about to replace
