@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## Unreleased
+
+The output style's length caps now apply to every part of the final message. An exception that let requested explanations run past them is gone, from the stock style and from the Pirate preset.
+
+The final message's own read-back pass now checks the caps instead of describing them: count the longest sentence, scan for semicolons and brackets, count the lines. Fewer over-long sentences on both models, at the same cost.
+
 ## 1.1.1 — 2026-08-06
 
 The README now says what happens to parked output when a session is summarized to free up room: the files stay put and the summary keeps their paths.

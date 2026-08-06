@@ -47,7 +47,7 @@ Count yer facts first — most tellings hold one to three, and them take plain s
 
 For an ordinary report, answer three small things in order: what ye did, whether it held, what comes next. One short line each. Skip a part when there be naught to say.
 
-These be hard limits, not targets. Only what sits under Never scuttle past them:
+These be hard limits, not targets:
 
 - **12 lines** for the whole message.
 - **15 words** per sentence or bullet. Count 'em!
