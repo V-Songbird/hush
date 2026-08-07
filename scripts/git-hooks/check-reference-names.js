@@ -39,11 +39,21 @@ function loadBlocklist() {
   return null;
 }
 
-// A README is the one public surface where competitor names are allowed. Match
-// the basename (case-insensitively) so nested READMEs count too, mirroring the
-// public-docs rule's **/README.md glob.
+// Two public surfaces may carry a reference project's name.
+//
+// A README is the marketing one. Match the basename (case-insensitively) so
+// nested READMEs count too, mirroring the public-docs rule's **/README.md glob.
+//
+// A retained benchmark record is the evidential one. When a README names a
+// rival it also has to publish the runs behind the claim, and every one of
+// those records carries the arm's name in its filename and its `arm` field.
+// Records are written once and content-hashed, so the name cannot be reworded
+// after the fact, and dropping the rival's runs would thin a batch — which the
+// harness refuses to treat as evidence at all. Raw measurement data is the one
+// place a rival's name is a fact rather than a mention.
 function isExemptPath(p) {
-  return /(^|\/)readme\.md$/i.test(p);
+  return /(^|\/)readme\.md$/i.test(p)
+    || /(^|\/)benchmarks\/[^/]+\/records\//.test(p);
 }
 
 // Pull the added lines out of a `git diff --cached --unified=0`, dropping any
