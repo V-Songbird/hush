@@ -1,9 +1,12 @@
 # Changelog
 
-All notable changes to hush are documented here. Hush is a monorepo-folder
-plugin — its version is owned by `.claude-plugin/marketplace.json` at the
-repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
-version field by convention).
+All notable changes to hush are documented here. Looking for a version
+number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
+listing — that's why `plugin.json` here carries none.
+
+## 1.2.2 — 2026-08-07
+
+The README, the style catalog, and this file's intro are rewritten in plainer language — shorter sentences, everyday words, the benefit up front. Every number, table, and setting is unchanged.
 
 ## 1.2.1 — 2026-08-06
 

@@ -2,7 +2,7 @@
 
 Same machinery, four presets plus stock.
 
-Every style in this folder works the same way underneath: silent between tool calls, then one structured final message when the work is done, all under the same hard caps. The only thing that changes is what that last message *sounds* like.
+Every style in this folder works the same way underneath. Silent between tool calls, then one structured final message when the work is done, all under the same hard caps. The only thing that changes is what that last message *sounds* like.
 
 Stock **Hush** lives one folder over, in `output-styles/`. The four files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` adds one more in a voice you choose.
 
@@ -16,7 +16,7 @@ Stock **Hush** lives one folder over, in `output-styles/`. The four files here a
 
 ## The voice is the only variable
 
-Here's the proof. One session per style — same seeded payroll repo, same red test suite, same prompt:
+Here's the proof. One session per style — same seeded payroll repo, same red test suite, same prompt.
 
 > Payroll is shorting some employees on their net pay — the take-home amounts are coming out lower than they should be, and the test suite is red. Can you dig in, find the root cause, fix it, and get the tests passing?
 
