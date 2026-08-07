@@ -4,6 +4,10 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.2.3 — 2026-08-07
+
+The README is about a quarter shorter — paragraphs merged, bullets tightened. Every number, table, and chart is kept.
+
 ## 1.2.2 — 2026-08-07
 
 The README, the style catalog, and this file's intro are rewritten in plainer language — shorter sentences, everyday words, the benefit up front. Every number, table, and setting is unchanged.
