@@ -5,6 +5,12 @@ plugin — its version is owned by `.claude-plugin/marketplace.json` at the
 repo root, not by `hush/.claude-plugin/plugin.json` (which carries no
 version field by convention).
 
+## 1.2.1 — 2026-08-06
+
+The README now carries a second benchmark table, for how hard the final message is to read: reading ease, grade level, sentence length and long words, measured beside other output-shaping plugins. hush writes the easiest prose of the group, and hands over a runnable next step less often than plain Claude Code does — both are on the page.
+
+Two cost claims were corrected. One of the four noisy-output jobs is a wash rather than a win, so the README no longer claims all four.
+
 ## 1.2.0 — 2026-08-06
 
 The README now opens with a poster of the benchmark waveform, and the cost chart below was rebuilt with bigger type and plain percent chips — same numbers, readable at a glance.

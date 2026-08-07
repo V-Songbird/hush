@@ -96,7 +96,7 @@ We put hush up against plain Claude Code on 17 fixed jobs: full agent sessions t
 
 <p align="center"><img src="assets/bench-cost.svg" alt="Median cost per session by kind of work. Noisy builds and logs: no plugin $0.221, hush $0.181. Debugging: $0.155 against $0.172. Ordinary coding: $0.068 against $0.082. Doc editing: $0.245 against $0.268. Search-heavy work: $0.129 against $0.149" width="700"></p>
 
-**hush wins where the noise lives.** On the jobs built around loud builds and big logs, the typical session drops 18% — and hush is cheaper on every one of those jobs, not on average. Across the whole suite, the mean bill goes from $0.185 to $0.179.
+**hush wins where the noise lives.** On the jobs built around loud builds and big logs, the typical session drops 18% — and hush is cheaper on three of those four jobs, with the fourth a wash. Across the whole suite, the mean bill goes from $0.185 to $0.179.
 
 **And it loses where there's nothing to cut.** A short coding question, a search across files, an edit to a document — those sessions carry hush's own small overhead and no bulk to trim, and they cost 9% to 21% more. If your day has no noisy sessions in it, hush is the wrong tool. That's the honest trade.
 
@@ -110,7 +110,7 @@ Every kind of work, the wins **and** the losses. Typical (median) cost per sessi
 
 | Kind of work | no plugin | hush | change | worst single job for hush |
 | --- | --- | --- | --- | --- |
-| Noisy builds and logs (4 jobs) | $0.221 | **$0.181** | −18% | — cheaper on all four |
+| Noisy builds and logs (4 jobs) | $0.221 | **$0.181** | −18% | the noisy build, a wash |
 | Debugging (6 jobs) | **$0.155** | $0.172 | +11% | a small pagination fix, +27% |
 | Ordinary coding (4 jobs) | **$0.068** | $0.082 | +21% | a no-tools explanation, +36% |
 | Doc editing (1 job) | **$0.245** | $0.268 | +9% | the runbook edit, +9% |
@@ -123,7 +123,27 @@ Read the rows, not just the last one. The average is the average of *this* suite
 
 **The same suite ran on Haiku as a cross-check.** The mean bill drops about 10% there and the typical session is a wash — but hush's runs also failed slightly more correctness checks than the plain setup did. On the smaller model, treat hush as a silence tool first and a cost tool second.
 
-*How we tested: same jobs, two setups, several runs each in fresh throwaway workspaces, on Sonnet — headless agent sessions driven end to end, never a single generated reply — costs read from the API, not estimated. The repos are purpose-built fixtures, not open-source checkouts, and two of the 17 jobs run across several turns. Numbers move a few percent between runs. Reproduce it yourself — the suite and every run record live in [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
+### Reading it is the other half
+
+A cheaper session you can't read isn't a win. So we scored the one final message each setup shipped, on measures none of us invented: Flesch Reading Ease, the US grade level the prose reads at, how long the sentences run, and how much it leans on long words. Same scorer, every setup, no tool marked against its own rulebook.
+
+And we put hush next to two plugins built for exactly this job — [i-have-adhd](https://github.com/ayghri/i-have-adhd), which shapes output for an ADHD reader, and [simple-english](https://github.com/AminBlg/SimpleEnglish), which writes in the controlled English aerospace has used since 1983. Same 17 jobs, same run, on Sonnet.
+
+| Setup | words | lines | words per sentence | long words | reading ease | grade level | ends with something to run |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| no plugin | 96 | 4 | 15.4 | 10.5% | 68.4 | 7.5 | **94%** |
+| **hush** | 74 | 3 | 12.9 | **7.0%** | **79.9** | 5.3 | 77% |
+| i-have-adhd | 48 | 3 | 10.5 | 8.2% | 77.3 | **5.1** | 82% |
+| simple-english | 80 | 4 | 12.7 | 7.1% | 76.7 | 5.7 | 90% |
+| caveman | 45 | 3 | **8.8** | 9.5% | 70.9 | 5.5 | 75% |
+
+**hush writes the easiest prose in the room.** Highest reading ease, fewest long words, and it takes the reply down from a grade-eight read to a grade-five one. Both models agree on that.
+
+**And it hands you a next step less often than it should.** 77% of hush's replies end with something you can actually run, against 82% for the ADHD plugin and 94% for plain Claude. That's the one column where a tool built for the same reader beats us. We'd rather print it than bury it.
+
+**Nobody else goes quiet, though.** Every plugin on that table shortens words. Only hush also stops the play-by-play while it works — it said nothing at all in 48 sessions of 51, where the quietest of the others managed 22.
+
+*How we tested: same jobs, two setups, several runs each in fresh throwaway workspaces, on Sonnet — headless agent sessions driven end to end, never a single generated reply — costs read from the API, not estimated. The repos are purpose-built fixtures, not open-source checkouts, and two of the 17 jobs run across several turns. Numbers move a few percent between runs. The cost tables and the reading table come from two different runs, so read each one against itself and never across. Reproduce it yourself — the suite and every run record live in [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ### Better together
 
