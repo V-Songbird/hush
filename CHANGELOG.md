@@ -4,6 +4,14 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.3.0 — 2026-08-08
+
+Added a spend dial: `HUSH_NUDGE=turn` keeps one quiet reminder at the start of each turn and drops the mid-turn ones. It costs the same as running no plugin and stays far quieter than no plugin. The default is unchanged — quietest, at a cost premium on long sessions that resume.
+
+The dial's reminder now says silent until the final message, not until the work is done — the old wording let a spoken checkpoint slip in between finishing the edits and running the checks.
+
+The README's lead chart now shows what hush cuts — tool output, mid-work chatter, tokens written — with cost shown honestly as a wash.
+
 ## 1.2.3 — 2026-08-07
 
 The README is about a quarter shorter — paragraphs merged, bullets tightened. Every number, table, and chart is kept.

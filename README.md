@@ -86,13 +86,13 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 
 ## Benchmarks
 
-We put hush up against plain Claude Code on 17 fixed jobs: full agent sessions that explore, edit, and run code, with real cost read from the API. Five kinds of work, so you can find the rows that look like yours.
+We put hush up against plain Claude Code on 17 fixed jobs: full agent sessions that explore, edit, and run code, with real numbers read from the API.
 
-<p align="center"><img src="assets/bench-cost.svg" alt="Median cost per session by kind of work. Noisy builds and logs: no plugin $0.221, hush $0.181. Debugging: $0.155 against $0.172. Ordinary coding: $0.068 against $0.082. Doc editing: $0.245 against $0.268. Search-heavy work: $0.129 against $0.149" width="700"></p>
+<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 17 jobs on Sonnet. Tool output: no plugin 16.7k characters, hush 6.8k, 59% less. Chatter before the answer: 41 words against 0.8 words, 98% less. Tokens the model wrote: 1,659 against 1,373, 17% less. Cost per session: $0.185 against $0.179, 3% less, which sits inside run-to-run noise" width="700"></p>
 
-**hush wins where the noise lives, and loses where there's nothing to cut.** Sessions built around loud builds and big logs drop 18%. Short questions, searches, and document edits cost 9% to 21% more — they carry hush's overhead and no bulk. If your day has no noisy sessions in it, hush is the wrong tool. That's the honest trade.
+**hush cuts what you read, not what you pay.** Tool output drops by more than half, and the running commentary all but disappears. Cost lands within a few percent — close enough to call it a wash. It saves real money on sessions full of loud builds and big logs. It costs a little on short questions with nothing to cut. [The full picture](#the-full-picture) below has every row, the wins and the losses.
 
-**Either way, you read a third less, and you read it in silence.** The typical final reply is 69 words against 102. And that's the waveform at the top of this page: silent in 81 sessions of 85, never more than 24 words before the answer. Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And you read it in silence.** The typical final reply is 69 words against 102. That's the waveform at the top of this page: silent in 81 sessions of 85, never more than 24 words before the answer. Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
 
 ### The full picture
 
@@ -123,7 +123,7 @@ We also scored the one final message each setup shipped, on measures none of us 
 
 **hush writes the easiest prose in the room — and it's the only one that also goes quiet.** Highest reading ease, fewest long words, a grade-five read instead of grade-eight. It said nothing at all in 48 sessions of 51; the quietest rival managed 22. The honest loss: hush ends with something you can run 77% of the time, plain Claude 94%.
 
-*How we tested: same jobs, several runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Numbers move a few percent between runs, and the cost and reading tables come from two different runs — never compare across them. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
+*How we tested: same jobs, several runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Suite-wide numbers move a few percent between runs, but a single row can swing 10 to 20 points — read the direction, not the decimal. The cost and reading tables come from two different runs, so never compare across them. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ### Better together
 
@@ -135,16 +135,17 @@ Every trim happens locally as Claude works — read the plugin's files if you wa
 
 ## Settings
 
-Most people never touch these. The two day-to-day ones:
+Most people never touch these. The day-to-day ones:
 
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
 | `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
+| `HUSH_NUDGE=turn` | The spend dial. Keeps one quiet reminder at the start of each turn and drops the mid-turn ones. Costs the same as no plugin, and stays far quieter than no plugin — the default is quieter still, at a premium on long sessions that resume |
 
-`HUSH_WRAP=1` is a third, situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
+`HUSH_WRAP=1` is a situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
 
-There are no compression levels and no profiles. hush has one policy.
+There are no compression levels and no profiles — the trimming is one policy.
 
 ## Good to know
 

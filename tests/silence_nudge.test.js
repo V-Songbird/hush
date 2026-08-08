@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const { runHook, hookOutput } = require('./helpers.js');
-const { nudgeFor, STEP, TOOL, TURN } = require('../hooks/silence-nudge.js');
+const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL } = require('../hooks/silence-nudge.js');
 
 test('PostToolUse gets the step reminder', () => {
   const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse' }));
@@ -40,6 +40,33 @@ test('HUSH_NUDGE=off silences the hook', () => {
   assert.strictEqual((r.stdout || '').trim(), '');
 });
 
+// The cost dial: turn reminder kept, step reminder dropped. Measured trade in
+// the hook's own header comment — the mid-turn block is what resumed sessions
+// pay cache re-writes for.
+test('HUSH_NUDGE=turn drops the step reminder', () => {
+  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse' }, { HUSH_NUDGE: 'turn' });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('HUSH_NUDGE=turn keeps a turn reminder, with the dial wording', () => {
+  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }, { HUSH_NUDGE: 'turn' }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
+});
+
+// "until the work is done" is the measured loophole: the model calls the work
+// done and announces the verification step. The dial's boundary is the final
+// message itself — a refactor that reintroduces the work-done boundary would
+// silently give back the measured leak cut.
+test('the dial wording closes the work-done boundary', () => {
+  assert.ok(/until the final message/.test(TURN_DIAL), TURN_DIAL);
+  assert.ok(!/work is done/.test(TURN_DIAL), TURN_DIAL);
+});
+
+test('HUSH_DISABLE=1 beats HUSH_NUDGE=turn on the surviving path', () => {
+  const r = runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }, { HUSH_DISABLE: '1', HUSH_NUDGE: 'turn' });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
 // Both registrations inject context, so both have to answer to the
 // product-wide disable — and it wins over an explicit HUSH_NUDGE=1.
 for (const event of ['UserPromptSubmit', 'PostToolUse']) {
@@ -51,7 +78,7 @@ for (const event of ['UserPromptSubmit', 'PostToolUse']) {
 
 test('the reminder never names the behavior it is preventing', () => {
   // Wording that describes narrating primes narrating — measured twice.
-  for (const text of [TURN, TOOL]) {
+  for (const text of [TURN, TOOL, TURN_DIAL]) {
     assert.ok(!/narrat|preface|commentary|do not write|don't write/i.test(text), text);
   }
 });
