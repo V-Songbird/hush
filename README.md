@@ -6,9 +6,9 @@
   <h1>hush</h1>
   <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
-  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with hush run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with hush at its loudest setting run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
 
-  <p><em>This is what a session sounds like.</em></p>
+  <p><em>This is what hush sounds like at its quietest setting.</em></p>
 </div>
 
 <p align="center">
@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude bills you for every log line, build dump, and word of play-by-play. hush trims that bulk before it reaches your bill. The noisy-build rows of our suite come in 18% cheaper, and the suite average drops from $0.185 to $0.179. Short, quiet jobs have nothing to cut and can cost a little more.
+> **TL;DR** — Claude bills you for every log line, build dump, and word of play-by-play. hush trims that bulk before it reaches your bill. Install and forget: the default reminds you once a turn and stays close to what no plugin costs at all. Turn the reminders all the way up with `HUSH_NUDGE=max` for the quietest hush gets. That's the cost these numbers show: noisy-build rows come in 18% cheaper, and the suite average drops from $0.185 to $0.179.
 
 ---
 
@@ -88,6 +88,9 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 
 We put hush up against plain Claude Code on 17 fixed jobs: full agent sessions that explore, edit, and run code, with real numbers read from the API.
 
+> [!NOTE]
+> Every figure below was measured with `HUSH_NUDGE=max`, the loudest setting. The default reminds less often and costs less — see [Settings](#settings).
+
 <p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 17 jobs on Sonnet. Tool output: no plugin 16.7k characters, hush 6.8k, 59% less. Chatter before the answer: 41 words against 0.8 words, 98% less. Tokens the model wrote: 1,659 against 1,373, 17% less. Cost per session: $0.185 against $0.179, 3% less, which sits inside run-to-run noise" width="700"></p>
 
 **hush cuts what you read, not what you pay.** Tool output drops by more than half, and the running commentary all but disappears. Cost lands within a few percent — close enough to call it a wash. It saves real money on sessions full of loud builds and big logs. It costs a little on short questions with nothing to cut. [The full picture](#the-full-picture) below has every row, the wins and the losses.
@@ -135,13 +138,14 @@ Every trim happens locally as Claude works — read the plugin's files if you wa
 
 ## Settings
 
-Most people never touch these. The day-to-day ones:
+Most people never touch these. By default hush reminds you to stay quiet once, at the start of each turn, and stays close to what running no plugin costs. Turn that up if you want it quieter, and don't mind paying a little more for it:
 
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
 | `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
-| `HUSH_NUDGE=turn` | The spend dial. Keeps one quiet reminder at the start of each turn and drops the mid-turn ones. Costs the same as no plugin, and stays far quieter than no plugin — the default is quieter still, at a premium on long sessions that resume |
+| `HUSH_NUDGE=lean` | A little quieter than the default, for a little more — one extra reminder, on the turn's first tool result only |
+| `HUSH_NUDGE=max` | As quiet as hush gets — a reminder on every tool result, not just the first. Costs the most too, and it's what the benchmark numbers above measure |
 
 `HUSH_WRAP=1` is a situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
 

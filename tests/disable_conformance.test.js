@@ -89,7 +89,7 @@ function runHookIn(name, tempDir, stdinData, env) {
 // only thing that can be producing the silence. HUSH_DISABLE is pinned off
 // here too: an ambient HUSH_DISABLE=1 in the developer's shell would otherwise
 // make every enabled control run inert. The disabled runs override it to '1'.
-const LOUD = { HUSH_DEBUG: '1', HUSH_WRAP: '1', HUSH_NUDGE: '1', HUSH_DISABLE: '0' };
+const LOUD = { HUSH_DEBUG: '1', HUSH_WRAP: '1', HUSH_NUDGE: 'max', HUSH_DISABLE: '0' };
 
 function writeFixture(name, content) {
   const file = path.join(FIXTURES, name);

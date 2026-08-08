@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.4.0 — 2026-08-08
+
+The default is quieter to run: one reminder at the start of each turn, instead of one after every tool result. Cost drops close to what running no plugin costs; the default now catches a little less than before. The old behavior is still there — set `HUSH_NUDGE=max` for a reminder on every tool result, the setting the README's benchmark numbers are measured with.
+
+Added `HUSH_NUDGE=lean`, a middle ground between the two: a little quieter than the default, for a little more.
+
 ## 1.3.0 — 2026-08-08
 
 Added a spend dial: `HUSH_NUDGE=turn` keeps one quiet reminder at the start of each turn and drops the mid-turn ones. It costs the same as running no plugin and stays far quieter than no plugin. The default is unchanged — quietest, at a cost premium on long sessions that resume.

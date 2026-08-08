@@ -80,7 +80,7 @@ function snapshot(dir) {
 const BASE = {
   HUSH_DEBUG: '1',
   HUSH_WRAP: '1',
-  HUSH_NUDGE: '1',
+  HUSH_NUDGE: 'max',
   HUSH_COMPACT: 'on',
   HUSH_SUBAGENT: 'on',
   HUSH_SIDECAR: 'on',
@@ -268,9 +268,9 @@ describe('a surface switch outranks the per-hook flags inside it', () => {
   const compact = ALL.find((c) => c.name === 'precompact-summary.js');
   const compress = ALL.find((c) => c.name === 'compress-tool-output.js');
 
-  test('HUSH_NUDGE=1 does not resurrect a Quiet that is off', () => {
-    assertActive(nudge, { HUSH_NUDGE: '1' });
-    assertInert(nudge, { HUSH_NUDGE: '1', HUSH_QUIET: 'off' });
+  test('HUSH_NUDGE=max does not resurrect a Quiet that is off', () => {
+    assertActive(nudge, { HUSH_NUDGE: 'max' });
+    assertInert(nudge, { HUSH_NUDGE: 'max', HUSH_QUIET: 'off' });
   });
 
   test('an on-valued per-hook flag does not resurrect either surface', () => {
