@@ -6,9 +6,9 @@
   <h1>hush</h1>
   <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
-  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with hush at its loudest setting run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with every hush reminder turned on run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
 
-  <p><em>This is what hush sounds like at its quietest setting.</em></p>
+  <p><em>An 85-session run with every reminder turned on, <code>HUSH_NUDGE=max</code>. The tables below measure the default.</em></p>
 </div>
 
 <p align="center">
@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude bills you for every log line, build dump, and word of play-by-play. hush trims that bulk before it reaches your bill. Install and forget: the default reminds you once a turn and stays close to what no plugin costs at all. Turn the reminders all the way up with `HUSH_NUDGE=max` for the quietest hush gets. That's the cost these numbers show: noisy-build rows come in 18% cheaper, and the suite average drops from $0.185 to $0.179.
+> **TL;DR** — Claude bills you for every log line, build dump, and word of play-by-play. hush trims that bulk before it reaches your bill. Install and forget: on the noisy, long engineering work it's built for, sessions run about 10% cheaper and nearly all the play-by-play disappears. Short no-tool questions cost a little more.
 
 ---
 
@@ -86,16 +86,13 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 
 ## Benchmarks
 
-We put hush up against plain Claude Code on 17 fixed jobs: full agent sessions that explore, edit, and run code, with real numbers read from the API.
+We put hush up against plain Claude Code on six fixed jobs — the work hush is built for: noisy builds and logs, a big migration sweep, and long sessions that drift. Full agent sessions that explore, edit, and run code, with real numbers read from the API.
 
-> [!NOTE]
-> Every figure below was measured with `HUSH_NUDGE=max`, the loudest setting. The default reminds less often and costs less — see [Settings](#settings).
+<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 6 jobs on Sonnet. Tool output: no plugin 22.0k characters, hush 13.4k, 39% less. Chatter before the answer: 41 words against 5 words, 87% less. Tokens the model wrote: 5,057 against 4,492, 11% less. Cost per session: $0.394 against $0.354, 10% less" width="700"></p>
 
-<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 17 jobs on Sonnet. Tool output: no plugin 16.7k characters, hush 6.8k, 59% less. Chatter before the answer: 41 words against 0.8 words, 98% less. Tokens the model wrote: 1,659 against 1,373, 17% less. Cost per session: $0.185 against $0.179, 3% less, which sits inside run-to-run noise" width="700"></p>
+**hush cuts the noise and the bill.** Tool output drops 39%, the running commentary all but disappears, and the average session costs 10% less. It earns the most on loud builds and big searches. It costs a little on short questions with nothing to cut. [The full picture](#the-full-picture) below has every row, the wins and the losses.
 
-**hush cuts what you read, not what you pay.** Tool output drops by more than half, and the running commentary all but disappears. Cost lands within a few percent — close enough to call it a wash. It saves real money on sessions full of loud builds and big logs. It costs a little on short questions with nothing to cut. [The full picture](#the-full-picture) below has every row, the wins and the losses.
-
-**And you read it in silence.** The typical final reply is 69 words against 102. That's the waveform at the top of this page: silent in 81 sessions of 85, never more than 24 words before the answer. Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And you read it in silence.** hush went the whole session without a word of play-by-play in 9 jobs of 12, and slipped five times in all — plain Claude Code slipped 24 times. Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
 
 ### The full picture
 
@@ -103,30 +100,28 @@ Every kind of work, the wins **and** the losses. Typical (median) cost per sessi
 
 | Kind of work | no plugin | hush | change | worst single job for hush |
 | --- | --- | --- | --- | --- |
-| Noisy builds and logs (4 jobs) | $0.221 | **$0.181** | −18% | the noisy build, a wash |
-| Debugging (6 jobs) | **$0.155** | $0.172 | +11% | a small pagination fix, +27% |
-| Ordinary coding (4 jobs) | **$0.068** | $0.082 | +21% | a no-tools explanation, +36% |
-| Doc editing (1 job) | **$0.245** | $0.268 | +9% | the runbook edit, +9% |
-| Search-heavy (2 jobs) | **$0.129** | $0.149 | +15% | summarize a repo, +18% |
-| **Whole suite (mean)** | $0.185 | **$0.179** | **−3%** | |
+| Noisy builds and logs (3 jobs) | $0.211 | **$0.197** | −7% | the failing suite, +17% |
+| Search-heavy (1 job) | $0.775 | **$0.619** | −20% | — |
+| Long drifting sessions (2 jobs) | $0.435 | $0.435 | a wash | the incident dig, +11% |
+| **Whole suite (mean)** | $0.394 | **$0.354** | **−10%** | |
 
-Both setups passed the same share of correctness checks, so none of the savings came from cheaper-but-wrong answers. Read the rows, not just the last one — your bill will follow whichever rows look like your work. On Haiku, the cross-check model, the mean drops about 10% but hush failed slightly more correctness checks. Treat it as a silence tool first there.
+hush passed every correctness check — 12 of 12 — so none of the savings came from cheaper-but-wrong answers; plain Claude Code missed one. Read the rows, not just the last one: your bill will follow whichever rows look like your work. On Haiku, the cross-check model, hush costs about 10% more and slips just once in twelve jobs — but it missed two correctness checks there. Treat it as a silence tool first on the small model.
 
 ### Reading it is the other half
 
-We also scored the one final message each setup shipped, on measures none of us invented — Flesch Reading Ease, US grade level, sentence length, long words. Beside hush: [i-have-adhd](https://github.com/ayghri/i-have-adhd), built for ADHD readers, and [simple-english](https://github.com/AminBlg/SimpleEnglish), aerospace's controlled English. Same 17 jobs, same run, on Sonnet.
+We also scored the one final message each setup shipped, on measures none of us invented — Flesch Reading Ease, US grade level, sentence length, long words. Beside hush: [i-have-adhd](https://github.com/ayghri/i-have-adhd), built for ADHD readers, [simple-english](https://github.com/AminBlg/SimpleEnglish), aerospace's controlled English, and [caveman](https://github.com/JuliusBrussee/caveman), ultra-compressed answers. Same six jobs, same run, on Sonnet.
 
-| Setup | words | lines | words per sentence | long words | reading ease | grade level | ends with something to run |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| no plugin | 96 | 4 | 15.4 | 10.5% | 68.4 | 7.5 | **94%** |
-| **hush** | 74 | 3 | 12.9 | **7.0%** | **79.9** | 5.3 | 77% |
-| i-have-adhd | 48 | 3 | 10.5 | 8.2% | 77.3 | **5.1** | 82% |
-| simple-english | 80 | 4 | 12.7 | 7.1% | 76.7 | 5.7 | 90% |
-| caveman | 45 | 3 | **8.8** | 9.5% | 70.9 | 5.5 | 75% |
+| Setup | words | lines | words per sentence | long words | reading ease | grade level | silent sessions | mid-work slips |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| no plugin | 95 | 4 | 14.3 | 9.7% | 70.0 | 7.0 | 5 of 12 | 24 |
+| **hush** | 87 | 2.5 | 13.0 | 7.6% | 75.8 | 5.9 | **9 of 12** | **5** |
+| i-have-adhd | 38 | 3 | **8.6** | **6.5%** | **83.9** | **3.7** | 0 of 12 | 37 |
+| simple-english | 74 | 3.5 | 10.8 | 8.0% | 79.2 | 4.9 | 1 of 12 | 36 |
+| caveman | 48 | 3.5 | 8.9 | 12.0% | 71.5 | 5.5 | 4 of 12 | 15 |
 
-**hush writes the easiest prose in the room — and it's the only one that also goes quiet.** Highest reading ease, fewest long words, a grade-five read instead of grade-eight. It said nothing at all in 48 sessions of 51; the quietest rival managed 22. The honest loss: hush ends with something you can run 77% of the time, plain Claude 94%.
+**hush is the only setup that reads easier *and* goes quiet.** The ADHD style takes the reading crowns this run — it's built for exactly that — but it never managed a silent session, slipped 37 times, and missed a correctness check. hush reads a grade easier than plain Claude Code, stays silent in 9 sessions of 12, and passed everything. The honest loss: hush ends with something you can run 83% of the time, plain Claude 100%.
 
-*How we tested: same jobs, several runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Suite-wide numbers move a few percent between runs, but a single row can swing 10 to 20 points — read the direction, not the decimal. The cost and reading tables come from two different runs, so never compare across them. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
+*How we tested: same jobs, two runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Suite-wide numbers move a few percent between runs, and a single row can swing 10 to 20 points — read the direction, not the decimal. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ### Better together
 
@@ -138,14 +133,13 @@ Every trim happens locally as Claude works — read the plugin's files if you wa
 
 ## Settings
 
-Most people never touch these. By default hush reminds you to stay quiet once, at the start of each turn, and stays close to what running no plugin costs. Turn that up if you want it quieter, and don't mind paying a little more for it:
+Most people never touch these. By default hush reminds Claude to stay quiet once at the start of each turn, and once more only in the moments chatter actually slips through — so a session that stays quiet pays nothing extra:
 
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
 | `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
-| `HUSH_NUDGE=lean` | A little quieter than the default, for a little more — one extra reminder, on the turn's first tool result only |
-| `HUSH_NUDGE=max` | As quiet as hush gets — a reminder on every tool result, not just the first. Costs the most too, and it's what the benchmark numbers above measure |
+| `HUSH_NUDGE=max` | As quiet as hush gets — a reminder on every tool result, whether or not anything slipped. Costs the most too |
 
 `HUSH_WRAP=1` is a situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
 

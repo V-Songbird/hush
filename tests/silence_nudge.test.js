@@ -3,17 +3,33 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { runHook, hookOutput } = require('./helpers.js');
-const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, TERSE } = require('../hooks/silence-nudge.js');
+const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText } = require('../hooks/silence-nudge.js');
 
-// lean's per-turn cap counts tool results inside one session; a shared id
-// would let one test spend another's budget, so each case that touches the
-// cap gets its own fresh one.
+// The default's corrective counts mid-turn text blocks per session; a shared
+// id would let one test spend another's state, so each case that touches the
+// counter gets its own fresh one.
 let sessionSeq = 0;
 const freshSession = () => `nudge-test-${process.pid}-${sessionSeq++}`;
 
-// --- default: one reminder at the top of the turn, nothing mid-turn -------
+// A synthetic session transcript the corrective can read. Entries are the
+// real JSONL shapes: real prompts are type:user with plain content; tool
+// results are type:user with tool_result blocks; leaks are type:assistant
+// with text blocks.
+function writeTranscript(entries) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-nudge-'));
+  const file = path.join(dir, 't.jsonl');
+  fs.writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+  return file;
+}
+const prompt = (text) => ({ type: 'user', message: { role: 'user', content: text } });
+const toolResult = () => ({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } });
+const leak = (text) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
+const toolUse = () => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash' }] } });
+
+// --- default: one reminder at the top of the turn, corrective mid-turn ------
 
 test('the default gets the dial reminder at the top of the turn', () => {
   const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }));
@@ -21,17 +37,84 @@ test('the default gets the dial reminder at the top of the turn', () => {
   assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
 });
 
-test('the default stays silent on a tool result', () => {
-  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse' });
+test('a clean turn gets nothing on a tool result', () => {
+  const tp = writeTranscript([prompt('go'), toolUse(), toolResult()]);
+  const r = runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+  });
   assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('a mid-turn text block draws the corrective, exactly once', () => {
+  const session = freshSession();
+  const tp = writeTranscript([prompt('go'), toolUse(), leak('Now verifying the change.'), toolUse()]);
+  const first = hookOutput(runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp,
+  }));
+  assert.strictEqual(first.hookSpecificOutput.hookEventName, 'PostToolUse');
+  assert.strictEqual(first.hookSpecificOutput.additionalContext, STEP);
+  const second = runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp,
+  });
+  assert.strictEqual((second.stdout || '').trim(), '', 'same block answered twice');
+});
+
+test('a second text block re-arms the corrective', () => {
+  const session = freshSession();
+  const tp1 = writeTranscript([prompt('go'), leak('first slip')]);
+  hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp1 }));
+  const tp2 = writeTranscript([prompt('go'), leak('first slip'), toolUse(), leak('second slip')]);
+  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp2 }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, STEP);
+});
+
+test('a new turn resets the corrective and its counter', () => {
+  const session = freshSession();
+  const tp1 = writeTranscript([prompt('go'), leak('slip')]);
+  hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp1 }));
+  runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: session });
+  // The new turn's transcript ends with a fresh real prompt: nothing mid-turn
+  // yet, so nothing fires — the old turn's block does not carry over.
+  const tp2 = writeTranscript([prompt('go'), leak('slip'), prompt('next task'), toolUse()]);
+  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp2 });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('a tool result entry is not a turn boundary', () => {
+  // The leak sits before a tool_result-shaped user entry; only a REAL prompt
+  // ends the count window, so the corrective still fires.
+  const tp = writeTranscript([prompt('go'), leak('slip'), toolResult(), toolUse()]);
+  const out = hookOutput(runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+  }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, STEP);
+});
+
+test('subagent text is not this session\'s slip', () => {
+  const entries = [prompt('go'), { ...leak('sidechain text'), isSidechain: true }, toolUse()];
+  const tp = writeTranscript(entries);
+  const r = runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+  });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('no transcript means no corrective', () => {
+  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: freshSession() });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('countMidTurnText counts blocks since the last real prompt only', () => {
+  const tp = writeTranscript([prompt('one'), leak('a'), prompt('two'), leak('b'), leak('c')]);
+  assert.strictEqual(countMidTurnText(tp), 2);
 });
 
 test('an unknown event under the default stays silent too', () => {
   assert.strictEqual(nudgeFor('SomethingElse'), null);
 });
 
-// An empty/malformed payload has no hook_event_name, which resolves to
-// PostToolUse (the common case) — and the default is silent there.
+// An empty/malformed payload has no hook_event_name (resolves to PostToolUse)
+// and no transcript — the corrective has nothing to react to.
 test('a malformed payload resolves to PostToolUse and stays silent under the default', () => {
   const r = runHook('silence-nudge.js', undefined);
   assert.strictEqual((r.stdout || '').trim(), '');
@@ -47,14 +130,19 @@ test('HUSH_NUDGE=off silences the hook', () => {
   assert.strictEqual((r.stdout || '').trim(), '');
 });
 
-// `turn` predates the default switch and is now a no-op synonym for it —
-// anyone who already set it keeps the exact behavior they opted into.
-test('HUSH_NUDGE=turn is a synonym for the default', () => {
-  const step = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse' }, { HUSH_NUDGE: 'turn' });
-  assert.strictEqual((step.stdout || '').trim(), '');
-  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }, { HUSH_NUDGE: 'turn' }));
-  assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
-});
+// `turn`, `lean`, and `react` are earlier dial names, all kept working as
+// no-op synonyms for the default — anyone who set one keeps a behavior at
+// least as quiet and at least as cheap as what they opted into.
+for (const synonym of ['turn', 'lean', 'react']) {
+  test(`HUSH_NUDGE=${synonym} is a synonym for the default`, () => {
+    const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }, { HUSH_NUDGE: synonym }));
+    assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
+    const step = runHook('silence-nudge.js', {
+      hook_event_name: 'PostToolUse', session_id: freshSession(),
+    }, { HUSH_NUDGE: synonym });
+    assert.strictEqual((step.stdout || '').trim(), '');
+  });
+}
 
 // "until the work is done" is the measured loophole: the model calls the
 // work done and announces the verification step. The dial's boundary is the
@@ -100,45 +188,6 @@ test('HUSH_DISABLE=1 beats HUSH_NUDGE=max', () => {
   assert.strictEqual((r.stdout || '').trim(), '');
 });
 
-// --- lean: the default's reminder, plus one short mid-turn ping -----------
-
-test('HUSH_NUDGE=lean fires TERSE on the first tool result of a turn', () => {
-  const out = hookOutput(runHook('silence-nudge.js', {
-    hook_event_name: 'PostToolUse', session_id: freshSession(),
-  }, { HUSH_NUDGE: 'lean' }));
-  assert.strictEqual(out.hookSpecificOutput.additionalContext, TERSE);
-});
-
-test('HUSH_NUDGE=lean silences later tool results in the same turn', () => {
-  const session = freshSession();
-  const first = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session }, { HUSH_NUDGE: 'lean' }));
-  assert.strictEqual(first.hookSpecificOutput.additionalContext, TERSE);
-  const second = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session }, { HUSH_NUDGE: 'lean' });
-  assert.strictEqual((second.stdout || '').trim(), '');
-});
-
-test('HUSH_NUDGE=lean refills the cap on a new turn', () => {
-  const session = freshSession();
-  runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session }, { HUSH_NUDGE: 'lean' });
-  runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: session }, { HUSH_NUDGE: 'lean' });
-  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session }, { HUSH_NUDGE: 'lean' }));
-  assert.strictEqual(out.hookSpecificOutput.additionalContext, TERSE);
-});
-
-test('HUSH_NUDGE=lean uses the dial wording for the turn reminder', () => {
-  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: freshSession() }, { HUSH_NUDGE: 'lean' }));
-  assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
-});
-
-test("the terse payload is the step rule's own first sentence", () => {
-  assert.ok(STEP.startsWith(TERSE), `${TERSE} does not open ${STEP}`);
-});
-
-test('HUSH_DISABLE=1 beats HUSH_NUDGE=lean', () => {
-  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: freshSession() }, { HUSH_DISABLE: '1', HUSH_NUDGE: 'lean' });
-  assert.strictEqual((r.stdout || '').trim(), '');
-});
-
 // --- cross-cutting ----------------------------------------------------------
 
 // Both registrations inject context, so both have to answer to the
@@ -152,7 +201,7 @@ for (const event of ['UserPromptSubmit', 'PostToolUse']) {
 
 test('the reminder never names the behavior it is preventing', () => {
   // Wording that describes narrating primes narrating — measured twice.
-  for (const text of [TURN, TOOL, TURN_DIAL, TERSE]) {
+  for (const text of [TURN, TOOL, TURN_DIAL, STEP]) {
     assert.ok(!/narrat|preface|commentary|do not write|don't write/i.test(text), text);
   }
 });
