@@ -4,6 +4,14 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## Unreleased
+
+The one final message is easier to read: one fact per sentence, a 10-word sentence cap in place of the old 15, and no dash-glued clauses. The bundled pirate style follows the same rules.
+
+The benchmark page is re-measured on this build. hush now takes every reading crown on the suite — reading ease, grade level, and long words — and the README shows a real final message from the run, verbatim.
+
+The style verifier now matches shape-table rows precisely, so a crafted style can reuse a row's words in its prose without hiding a dropped row.
+
 ## 1.5.0 — 2026-08-11
 
 The default now reminds only when it helps: one reminder at the start of each turn, plus one more only in the moments chatter actually slips through. A session that stays quiet pays nothing extra — the new default runs both cheaper and quieter than the old one. `HUSH_NUDGE=lean` did the same job for more money and now behaves like the default; `HUSH_NUDGE=max` is unchanged.

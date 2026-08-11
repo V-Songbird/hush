@@ -53,9 +53,9 @@ test("removing the harness-override paragraph fails Mid-turn silence", () => {
 });
 
 test("altering a cap bullet in Final message is flagged", () => {
-  const body = canonicalBody.replace("- **15 words**", "- **50 words**");
+  const body = canonicalBody.replace("- **10 words**", "- **50 words**");
   const result = verify(canonical, variant(body));
-  assert.ok(result.problems.some((p) => p.includes("bold anchor dropped: **15 words**")));
+  assert.ok(result.problems.some((p) => p.includes("bold anchor dropped: **10 words**")));
 });
 
 test("removing a shape-table row is flagged", () => {

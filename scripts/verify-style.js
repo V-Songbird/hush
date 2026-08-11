@@ -204,7 +204,10 @@ function verify(canonicalText, generatedText) {
     if (got.ordered < want.ordered)
       problems.push(`${where}: ${want.ordered} listed items became ${got.ordered}`);
     for (const cell of want.rows) {
-      if (!rewritten.includes(cell)) problems.push(`${where}: table row "${cell}" dropped`);
+      // Match the cell as a row opener, not as a bare substring — a rule
+      // bullet elsewhere in the section may reuse the same words.
+      const rowRe = new RegExp(`^\\|\\s*${cell.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "m");
+      if (!rowRe.test(rewritten)) problems.push(`${where}: table row "${cell}" dropped`);
     }
     // Paragraph for paragraph. A rule that got reworded still occupies a block;
     // a rule that got deleted takes its block with it, and the word floor alone
