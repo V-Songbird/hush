@@ -154,6 +154,16 @@ Most people never touch these. By default hush reminds Claude to stay quiet once
 
 There are no compression levels and no profiles — the trimming is one policy.
 
+Claude Code's own **Output style** setting is what selects Hush's voice. Installing the plugin sets it automatically, so most people never touch this either. To set it by hand for one project, run `/config` and pick **Hush**. To set it for every project at once, write it into your user settings instead:
+
+```json
+{
+  "outputStyle": "Hush"
+}
+```
+
+That's `~/.claude/settings.json`.
+
 ## Good to know
 
 - **Getting the full output back.** The summary names the file hush parked. Read it and you have every byte. If the file is gone, run the command again — hush never claims it regenerates what was lost.
