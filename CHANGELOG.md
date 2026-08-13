@@ -4,6 +4,10 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.6.1 — 2026-08-13
+
+The README now shows how to make Hush your active output style, for one project or for every project at once.
+
 ## 1.6.0 — 2026-08-11
 
 The one final message is easier to read: one fact per sentence, a 10-word sentence cap in place of the old 15, and no dash-glued clauses. The bundled pirate style follows the same rules.
