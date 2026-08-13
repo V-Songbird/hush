@@ -143,8 +143,8 @@ function shareTemplate(aTokens, bTokens) {
 // from the view — only from the source, which is what the footer names.
 function collapseTemplates(lines, relevanceTokens) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
-  const tokens = usableRelevanceTokens(lines, relevanceTokens);
-  const exempt = (line) => isKeepLine(line) || (tokens.length > 0 && tokens.some((t) => line.toLowerCase().includes(t)));
+  const named = relevanceMatcher(lines, relevanceTokens);
+  const exempt = (line) => isKeepLine(line) || named(line);
   const out = [];
   let runStart = -1;
   let anchorTokens = null;
@@ -302,20 +302,32 @@ function usableRelevanceTokens(lines, relevanceTokens) {
   });
 }
 
+// "Does this line name something the prompt quoted?", with the too-common
+// guard already applied — the one shape every transform needs (capLines,
+// collapseTemplates, compressGrep, buildSidecarDigest). Built once per view so
+// the lowercasing and the hit counting happen once, not per call site.
+function relevanceMatcher(lines, relevanceTokens) {
+  const tokens = usableRelevanceTokens(lines, relevanceTokens);
+  if (!tokens.length) return () => false;
+  return (line) => {
+    const lower = line.toLowerCase();
+    return tokens.some((t) => lower.includes(t));
+  };
+}
+
+// The same answer as indices, for the transforms that select by position.
+function relevanceLineIdx(lines, relevanceTokens) {
+  const named = relevanceMatcher(lines, relevanceTokens);
+  return lines.map((line, i) => (named(line) ? i : -1)).filter((i) => i !== -1);
+}
+
 function capLines(lines, cap, relevanceTokens) {
   if (lines.length <= cap) return lines;
   const signalIdx = new Set();
   lines.forEach((line, i) => {
     if (isKeepLine(line)) signalIdx.add(i);
   });
-  if (relevanceTokens && relevanceTokens.length) {
-    const lower = lines.map((l) => l.toLowerCase());
-    for (const tok of relevanceTokens) {
-      const hits = [];
-      for (let i = 0; i < lower.length; i++) if (lower[i].includes(tok)) hits.push(i);
-      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) signalIdx.add(i);
-    }
-  }
+  for (const i of relevanceLineIdx(lines, relevanceTokens)) signalIdx.add(i);
   const budget = Math.max(0, cap - signalIdx.size);
   const head = Math.ceil(budget * 0.6);
   const tail = budget - head;
@@ -548,7 +560,7 @@ const GREP_SINGLE_RE = /^\d+:/;
 function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) {
   const lines = content.split("\n");
   if (decision) { decision.linesIn = lines.length; decision.omitted = 0; }
-  const tokens = usableRelevanceTokens(lines, relevanceTokens);
+  const named = relevanceMatcher(lines, relevanceTokens);
   let multiHits = 0;
   let singleHits = 0;
   for (const l of lines) {
@@ -578,8 +590,7 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
       perFile.set(key, s);
     }
     s.total++;
-    const lowerLine = line.toLowerCase();
-    const forced = SIGNAL_RE.test(line) || tokens.some((t) => lowerLine.includes(t));
+    const forced = SIGNAL_RE.test(line) || named(line);
     if (forced || s.shown < GREP_KEEP_PER_FILE) {
       s.shown++;
       kept.push(line);
@@ -595,12 +606,14 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
   // actually landed — a retrieval instruction pointing at a file that isn't
   // there is worse than the re-run advice it replaced.
   const saved = persistGrepMatches(content, sessionId);
+  const markerHead =
+    `[hush hook: ${omitted} match lines omitted from this view; every matched file is counted below, ` +
+    `and every warning/error-shaped match was kept. `;
   const marker = saved
-    ? `[hush hook: ${omitted} match lines omitted from this view; every matched file is counted below, and every warning/error-shaped match was kept. ` +
+    ? markerHead +
       `The complete match list was saved to ${saved.replace(/\\/g, "/")} — Read that file for the omitted matches ` +
       `(offset/limit returns an exact slice). If it is gone, re-run the search.]`
-    : `[hush hook: ${omitted} match lines omitted from this view; every matched file is counted below, and every warning/error-shaped match was kept. ` +
-      `Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`;
+    : markerHead + `Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`;
   const out = [...kept, marker, ...summary].join("\n");
   // razor: a rewrite rejected here leaves the persisted copy behind unread —
   // bounded (it is this session's own directory, deleted at SessionEnd) and
@@ -765,15 +778,11 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   // them inside that preview window, so the visible slice answers the question
   // and no raw re-read is needed. Line numbers stay real (out of order is
   // fine — they exist for targeted offset/limit reads, not for reading order).
-  const lead = [...new Set([...signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE), ...signalIdx.slice(-DIGEST_SIGNAL_SAMPLE)])];
-  if (relevanceTokens && relevanceTokens.length) {
-    const lower = lines.map((l) => l.toLowerCase());
-    for (const tok of relevanceTokens) {
-      const hits = [];
-      for (let i = 0; i < lower.length; i++) if (lower[i].includes(tok)) hits.push(i);
-      if (hits.length > 0 && hits.length <= RELEVANCE_COMMON) for (const i of hits) lead.push(i);
-    }
-  }
+  const lead = [
+    ...signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE),
+    ...signalIdx.slice(-DIGEST_SIGNAL_SAMPLE),
+    ...relevanceLineIdx(lines, relevanceTokens),
+  ];
   const leadSet = new Set(lead);
   const leadSorted = [...leadSet].sort((a, b) => a - b);
 
