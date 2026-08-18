@@ -19,8 +19,8 @@ describe('unit: wrapping', () => {
     assert.match(out, /\nexit 0$/);
   });
 
-  // Real bug found via the sonnet-showcase-v3 benchmark loop, reproduced
-  // live: a cmdlet pipeline ending in something like `Select-Object` with no
+  // Real bug, reproduced live: a cmdlet pipeline ending in something like
+  // `Select-Object` with no
   // explicit Format-Table/Out-* defers rendering to PowerShell's implicit
   // end-of-pipeline formatter, and the wrapper's trailing `exit 0` killed the
   // process before that deferred formatter ever flushed — silently

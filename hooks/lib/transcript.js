@@ -84,4 +84,4 @@ function lastUserPromptText(transcriptPath) {
   return '';
 }
 
-module.exports = { readTailLines, isRealUserPrompt, userPromptText, lastUserPromptText, TAIL_BYTES };
+module.exports = { readTailLines, isRealUserPrompt, lastUserPromptText };

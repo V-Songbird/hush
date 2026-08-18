@@ -3,7 +3,6 @@
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
@@ -84,9 +83,9 @@ describe('precompact-summary hook', () => {
     const session = freshSessionId();
     writeSidecarFile(session, 'shapes');
     const block = buildSidecarBlock(session);
-    // Since ROADMAP 167 a parked file is either a digested long output or a
-    // complete match list; calling every one of them a digested tool output
-    // was false for half of them.
+    // A parked file is either a digested long output or a complete match
+    // list; calling every one of them a digested tool output is false for
+    // half of them.
     assert.match(block, /a digest of a long output or a collapsed list of matches/);
     assert.match(block, /re-running a search over unchanged files reproduces its matches/);
     assert.match(block, /no other command is guaranteed to produce the same output twice/);

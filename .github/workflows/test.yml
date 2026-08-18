@@ -16,6 +16,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: manifests parse
+        run: node -e 'for (const f of [".claude-plugin/plugin.json","hooks/hooks.json"]) JSON.parse(require("fs").readFileSync(f,"utf-8"))'
+
       - name: run tests (no-op if this plugin has no tests/ directory)
         run: |
           if [ -d tests ]; then

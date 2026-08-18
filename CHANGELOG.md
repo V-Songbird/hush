@@ -28,7 +28,7 @@ The benchmark page is re-measured on this new default, against a suite rebuilt a
 
 ## 1.4.0 — 2026-08-08
 
-The default is quieter to run: one reminder at the start of each turn, instead of one after every tool result. Cost drops close to what running no plugin costs; the default now catches a little less than before. The old behavior is still there — set `HUSH_NUDGE=max` for a reminder on every tool result, the setting the README's benchmark numbers are measured with.
+The default is quieter to run: one reminder at the start of each turn, instead of one after every tool result. Cost drops close to what running no plugin costs; the default now catches a little less than before. The old behavior is still there — set `HUSH_NUDGE=max` for a reminder on every tool result.
 
 Added `HUSH_NUDGE=lean`, a middle ground between the two: a little quieter than the default, for a little more.
 
@@ -72,7 +72,7 @@ The security policy now spells out that a `[hush …]`-shaped line already insid
 
 Removed the trimming of Claude Code's own oversized-output files when Claude reads them back. `HUSH_TOOLRESULTS` no longer does anything.
 
-The README's benchmark section is rebuilt from fresh runs — hush against plain Claude Code across 17 jobs, every chart and figure generated from committed run records, the wins and the losses both. The Settings section now points at the `HUSH_WRAP` switch.
+The README's benchmark section is rebuilt from fresh runs — hush against plain Claude Code across 17 jobs, the wins and the losses both. The Settings section now points at the `HUSH_WRAP` switch.
 
 ## 1.0.0 — 2026-08-01
 
@@ -88,7 +88,7 @@ There are two settings now: `HUSH_DISABLE=1` turns hush off for a session, and `
 
 Re-reading a file that changed now gives you the ordinary shortened view instead of a changed-lines-only view.
 
-The benchmark suite, its fixture repos, and its run records no longer ship with the plugin — installing hush no longer downloads any of them. The suite and every record behind the published numbers live in the marketplace repo, linked from the README.
+The benchmark suite, its fixture repos, and its run records no longer ship with the plugin — installing hush no longer downloads any of them. The suite lives in the marketplace repo, linked from the README.
 
 Fixed an issue where a trimmed view could reach you longer than the output it replaced. Any view that isn't smaller — or that would drop a field the result arrived with — is dropped, and the original output is passed through untouched.
 
@@ -481,11 +481,11 @@ Hush now also trims bulky log files Claude reads directly (`.log` files, and `.t
 
 ## 0.3.6-alpha — 2026-07-07
 
-Fixed an issue when pairing hush with [razor](../razor): on hard debugging tasks the combination could make the model reason for much longer than necessary — a cost and latency hit, never a correctness one. Mid-turn silence now allows stating a settled diagnosis in one line before acting on it, which keeps reasoning lean whether hush runs alone or paired.
+Fixed an issue when pairing hush with [razor](https://github.com/V-Songbird/razor): on hard debugging tasks the combination could make the model reason for much longer than necessary — a cost and latency hit, never a correctness one. Mid-turn silence now allows stating a settled diagnosis in one line before acting on it, which keeps reasoning lean whether hush runs alone or paired.
 
 ## 0.3.5-alpha — 2026-07-07
 
-Documented a known limitation when pairing hush with [razor](../razor) on hard debugging tasks. No behavior change; resolved in 0.3.6.
+Documented a known limitation when pairing hush with [razor](https://github.com/V-Songbird/razor) on hard debugging tasks. No behavior change; resolved in 0.3.6.
 
 ## 0.3.4-alpha — 2026-07-07
 

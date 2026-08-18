@@ -4,7 +4,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
-const { verify } = require("../scripts/verify-style.js");
+const { verify, verifyCore } = require("../scripts/verify-style.js");
 
 const canonicalPath = path.join(__dirname, "..", "output-styles", "hush.md");
 const canonical = fs.readFileSync(canonicalPath, "utf-8");
@@ -157,10 +157,10 @@ function frontmatter(text) {
 // Presets that abandon stock's readability frame keep only the core contract
 // and are verified in core mode: rock strips the frame down to telegram,
 // glyph swaps words for emotes, sensei replaces it with a teaching skeleton
-// that has no length caps, anchor trades the caps for chunked signposting.
-const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md", "anchor.md"];
+// that has no length caps.
+const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md"];
 
-test("every shipped preset passes the verifier", () => {
+test("every shipped preset passes the verifier it is built for", () => {
   assert.ok(presets.length > 0, "styles/ holds no presets");
   for (const { file, text } of presets) {
     const check = CORE_PRESETS.includes(file) ? verifyCore : verify;
@@ -245,8 +245,6 @@ test("rewording the ban around its examples still passes", () => {
   const result = verify(canonical, variant(body));
   assert.deepStrictEqual(result.problems, []);
 });
-
-const { verifyCore } = require("../scripts/verify-style.js");
 
 const CORE_BODY = [
   "You write exactly one message per turn, and it comes after the work is finished.",

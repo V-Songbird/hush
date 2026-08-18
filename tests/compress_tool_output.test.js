@@ -57,7 +57,7 @@ describe('unit: transforms', () => {
     assert.deepStrictEqual(out, ['note: x', '[hush: previous line repeated 2x]', 'end']);
   });
 
-  // ROADMAP 166: six identical failures are six failures. The capped-failure
+  // Six identical failures are six failures. The capped-failure
   // footer promises every warning/error/failure line is kept in original order,
   // so a repeat run of them can never fold into one line plus a count.
   test('dedupeConsecutive never folds repeated warning/error/failure lines', () => {
@@ -161,7 +161,7 @@ describe('unit: transforms', () => {
     assert.strictEqual(looksLikeFailure('no errors found'), false);
   });
 
-  // ROADMAP 166: the zero-count blanking is for a run scoring ITS OWN failures
+  // The zero-count blanking is for a run scoring ITS OWN failures
   // at zero. When the zero quantifies a different noun the failure token is
   // real, and blanking it left the line with no evidence in it at all.
   test('a zero that counts a different noun leaves the failure token standing', () => {
@@ -360,7 +360,7 @@ describe('unit: collapseTemplates', () => {
     }
   });
 
-  // ROADMAP 167 invariant 3: the collapse footer claims prompt-named lines are
+  // The collapse footer claims prompt-named lines are
   // never collapsed, so they have to be exempt here the way they already are in
   // capLines and compressGrep.
   test('a prompt-named line breaks a run instead of vanishing into it', () => {
@@ -384,7 +384,7 @@ describe('unit: collapseTemplates', () => {
   });
 });
 
-// ROADMAP 167: the collapse markers state what happened; the view still owed
+// The collapse markers state what happened; the view still owed
 // the model a way to get the collapsed lines back.
 describe('template collapse: the view states its own recovery', () => {
   const { TEMPLATE_COLLAPSE_NOTE } = require('../hooks/compress-tool-output');
@@ -403,7 +403,7 @@ describe('template collapse: the view states its own recovery', () => {
     assert.match(TEMPLATE_COLLAPSE_NOTE, /unless the quote matches too many lines to single any out/);
   });
 
-  // ROADMAP 167 invariant 2, end to end: a uniform failing run used to collapse
+  // End to end: a uniform failing run used to collapse
   // to one line under a footer swearing no failure line is ever collapsed.
   test('a uniform run of failing lines is never collapsed, however identical the shape', () => {
     const lines = Array.from({ length: 400 }, (_, i) => `not ok ${i + 1} - renders the widget tree`);
@@ -448,9 +448,8 @@ describe('unit: extractWrappedExit', () => {
 
   // A malformed marker (PowerShell only sets $LASTEXITCODE for a native exe;
   // a pure-cmdlet command leaves it null/stale) must still be stripped from
-  // what the model sees — real bug found via the sonnet-showcase-v2 loop run:
-  // 4 of 18 live runs leaked a raw `[[hush:exit=` marker verbatim because the
-  // old code treated "no digits captured" as "nothing to do here."
+  // what the model sees — a raw `[[hush:exit=` marker leaked verbatim because
+  // the old code treated "no digits captured" as "nothing to do here."
   test('strips a malformed/empty marker even though no reliable exit code exists', () => {
     const r = extractWrappedExit('output\n[[hush:exit=]]');
     assert.strictEqual(r.exitCode, null);
@@ -465,7 +464,7 @@ describe('unit: extractWrappedExit', () => {
     assert.strictEqual(r.cleanText, 'saw a stray  in some log line\nreal output');
   });
 
-  // Confirmed real scenario (sonnet-showcase-v2, dep-bump-warnings/hush):
+  // Confirmed real scenario:
   // Claude Code's own "output too large, persisted to a sidecar file"
   // mechanism captured RAW pre-hook output including an already-well-formed
   // marker; a later `Get-Content -Tail` on that file got wrapped AGAIN by
@@ -588,7 +587,7 @@ describe('hook: end to end', () => {
     assert.match(updated.stdout, /\[hush hook: \d+ lines omitted from this view, none with warnings\/errors\/failures\]/);
   });
 
-  // Reproduces the real gap found via the sonnet-showcase-smoke benchmark: a
+  // Reproduces a real gap: a
   // failing `node --test` run (real exit code 1) that preserve-exit-code.js
   // wrapped to report success — without the wrapper, Claude Code would have
   // routed this through PostToolUseFailure and this hook would never see it
@@ -649,10 +648,9 @@ describe('hook: end to end', () => {
     assert.ok(dumpLines > logLines, `wrapped dump (${dumpLines}) should keep more than wrapped log (${logLines})`);
   });
 
-  // Regression test for the real leak found in the sonnet-showcase-v2 loop
-  // run: a pure-cmdlet PowerShell call (no native exe, so $LASTEXITCODE was
-  // never set) produced a malformed `[[hush:exit=\n\n]]` marker that reached
-  // the model verbatim in 4 of 18 live runs.
+  // Regression test for a real leak: a pure-cmdlet PowerShell call (no
+  // native exe, so $LASTEXITCODE was never set) produced a malformed
+  // `[[hush:exit=\n\n]]` marker that reached the model verbatim.
   test('a malformed marker (pure-cmdlet call, $LASTEXITCODE never set) never leaks to the model', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'PowerShell',
@@ -1548,7 +1546,7 @@ describe('grep match-list compression', () => {
   });
 });
 
-// ROADMAP 167: elided matches used to exist nowhere but the files they came
+// Elided matches used to exist nowhere but the files they came
 // from, so the view could only advise a re-run. They are parked now, and the
 // marker names the copy only when the copy is really there.
 describe('grep elision: the omitted matches are persisted', () => {
@@ -1657,7 +1655,7 @@ describe('grep elision: the omitted matches are persisted', () => {
   });
 });
 
-// ROADMAP 164: every Core transform routes through the one manifest record,
+// Every Core transform routes through the one manifest record,
 // and a rewrite that removed detail is only ever emitted alongside recovery
 // metadata that says where the detail still is.
 describe('every transform is accounted for, and no lossy view ships without recovery', () => {
@@ -1765,7 +1763,7 @@ describe('unit: failure digest', () => {
     }
   }
 
-  // ROADMAP 166: the footer promises EVERY warning/error/failure line survives,
+  // The footer promises EVERY warning/error/failure line survives,
   // so the vocabulary that preserves lines has to cover the whole vocabulary
   // that classifies a run as failed — `not ok`, `Traceback`, `panic`, `✗` and
   // the rest used to classify without preserving.

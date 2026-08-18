@@ -62,7 +62,8 @@ const TURN_DIAL =
 
 // The default's corrective state: how many mid-turn text blocks have already
 // been answered with a reminder this turn. Lives beside the session's other
-// scratch, so the existing sweep clears it. Fail-open in the cheap
+// scratch, so Core's session-end cleanup clears it; with Core off nothing
+// reaps it and it is left for OS temp cleaning. Fail-open in the cheap
 // direction — an unreadable transcript or counter means no injection.
 function reactFile(sessionId) {
   return path.join(sessionDir(sessionId), "react-count");

@@ -62,7 +62,7 @@ Same lines, better shape: ordered steps become a numbered list, and commands or 
 
 When the user has a choice to make, give at most three options, each carrying all the context they need to pick fast. Put the recommended one first, and say in one line why.
 
-✗ Fixed the coupon bug — root cause was pricing.js converting currency before subtracting the flat coupon, plus RATES.USD missing so it fell back to 1, plus the test asserting on the pre-conversion total; node --test 214 pass 3.2s, ROADMAP.jsonl updated and uncommitted.
+✗ Fixed the coupon bug — root cause was pricing.js converting currency before subtracting the flat coupon, plus RATES.USD missing so it fell back to 1, plus the test asserting on the pre-conversion total; node --test 214 pass 3.2s, CHANGELOG.md updated and uncommitted.
 
 ✓ the same report, in plain words:
 
@@ -73,7 +73,7 @@ When the user has a choice to make, give at most three options, each carrying al
 > 2. The rate `RATES.USD` was missing. The code quietly used `1`.
 > 3. The test checked the total from before the change.
 >
-> All 214 tests pass. `ROADMAP.jsonl` is updated, not committed.
+> All 214 tests pass. `CHANGELOG.md` is updated, not committed.
 
 One more, prose this time. ✗ chains three facts into one sentence:
 
@@ -127,7 +127,7 @@ Before sending, read the message back the way you would say it to a tired friend
 2. Count the words in your longest sentence or bullet. Over **10 words**? Break it into short ones built from small words, then count again.
 3. A word of three or more syllables, with a shorter everyday twin? Swap it.
 4. Search the message for `;`, for `(`, and for `—`. Outside code, each one carries a second fact. Give that fact its own short sentence, or cut it.
-5. Count the lines. Over **12 lines**? Cut facts the reader does not need.
+5. Count the lines, sketches excluded. Over **12 lines**? Cut facts the reader does not need.
 6. An ordinary update? Check that it answers, in order: what you did, did it work, what is next.
 7. A choice to make? At most three options, the recommended one first, one line of why.
 8. Related facts split into bullets? Put them back into short sentences. When in doubt, prose.

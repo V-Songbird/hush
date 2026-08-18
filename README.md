@@ -60,7 +60,7 @@ Inside Claude Code, run:
 
 It kicks in at your next session — nothing to configure.
 
-Running [razor](https://github.com/V-Songbird/razor) too? Good instinct — the pair plays clean, see [Better together](#better-together) below.
+Running [razor](https://github.com/V-Songbird/razor) too? They fire on different moments of a session, so neither notices the other.
 
 ## What you can do
 
@@ -80,7 +80,7 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 | **Pirate** | Every report in full pirate dialect, outcome first |
 | **Sensei** | Teaches the change at newcomer depth — the why and how, closed by a `Lesson:` and a `Check:`. No length cap |
 
-`/hush:craft-style` writes a new style in a voice you describe, and a verifier checks every number, cap, and rule survived the rewrite. Both commands ask before they swap, and take effect at your next session. Updating the plugin hands the slot back to stock, so re-pick after an update. Only stock is benchmarked — the numbers on this page belong to it.
+`/hush:craft-style` writes a new style in a voice you describe, and a verifier checks that the machinery survived the rewrite. Both commands ask before they swap, and take effect at your next session. Updating the plugin hands the slot back to stock, so re-pick after an update. Only stock is benchmarked — the numbers on this page belong to it.
 
 **See them side by side.** Same bug, same fix, five sign-offs — [`styles/README.md`](styles/README.md).
 
@@ -132,10 +132,6 @@ Here's what that reads like. One real final message from this run, the dependenc
 
 *How we tested: same jobs, two runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Suite-wide numbers move a few percent between runs, and a single row can swing 10 to 20 points — read the direction, not the decimal. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
-### Better together
-
-razor cuts the code, hush cuts the noise. They fire on different moments of a session, so neither notices the other.
-
 ## Under the hood
 
 Every trim happens locally as Claude works — read the plugin's files if you want the exact mechanics. `pick-style` swaps your chosen style into hush's own slot so it binds like stock, and swaps stock back on request.
@@ -147,22 +143,22 @@ Most people never touch these. By default hush reminds Claude to stay quiet once
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops every hook — no compression, no reminders, no files written. The output style is a separate switch: run `/hush:pick-style` to hand the slot back to stock, or uninstall |
-| `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went |
+| `HUSH_DEBUG=1` | Writes a local record of what hush did to each tool output — sizes in and out, and where the full copy went — to `hush-debug-<session>.jsonl` in your system temp folder |
 | `HUSH_NUDGE=max` | As quiet as hush gets — a reminder on every tool result, whether or not anything slipped. Costs the most too |
 
 `HUSH_WRAP=1` is a situational switch — it lets hush trim failing commands too; see the callout under [How it works](#how-it-works).
 
 There are no compression levels and no profiles — the trimming is one policy.
 
-Claude Code's own **Output style** setting is what selects Hush's voice. Installing the plugin sets it automatically, so most people never touch this either. To set it by hand for one project, run `/config` and pick **Hush**. To set it for every project at once, write it into your user settings instead:
+Claude Code's own **Output style** setting is what selects Hush's voice. Installing the plugin sets it automatically. If it didn't bind, pin it by hand in `~/.claude/settings.json`:
 
 ```json
 {
-  "outputStyle": "Hush"
+  "outputStyle": "hush:Hush"
 }
 ```
 
-That's `~/.claude/settings.json`.
+Once it binds you can drop the pin — `/hush:pick-style` swaps styles inside hush's own slot.
 
 ## Good to know
 

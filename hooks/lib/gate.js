@@ -14,7 +14,7 @@
 // decide their own hook while the surface is on.
 //
 // Both surfaces default on: an unset variable is on, and only the off tokens
-// below turn one off, matching the per-hook flags' convention.
+// below turn one off.
 
 const OFF_TOKEN = /^(0|off|false)$/i;
 

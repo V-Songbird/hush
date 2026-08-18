@@ -51,10 +51,10 @@ function alreadyWrapped(command) {
 // live, exit code correctly reported on its own line, tool succeeds.
 //
 // The command runs inside `& { ... } | Out-String` rather than bare — found
-// live via the sonnet-showcase-v3 benchmark loop: a cmdlet pipeline ending
-// in something like `Select-Object` (no explicit `Format-Table`/`Out-*`)
-// defers rendering to PowerShell's implicit end-of-pipeline auto-formatter,
-// which buffers objects to compute column widths before emitting anything.
+// live: a cmdlet pipeline ending in something like `Select-Object` (no
+// explicit `Format-Table`/`Out-*`) defers rendering to PowerShell's implicit
+// end-of-pipeline auto-formatter, which buffers objects to compute column
+// widths before emitting anything.
 // Appending our trailer statements — and then a hard `exit 0` — moves
 // execution past that pipeline before the deferred formatter flushes,
 // silently swallowing ALL of the command's output, not just ours.

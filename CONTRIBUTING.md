@@ -18,7 +18,7 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 └── plugin.json        # name, description, author, keywords — NO version
                         # field (the version is owned by foundry's
                         # .claude-plugin/marketplace.json)
-CHANGELOG.md            # Keep a Changelog format
+CHANGELOG.md            # dated entries, newest first
 LICENSE                 # MIT
 README.md               # plain-language intro first, technical depth after
 skills/                 # if the plugin has skills
@@ -28,7 +28,7 @@ skills/                 # if the plugin has skills
 hooks/
 └── hooks.json          # Hook event wiring (PreToolUse, PostToolUse, etc.)
 scripts/                # if the plugin has helper CLIs
-└── tests/              # required when the plugin has scripted behavior
+tests/                  # required when the plugin has scripted behavior
 ```
 
 Every README shares one skeleton, tone, and style, defined in foundry's [`.github/PLUGIN_README_TEMPLATE.md`](https://github.com/V-Songbird/foundry/blob/main/.github/PLUGIN_README_TEMPLATE.md).
@@ -69,7 +69,7 @@ This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blo
 
 ## Changelog
 
-Add an entry to `CHANGELOG.md` under `[Unreleased]` for every user-visible change. Follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Version bumps and marketplace listing changes happen in [foundry](https://github.com/V-Songbird/foundry), not here.
+Add a dated entry at the top of `CHANGELOG.md` for every user-visible change. Version bumps and marketplace listing changes happen in [foundry](https://github.com/V-Songbird/foundry), not here.
 
 ---
 

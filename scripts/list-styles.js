@@ -10,10 +10,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { splitFrontmatter, parseFrontmatter, normalize } = require("./verify-style.js");
-
-const PRESET_MARKER = "Unmeasured preset shipped with Hush.";
-const CRAFTED_MARKER = "Unmeasured variant of Hush.";
+const { splitFrontmatter, parseFrontmatter, normalize, PRESET_MARKER, CRAFTED_MARKER } = require("./verify-style.js");
 
 function readFrontmatter(filePath) {
   const text = normalize(fs.readFileSync(filePath, "utf-8"));
@@ -97,11 +94,8 @@ function readActiveRecord(hushPath) {
 }
 
 function main() {
-  const args = process.argv.slice(2);
-  const projectFlagIndex = args.indexOf("--project");
-  const projectDir = projectFlagIndex !== -1 ? args[projectFlagIndex + 1] : process.cwd();
   const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT || path.join(__dirname, "..");
-  console.log(JSON.stringify(shelf(pluginRoot, projectDir), null, 2));
+  console.log(JSON.stringify(shelf(pluginRoot, process.cwd()), null, 2));
 }
 
 if (require.main === module) main();

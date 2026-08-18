@@ -10,7 +10,7 @@
 // location, session ownership, retention state, and the reason a transform
 // declined. Records are METADATA ONLY — counts, paths, tokens. No line of the
 // output, no file content, ever lands in a record; the same rule the sidecar's
-// secret screen and the delta's hash-only state already follow.
+// secret screen already follows.
 //
 // The record is built and checked on EVERY handled tool output, gate or no
 // gate: recoveryGap is a correctness check on what gets emitted, so it cannot
@@ -137,11 +137,9 @@ const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 // for. Only the response side is judged: a string or array response was never
 // a field-bearing shape, so whatever replaces it cannot drop a field.
 //
-// razor: shallow by design — top-level keys only. A transform that rewrites a
-// nested object is not something any current path does, and the marginal
-// judgement (is a renamed inner key a loss?) is not one this guard can make.
-// Upgrade path if a nested renderer ever lands: walk both trees in step and
-// report the first path present in `original` and absent from `updated`.
+// Shallow by design — top-level keys only. A transform that rewrites a nested
+// object is not something any current path does, and the marginal judgement
+// (is a renamed inner key a loss?) is not one this guard can make.
 function fieldGap(original, updated) {
   if (!isPlainObject(original)) return null;
   const keys = Object.keys(original);
@@ -153,7 +151,6 @@ function fieldGap(original, updated) {
   return missing.length ? `rewrite dropped ${missing.length} field(s) the response arrived with: ${missing.join(', ')}` : null;
 }
 
-// The sessionId sanitization every hush temp path shares.
 function debugManifestPath(sessionId) {
   const safe = String(sessionId || 'unknown').replace(/[^a-zA-Z0-9-]/g, '_');
   return path.join(os.tmpdir(), `hush-debug-${safe}.jsonl`);
@@ -193,7 +190,7 @@ function appendRecord(record) {
 }
 
 module.exports = {
-  ACTIONS, ACTION_PRIORITY, combineActions, buildRecord,
+  combineActions, buildRecord,
   recoveryGap, sizeGap, fieldGap,
   debugManifestPath, appendRecord,
 };

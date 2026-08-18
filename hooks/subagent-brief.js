@@ -10,9 +10,8 @@
 // main conversation and is re-sent with every later API call in the session.
 // One short injected line per spawn buys that back for the whole session.
 //
-// Injected into EVERY subagent, no agent-type gating: razor skips read-only
-// agents because its code ladder is dead weight there, but a report is
-// exactly what a read-only agent produces — the discipline applies most.
+// Injected into EVERY subagent, no agent-type gating: a report is exactly
+// what a read-only agent produces, so the discipline applies most.
 
 const fs = require("fs");
 const { quietOff } = require("./lib/gate");

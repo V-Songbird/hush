@@ -1,6 +1,6 @@
 'use strict';
 
-// ROADMAP 165: sidecar storage is session-owned, and its cleanup is a session
+// Sidecar storage is session-owned, and its cleanup is a session
 // event. A sidecar is only worth writing if a later Read still finds it — so
 // what may delete it, and when, is as much of the contract as what it holds.
 //

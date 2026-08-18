@@ -116,6 +116,7 @@ Shape:
 * 💻 Code, diff, commit, PR — verbatim.
 * ❌ Error, test fail — quoted exact.
 * 🛡️ Security warning, no-undo confirm — clear over short.
+* 🗣️ Human ask explain → full depth, telegram shape.
 
 ## Register
 

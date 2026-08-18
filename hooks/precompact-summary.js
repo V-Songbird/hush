@@ -23,10 +23,9 @@
 
 const fs = require("fs");
 const path = require("path");
-const { SIDECAR_ROOT, sessionDir } = require("./lib/sidecar-store");
+const { sessionDir } = require("./lib/sidecar-store");
 const { coreOff } = require("./lib/gate");
 
-const SIDECAR_DIR = SIDECAR_ROOT;
 const SIDECAR_CAP = 20;
 
 const STATIC_BLOCK =
@@ -88,10 +87,8 @@ function buildSidecarBlock(sessionId) {
   const live = liveSidecarFiles(dir);
   if (!live.length) return null;
   const paths = live.slice(0, SIDECAR_CAP).map((f) => path.join(dir, f).replace(/\\/g, "/"));
-  // razor: over SIDECAR_CAP the remainder is named by count and directory
-  // rather than path — the summary stays bounded and the drop is explicit.
-  // Upgrade path if a session ever parks enough that this bites: list them
-  // all, or fold the whole listing into the directory reference alone.
+  // Over SIDECAR_CAP the remainder is named by count and directory rather
+  // than path — the summary stays bounded and the drop is explicit.
   const rest = live.length - paths.length;
   const tail = rest > 0 ? ` and ${rest} more in ${dir.replace(/\\/g, "/")}` : "";
   return (
@@ -121,4 +118,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { STATIC_BLOCK, buildSidecarBlock, liveSidecarFiles, readInput, SIDECAR_DIR, SIDECAR_CAP, sessionDir };
+module.exports = { STATIC_BLOCK, buildSidecarBlock, liveSidecarFiles, readInput, SIDECAR_CAP, sessionDir };

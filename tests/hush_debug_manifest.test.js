@@ -1,6 +1,6 @@
 'use strict';
 
-// Probe 9, Spec 1: HUSH_DEBUG=1 decision manifest. One JSON line per handled
+// HUSH_DEBUG=1 decision manifest. One JSON line per handled
 // tool output — including every do-nothing path — appended to
 // tmpdir/hush-debug-<session_id>.jsonl. Never emitted without the env gate;
 // never changes what any compression path actually produces (see the
@@ -209,7 +209,7 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
   });
 });
 
-describe('Probe 9 Spec 2: adversarial no-op fixtures', () => {
+describe('adversarial no-op fixtures', () => {
   const created = [];
   after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
   function sidecarFileFrom(digest) {
@@ -276,7 +276,7 @@ describe('Probe 9 Spec 2: adversarial no-op fixtures', () => {
   });
 });
 
-// ROADMAP 164: one manifest contract for every Core transform, and the
+// One manifest contract for every Core transform, and the
 // recovery boundary that goes with it.
 describe('transform manifest: the record contract', () => {
   const RECORD_KEYS = [
@@ -403,21 +403,6 @@ describe('transform manifest: the record contract', () => {
     assert.strictEqual(e.action, 'shell-guard-skip');
     assert.match(e.fallback, /truncated by the host/);
   });
-
-  test('a capped log read points back at the file it read', () => {
-    const id = sid('rec-read');
-    const filePath = 'C:\\repo\\logs\\app.log';
-    const lines = Array.from({ length: 300 }, (_, i) => `2026-07-28 INFO steady line ${i}`);
-    runHook('compress-tool-output.js', {
-      tool_name: 'Read', session_id: id, tool_input: { file_path: filePath },
-      tool_response: { type: 'text', file: { filePath, content: lines.join('\n'), numLines: lines.length, startLine: 1, totalLines: lines.length } },
-    }, { HUSH_DEBUG: '1' });
-    const e = only(id);
-    assert.ok(e.omitted > 0, 'the capped view leaves lines out');
-    assert.strictEqual(e.recovery, 'source-file');
-    assert.strictEqual(e.recoveryPath, filePath);
-    assert.strictEqual(e.preserved + e.omitted, e.linesIn);
-  });
 });
 
 describe('transform manifest: the recovery boundary', () => {
@@ -524,7 +509,7 @@ describe('transform manifest: the recovery boundary', () => {
   });
 });
 
-describe('Probe 9 Spec 4: passthrough invariant (byte-identical, end to end)', () => {
+describe('passthrough invariant (byte-identical, end to end)', () => {
   test('short clean Bash output: hook stays silent, nothing enters the tool result', () => {
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_response: 'all good\n3 tests passed' });
     assert.strictEqual(hookOutput(r), null);

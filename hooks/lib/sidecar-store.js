@@ -33,8 +33,8 @@ const SIDECAR_ROOT = path.join(os.tmpdir(), 'hush-sidecar');
 // long enough that no plausible session loses a file it still points at.
 const STALE_MS = 24 * 60 * 60 * 1000;
 
-// The sessionId sanitization every hush temp path shares — the id
-// becomes a single path segment, so anything that isn't [A-Za-z0-9-] (path
+// The sessionId sanitization the sidecar tree uses — the id becomes a
+// single path segment, so anything that isn't [A-Za-z0-9-] (path
 // separators and traversal included) is flattened to an underscore.
 // win32 folds the case: `ABCD1234` and `abcd1234` are one directory on NTFS,
 // so distinct-case ids have to resolve to the same name here too — otherwise a
@@ -71,9 +71,8 @@ function removeSession(sessionId) {
 // behind. Sweeps every root entry — directory or loose file — whose mtime is
 // older than the grace, and returns how many it removed.
 //
-// razor: mtime on the directory is the liveness signal, which a session that
-// wrote no sidecar for a full day would fail. Upgrade path if that ever
-// matters: a heartbeat file the compress hook touches per write.
+// mtime on the directory is the liveness signal, which a session that wrote
+// no sidecar for a full day would fail.
 function sweepStale(maxAgeMs, now) {
   const cutoff = (typeof now === 'number' ? now : Date.now()) - (typeof maxAgeMs === 'number' ? maxAgeMs : STALE_MS);
   let entries;
@@ -96,4 +95,4 @@ function sweepStale(maxAgeMs, now) {
   return removed;
 }
 
-module.exports = { SIDECAR_ROOT, STALE_MS, sessionDir, isSidecarPath, removeSession, sweepStale };
+module.exports = { SIDECAR_ROOT, sessionDir, isSidecarPath, removeSession, sweepStale };

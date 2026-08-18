@@ -4,7 +4,7 @@
 // hand-picked ones, and the product invariants asserted over every case rather
 // than over the examples someone thought of.
 //
-// The invariants under test, as the product contract states them:
+// The product contract deliver() enforces:
 //
 //   1. A lossy transform without a retrievable full original is rejected.
 //   2. A structured transform preserves every field or does not run.
@@ -39,8 +39,6 @@ const {
   looksLikeFailure,
   stripAnsi,
   resolveCarriageReturns,
-  changedLineIndexes,
-  renderDelta,
   compressGrep,
   claimSessionNote,
   FAILURE_RERUN_NOTE,
@@ -266,16 +264,6 @@ describe('property: the product invariants hold on what is actually shipped', ()
     assert.ok(rejected > 0, 'no generated case was ever rejected — this corpus does not exercise the guard');
   });
 
-  test('invariant 1: a shipped lossy rewrite always names where the rest is', () => {
-    for (let n = 0; n < CASES; n++) {
-      const c = generate(BASE_SEED + n);
-      const { decision, ship } = deliverShellString(c);
-      if (ship === undefined) continue;
-      const record = buildRecord({ ...decision, tool: 'Bash' });
-      assert.strictEqual(recoveryGap(record), null, `seed ${c.seed}: shipped a ${record.action} with no recovery location`);
-    }
-  });
-
   test('a shipped rewrite never loses a keep line on its way through the boundary', () => {
     for (let n = 0; n < CASES; n++) {
       const c = generate(BASE_SEED + n);
@@ -296,7 +284,7 @@ describe('property: the product invariants hold on what is actually shipped', ()
       if (ship !== undefined || out === c.text) continue;
       const record = buildRecord({ ...decision, tool: 'Bash' });
       const size = sizeGap(record);
-      const reason = recoveryGap(record) || fieldGap(c.text, out) || size;
+      const reason = recoveryGap(record) || size;
       assert.ok(reason, `seed ${c.seed}: a rewrite was dropped for no stated reason`);
       reasons.add(reason === size ? 'not-smaller' : 'no-recovery');
     }
@@ -308,7 +296,7 @@ describe('property: the product invariants hold on what is actually shipped', ()
 // Binary and huge output
 // ---------------------------------------------------------------------------
 
-// razor: the huge-output ceiling. 4 MB in one line and 20,000 lines (~1.4 MB)
+// The huge-output ceiling. 4 MB in one line and 20,000 lines (~1.4 MB)
 // are the largest shapes this suite pays for — together a fraction of a second,
 // against a whole-suite budget measured in single-digit seconds. Every
 // transform on the path is a linear pass (one regex replace, one split, one

@@ -2,10 +2,10 @@
 "use strict";
 
 // PostToolUse hook: mechanically shrinks Bash/PowerShell output — plus Read
-// results for log-shaped files and oversized Grep match lists — before they
-// enter context. Deterministic text transforms only — no heuristic ever
-// touches failure detail: failing runs get a much larger cap and everything
-// kept is verbatim.
+// results for log-shaped and machine-generated files, hush's own recovery
+// files, and oversized Grep match lists — before they enter context.
+// Deterministic text transforms only — no heuristic ever touches failure
+// detail: failing runs get a much larger cap and everything kept is verbatim.
 
 const fs = require("fs");
 const os = require("os");
@@ -120,8 +120,8 @@ function shareTemplate(aTokens, bTokens) {
   return same / aTokens.length >= 0.5 && anchors >= 2;
 }
 
-// INVARIANTS of template collapse — what may be collapsed, and what never may
-// (ROADMAP 167). Stated here because the view's own footer
+// INVARIANTS of template collapse — what may be collapsed, and what never
+// may. Stated here because the view's own footer
 // (TEMPLATE_COLLAPSE_NOTE) states them to the model, and a promise the code
 // does not keep is worse than no promise:
 //
@@ -536,8 +536,8 @@ function requestsEnumeration(prompt) {
 // backtracks across Windows drive-letter colons (`C:\x.js:12:` parses as path
 // `C:\x.js`).
 //
-// INVARIANTS of the search elision — what may be elided, and what never may
-// (ROADMAP 167). The emitted marker states these, so they are contracts:
+// INVARIANTS of the search elision — what may be elided, and what never may.
+// The emitted marker states these, so they are contracts:
 //
 //   1. Every matched file keeps its first GREP_KEEP_PER_FILE match lines, in
 //      order, verbatim — with their path:line coordinates intact, so any kept
@@ -615,11 +615,9 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
       `(offset/limit returns an exact slice). If it is gone, re-run the search.]`
     : markerHead + `Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`;
   const out = [...kept, marker, ...summary].join("\n");
-  // razor: a rewrite rejected here leaves the persisted copy behind unread —
-  // bounded (it is this session's own directory, deleted at SessionEnd) and
-  // rare (the summary would have to be bigger than the whole match list).
-  // Upgrade path if it ever matters: size-check against the prospective path
-  // first, since the file name is a pure function of the content.
+  // A rewrite rejected here leaves the persisted copy behind unread — bounded
+  // (it is this session's own directory, deleted at SessionEnd) and rare (the
+  // summary would have to be bigger than the whole match list).
   if (out.length >= content.length) return content;
   if (decision) {
     decision.omitted = omitted;
@@ -884,8 +882,8 @@ function writeSidecar(file, content) {
   }
 }
 
-// ROADMAP 167: the elided half of a collapsed match list has nowhere else to
-// live — re-running the search regenerates it from files still on disk, but
+// The elided half of a collapsed match list has nowhere else to live —
+// re-running the search regenerates it from files still on disk, but
 // only if the exact invocation is reproduced and nothing changed underneath.
 // Parking the complete list turns retrieval into one Read. Returns the path
 // when the copy is really there, null when it is not — the caller words its
@@ -1123,8 +1121,8 @@ const NOTE_TEXT =
 // Empty sentinel file, atomically claimed with wx so two hook fires racing on
 // parallel tool calls emit at most one note. Sessions without a session_id
 // (bare test harnesses) never emit — a shared "unknown" key would leak the
-// once-only state across unrelated runs. Like the meter's state files, the
-// sentinel is left for OS temp cleaning.
+// once-only state across unrelated runs. The sentinel is left for OS temp
+// cleaning.
 function claimSessionNote(sessionId, tmpDir) {
   if (typeof sessionId !== "string" || !sessionId) return false;
   try {
@@ -1221,7 +1219,9 @@ function main() {
     // and multiline searches asked for surrounding code — collapsing match
     // lines away from their context would orphan it, so those pass whole too.
     const content = response && typeof response === "object" && typeof response.content === "string" ? response.content : null;
-    if (content === null) return;
+    // Watched but not a shape hush ever touches — still a handled output, so
+    // it still gets one record.
+    if (content === null) return deliver({ tool: "Grep", action: "passthrough", bytesIn: 0, linesIn: 0 }, undefined, data);
     const ti = data.tool_input || {};
     const contextual =
       ti["-A"] !== undefined || ti["-B"] !== undefined || ti["-C"] !== undefined || ti.context !== undefined || ti.multiline === true;
@@ -1279,10 +1279,9 @@ function main() {
     const actions = [];
     // One record for the whole response: the fields are summed, and a sidecar
     // written for one of them is the recovery location the record names.
-    // razor: with two sidecar-sized fields the record names the last one —
-    // every digest still carries its own file pointer inline, so nothing is
-    // unreachable; a per-field record list is ROADMAP 165's call, not this
-    // one's, since it changes the one-line-per-tool-output shape.
+    // With two sidecar-sized fields the record names the last one — every
+    // digest still carries its own file pointer inline, so nothing is
+    // unreachable.
     const combined = {};
     for (const field of ["stdout", "stderr", "output"]) {
       if (typeof next[field] === "string") {
