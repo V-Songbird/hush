@@ -8,7 +8,7 @@
 
   <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with every hush reminder turned on run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
 
-  <p><em>An 85-session run with every reminder turned on, <code>HUSH_NUDGE=max</code>. The tables below measure the default.</em></p>
+  <p><em>An 85-session run of an older 17-job suite, with every reminder turned on: <code>HUSH_NUDGE=max</code>. The tables below are the current six-job suite on the default setting.</em></p>
 </div>
 
 <p align="center">

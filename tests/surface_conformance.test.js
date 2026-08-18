@@ -288,3 +288,17 @@ describe('a surface switch outranks the per-hook flags inside it', () => {
     assertActive(compress, { HUSH_COMPACT: 'off' });
   });
 });
+
+// A developer who exports hush's own off switch must still get a green suite.
+// This runs as a child process because the flags are already gone from this
+// one — tests/helpers.js clears them the moment any test file requires it.
+test('requiring the test helpers clears hush flags inherited from the shell', () => {
+  const probe = "require('./tests/helpers'); process.stdout.write(String(process.env.HUSH_DISABLE));";
+  const r = spawnSync('node', ['-e', probe], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env, HUSH_DISABLE: '1' },
+    encoding: 'utf-8',
+    timeout: 30000,
+  });
+  assert.strictEqual(r.stdout, 'undefined');
+});

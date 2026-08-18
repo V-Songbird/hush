@@ -1,1 +1,5 @@
 /docs/*
+
+# Style-slot state written at run time by /hush:pick-style, never published
+/output-styles/hush.md.stock
+/output-styles/hush.md.active.json
