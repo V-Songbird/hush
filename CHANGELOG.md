@@ -4,6 +4,10 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.6.2 — 2026-08-17
+
+A flow or a chain in the final message is now sketched as plain text inside a code block, so it reads as written in the terminal and in the desktop app. The bundled sensei style follows the same rule.
+
 ## 1.6.1 — 2026-08-13
 
 The README now shows how to make Hush your active output style, for one project or for every project at once.
