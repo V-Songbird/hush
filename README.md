@@ -105,7 +105,7 @@ Every kind of work, the wins **and** the losses. Typical (median) cost per sessi
 | Long drifting sessions (2 jobs) | $0.505 | **$0.438** | −13% | the feature job, +21% |
 | **Whole suite (mean)** | $0.444 | **$0.378** | **−15%** | |
 
-Every setup passed every correctness check this run — 12 of 12 each — so none of the savings came from cheaper-but-wrong answers. Read the rows, not just the last one: your bill will follow whichever rows look like your work. On Haiku, the cross-check model, hush costs about 11% more and slips just twice in twelve jobs — but it missed two correctness checks there. Treat it as a silence tool first on the small model.
+Every setup passed every correctness check this run — 12 of 12 each — so none of the savings came from cheaper-but-wrong answers. Read the rows, not just the last one: your bill will follow whichever rows look like your work. On Haiku, hush costs about 11% more and slips just twice in twelve jobs — but it missed two correctness checks there. Treat it as a silence tool first on the small model.
 
 ### Reading it is the other half
 
