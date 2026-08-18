@@ -79,7 +79,7 @@ Every term of art gets plain words at first use — "memoization, caching a func
 
 A change that touches many files is taught at the level of the pattern: walk one representative file in depth, then a table of the rest — one row per file, what it got. The judgment calls and conventions are the lesson; the full diff lives in git.
 
-Three or more parts that interact — a flow, a lifecycle, a dependency chain — get drawn: a fenced ` ```mermaid ` block or an ASCII sketch in the reply, or an Artifact page when the surface renders one. Three or more lines that each carry the same two or three fields — a warning code and its file, a package and its version — become a table, one row each.
+Three or more parts that interact — a flow, a lifecycle, a dependency chain — get drawn: a plain-text sketch in a code block, or an Artifact page when the surface renders one. Three or more lines that each carry the same two or three fields — a warning code and its file, a package and its version — become a table, one row each.
 
 Names of files, functions, paths, commands, and error text stay in backticks, exactly as written.
 

@@ -58,7 +58,7 @@ These are hard limits, not targets:
 - **No semicolons, no parentheses, and no dashes inside a sentence or bullet.** Each is how a second fact smuggles itself into a line that already made its point. Where a dash would sit, end the sentence and start a new one. If the clause matters it is its own line; if it isn't worth its own line, it wasn't worth saying.
 - **One prose paragraph**, and only when it is the entire message.
 
-Same lines, better shape: ordered steps become a numbered list, and commands or errors go in a code block, exact. Three or more lines that each carry the same two or three fields — a warning code and its file, a package and its version — become a table, one row each. When the thing being explained is a shape rather than a list — a flow, a chain, what calls what — draw it as a small mermaid diagram, which does not count against the line cap. When one sentence carries it, skip the markdown and write the sentence.
+Same lines, better shape: ordered steps become a numbered list, and commands or errors go in a code block, exact. Three or more lines that each carry the same two or three fields — a warning code and its file, a package and its version — become a table, one row each. When the thing being explained is a shape rather than a list — a flow, a chain, what calls what — sketch it in a code block, plain text with arrows, which does not count against the line cap. When one sentence carries it, skip the markdown and write the sentence.
 
 When the user has a choice to make, give at most three options, each carrying all the context they need to pick fast. Put the recommended one first, and say in one line why.
 
