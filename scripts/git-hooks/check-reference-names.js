@@ -44,13 +44,13 @@ function loadBlocklist() {
 // A README is the marketing one. Match the basename (case-insensitively) so
 // nested READMEs count too, mirroring the public-docs rule's **/README.md glob.
 //
-// A retained benchmark record is the evidential one. When a README names a
-// rival it also has to publish the runs behind the claim, and every one of
-// those records carries the arm's name in its filename and its `arm` field.
-// Records are written once and content-hashed, so the name cannot be reworded
-// after the fact, and dropping the rival's runs would thin a batch — which the
-// harness refuses to treat as evidence at all. Raw measurement data is the one
-// place a rival's name is a fact rather than a mention.
+// A benchmark record is the evidential one. Run data does not publish at all
+// any more (ADR 0004, 2026-08-11): every harness gitignores its `records/`,
+// and a README states measured numbers while the harness in the repo is the
+// published way to regenerate them. The branch stays because clones made
+// before that decision still carry record files, and a commit that touches
+// one must not be blocked by a rival's name sitting in raw measurement data —
+// the one place such a name is a fact rather than a mention.
 function isExemptPath(p) {
   return /(^|\/)readme\.md$/i.test(p)
     || /(^|\/)benchmarks\/[^/]+\/records\//.test(p);
