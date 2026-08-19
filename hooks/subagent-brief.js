@@ -13,7 +13,7 @@
 // Injected into EVERY subagent, no agent-type gating: a report is exactly
 // what a read-only agent produces, so the discipline applies most.
 
-const fs = require("fs");
+const { readInput, emitContext } = require("./lib/harness");
 const { quietOff } = require("./lib/gate");
 
 const BRIEF =
@@ -23,26 +23,11 @@ const BRIEF =
   "Emit no text between tool calls either: nobody reads it, so a progress update has no audience. " +
   "Chain the calls and put everything in that one final message.";
 
-function readInput() {
-  try {
-    return JSON.parse(fs.readFileSync(0, "utf-8") || "{}");
-  } catch {
-    return {};
-  }
-}
-
 function main() {
   if (quietOff()) return;
   if (process.env.HUSH_SUBAGENT === "off") return;
   readInput(); // consume stdin per hook contract; no per-agent gating needed
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "SubagentStart",
-        additionalContext: BRIEF,
-      },
-    })
-  );
+  emitContext("SubagentStart", BRIEF);
 }
 
 if (require.main === module) main();

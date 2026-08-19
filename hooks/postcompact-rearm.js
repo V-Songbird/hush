@@ -14,25 +14,11 @@
 // the design — the existing marker-triggered path re-delivers the note only
 // when a marker is actually about to be shown.
 
+const { readInputOrNull: readInput } = require("./lib/harness");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { coreOff } = require("./lib/gate");
-
-function readInput() {
-  let raw;
-  try {
-    raw = fs.readFileSync(0, "utf-8");
-  } catch {
-    return {};
-  }
-  if (!raw || !raw.trim()) return {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null; // malformed — no-op
-  }
-}
 
 // Re-arming is deletion, and deletion is total: the note sentinel is dropped
 // so the next compaction can claim it again, never carried forward as still

@@ -21,6 +21,7 @@
 //     time, and a listing longer than the cap says how many it left out
 //     instead of dropping them silently.
 
+const { readInputOrNull: readInput, emitRaw } = require("./lib/harness");
 const fs = require("fs");
 const path = require("path");
 const { sessionDir } = require("./lib/sidecar-store");
@@ -33,21 +34,6 @@ const STATIC_BLOCK =
   "identifier, command, version number, error message, decision, and open thread — losing one " +
   "forces re-exploration that costs more than the summary saves. Drop narration, pleasantries, " +
   "step-by-step retellings, and content restated from tool outputs. One fact per line.";
-
-function readInput() {
-  let raw;
-  try {
-    raw = fs.readFileSync(0, "utf-8");
-  } catch {
-    return {};
-  }
-  if (!raw || !raw.trim()) return {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null; // malformed — caller stays silent
-  }
-}
 
 // This session's recovery files only — its own directory under the sidecar
 // root — forward-slashed, sorted, stat-verified, or null when there's nothing
@@ -110,7 +96,7 @@ function main() {
     const blocks = [STATIC_BLOCK];
     const sidecarBlock = buildSidecarBlock(data.session_id);
     if (sidecarBlock) blocks.push(sidecarBlock);
-    process.stdout.write(blocks.join("\n\n"));
+    emitRaw(blocks.join("\n\n"));
   } catch {
     /* fail-open: never break a session over a summary hint */
   }

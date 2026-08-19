@@ -37,7 +37,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { quietOff, OFF_TOKEN } = require("./lib/gate");
 const { sessionDir } = require("./lib/sidecar-store");
-const { readTailLines, isRealUserPrompt } = require("./lib/transcript");
+const { readInputAsync, emitContext, readTailLines, isRealUserPrompt } = require("./lib/harness");
 
 const nudgeEnv = String(process.env.HUSH_NUDGE || "").trim();
 const OFF = OFF_TOKEN.test(nudgeEnv);
@@ -138,41 +138,21 @@ function nudgeFor(event) {
 function main() {
   if (quietOff()) return;
   if (OFF) return;
-  let raw = "";
-  process.stdin.on("data", (d) => {
-    raw += d;
-  });
-  process.stdin.on("end", () => {
-    let input = {};
-    try {
-      input = JSON.parse(raw || "{}");
-    } catch {
-      // A malformed payload is not a reason to drop the reminder; the event
-      // name is the only field used and PostToolUse is the common case.
-    }
+  // A malformed payload is not a reason to drop the reminder: the event name
+  // is the only field used, and PostToolUse is the common case.
+  readInputAsync((input) => {
     const event = input.hook_event_name === "UserPromptSubmit" ? "UserPromptSubmit" : "PostToolUse";
     if (event === "UserPromptSubmit" && !MAX_MODE) resetReact(input.session_id);
     if (event === "PostToolUse" && !MAX_MODE) {
       if (!reactShouldFire(input.session_id, input.transcript_path)) return;
-      process.stdout.write(
-        JSON.stringify({
-          hookSpecificOutput: { hookEventName: event, additionalContext: STEP },
-        })
-      );
+      emitContext(event, STEP);
       return;
     }
 
     const text = nudgeFor(event);
     if (text === null) return;
 
-    process.stdout.write(
-      JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: event,
-          additionalContext: text,
-        },
-      })
-    );
+    emitContext(event, text);
   });
 }
 

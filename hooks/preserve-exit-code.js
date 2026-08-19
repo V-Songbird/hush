@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 "use strict";
 
+// CLAUDE-CODE-ONLY WORKAROUND. This whole hook exists because of one detail
+// of one host: a non-zero exit routes to PostToolUseFailure, which has no
+// rewrite channel. A harness that lets a failing command's output be rewritten
+// needs none of this, and a port should expect the file to be dead code rather
+// than translate it. Everything host-shaped it does go through
+// lib/harness.js; what stays here is the shell wrapping itself.
+//
 // PreToolUse hook: wraps Bash/PowerShell commands so a non-zero exit never
 // reaches Claude Code as a TOOL failure. A command that "fails" in the shell
 // sense (build broke, tests red) still ran successfully as far as the Bash/
@@ -18,20 +25,12 @@
 // survives as a trailer marker compress-tool-output.js reads authoritatively
 // (see EXIT_MARKER_RE there) instead of guessing from response shape/regex.
 
-const fs = require("fs");
+const { readInput, emitUpdatedInput } = require("./lib/harness");
 const { coreOff } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell"]);
 const MARKER_PREFIX = "[[hush:exit=";
 const MARKER_SUFFIX = "]]";
-
-function readInput() {
-  try {
-    return JSON.parse(fs.readFileSync(0, "utf-8") || "{}");
-  } catch {
-    return {};
-  }
-}
 
 function alreadyWrapped(command) {
   return typeof command === "string" && command.includes(MARKER_PREFIX);
@@ -132,14 +131,7 @@ function main() {
 
   const wrapped = data.tool_name === "PowerShell" ? wrapPowerShell(command) : wrapBash(command);
 
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        updatedInput: { ...data.tool_input, command: wrapped },
-      },
-    })
-  );
+  emitUpdatedInput({ ...data.tool_input, command: wrapped });
 }
 
 if (require.main === module) main();

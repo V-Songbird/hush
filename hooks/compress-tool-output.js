@@ -10,7 +10,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { lastUserPromptText } = require("./lib/transcript");
+const { readInput, emitToolOutput, decodeResponse, SHELL_FIELDS, lastUserPromptText } = require("./lib/harness");
 const { safeWriteFileSync } = require("./lib/safe-write");
 const { combineActions, buildRecord, recoveryGap, sizeGap, fieldGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
 const sidecarStore = require("./lib/sidecar-store");
@@ -37,14 +37,6 @@ const GREP_KEEP_PER_FILE = 3;
 function intEnv(name, fallback) {
   const n = parseInt(process.env[name] || "", 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
-function readInput() {
-  try {
-    return JSON.parse(fs.readFileSync(0, "utf-8") || "{}");
-  } catch {
-    return {};
-  }
 }
 
 // eslint-disable-next-line no-control-regex
@@ -1043,7 +1035,7 @@ function mustSanitize(response) {
   const strippable = (v) => typeof v === "string" && EXIT_MARKER_PRESENT_RE.test(v);
   if (typeof response === "string") return strippable(response);
   if (response && typeof response === "object") {
-    return ["stdout", "stderr", "output"].some((field) => strippable(response[field]));
+    return SHELL_FIELDS.some((field) => strippable(response[field]));
   }
   return false;
 }
@@ -1178,7 +1170,8 @@ function main() {
     // Read carries the file in tool_response.file.content (raw text; the
     // harness adds line numbers at render time). Compress log-shaped files
     // only; every other Read passes through untouched.
-    const file = response && typeof response === "object" ? response.file : undefined;
+    const decoded = decodeResponse(response);
+    const file = decoded.kind === "file" ? decoded.file : undefined;
     const filePath = (data.tool_input && data.tool_input.file_path) || (file && file.filePath);
     const sideRead = isSidecarPath(filePath);
     // An explicit offset/limit means the model is navigating to a specific
@@ -1220,7 +1213,8 @@ function main() {
     // count modes are already terse and pass whole. Context-flagged (-A/-B/-C)
     // and multiline searches asked for surrounding code — collapsing match
     // lines away from their context would orphan it, so those pass whole too.
-    const content = response && typeof response === "object" && typeof response.content === "string" ? response.content : null;
+    const decoded = decodeResponse(response);
+    const content = decoded.kind === "content" ? decoded.text : null;
     // Watched but not a shape hush ever touches — still a handled output, so
     // it still gets one record.
     if (content === null) return deliver({ tool: "Grep", action: "passthrough", bytesIn: 0, linesIn: 0 }, undefined, data);
@@ -1285,7 +1279,7 @@ function main() {
     // digest still carries its own file pointer inline, so nothing is
     // unreachable.
     const combined = {};
-    for (const field of ["stdout", "stderr", "output"]) {
+    for (const field of SHELL_FIELDS) {
       if (typeof next[field] === "string") {
         bytesIn += next[field].length;
         const fieldWrapped = extractWrappedExit(next[field]);
@@ -1325,16 +1319,9 @@ function main() {
 
 function emit(updated, sessionId) {
   if (updated === undefined) return; // nothing shrank — stay silent
-
-  const hookSpecificOutput = {
-    hookEventName: "PostToolUse",
-    updatedToolOutput: updated,
-  };
-  if (process.env.HUSH_NOTE !== "off" && hasHushNote(updated) && claimSessionNote(sessionId)) {
-    hookSpecificOutput.additionalContext = NOTE_TEXT;
-  }
-
-  process.stdout.write(JSON.stringify({ hookSpecificOutput }));
+  const noteRides =
+    process.env.HUSH_NOTE !== "off" && hasHushNote(updated) && claimSessionNote(sessionId);
+  emitToolOutput(updated, noteRides ? { additionalContext: NOTE_TEXT } : null);
 }
 
 if (require.main === module) main();

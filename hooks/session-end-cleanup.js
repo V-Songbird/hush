@@ -14,23 +14,9 @@
 // to land. Always exits 0: a session that is already over must not be handed
 // an error, and a sidecar left on disk costs nothing but temp space.
 
+const { readInputOrNull: readInput } = require("./lib/harness");
 const { removeSession, sweepStale } = require("./lib/sidecar-store");
 const { coreOff } = require("./lib/gate");
-
-function readInput() {
-  let raw;
-  try {
-    raw = require("fs").readFileSync(0, "utf-8");
-  } catch {
-    return {};
-  }
-  if (!raw || !raw.trim()) return {};
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null; // malformed — no-op
-  }
-}
 
 function main() {
   try {
