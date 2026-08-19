@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.6.4 — 2026-08-19
+
+The final message breaks up its longest sentences more often. A comma that joins two facts is now treated like a semicolon or a dash.
+
+`HUSH_DEBUG=1` records now name the parked file whenever hush writes one, not only when parking is the recovery route the view suggests.
+
 ## 1.6.3 — 2026-08-18
 
 Fixed an issue where a style could pass the verifier and then never show up in `/hush:pick-style`. A style's description now has to end with the exact sentence the shelf reads — `Unmeasured variant of Hush.` for one you crafted, `Unmeasured preset shipped with Hush.` for one hush ships.
