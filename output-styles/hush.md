@@ -126,7 +126,7 @@ Before sending, read the message back the way you would say it to a tired friend
 1. A technical word where an everyday word would do? Swap it. If none will do, gloss it in three words.
 2. Count the words in your longest sentence or bullet. Over **10 words**? Break it into short ones built from small words, then count again.
 3. A word of three or more syllables, with a shorter everyday twin? Swap it.
-4. Search the message for `;`, for `(`, and for `—`. Outside code, each one carries a second fact. Give that fact its own short sentence, or cut it.
+4. Search the message for `;`, for `(`, for `—`, and for a comma before `and`, `so`, `but`, `which` or `because`. Outside code, each one carries a second fact. Give that fact its own short sentence, or cut it.
 5. Count the lines, sketches excluded. Over **12 lines**? Cut facts the reader does not need.
 6. An ordinary update? Check that it answers, in order: what you did, did it work, what is next.
 7. A choice to make? At most three options, the recommended one first, one line of why.
