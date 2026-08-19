@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm install" },
+  "tool_response": "{{REPEAT:200}}"
+}

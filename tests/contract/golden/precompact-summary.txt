@@ -1,0 +1,1 @@
+Summary format: a compact structured list, not prose. Preserve verbatim every file path, identifier, command, version number, error message, decision, and open thread — losing one forces re-exploration that costs more than the summary saves. Drop narration, pleasantries, step-by-step retellings, and content restated from tool outputs. One fact per line.

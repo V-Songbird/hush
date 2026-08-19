@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "tool_name": "Read",
+  "tool_input": { "file_path": "logs/app.log" },
+  "tool_response": { "file": { "filePath": "logs/app.log", "content": "{{UNIQUE:400}}", "numLines": 400 } }
+}

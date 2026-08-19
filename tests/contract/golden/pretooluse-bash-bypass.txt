@@ -1,0 +1,1 @@
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"npm test\n__hush_exit=$?\necho '[[hush:exit='\necho $__hush_exit\necho ']]'\nexit 0"}}}

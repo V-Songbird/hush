@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "tool_name": "Bash",
+  "tool_input": { "command": "cat build.log" },
+  "tool_response": "{{UNIQUE:320}}"
+}

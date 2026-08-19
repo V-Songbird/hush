@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "tool_name": "Bash",
+  "tool_input": { "command": "npm run build" },
+  "tool_response": "{{FAILING:400}}"
+}
