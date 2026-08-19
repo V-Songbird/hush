@@ -624,6 +624,7 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
     if (saved) {
       decision.recovery = "sidecar";
       decision.recoveryPath = saved;
+      decision.sidecarPath = saved;
       decision.retention = "session";
     }
   }
@@ -970,6 +971,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
         decision.omitted = side.omitted;
         decision.recovery = "sidecar";
         decision.recoveryPath = side.file;
+        decision.sidecarPath = side.file;
         decision.retention = "session";
       }
       return side.text;
@@ -1299,6 +1301,9 @@ function main() {
           combined.recoveryPath = decision.recoveryPath;
           combined.retention = decision.retention;
         }
+        // Carried on its own, not inside the branch above: a field can park a
+        // copy without that park becoming the whole response's advised route.
+        if (decision.sidecarPath) combined.sidecarPath = decision.sidecarPath;
         if (out !== next[field]) {
           next[field] = out;
           changed = true;

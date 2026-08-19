@@ -281,7 +281,8 @@ describe('adversarial no-op fixtures', () => {
 describe('transform manifest: the record contract', () => {
   const RECORD_KEYS = [
     'action', 'bytesIn', 'bytesOut', 'fallback', 'linesIn', 'omitted',
-    'preserved', 'recovery', 'recoveryPath', 'retention', 'retrieval', 'session', 'tool',
+    'preserved', 'recovery', 'recoveryPath', 'retention', 'retrieval', 'session',
+    'sidecarPath', 'tool',
   ];
   function only(id) {
     const entries = readManifest(id);
@@ -402,6 +403,56 @@ describe('transform manifest: the record contract', () => {
     const e = only(id);
     assert.strictEqual(e.action, 'shell-guard-skip');
     assert.match(e.fallback, /truncated by the host/);
+  });
+
+  // `sidecarPath` answers one question `recovery` cannot: did hush put bytes on
+  // disk for this call? A park rate counted off the recovery kind is wrong in
+  // both directions — it misses parks whose advised route is something else,
+  // and it counts recoveryPaths naming files hush never wrote.
+  test('a parked shell output names the file hush wrote, beside its recovery route', () => {
+    const id = sid('rec-side-path');
+    const body = uniqueLines(500);
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.ok(e.sidecarPath, 'the record names the parked file');
+    assert.strictEqual(fs.existsSync(e.sidecarPath), true, 'and that file is really on disk');
+    assert.strictEqual(fs.readFileSync(e.sidecarPath, 'utf8'), body, 'holding the whole input');
+  });
+
+  test('a capped view parks nothing, so it names no sidecar', () => {
+    const id = sid('rec-side-none');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(200) }, { HUSH_DEBUG: '1', HUSH_TEMPLATE: 'off' });
+    const e = only(id);
+    assert.strictEqual(e.recovery, 'rerun-command');
+    assert.strictEqual(e.sidecarPath, null);
+  });
+
+  // The field that proves the two are not the same thing: a Grep with the
+  // sidecar off recovers by re-running, and its recoveryPath is the search
+  // path — a directory hush never wrote a byte into.
+  test('a recoveryPath hush did not write is not reported as a sidecar', () => {
+    const id = sid('rec-side-alias');
+    const lines = Array.from({ length: 400 }, (_, i) => `src/f${i % 20}.js:${i}:  value_${i}`);
+    runHook('compress-tool-output.js', {
+      tool_name: 'Grep', session_id: id, tool_input: { pattern: 'value_', path: 'src' },
+      tool_response: { mode: 'content', content: lines.join('\n'), numLines: lines.length },
+    }, { HUSH_DEBUG: '1', HUSH_SIDECAR: 'off' });
+    const e = only(id);
+    assert.strictEqual(e.recoveryPath, 'src', 'the recovery route names where to search again');
+    assert.strictEqual(e.sidecarPath, null, 'and nothing was parked');
+  });
+
+  test('a Grep that did park names both, and they agree', () => {
+    const id = sid('rec-side-grep');
+    const lines = Array.from({ length: 400 }, (_, i) => `src/f${i % 20}.js:${i}:  value_${i}`);
+    runHook('compress-tool-output.js', {
+      tool_name: 'Grep', session_id: id, tool_input: { pattern: 'value_', path: 'src' },
+      tool_response: { mode: 'content', content: lines.join('\n'), numLines: lines.length },
+    }, { HUSH_DEBUG: '1' });
+    const e = only(id);
+    assert.strictEqual(e.recovery, 'sidecar');
+    assert.strictEqual(e.sidecarPath, e.recoveryPath);
+    assert.strictEqual(fs.existsSync(e.sidecarPath), true);
   });
 });
 
