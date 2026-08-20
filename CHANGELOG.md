@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.6.5 — 2026-08-19
+
+The benchmark page is re-measured on this build.
+
+The README explains itself in plainer words, without assuming you already know Claude Code's terms.
+
 ## 1.6.4 — 2026-08-19
 
 The final message breaks up its longest sentences more often. A comma that joins two facts is now treated like a semicolon or a dash.

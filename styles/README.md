@@ -8,7 +8,7 @@ Stock **Hush** lives one folder over, in `output-styles/`. The four files here a
 
 | Style | What the sign-off does |
 | --- | --- |
-| **Hush** | Stock — built for tired and ADHD readers: silent, answer first, plain words, hard length caps |
+| **Hush** | The one hush installs — built for tired and ADHD readers: silent, answer first, plain words, short sentences |
 | **Glyph** | Trades words for emotes — one glyph-led line per fact |
 | **Rock** | Pure telegram — noun chains, dropped articles, every fact kept |
 | **Pirate** | Says it the way a pirate would |
