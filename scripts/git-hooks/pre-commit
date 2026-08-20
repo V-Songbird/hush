@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
-// Canonical source for the pre-commit hook installed at
-// scripts/git-hooks/pre-commit in every plugin's own repo (foreman, hush,
-// razor). Keep copies in sync with this file -- see CONTRIBUTING.md
-// "Git hooks" in each plugin repo.
+// The pre-commit hook for this repo, installed at scripts/git-hooks/pre-commit.
+// This file is a copy: the canonical source is
+// scripts/git-hooks/plugin-pre-commit-template.js in the marketplace repo, and
+// changes belong there first -- see CONTRIBUTING.md "Git hooks".
 //
 // Blocks a commit if `node --test tests/*.test.js` fails. No-ops when the
 // plugin has no tests/ directory (skill/prompt-only plugins with no
