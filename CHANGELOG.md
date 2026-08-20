@@ -6,6 +6,8 @@ listing — that's why `plugin.json` here carries none.
 
 ## 1.6.5 — 2026-08-19
 
+Fixed an issue where a very large command output was left almost uncompressed. Claude Code then saved it to a file and showed only a short preview, so the whole thing was read back in. Output that size now gets the parked copy and a short digest, the way smaller output already did.
+
 The benchmark page is re-measured on this build.
 
 The README explains itself in plainer words, without assuming you already know Claude Code's terms.

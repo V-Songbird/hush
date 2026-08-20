@@ -890,17 +890,20 @@ function persistGrepMatches(content, sessionId) {
 function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed) {
   if (process.env.HUSH_SIDECAR === "off") return null;
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
-  // A shell output at/above the host-truncation size was likely already cut by
-  // Claude Code (see SIDECAR_SHELL_MAX): step aside to the inline cap so hush
-  // adds no truncated "full" file and no competing pointer.
+  // A shell output at/above this size may already have been cut by Claude Code
+  // (see SIDECAR_SHELL_MAX), so the copy hush writes cannot claim to be the
+  // whole thing — the header says "as hush received it" instead of "in full".
   //
-  // A FAILING run is the exception. That output is evidence, and above this
-  // size the inline cap is otherwise the ONLY surviving copy of it — a 40KB
-  // failing build log reaches the model as a couple of dozen lines with nowhere
-  // to recover the rest from. It gets the recovery copy, and the header drops
-  // the "in full" claim it can no longer make.
+  // It still gets written. hush used to step aside here, and that made the one
+  // case it was guarding worse: the same size is where the host parks the
+  // result and hands the model a 2KB preview, so falling through to the inline
+  // cap shipped something the host parked anyway, and the model read the parked
+  // file straight back into context. Measured on a real 54KB replay: stepping
+  // aside returned 45,035 chars, the recovery copy returns 3,491 — and the
+  // digest keeps the summary line the model was going after. Getting under the
+  // host's threshold is what removes the competing pointer, because the host
+  // then never parks anything.
   const partial = !!(hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX);
-  if (partial && !failed) return null;
   try {
     // sidecarTarget scans for secrets before ever handing back a path, so a
     // credential-shaped payload falls through to the ordinary inline cap
@@ -967,12 +970,6 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
         decision.retention = "session";
       }
       return side.text;
-    }
-    // Sidecar was skipped specifically by the shell-truncation guard (large
-    // enough to qualify, but the host may have already cut the tail) — note
-    // that even though the output falls through to the ordinary cap below.
-    if (decision && !failed && hostMayTruncate && cleaned.length >= SIDECAR_MIN_CHARS && cleaned.length >= SIDECAR_SHELL_MAX) {
-      decision.action = "shell-guard-skip";
     }
   }
   const s = typeof scale === "number" ? scale : 1;

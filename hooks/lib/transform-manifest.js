@@ -40,7 +40,6 @@ const ACTIONS = {
   // The one that keeps every input line by construction: passthrough returns
   // the input unchanged.
   passthrough: { lossy: false },
-  'shell-guard-skip': { lossy: false, fallback: 'shell output may already be truncated by the host' },
   'rejected-not-smaller': { lossy: false, fallback: 'rewrite was not smaller than the input' },
   'rejected-no-recovery': { lossy: false, fallback: 'transform removed detail without a recovery location' },
   'rejected-field-loss': { lossy: false, fallback: 'rewrite dropped a field the response arrived with' },
@@ -52,7 +51,7 @@ const ACTIONS = {
 // actions a shell field can produce appear here; combineActions falls back to
 // the first reported action for anything else.
 const ACTION_PRIORITY = [
-  'sidecar', 'shell-guard-skip', 'cap', 'template-collapse',
+  'sidecar', 'cap', 'template-collapse',
   'rejected-not-smaller', 'enumerate-passthrough', 'scrub-only', 'passthrough',
 ];
 

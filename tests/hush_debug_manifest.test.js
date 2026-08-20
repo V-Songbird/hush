@@ -159,13 +159,20 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
     assert.ok(entry.bytesOut < entry.bytesIn);
   });
 
-  test('shell-guard-skip — a shell output at/above the host-truncation size skips the sidecar', () => {
+  // Past the host-truncation size the host parks the result itself and shows a
+  // 2KB preview, so stepping aside here left the model reading the parked file
+  // back into context. The recovery copy goes out instead, and only the header
+  // changes: "as hush received it" rather than "in full".
+  test('sidecar — a shell output past the host-truncation size still gets a recovery copy', () => {
     const id = sid('guard');
     const body = uniqueLines(900); // ~31KB: over SIDECAR_SHELL_MAX
     assert.ok(body.length >= 28000, 'fixture must clear SIDECAR_SHELL_MAX for this test to mean anything');
-    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
     const [entry] = readManifest(id);
-    assert.strictEqual(entry.action, 'shell-guard-skip');
+    assert.strictEqual(entry.action, 'sidecar');
+    assert.ok(entry.sidecarPath, 'the parked file is recorded');
+    assert.ok(entry.bytesOut < entry.bytesIn / 2, 'and the digest is what reaches the model');
+    assert.match(hookOutput(r).hookSpecificOutput.updatedToolOutput, /as hush received it/);
   });
 
   // A failing run is the one output whose detail is evidence, so it takes the
@@ -395,14 +402,6 @@ describe('transform manifest: the record contract', () => {
     assert.strictEqual(e.recovery, 'rerun-command');
     assert.strictEqual(e.recoveryPath, 'src');
     assert.strictEqual(e.retention, 'none');
-  });
-
-  test('shell-guard-skip — the record states why the transform stepped aside', () => {
-    const id = sid('rec-fallback');
-    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(900) }, { HUSH_DEBUG: '1' });
-    const e = only(id);
-    assert.strictEqual(e.action, 'shell-guard-skip');
-    assert.match(e.fallback, /truncated by the host/);
   });
 
   // `sidecarPath` answers one question `recovery` cannot: did hush put bytes on

@@ -1407,9 +1407,9 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     assert.match(out, /saved in full to/, 'sidecar active in the sweet spot');
   });
 
-  test('a shell output at/above the host-truncation size does NOT sidecar (falls to inline cap)', () => {
+  test('a shell output at/above the host-truncation size sidecars, without claiming to be full', () => {
     // bigText's fixed "info line N padding..." shape template-collapses on its
-    // own; pin the new rung off so this test isolates the sidecar/cap fallback.
+    // own; pin the new rung off so this test isolates the sidecar decision.
     const prevTemplate = process.env.HUSH_TEMPLATE;
     process.env.HUSH_TEMPLATE = 'off';
     let out;
@@ -1418,8 +1418,11 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     } finally {
       if (prevTemplate === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prevTemplate;
     }
-    assert.doesNotMatch(out, /saved in full to/, 'no truncated "full" file, no competing pointer');
-    assert.match(out, /lines omitted from this view/, 'normal inline cap applies instead');
+    const m = String(out).match(/was saved to ([^;]+) as hush received it/);
+    assert.ok(m, 'the recovery copy is written past the host-truncation size');
+    created.push(m[1].trim());
+    assert.doesNotMatch(out, /saved in full to/, 'and it never claims to be the whole output');
+    assert.ok(out.length < 32000 / 2, 'the digest is what reaches the model, not the output');
   });
 
   test('a large Read is exempt — full content reaches the hook, sidecar still helps', () => {
@@ -1438,6 +1441,7 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     try {
       const out = withSidecar(() => fresh.compress(bigText(20000), 0, false, false, [], 1, 's', undefined, true));
       assert.doesNotMatch(out, /saved in full to/, '20KB now exceeds the lowered bound');
+      assert.match(out, /as hush received it/, 'so the copy drops its "in full" claim');
     } finally {
       if (prev === undefined) delete process.env.HUSH_SIDECAR_SHELL_MAX; else process.env.HUSH_SIDECAR_SHELL_MAX = prev;
       delete require.cache[p];
