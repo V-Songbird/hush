@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.6.6 — 2026-08-21
+
+The README now says when to pick hush over Claude Code's own Concise style, and when Concise is the better choice.
+
+The poster at the top of the README is redrawn from the same test run the tables below it report.
+
 ## 1.6.5 — 2026-08-19
 
 Fixed an issue where a very large command output was left almost uncompressed. Claude Code then saved it to a file and showed only a short preview, so the whole thing was read back in. Output that size now gets the parked copy and a short digest, the way smaller output already did.
