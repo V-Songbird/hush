@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 "use strict";
 
-// The pre-commit hook for this repo, installed at scripts/git-hooks/pre-commit.
-// This file is a copy: the canonical source is
-// scripts/git-hooks/plugin-pre-commit-template.js in the marketplace repo, and
-// changes belong there first -- see CONTRIBUTING.md "Git hooks".
+// The pre-commit hook every plugin repo installs at
+// scripts/git-hooks/pre-commit. Canonical source:
+// scripts/git-hooks/plugin-pre-commit-template.js in the marketplace repo --
+// anywhere else this file is a copy, and an edit belongs in the template
+// first. See CONTRIBUTING.md "Git hooks" in each plugin repo.
 //
 // Blocks a commit if `node --test tests/*.test.js` fails. No-ops when the
 // plugin has no tests/ directory (skill/prompt-only plugins with no
@@ -36,9 +37,9 @@ function testGlob(root) {
 //   fixture (a `cwd` override), these inherited vars win over `cwd` for
 //   repo discovery -- so "isolated" git commands in the test suite land in
 //   THIS repo's real .git instead of the fixture, corrupting it. Confirmed
-//   empirically 2026-07-07: foreman's test helper's `initGitRepo()` (cwd
-//   set to a tmpdir) still wrote its config into the real submodule gitdir
-//   when this hook ran through an actual `git commit`.
+//   empirically 2026-07-07: a test helper that ran `git init` in a tmpdir,
+//   with `cwd` pointed at that tmpdir, still wrote its config into the real
+//   repo's gitdir when this hook ran through an actual `git commit`.
 function cleanEnv() {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
