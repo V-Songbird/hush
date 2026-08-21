@@ -6,9 +6,9 @@
   <h1>hush</h1>
   <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
-  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with every hush reminder turned on run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 48 sessions without the plugin spike to 198 words. Right of it, the same 48 sessions with hush run flat: silent in 36 of 48, nothing over 49 words. It reads: Quiet." width="700" />
 
-  <p><em>An 85-session run of an older 17-job suite, with every reminder turned on: <code>HUSH_NUDGE=max</code>. The tables below are the current eight-job suite on the default setting.</em></p>
+  <p><em>Three runs of the same eight jobs the tables below measure, on the default setting. 48 sessions each way.</em></p>
 </div>
 
 <p align="center">
