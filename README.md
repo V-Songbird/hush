@@ -148,6 +148,12 @@ Here is what that reads like. A real final message from this run, the dependency
 >
 > Fixed both. The rest of the warnings (deprecation notices, unused export, circular import) are just noise from the bump, not build-breaking, so I left those alone.
 
+### Why not just use Concise?
+
+Claude Code ships its own **Concise** style. It costs nothing and it is already on your machine, so it is a fair thing to ask. The difference is what each one can reach. Concise is a set of writing rules, so it makes Claude write less — but it cannot change what your commands print. Over the same eight jobs it read back 35.0k characters of command output per session, against 35.4k with no plugin at all. That is no cut. hush read back 24.1k, because it trims the output on the way in.
+
+The line from the table above applies here too. Across the whole suite Concise came out a little cheaper. On the loud jobs hush came out ahead of it — 32% cheaper on the outage dig, 14% on the log triage. So if your day is small edits and short commands, take Concise: it is free and already there. If your commands print a lot, hush is the one that pays for itself. It also goes quiet more often, 12 sessions of 16 against 7, says 4.8 words of play-by-play against 22.7, reads two school grades easier, and keeps a copy of everything it trimmed.
+
 *How we tested: eight jobs, six setups, two runs each, in fresh throwaway folders, on Sonnet. Real sessions from start to finish, never a single canned reply, and every price read back from the API. One row can swing ten or twenty points between runs, so read the direction, not the decimal — the ordering by how much a job prints is what held up across seven separate runs. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ## Under the hood
