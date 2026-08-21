@@ -8,7 +8,7 @@
 
   <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, the 85 sessions without the plugin spike to 320 words. Right of it, the same 85 sessions with every hush reminder turned on run flat: silent in 81 of 85, nothing over 24 words. It reads: Quiet." width="700" />
 
-  <p><em>An 85-session run of an older 17-job suite, with every reminder turned on: <code>HUSH_NUDGE=max</code>. The tables below are the current six-job suite on the default setting.</em></p>
+  <p><em>An 85-session run of an older 17-job suite, with every reminder turned on: <code>HUSH_NUDGE=max</code>. The tables below are the current eight-job suite on the default setting.</em></p>
 </div>
 
 <p align="center">
@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude talks a lot while it works, and dumps every log line into the conversation. hush cuts that noise: about half the machine output, and nearly all the play-by-play. What you get back is one short, readable answer at the end. On the last run the bill came out the same as without it, so take this as a quiet-and-readable tool, not a discount.
+> **TL;DR** — Claude talks a lot while it works, and dumps every log line into the conversation. hush cuts that noise: about a third of the machine output, and nearly all the play-by-play. What you get back is one short, readable answer at the end. Whether it saves you money depends on how much your commands print — a lot, and it pays for itself; a little, and it costs you a little.
 
 ---
 
@@ -86,53 +86,69 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 
 ## Benchmarks
 
-We put hush up against plain Claude Code on six fixed jobs — the work hush is built for: noisy builds and logs, a big migration sweep, and long sessions that drift. These are real sessions where Claude reads, edits, and runs code, and every cost comes straight from the API.
+We gave the same eight jobs to plain Claude Code, and to Claude Code with hush. Real sessions: it reads files, edits code, runs commands. Noisy builds, big log files, wide renames, and long jobs where the plan keeps changing. Every price below is the real bill from the API.
 
-<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 6 jobs on Sonnet. Tool output: no plugin 33.6k chars, hush 18.0k chars, 46% less. Chatter before the answer: no plugin 55 words, hush 9 words, 84% less. Tokens the model wrote: no plugin 4,583 tok, hush 5,199 tok, 13% more. Cost per session: no plugin $0.393, hush $0.388, 1% less." width="700"></p>
+<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 8 jobs on Sonnet. command output: no plugin 35.4k chars, hush 24.1k chars, minus 32%. chatter while working: no plugin 53 words, hush 5 words, minus 91%. words Claude wrote: no plugin 4,892 tok, hush 4,647 tok, minus 5%. cost per session: no plugin $0.379, hush $0.380, about the same." width="700"></p>
 
-**hush cuts the noise. The bill lands about where it started.** Tool output drops 46% and the running commentary all but disappears. Cost came out a wash this run: two jobs got a lot cheaper, three got dearer. [The full picture](#the-full-picture) below has every row, the wins and the losses.
+**hush cuts the noise. The bill comes out about the same.** Command output drops by a third, and the running commentary all but disappears. Whether hush saves you money depends on your work. [The next table](#when-it-saves-you-money-and-when-it-costs-you) says exactly when.
 
-**And you read it in silence.** hush went the whole session without a word of play-by-play in 8 jobs of 12 — plain Claude Code managed that in 2. Claude still speaks up to flag something you'd want to stop, or when it's blocked and needs you.
+**And you read it in silence.** hush finished the whole session without a word of play-by-play in 12 jobs of 16 — plain Claude Code managed that in 3. It still speaks up to flag something you would want to stop, or when it is stuck and needs you.
 
-### The full picture
+### When it saves you money, and when it costs you
 
-Every kind of work, the wins **and** the losses. Typical (median) cost per session, on Sonnet.
+It comes down to one thing: **how much your commands print.**
 
-| Kind of work | no plugin | hush | change | worst single job for hush |
+A step is one round trip: Claude thinks, runs something, reads the result. hush carries its writing rules along on every one of those. That is a small fixed cost, paid every step. It earns the cost back by trimming what your commands print. When there is little to trim, you just pay it.
+
+Here is every job from the run, ordered by how much its commands printed:
+
+| The job | printed per step | no plugin | hush | change |
 | --- | --- | --- | --- | --- |
-| Noisy builds and logs (3 jobs) | $0.183 | $0.202 | +10% | the dependency bump, +23% |
-| Search-heavy (1 job) | $0.642 | **$0.616** | **−4%** | — |
-| Long drifting sessions (2 jobs) | $0.525 | **$0.520** | **a wash** | the feature job, +44% |
-| **Whole suite (mean)** | $0.393 | **$0.388** | **−1%** | |
+| Build a notification router while the plan changes four times | 1.0k | $0.456 | $0.675 | +48% |
+| Fix a red test suite hiding three real failures | 1.6k | $0.192 | $0.215 | +12% |
+| Get a build clean again after a dependency bump | 2.4k | $0.199 | $0.219 | +10% |
+| Finish a half-done rename across 76 files | 2.8k | $0.494 | $0.577 | +17% |
+| Scope a column rename that matches a thousand lines | 3.1k | $0.202 | $0.223 | +11% |
+| **— around here the two swap places —** | **~3.5k** | | | |
+| Dig through 300 KB of logs for the cause of an outage | 4.4k | $0.596 | **$0.406** | **−32%** |
+| Find what actually changed for users across 380 commits | 10.3k | $0.592 | **$0.480** | **−19%** |
+| Triage a 57 KB application log | 20.0k | $0.298 | **$0.247** | **−17%** |
 
-Job by job it swings hard both ways: the log triage came out 36% cheaper and the incident job 24% cheaper, while the feature job cost 44% more. Read the rows, not just the last one — your bill will follow whichever rows look like your work. Every setup passed every correctness check this run, 12 of 12 each, so nothing here was bought with a wrong answer. On Haiku, hush costs about 11% more and speaks up just twice in twelve jobs — but it missed two correctness checks there. Treat it as a quiet tool first on the small model.
+The line sits at about **3,500 characters printed per step**. We checked it against 48 job-and-run pairs drawn from seven separate runs, and 47 of them land on the right side of it.
+
+**So: if your day is builds, logs and big searches, hush pays for itself. If it is small edits and short commands, it costs you a little.** Every setup got every job right this run, 16 of 16 each, so none of this was bought with a wrong answer.
 
 ### Reading it is the other half
 
-We also scored the one final message each setup shipped, on measures none of us invented — Flesch Reading Ease, US grade level, sentence length, long words. Beside hush: [i-have-adhd](https://github.com/ayghri/i-have-adhd), built for ADHD readers, [simple-english](https://github.com/AminBlg/SimpleEnglish), aerospace's controlled English, and [caveman](https://github.com/JuliusBrussee/caveman), ultra-compressed answers. Same six jobs, same run, on Sonnet.
+Saving money is only half of it. The other half is whether you can read the answer. So we scored the one final message each setup wrote, using measures that have been around for decades — reading ease, US school grade level, sentence length, and how many long words it uses.
 
-| Setup | words | lines | words per sentence | long words | reading ease | grade level | silent sessions |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| no plugin | 71.5 | 3 | 15.2 | 10.1% | 65.9 | 7.8 | 2 of 12 |
-| **hush** | 67.5 | 2.5 | 12.2 | **5.8%** | **81.0** | **5.0** | **8 of 12** |
-| i-have-adhd | 94.5 | 3.5 | 15.7 | 9.7% | 70.1 | 7.4 | 4 of 12 |
-| simple-english | 75.5 | 3 | 15.4 | 9.1% | 71.0 | 7.2 | 3 of 12 |
-| caveman | **32** | **1.5** | **8.7** | 12.5% | 65.3 | 6.3 | 4 of 12 |
+Racing beside hush: Claude Code's own **Concise** style, which ships in the tool and costs nothing, plus three community styles — [i-have-adhd](https://github.com/ayghri/i-have-adhd), built for ADHD readers, [simple-english](https://github.com/AminBlg/SimpleEnglish), the controlled English aerospace writes manuals in, and [caveman](https://github.com/JuliusBrussee/caveman), which strips answers to the bone. Same eight jobs, same run, on Sonnet.
 
-**hush reads easiest of the pack *and* goes quiet.** It takes the reading crowns this run — two grades easier than the style built for ADHD readers, nearly three easier than plain Claude Code, and the fewest long words on the board — and it's still the only setup that regularly finishes a session in silence. caveman writes far shorter messages, with the longest words of anyone. The honest loss: hush ends with something you can run 83% of the time, plain Claude every time.
+| Setup | words | words per sentence | long words | reading ease | grade level | silent sessions |
+| --- | --- | --- | --- | --- | --- | --- |
+| no plugin | 117 | 15.6 | 11.0% | 63.3 | 8.3 | 3 of 16 |
+| **hush** | 101 | 11.1 | **7.8%** | **76.5** | **5.3** | **12 of 16** |
+| Concise (built in) | 104 | 14.8 | 10.1% | 66.2 | 7.7 | 7 of 16 |
+| i-have-adhd | 102 | 17.1 | 10.9% | 61.3 | 8.9 | 5 of 16 |
+| simple-english | 152 | 16.0 | 11.0% | 63.4 | 8.4 | 4 of 16 |
+| caveman | **56** | **10.5** | 10.8% | 66.8 | 6.6 | 7 of 16 |
 
-Here's what that reads like. One real final message from this run, the dependency-bump job, exactly as hush shipped it:
+Higher reading ease is easier. Lower grade level is easier.
 
-> Builds clean now, exit 0.
+**hush reads easiest of the pack *and* goes quiet.** Three school grades easier than plain Claude Code, and the fewest long words on the board — and it is still the one that finishes a session in silence most often. caveman writes much shorter messages but not simpler ones. The honest loss: hush leaves you something you can copy and run 75% of the time, plain Claude 81%.
+
+Here is what that reads like. A real final message from this run, the dependency-bump job, exactly as hush wrote it:
+
+> Build's clean now. 0 errors, exit code 0.
 >
-> The real problem was two spots that never got updated for the new bundler's option shapes.
+> Two real bugs from the bump, both in the link stage:
 >
-> 1. `src/core/options.js` read `options.retries`, but the bumped bundler now sends `retryCount`. That was throwing on `undefined.toFixed()`.
-> 2. `src/net/retryPolicy.js` required `backoffEnabled` to be strictly `true` or `false`, but the new config loader leaves it `undefined` when unset. That threw too.
+> 1. `src/core/options.js` still read `options.retries`, but the new bundler passes `retryCount`. That crashed the build outright.
+> 2. `src/net/retryPolicy.js` treated an unset backoff flag as invalid instead of "off," which would've broken the second build attempt.
 >
-> Both now handle the new shapes, and the rest of the warnings are just noisy deprecation notices from the bump, not bugs. Build finishes with 8 warnings, 0 errors.
+> Fixed both. The rest of the warnings (deprecation notices, unused export, circular import) are just noise from the bump, not build-breaking, so I left those alone.
 
-*How we tested: same jobs, two runs each in fresh throwaway workspaces, on Sonnet — full headless agent sessions, never a single generated reply, costs read from the API. Suite-wide numbers move a few percent between runs, and a single row can swing 10 to 20 points — read the direction, not the decimal. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
+*How we tested: eight jobs, six setups, two runs each, in fresh throwaway folders, on Sonnet. Real sessions from start to finish, never a single canned reply, and every price read back from the API. One row can swing ten or twenty points between runs, so read the direction, not the decimal — the ordering by how much a job prints is what held up across seven separate runs. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ## Under the hood
 
