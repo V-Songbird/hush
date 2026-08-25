@@ -6,9 +6,9 @@
   <h1>hush</h1>
   <p><strong>Claude talks a lot while it works, and you pay for every word. hush turns down the chatter.</strong></p>
 
-  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 48 sessions without the plugin spike to 198 words. Right of it, the same 48 sessions with hush run flat: silent in 36 of 48, nothing over 49 words. It reads: Quiet." width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 16 sessions without the plugin spike to 190 words. Right of it, the same 16 sessions with hush run flat: silent in 11 of 16, nothing over 37 words. It reads: Quiet." width="700" />
 
-  <p><em>Three runs of the same eight jobs the tables below measure, on the default setting. 48 sessions each way.</em></p>
+  <p><em>The same eight jobs the tables below measure, on the default setting. 16 sessions each way.</em></p>
 </div>
 
 <p align="center">
@@ -17,7 +17,7 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
-> **TL;DR** — Claude talks a lot while it works, and dumps every log line into the conversation. hush cuts that noise: about a third of the machine output, and nearly all the play-by-play. What you get back is one short, readable answer at the end. Whether it saves you money depends on how much your commands print — a lot, and it pays for itself; a little, and it costs you a little.
+> **TL;DR** — Claude talks a lot while it works, and dumps every log line into the conversation. hush cuts that noise: about half of the machine output, and nearly all the play-by-play. What you get back is one short, readable answer at the end. Whether it saves you money depends on how much your commands print — a lot, and it pays for itself; a little, and it costs you a little.
 
 ---
 
@@ -88,11 +88,11 @@ Every style runs the same silent machinery. They differ only in the voice of tha
 
 We gave the same eight jobs to plain Claude Code, and to Claude Code with hush. Real sessions: it reads files, edits code, runs commands. Noisy builds, big log files, wide renames, and long jobs where the plan keeps changing. Every price below is the real bill from the API.
 
-<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 8 jobs on Sonnet. command output: no plugin 35.4k chars, hush 24.1k chars, minus 32%. chatter while working: no plugin 53 words, hush 5 words, minus 91%. words Claude wrote: no plugin 4,892 tok, hush 4,647 tok, minus 5%. cost per session: no plugin $0.379, hush $0.380, about the same." width="700"></p>
+<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 8 jobs on Sonnet. command output: no plugin 29.3k chars, hush 13.7k chars, minus 53%. chatter while working: no plugin 52 words, hush 6 words, minus 89%. words Claude wrote: no plugin 4,896 tok, hush 4,163 tok, minus 15%. cost per session: no plugin $0.2548, hush $0.2266, minus 11%." width="700"></p>
 
-**hush cuts the noise. The bill comes out about the same.** Command output drops by a third, and the running commentary all but disappears. Whether hush saves you money depends on your work. [The next table](#when-it-saves-you-money-and-when-it-costs-you) says exactly when.
+**hush cuts the noise, and this run it cut the bill too.** Command output drops by half, and the running commentary all but disappears. The 11% saving is one run, though, and the direction has flipped before. Whether hush saves you money depends on your work. [The next table](#when-it-saves-you-money-and-when-it-costs-you) says exactly when.
 
-**And you read it in silence.** hush finished the whole session without a word of play-by-play in 12 jobs of 16 — plain Claude Code managed that in 3. It still speaks up to flag something you would want to stop, or when it is stuck and needs you.
+**And you read it in silence.** hush finished the whole session without a word of play-by-play in 11 jobs of 16 — plain Claude Code managed that in 4. It still speaks up to flag something you would want to stop, or when it is stuck and needs you.
 
 ### When it saves you money, and when it costs you
 
@@ -104,17 +104,17 @@ Here is every job from the run, ordered by how much its commands printed:
 
 | The job | printed per step | no plugin | hush | change |
 | --- | --- | --- | --- | --- |
-| Build a notification router while the plan changes four times | 1.0k | $0.456 | $0.675 | +48% |
-| Fix a red test suite hiding three real failures | 1.6k | $0.192 | $0.215 | +12% |
-| Get a build clean again after a dependency bump | 2.4k | $0.199 | $0.219 | +10% |
-| Finish a half-done rename across 76 files | 2.8k | $0.494 | $0.577 | +17% |
-| Scope a column rename that matches a thousand lines | 3.1k | $0.202 | $0.223 | +11% |
+| Build a notification router while the plan changes four times | 0.6k | $0.284 | $0.361 | +27% |
+| Get a build clean again after a dependency bump | 1.0k | $0.125 | $0.142 | +13% |
+| Fix a red test suite hiding three real failures | 1.3k | $0.138 | $0.145 | +5% |
+| Dig through 300 KB of logs for the cause of an outage | 1.4k | $0.262 | **$0.230** | **−12%** |
+| Finish a half-done rename across 76 files | 3.0k | $0.451 | **$0.367** | **−19%** |
+| Scope a column rename that matches a thousand lines | 3.0k | $0.119 | $0.124 | +4% |
 | **— around here the two swap places —** | **~3.5k** | | | |
-| Dig through 300 KB of logs for the cause of an outage | 4.4k | $0.596 | **$0.406** | **−32%** |
-| Find what actually changed for users across 380 commits | 10.3k | $0.592 | **$0.480** | **−19%** |
-| Triage a 57 KB application log | 20.0k | $0.298 | **$0.247** | **−17%** |
+| Find what actually changed for users across 380 commits | 7.5k | $0.450 | **$0.330** | **−27%** |
+| Triage a 57 KB application log | 15.1k | $0.209 | **$0.114** | **−45%** |
 
-The line sits at about **3,500 characters printed per step**. We checked it against 48 job-and-run pairs drawn from seven separate runs, and 47 of them land on the right side of it.
+The line sits at about **3,500 characters printed per step**. We checked it against 48 job-and-run pairs drawn from seven separate runs, and 47 of them land on the right side of it. Six of the eight jobs above do — the two that don't are the closest calls on the board.
 
 **So: if your day is builds, logs and big searches, hush pays for itself. If it is small edits and short commands, it costs you a little.** Every setup got every job right this run, 16 of 16 each, so none of this was bought with a wrong answer.
 
@@ -126,35 +126,46 @@ Racing beside hush: Claude Code's own **Concise** style, which ships in the tool
 
 | Setup | words | words per sentence | long words | reading ease | grade level | silent sessions |
 | --- | --- | --- | --- | --- | --- | --- |
-| no plugin | 117 | 15.6 | 11.0% | 63.3 | 8.3 | 3 of 16 |
-| **hush** | 101 | 11.1 | **7.8%** | **76.5** | **5.3** | **12 of 16** |
-| Concise (built in) | 104 | 14.8 | 10.1% | 66.2 | 7.7 | 7 of 16 |
-| i-have-adhd | 102 | 17.1 | 10.9% | 61.3 | 8.9 | 5 of 16 |
-| simple-english | 152 | 16.0 | 11.0% | 63.4 | 8.4 | 4 of 16 |
-| caveman | **56** | **10.5** | 10.8% | 66.8 | 6.6 | 7 of 16 |
+| no plugin | 126 | 18.3 | 11.6% | 60.5 | 9.4 | 4 of 16 |
+| **hush** | 82 | 12.2 | **6.8%** | **77.1** | **5.5** | **11 of 16** |
+| Concise (built in) | 112 | 15.6 | 11.6% | 63.4 | 8.3 | 4 of 16 |
+| i-have-adhd | 87 | 15.7 | 11.0% | 63.3 | 8.3 | 4 of 16 |
+| simple-english | 149 | 15.8 | 11.6% | 61.9 | 8.5 | 2 of 16 |
+| caveman | **74** | **9.7** | 9.6% | 70.0 | 5.9 | 4 of 16 |
 
 Higher reading ease is easier. Lower grade level is easier.
 
-**hush reads easiest of the pack *and* goes quiet.** Three school grades easier than plain Claude Code, and the fewest long words on the board — and it is still the one that finishes a session in silence most often. caveman writes much shorter messages but not simpler ones. The honest loss: hush leaves you something you can copy and run 75% of the time, plain Claude 81%.
+**hush reads easiest of the pack *and* goes quiet.** Nearly four school grades easier than plain Claude Code, and the fewest long words on the board — and it is still the one that finishes a session in silence most often, by a wide margin. caveman writes shorter messages but not simpler ones. The honest loss: hush leaves you something you can copy and run 81% of the time, plain Claude 100%.
+
+### On the bigger model the gap is wider
+
+The table above is Sonnet. On Opus, plain Claude Code writes a *lot* more, and hush cuts a *lot* more:
+
+| Setup | words | lines | long words | reading ease | grade level |
+| --- | --- | --- | --- | --- | --- |
+| no plugin | 520 | 20.5 | 10.5% | 69.6 | 6.7 |
+| **hush** | **49** | **4.0** | **4.3%** | **91.8** | **1.9** |
+
+That is a 500-word wall of text against four lines. The bill lands in the same place either way, $0.71 a session both ways. Play-by-play drops from 81 words a session to 6 — though full silence is rarer here than on Sonnet, 3 sessions of 16 against 11.
 
 Here is what that reads like. A real final message from this run, the dependency-bump job, exactly as hush wrote it:
 
-> Build's clean now. 0 errors, exit code 0.
+> Builds clean now, 0 errors.
 >
-> Two real bugs from the bump, both in the link stage:
+> Two real bugs were hiding under all that deprecation noise, both from the bundler's new options shape:
 >
-> 1. `src/core/options.js` still read `options.retries`, but the new bundler passes `retryCount`. That crashed the build outright.
-> 2. `src/net/retryPolicy.js` treated an unset backoff flag as invalid instead of "off," which would've broken the second build attempt.
+> 1. `src/core/options.js` still read `options.retries`, but the new bundler sends `options.retryCount`. That threw because `retries` was `undefined`.
+> 2. `src/net/retryPolicy.js` only accepted `true` or `false` for the backoff flag. The new config loader leaves unset flags as `undefined`, which isn't either, so it threw too.
 >
-> Fixed both. The rest of the warnings (deprecation notices, unused export, circular import) are just noise from the bump, not build-breaking, so I left those alone.
+> Fixed both. `node build.js` now finishes in 44.9s with 8 warnings, 0 errors, exit code 0.
 
 ### Why not just use Concise?
 
-Claude Code ships its own **Concise** style. It costs nothing and it is already on your machine, so it is a fair thing to ask. The difference is what each one can reach. Concise is a set of writing rules, so it makes Claude write less — but it cannot change what your commands print. Over the same eight jobs it read back 35.0k characters of command output per session, against 35.4k with no plugin at all. That is no cut. hush read back 24.1k, because it trims the output on the way in.
+Claude Code ships its own **Concise** style. It costs nothing and it is already on your machine, so it is a fair thing to ask. The difference is what each one can reach. Concise is a set of writing rules, so it makes Claude write less — but it cannot change what your commands print. Over the same eight jobs it read back 29.2k characters of command output per session, against 29.3k with no plugin at all. That is no cut. hush read back 13.7k, because it trims the output on the way in.
 
-The line from the table above applies here too. Across the whole suite Concise came out a little cheaper. On the loud jobs hush came out ahead of it — 32% cheaper on the outage dig, 14% on the log triage. So if your day is small edits and short commands, take Concise: it is free and already there. If your commands print a lot, hush is the one that pays for itself. It also goes quiet more often, 12 sessions of 16 against 7, says 4.8 words of play-by-play against 22.7, reads two school grades easier, and keeps a copy of everything it trimmed.
+The line from the table above applies here too. On the loud jobs hush came out well ahead of Concise — 55% cheaper on the log triage, 23% on the release digest, 9% on the outage dig. So if your day is small edits and short commands, take Concise: it is free and already there. If your commands print a lot, hush is the one that pays for itself. Against Concise it also goes quiet far more often, 11 sessions of 16 against 4, says 6 words of play-by-play against 45, reads nearly three school grades easier, and keeps a copy of everything it trimmed.
 
-*How we tested: eight jobs, six setups, two runs each, in fresh throwaway folders, on Sonnet. Real sessions from start to finish, never a single canned reply, and every price read back from the API. One row can swing ten or twenty points between runs, so read the direction, not the decimal — the ordering by how much a job prints is what held up across seven separate runs. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
+*How we tested: eight jobs, six setups, two runs each, in fresh throwaway folders, on Sonnet, plus the same eight jobs two ways on Opus. Real sessions from start to finish, never a single canned reply, and every price read back from the API. One row can swing ten or twenty points between runs, so read the direction, not the decimal — the ordering by how much a job prints is what held up across seven separate runs. Reproduce it yourself: [the marketplace repo](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*
 
 ## Under the hood
 

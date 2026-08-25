@@ -6,9 +6,9 @@ listing — that's why `plugin.json` here carries none.
 
 ## 1.7.0 — 2026-08-25
 
-Claude's replies are about half as long. The limits are now six lines and sixty words, down from twelve and a hundred and twenty. Asking for something to be explained still gets the full explanation.
+Claude's replies are about half as long. One final message is at most six lines and sixty words. Asking for something to be explained still gets the full explanation.
 
-A tool or service keeps its own name. Claude no longer writes "the cache" in place of `Redis`.
+A tool, service or product keeps its own name. Claude no longer replaces one with a plain-word description like "the cache".
 
 Beside the parked output hush now keeps a running count of characters in and characters delivered, in `saved.json`, so your own status line script can show how much it kept out of the session.
 
