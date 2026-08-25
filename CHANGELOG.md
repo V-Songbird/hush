@@ -4,6 +4,10 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.7.1 — 2026-08-25
+
+The benchmark page is re-measured on this build. Command output now comes back cut by half, and the page carries a section for the bigger model, where the gap is much wider.
+
 ## 1.7.0 — 2026-08-25
 
 Claude's replies are about half as long. One final message is at most six lines and sixty words. Asking for something to be explained still gets the full explanation.
