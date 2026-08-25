@@ -27,7 +27,7 @@ Claude talks a lot while it works. "Let me look at the codebase." "Now I'll chec
 
 hush trims that bulk — logs, command output, play-by-play — at the source, before Claude has to read any of it back. It earns its keep in sessions that read logs, run builds, and keep going turn after turn. A short question that runs nothing has nothing to trim. There you pay a little more for the quieter reply.
 
-And the one message you do get is built to be read on an empty tank. Answer first. Everyday words. One fact per sentence. It aims for twelve lines, and sentences of about ten words. Made for ADHD readers, and for anyone fried at the end of a long day.
+And the one message you do get is built to be read on an empty tank. Answer first. Everyday words. One fact per sentence. It aims for six lines, and sentences of about ten words. Made for ADHD readers, and for anyone fried at the end of a long day.
 
 ## Why you'd want it
 
