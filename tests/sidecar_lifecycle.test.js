@@ -19,7 +19,7 @@ const { spawnSync } = require('node:child_process');
 const { HOOKS_DIR } = require('./helpers');
 const { compress } = require('../hooks/compress-tool-output');
 const { buildSidecarBlock } = require('../hooks/precompact-summary');
-const { sessionDir, isSidecarPath, SIDECAR_ROOT } = require('../hooks/lib/sidecar-store');
+const { sessionDir, isSidecarPath, SIDECAR_ROOT, savedPath, addSaved } = require('../hooks/lib/sidecar-store');
 
 const SCRATCH_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-lifecycle-'));
 const realSessions = [];
@@ -103,6 +103,22 @@ describe('sidecar storage: a session owns its namespace', () => {
     assert.strictEqual(fs.readFileSync(fileA, 'utf8'), BIG);
     assert.strictEqual(fs.readFileSync(fileB, 'utf8'), BIG);
     assert.ok(isSidecarPath(fileA), 'a namespaced path is still recognized as a sidecar read');
+  });
+
+  // The path reaching isSidecarPath comes from the model, which may have
+  // retyped what the digest printed. NTFS calls a case-only variant the same
+  // file, and a full Read that reads as "not a sidecar" passes through
+  // uncompressed -- the whole parked output back into context.
+  test('a sidecar path in another case is still a sidecar read', { skip: process.platform !== 'win32' }, () => {
+    const file = path.join(sessionDir('CaseFold1234'), 'abcd1234.txt');
+    assert.ok(isSidecarPath(file));
+    assert.ok(isSidecarPath(file.toUpperCase()), 'NTFS folds case, so the predicate must too');
+    assert.ok(isSidecarPath(file.toLowerCase()));
+  });
+
+  test('a path outside the sidecar root is never a sidecar read', () => {
+    assert.strictEqual(isSidecarPath(path.join(os.tmpdir(), 'not-hush', 'x.txt')), false);
+    assert.strictEqual(isSidecarPath(SIDECAR_ROOT), false);
   });
 
   test('ids differing only in case share a directory where the filesystem folds case, and not where it does not', () => {
@@ -271,5 +287,84 @@ describe('sidecar lifetime: compaction keeps every path valid', () => {
     fs.mkdirSync(sessionDir(id), { recursive: true });
     fs.writeFileSync(path.join(sessionDir(id), '.abc123.txt.4242.1a2b3c4d.tmp'), 'half a wri');
     assert.strictEqual(buildSidecarBlock(id), null, 'an unfinished write is not a recovery location');
+  });
+});
+
+// The running savings total is the one thing hush persists for somebody else
+// to read: Claude Code has a single statusline slot, hush does not take it, so
+// the number goes to a file a user's own script can pick up. It is stored in
+// the session's sidecar directory, which means it inherits that directory's
+// whole lifetime — and must not be mistaken for one of the parked outputs
+// living beside it.
+describe('savings total: a running count a statusline can read', () => {
+  function runCompress(temp, sessionId, response, toolName = 'Bash') {
+    return spawnSync('node', [path.join(HOOKS_DIR, 'compress-tool-output.js')], {
+      input: JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: toolName, tool_response: response, session_id: sessionId }),
+      encoding: 'utf-8',
+      timeout: 30000,
+      env: { ...process.env, HUSH_DISABLE: '0', TEMP: temp, TMP: temp, TMPDIR: temp },
+    });
+  }
+
+  const readTotal = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+
+  test('every handled tool output adds to the total, and a compressed one adds less out than in', () => {
+    const temp = scratchTemp('saved-accumulate');
+    const id = 'eeee5555';
+    const file = path.join(scratchSessionDir(temp, id), 'saved.json');
+
+    const first = runCompress(temp, id, BIG);
+    assert.strictEqual(first.status, 0, `exit ${first.status}: ${first.stderr}`);
+    const one = readTotal(file);
+    assert.strictEqual(one.in, BIG.length, 'the total counts what the tool actually produced');
+    assert.ok(one.out < one.in, `a compressed output delivers less than it was given: ${one.out} vs ${one.in}`);
+
+    const second = runCompress(temp, id, BIG);
+    assert.strictEqual(second.status, 0, `exit ${second.status}: ${second.stderr}`);
+    const two = readTotal(file);
+    assert.strictEqual(two.in, one.in * 2, 'a second call adds to the running total rather than replacing it');
+    assert.strictEqual(two.out, one.out * 2);
+  });
+
+  test('an untouched output still counts, with nothing saved', () => {
+    const temp = scratchTemp('saved-passthrough');
+    const id = 'ffff6666';
+    const short = ['ok', 'done'].join(String.fromCharCode(10));
+
+    const r = runCompress(temp, id, short);
+    assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+    const total = readTotal(path.join(scratchSessionDir(temp, id), 'saved.json'));
+    assert.deepStrictEqual(total, { in: short.length, out: short.length }, 'a passthrough is honest about saving nothing');
+  });
+
+  test('the total goes away with the session that wrote it', () => {
+    const temp = scratchTemp('saved-cleanup');
+    const id = 'aaaa7777';
+    runCompress(temp, id, BIG);
+    const file = path.join(scratchSessionDir(temp, id), 'saved.json');
+    assert.strictEqual(fs.existsSync(file), true, 'the total was written in the first place');
+
+    const r = runCleanup(temp, { hook_event_name: 'SessionEnd', session_id: id });
+    assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+    assert.strictEqual(fs.existsSync(file), false, 'session end takes the total with the parked copies');
+  });
+
+  test('the total is never offered to the summarizer as recoverable output', () => {
+    const id = freshSessionId('saved-not-recovery');
+    assert.strictEqual(addSaved(id, 4000, 1800), true);
+    assert.strictEqual(fs.existsSync(savedPath(id)), true);
+    assert.strictEqual(buildSidecarBlock(id), null, 'a count of characters is not a copy of anything');
+  });
+
+  test('a missing session, a zero-length output and a corrupt file all fail open', () => {
+    const id = freshSessionId('saved-degenerate');
+    assert.strictEqual(addSaved('', 100, 50), false, 'a session-less call would write to a shared file nobody cleans up');
+    assert.strictEqual(addSaved(id, 0, 0), false, 'nothing arrived, so there is nothing to count');
+    assert.strictEqual(fs.existsSync(savedPath(id)), false, 'and neither call created the file');
+
+    assert.strictEqual(addSaved(id, 100, 40), true);
+    fs.writeFileSync(savedPath(id), 'not json at all');
+    assert.strictEqual(addSaved(id, 100, 40), true, 'a hand-edited file is replaced, not thrown over');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(savedPath(id), 'utf8')), { in: 100, out: 40 });
   });
 });

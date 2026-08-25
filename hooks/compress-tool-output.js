@@ -1079,6 +1079,11 @@ function deliver(decision, updated, data) {
     }
   }
   appendRecord(record);
+  // The one number a statusline can show: how much tool output arrived versus
+  // how much was actually delivered. Every handled output passes through here
+  // with both sizes already computed, so the running total costs a read and a
+  // write and nothing else.
+  sidecarStore.addSaved(record.session, record.bytesIn, record.bytesOut);
   emit(out, data.session_id);
 }
 

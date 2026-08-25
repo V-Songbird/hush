@@ -7,7 +7,8 @@
 // machine-persisted tool output.
 //
 // Layout: tmpdir/hush-sidecar/<session>/<content-hash>.txt — the directory IS
-// the registration. A flat shared directory made ownership a filename prefix
+// the registration. One non-.txt file shares the directory: saved.json, the
+// session's running compression total (see addSaved below). A flat shared directory made ownership a filename prefix
 // and, since files are content-addressed and an existing file is never
 // rewritten, let two sessions silently share one file: whoever's cleanup ran
 // first pulled the recovery location out from under the other. Per-session
@@ -26,6 +27,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { safeWriteFileSync } = require('./safe-write');
 
 const SIDECAR_ROOT = path.join(os.tmpdir(), 'hush-sidecar');
 
@@ -46,10 +48,17 @@ function sessionDir(sessionId) {
 
 // True for any file under the sidecar root at any depth: a session directory
 // today, a stale flat-scheme leftover from an older run just the same.
+// win32 folds the case here for the same reason sessionDir does: the path
+// arrives from the model, which may have retyped or lowercased what the digest
+// printed, and NTFS calls that the same file. A case-only mismatch used to read
+// as "not a sidecar", and a full Read of one then passed through uncompressed --
+// the whole parked output straight back into context, which is the one thing
+// this predicate exists to prevent.
 function isSidecarPath(filePath) {
   if (typeof filePath !== 'string') return false;
-  const resolved = path.resolve(filePath.trim());
-  const root = path.resolve(SIDECAR_ROOT) + path.sep;
+  const fold = (p) => (process.platform === 'win32' ? p.toLowerCase() : p);
+  const resolved = fold(path.resolve(filePath.trim()));
+  const root = fold(path.resolve(SIDECAR_ROOT) + path.sep);
   return resolved.startsWith(root);
 }
 
@@ -95,4 +104,49 @@ function sweepStale(maxAgeMs, now) {
   return removed;
 }
 
-module.exports = { SIDECAR_ROOT, sessionDir, isSidecarPath, removeSession, sweepStale };
+// The session's running compression total, as a statusline can read it:
+// tmpdir/hush-sidecar/<session>/saved.json holding {"in":N,"out":M} — characters
+// that arrived from tools against characters actually delivered to the model.
+// Claude Code has one statusline slot and hush does not take it; this file is
+// how a user's own script shows the number instead.
+//
+// It lives in the session directory because it has exactly the sidecar
+// lifetime: removeSession takes it with the parked copies, and the stale sweep
+// catches it after a crash. Named .json so precompact-summary's .txt filter
+// never offers it to the summarizer as a recovery file.
+function savedPath(sessionId) {
+  return path.join(sessionDir(sessionId), 'saved.json');
+}
+
+// Adds one tool call's before/after sizes to the total. Read-modify-write on
+// every handled tool output, measured at ~0.45ms against the ~60ms node start
+// each hook fire already pays, so it runs unconditionally rather than behind a
+// flag of its own; HUSH_CORE=off stops it with the rest of the surface.
+//
+// Fail-open, and deliberately not locked: two hook fires racing on parallel
+// tool calls can lose one update, which costs a slightly low statusline and
+// nothing else. A session-less call is skipped — a shared 'unknown' file would
+// mix unrelated runs and no session would ever clean it up.
+function addSaved(sessionId, bytesIn, bytesOut) {
+  if (typeof sessionId !== 'string' || !sessionId) return false;
+  if (!(bytesIn > 0)) return false;
+  const file = savedPath(sessionId);
+  try {
+    let total = {};
+    try {
+      total = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+      /* absent, partial or hand-edited: the total restarts rather than throwing */
+    }
+    if (!total || typeof total !== 'object') total = {};
+    safeWriteFileSync(file, JSON.stringify({
+      in: (Number(total.in) || 0) + bytesIn,
+      out: (Number(total.out) || 0) + (Number(bytesOut) || 0),
+    }));
+    return true;
+  } catch {
+    return false; // fail-open: a statusline number never breaks a session
+  }
+}
+
+module.exports = { SIDECAR_ROOT, sessionDir, isSidecarPath, removeSession, sweepStale, savedPath, addSaved };

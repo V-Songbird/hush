@@ -108,9 +108,21 @@ function permissionsAllowWrapping(data) {
   return data.permission_mode === "bypassPermissions";
 }
 
+// Both wrappers put their trailer in statements that run AFTER the command, so
+// a command that calls `exit` itself never reaches them. Verified live on this
+// machine, both shells: bash leaves at the command's own code, and PowerShell
+// tears the process down before `Out-String` flushes, which loses the
+// command's OWN output as well as the trailer. `npm test || exit 1` is an
+// ordinary thing to write, so a command carrying its own top-level exit is
+// left unwrapped -- that is exactly today's un-wrapped behavior, and nothing
+// is lost. The match is deliberately loose: an over-match costs one unwrapped
+// command, a miss costs the output.
+const SELF_EXIT_RE = /(^|[;&|(){}\n])\s*exit\b/;
+
 function shouldSkip(data, command) {
   if (typeof command !== "string" || !command.trim()) return true;
   if (alreadyWrapped(command)) return true;
+  if (SELF_EXIT_RE.test(command)) return true;
   // A backgrounded launch (dev server, watch mode) never reaches its own
   // exit during this tool call — wrapping would just delay the trailer
   // forever behind a process that's still running. Best-effort: a

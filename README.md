@@ -189,6 +189,24 @@ Once it takes you can delete those lines again — `/hush:pick-style` swaps voic
 - **Getting the full output back.** The summary names the file hush parked. Read it and you have every byte. If the file is gone, run the command again — hush never claims it regenerates what was lost.
 - **Turning it off is two switches.** `HUSH_DISABLE=1` stops everything hush does while a session runs. The voice is chosen when a session starts — put the original back with `/hush:pick-style`, or uninstall.
 - **Where the parked output lives.** Your system temp folder, in `hush-sidecar`, one folder per session, readable only by you where the OS supports that. hush deletes that folder when the session ends, and clears anything a crashed session left behind once it's a day old. Anything you'd hate to see in a temp file, keep out of the terminal.
+- **Showing what it kept out.** Beside the parked output hush keeps a running count, in `saved.json` — characters in, characters actually delivered. Claude Code has one status line and hush doesn't take it, so read the count from your own script:
+
+```js
+// statusline.js — point Claude Code's statusLine command at: node statusline.js
+const fs = require('fs'), os = require('os'), path = require('path');
+let stdin = '';
+process.stdin.on('data', (d) => (stdin += d)).on('end', () => {
+  const id = String(JSON.parse(stdin).session_id).replace(/[^a-zA-Z0-9-]/g, '_');
+  const dir = process.platform === 'win32' ? id.toLowerCase() : id;
+  try {
+    const t = JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'hush-sidecar', dir, 'saved.json'), 'utf8'));
+    process.stdout.write(`hush kept out ${Math.round((1 - t.out / t.in) * 100)}% of ${t.in} characters`);
+  } catch {
+    /* nothing trimmed yet this session */
+  }
+});
+```
+
 - **On Windows, one protection is missing.** hush writes those files just as carefully, but Windows can't lock them to your account alone. Treat parked output there as readable by anything running as you.
 
 ## License

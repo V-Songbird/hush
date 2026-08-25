@@ -87,6 +87,24 @@ describe('unit: shouldSkip', () => {
     assert.strictEqual(shouldSkip(data, 'npm run dev'), true);
   });
 
+  // Both wrappers append their trailer AFTER the command, so a command that
+  // exits on its own never reaches it: bash leaves at that code, and PowerShell
+  // tears the process down before Out-String flushes, losing the command's own
+  // output too. Leaving it unwrapped is the un-wrapped behavior, which loses
+  // nothing.
+  test('skips a command that exits on its own', () => {
+    const data = { permission_mode: BYPASS, tool_input: {} };
+    for (const command of ['exit 3', 'npm test || exit 1', 'echo done && exit 0', 'ls; exit']) {
+      assert.strictEqual(shouldSkip(data, command), true, command);
+    }
+  });
+
+  test('a command that merely contains the letters exit is still wrapped', () => {
+    const data = { permission_mode: BYPASS, tool_input: {} };
+    assert.strictEqual(shouldSkip(data, 'npm run exit-check'), false);
+    assert.strictEqual(shouldSkip(data, 'node -e "process.exit(1)"'), false);
+  });
+
   test('does not skip an ordinary foreground command under bypassPermissions', () => {
     const data = { permission_mode: BYPASS, tool_input: { command: 'node build.js' } };
     assert.strictEqual(shouldSkip(data, 'node build.js'), false);

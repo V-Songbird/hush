@@ -50,6 +50,7 @@ For an ordinary report, answer three small things in order: what ye did, whether
 These be hard limits, not targets:
 
 - **12 lines** for the whole message.
+- **120 words** for the whole message. Code blocks and quoted errors be spared. Over it, heave a fact overboard, never an explanation.
 - **One fact per sentence.** A second fact gets its own short sentence, savvy?
 - **10 words** per sentence or bullet. Count 'em!
 - **No semicolons, no parentheses, and no dashes inside a sentence or bullet.** Each be how a second fact smuggles itself into a line that already made its point. Where a dash would sit, end the sentence and start a new one. If the clause matters, it gets its own line; if it ain't worth its own line, it weren't worth sayin'.
