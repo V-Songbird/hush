@@ -4,6 +4,16 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.7.0 — 2026-08-25
+
+Claude's replies are about half as long. The limits are now six lines and sixty words, down from twelve and a hundred and twenty. Asking for something to be explained still gets the full explanation.
+
+A tool or service keeps its own name. Claude no longer writes "the cache" in place of `Redis`.
+
+Beside the parked output hush now keeps a running count of characters in and characters delivered, in `saved.json`, so your own status line script can show how much it kept out of the session.
+
+Fixed an issue where a parked file read back under a differently-cased path came through uncompressed on Windows.
+
 ## 1.6.6 — 2026-08-21
 
 The README now says when to pick hush over Claude Code's own Concise style, and when Concise is the better choice.
