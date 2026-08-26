@@ -62,6 +62,40 @@ It kicks in at your next session — nothing to configure.
 
 Running [razor](https://github.com/V-Songbird/razor) too? They work at different moments of a session, so neither trips over the other.
 
+## Just the voice, no plugin
+
+You don't have to install anything from a marketplace. The writing voice is a single Markdown file. Claude Code reads it on its own.
+
+Here is the honest split. Claude Code calls a writing voice an **output style**, and that file gives you one. You get the silence while it works, and the one short final message. You do **not** get the trimming of command output and log files. That part needs the plugin. The voice is what makes the answer readable. The trimming is what saves you money.
+
+**The easy way — ask Claude to do it.** Paste this into any Claude Code session:
+
+```
+Fetch https://raw.githubusercontent.com/V-Songbird/hush/main/output-styles/hush.md
+and save it, unchanged, to ~/.claude/output-styles/hush.md — create that folder if
+it isn't there. Then set "outputStyle": "Hush" in ~/.claude/settings.json, keeping
+whatever else that file already has. Tell me when it's done.
+```
+
+Swap `~/.claude` for `.claude` in that prompt to set it up for one project instead. Then restart the session.
+
+**Or do it by hand.** Save the file as one of these:
+
+| Where you put it | Who gets it |
+| --- | --- |
+| `~/.claude/output-styles/hush.md` | You, in every project |
+| `.claude/output-styles/hush.md` in a repo | That project only — check it in and your team gets it too |
+
+Then pick **Hush** under Output style in `/config`, or write it into a settings file yourself:
+
+```json
+{
+  "outputStyle": "Hush"
+}
+```
+
+It takes effect at your next session. Install the plugin later and it brings its own copy — delete your hand-placed file then, so there's only one Hush on the list.
+
 ## What you can do
 
 hush runs itself. Two commands sit off to the side, for when you want that last message written in a different voice. Claude Code calls a writing voice an **output style**, and hush ships a few:
