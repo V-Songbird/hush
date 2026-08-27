@@ -24,8 +24,8 @@ const VALID_VARIANT = [
   "---",
   "body",
   "",
-  "Emit no text between tool calls. Errors stay quoted exact, identifiers verbatim.",
-  "Compression governs the report, never the work.",
+  "Not one word between tool calls. Errors word for word.",
+  "Quiet never means less work.",
   "",
 ].join("\n");
 

@@ -13,7 +13,7 @@
 // byte. A style that keeps these sections in stock's plain English teaches the
 // reply plain English, whatever the Register section asks for, so the prose
 // around the anchors has to stay the author's to rewrite.
-const GUARDED_SECTIONS = ["Mid-turn silence", "Thoroughness", "Never compress", "Final message"];
+const GUARDED_SECTIONS = ["Quiet while you work", "The note at the end", "What stays whole"];
 
 // A rewrite may tighten prose. Losing a third of a section is losing a rule.
 const WORD_FLOOR = 0.6;
@@ -27,10 +27,9 @@ const PRESET_MARKER = "Unmeasured preset shipped with Hush.";
 // The core contract holds in every mode — full mode checks the readability
 // frame on top of these phrases, never instead of them.
 const CORE_PHRASES = [
-  "Emit no text between tool calls",
-  "quoted exact",
-  "verbatim",
-  "never the work",
+  "Not one word between tool calls",
+  "word for word",
+  "never means less work",
 ];
 
 function normalize(text) {
@@ -186,19 +185,14 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
     }
   }
 
-  for (const para of paragraphs(canSections["Register"] || "")) {
-    if (para.includes("[hush") || para.startsWith("Hook-injected")) {
+  // The telemetry-and-hook clause is contract, not voice: any canonical
+  // paragraph that names the `[hush ...]` markers or the hook reminders must
+  // survive verbatim, wherever in the file it lives.
+  for (const para of paragraphs(canonical.body)) {
+    if (para.includes("[hush") || /hook reminder/i.test(para)) {
       if (!generated.body.includes(para))
-        problems.push(`Register clause missing: ${para.slice(0, 60)}`);
+        problems.push(`telemetry clause missing: ${para.slice(0, 60)}`);
     }
-  }
-
-  // The self-narration ban is the one Register rule a voice may reword but not
-  // drop. Its quoted openers are what give it teeth, so they are the anchor —
-  // the sentence around them stays the author's to rewrite.
-  for (const quoted of (canSections["Register"] || "").match(/"[^"]+\.\.\."/g) || []) {
-    if (!generated.body.includes(quoted))
-      problems.push(`Register no-self-narration example missing: ${quoted}`);
   }
 
   return { ok: problems.length === 0, problems };

@@ -2,7 +2,7 @@
 
 Same machinery, four presets plus stock.
 
-Every style in this folder works the same way underneath. Silent between tool calls, then one structured final message when the work is done, errors quoted exact and identifiers verbatim. What changes is the voice, and with it the shape and length of that last message.
+Every style in this folder works the same way underneath. Silent between tool calls, then one structured final message when the work is done, errors quoted word for word and names kept exact. What changes is the voice, and with it the shape and length of that last message.
 
 Stock **Hush** lives one folder over, in `output-styles/`. The four files here are the presets `/hush:pick-style` keeps on the shelf. `/hush:craft-style` adds one more in a voice you choose.
 
@@ -27,9 +27,9 @@ Every style found the same bug, made the same fix, and left the tests green. Wha
 ### Hush
 _Stock: built for tired and ADHD readers — silent, answer first, plain words, hard length caps._
 
->`payroll.js` withheld tax before subtracting the pre-tax deduction, taxing money that should've been tax-free and shorting take-home pay.
->
->Swapped the order so the deduction comes out first, then tax applies to the reduced taxable amount. All 3 tests pass, 87ms.
+>**Fixed the payroll bug.**
+>`payroll.js` took tax out first. The pre-tax deduction came off after. So tax hit money it should not touch.
+>Swapped the order. All 3 tests pass, 87ms.
 
 ---
 

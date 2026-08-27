@@ -4,6 +4,14 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.8.0 — 2026-08-27
+
+The writing voice is rewritten for the newest Claude models. Replies read easier — shorter sentences, plainer words — and sessions finish without mid-work chatter more often. Asking for depth still gets the full answer.
+
+The shipped presets carry the same new frame under their voices.
+
+The benchmark page is re-measured on this build, on the bigger model at its recommended effort setting.
+
 ## 1.7.1 — 2026-08-25
 
 The benchmark page is re-measured on this build. Command output now comes back cut by half, and the page carries a section for the bigger model, where the gap is much wider.
