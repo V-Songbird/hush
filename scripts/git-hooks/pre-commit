@@ -80,3 +80,11 @@ if (require.main === module) {
   const rc = require("./check-reference-names.js").main();
   if (rc !== 0) process.exit(rc);
 }
+
+// README nav: this repo's front page keeps a nav line under the badges, and
+// every anchor in it still resolves to a heading. GitHub builds anchors from
+// heading text, so a renamed section breaks its link silently. See
+// check-readme-nav.js.
+if (require.main === module) {
+  process.exit(require("./check-readme-nav.js").main(["staged"]));
+}

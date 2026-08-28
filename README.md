@@ -17,6 +17,14 @@
     <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-E5582B" alt="Claude Code"/></a>
 </p>
 
+<p align="center">
+    <a href="#install"><strong>Install</strong></a> &nbsp;·&nbsp;
+    <a href="#what-is-this">What is this?</a> &nbsp;·&nbsp;
+    <a href="#what-you-can-do">What you can do</a> &nbsp;·&nbsp;
+    <a href="#benchmarks">Benchmarks</a> &nbsp;·&nbsp;
+    <a href="#settings">Settings</a>
+</p>
+
 > **TL;DR** — Claude talks a lot while it works. It dumps every log line into the chat. hush cuts that noise. Most of the machine output goes. Nearly all of the play-by-play goes. You get one short, readable answer at the end. On the newest models the cut reaches Claude's own reply too. Our latest run came out cheaper on five of the eight jobs. The answer names the file to open, linked to the line.
 
 ---
