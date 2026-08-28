@@ -1,1 +1,1 @@
-{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"hush: this turn is silent until the final message. Everything you learn goes in the final message."}}
+{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"hush: this turn is silent until the final message. It opens with a tool call, not a line about what you will look at. Everything you learn goes in the final message."}}

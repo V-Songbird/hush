@@ -4,6 +4,16 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.9.0 — 2026-08-28
+
+The final message now carries what a reader needs to act. It links the file to open, anchored to the line. It says where things stand, not only what just changed. It closes with the next move, or says none is needed. And when the answer was written into a file, the message still states the findings.
+
+Replies gained room for that: up to eight lines and ninety words, with tables for facts that line up.
+
+Sessions start quieter — the stray line before the first tool call shows up less.
+
+The shipped presets carry the same rules in their voices. The benchmark page is re-measured on this build, and now also scores whether a reader can act on the reply without asking a follow-up.
+
 ## 1.8.0 — 2026-08-27
 
 The writing voice is rewritten for the newest Claude models. Replies read easier — shorter sentences, plainer words — and sessions finish without mid-work chatter more often. Asking for depth still gets the full answer.

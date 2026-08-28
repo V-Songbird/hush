@@ -89,10 +89,14 @@ function rulesOnly(text) {
 function anchors(sectionBody) {
   const rules = rulesOnly(sectionBody);
   const rows = rules.match(/^\|.*\|$/gm) || [];
+  const nums = rules.match(/(?<![\w.])\d+(?![\w.])/g) || [];
   return {
     code: rules.match(/`[^`\n]+`/g) || [],
     bold: rules.match(/\*\*[^*\n]+\*\*/g) || [],
-    numbers: [...new Set(rules.match(/(?<![\w.])\d+(?![\w.])/g) || [])],
+    numbers: [...new Set(nums)],
+    // Occurrences, not presence: two caps may share one number, and a rewrite
+    // that drops one of them must not hide behind the survivor.
+    numberCounts: nums.reduce((m, n) => ((m[n] = (m[n] || 0) + 1), m), {}),
     ordered: (rules.match(/^\d+\. /gm) || []).length,
     blocks: paragraphs(rules).length,
     // The header row names the columns and is the author's to reword. The data
@@ -160,11 +164,15 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
       const where = `section "${name}"`;
       const want = anchors(body);
       const got = anchors(rewritten);
-      for (const kind of ["code", "bold", "numbers"]) {
+      for (const kind of ["code", "bold"]) {
         for (const anchor of want[kind]) {
           if (!rewritten.includes(anchor))
             problems.push(`${where}: ${kind} anchor dropped: ${anchor.slice(0, 50)}`);
         }
+      }
+      for (const [n, count] of Object.entries(want.numberCounts)) {
+        if ((got.numberCounts[n] || 0) < count)
+          problems.push(`${where}: numbers anchor dropped: ${n} (${got.numberCounts[n] || 0} of ${count} left)`);
       }
       if (got.ordered < want.ordered)
         problems.push(`${where}: ${want.ordered} listed items became ${got.ordered}`);

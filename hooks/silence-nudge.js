@@ -58,7 +58,7 @@ const TOOL = `${STEP} ${STEP}`;
 // roughly in half against TURN in the configuration this text is used in —
 // no standing step reminder present.
 const TURN_DIAL =
-  "hush: this turn is silent until the final message. Everything you learn goes in the final message.";
+  "hush: this turn is silent until the final message. It opens with a tool call, not a line about what you will look at. Everything you learn goes in the final message.";
 
 // The default's corrective state: how many mid-turn text blocks have already
 // been answered with a reminder this turn. Lives beside the session's other

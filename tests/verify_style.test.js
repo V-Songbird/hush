@@ -52,13 +52,26 @@ test("removing the base-prompt override paragraph fails Quiet while you work", (
   assert.ok(result.problems.some((p) => p.includes('"Quiet while you work"')));
 });
 
-test("dropping the sentence cap from the rules is flagged", () => {
+test("dropping the word cap from the rules is flagged", () => {
+  const body = canonicalBody
+    .replace("8 lines, tops. 90 words, tops.", "8 lines, tops.")
+    .replace("Over 90 words? Cut a fact. Never squeeze one.", "Never squeeze one.");
+  const result = verify(canonical, variant(body));
+  assert.ok(result.problems.some((p) => p.includes("numbers anchor dropped: 90")));
+});
+
+// The line cap and the sentence cap share the number 8. Anchors count
+// occurrences, so losing one of the two cannot hide behind the survivor.
+test("dropping only the sentence cap is flagged", () => {
   const body = canonicalBody.replace(
     "One fact per sentence. 8 words per sentence, tops.",
-    "One fact per sentence."
+    "One fact per sentence, kept short."
   );
   const result = verify(canonical, variant(body));
-  assert.ok(result.problems.some((p) => p.includes("numbers anchor dropped: 8")));
+  assert.ok(
+    result.problems.some((p) => p.includes("numbers anchor dropped: 8")),
+    result.problems.join("; ")
+  );
 });
 
 test("rewriting prose inside a guarded section passes", () => {
@@ -73,8 +86,8 @@ test("rewriting prose inside a guarded section passes", () => {
 // prose around it, never the phrase itself.
 test("rewording a core-contract phrase is flagged in full mode", () => {
   const body = canonicalBody.replace(
-    "Not one word between tool calls.",
-    "No text between tool calls."
+    "Not one word between tool calls either.",
+    "No text between tool calls either."
   );
   const result = verify(canonical, variant(body));
   assert.ok(
