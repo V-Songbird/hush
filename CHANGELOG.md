@@ -4,6 +4,11 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.10.1 — 2026-08-28
+
+The README now opens with a short list of links, so you can jump straight to
+the install steps or the settings without scrolling the whole page.
+
 ## 1.10.0 — 2026-08-28
 
 The four preset voices are gone. What ships is the measured voice and the two commands that build on it: `/hush:craft-style` writes a voice from your description, and `/hush:pick-style` switches between what you have built.
