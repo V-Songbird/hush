@@ -4,9 +4,10 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
-const { verify, verifyCore } = require("../scripts/verify-style.js");
+const { verify, verifyCore, sections, CRAFTED_MARKER, GUARDED_SECTIONS } = require("../scripts/verify-style.js");
 
-const canonicalPath = path.join(__dirname, "..", "output-styles", "hush.md");
+const pluginRoot = path.join(__dirname, "..");
+const canonicalPath = path.join(pluginRoot, "output-styles", "hush.md");
 const canonical = fs.readFileSync(canonicalPath, "utf-8");
 const canonicalBody = canonical.replace(/^---\n[\s\S]*?\n---\n/, "");
 
@@ -132,80 +133,101 @@ test("rewriting voice prose alone still passes", () => {
 });
 
 test("canonical file still carries every section the verifier anchors on", () => {
-  for (const heading of ["Quiet while you work", "The note at the end", "What stays whole"]) {
-    assert.ok(canonical.includes(`## ${heading}`), `hush.md lost "## ${heading}"`);
+  for (const heading of GUARDED_SECTIONS) {
+    assert.ok(canonical.includes("## " + heading), 'hush.md lost "## ' + heading + '"');
   }
 });
 
-// --- shipped presets -------------------------------------------------------
-// The presets hush ships live in styles/, NOT output-styles/: Claude Code
-// scans a plugin's output-styles/ directory recursively, and a style that is
-// merely selectable under-delivers on the mechanics it copied. Only the copy
-// written into output-styles/hush.md — with force-for-plugin — binds.
+// The gap that shipped the 1.9.0 "## Shape" rules unguarded: a section added to
+// stock and left out of GUARDED_SECTIONS has its heading required and its rules
+// unchecked, so a crafted style could gut it and still pass.
+test("every section of stock is guarded, not merely named", () => {
+  assert.deepStrictEqual(Object.keys(sections(canonicalBody)), GUARDED_SECTIONS);
+});
 
-const pluginRoot = path.join(__dirname, "..");
-const stylesDir = path.join(pluginRoot, "styles");
-const PRESET_MARKER = "Unmeasured preset shipped with Hush.";
-const CRAFTED_MARKER = "Unmeasured variant of Hush.";
-
-const presets = fs
-  .readdirSync(stylesDir)
-  .filter((f) => f.endsWith(".md") && f.toLowerCase() !== "readme.md")
-  .map((f) => ({ file: f, text: fs.readFileSync(path.join(stylesDir, f), "utf-8") }));
-
-function frontmatter(text) {
-  const m = text.match(/^---\n([\s\S]*?)\n---\n/);
-  return m ? m[1] : "";
+function gut(body, name) {
+  return body.replace(
+    new RegExp("## " + name + "\\n[\\s\\S]*?(?=\\n## |$)"),
+    "## " + name + "\n\nKeep it tidy.\n"
+  );
 }
 
-// Presets that abandon stock's readability frame keep only the core contract
-// and are verified in core mode: rock strips the frame down to telegram,
-// glyph swaps words for emotes, sensei replaces it with a teaching skeleton
-// that has no length caps.
-const CORE_PRESETS = ["rock.md", "glyph.md", "sensei.md"];
-
-test("every shipped preset passes the verifier it is built for", () => {
-  assert.ok(presets.length > 0, "styles/ holds no presets");
-  for (const { file, text } of presets) {
-    const check = CORE_PRESETS.includes(file) ? verifyCore : verify;
-    const result = check(canonical, text);
-    assert.deepStrictEqual(result.problems, [], `${file}: ${result.problems.join("; ")}`);
+test("gutting a guarded section's rules is flagged", () => {
+  for (const name of GUARDED_SECTIONS) {
+    const result = verify(canonical, variant(gut(canonicalBody, name)));
+    assert.ok(
+      result.problems.some((problem) => problem.includes('section "' + name + '"')),
+      name + " can be gutted without the verifier noticing"
+    );
   }
 });
 
-test("every shipped preset is marked shipped, never crafted", () => {
-  for (const { file, text } of presets) {
-    const fm = frontmatter(text);
-    assert.ok(fm.includes(PRESET_MARKER), `${file} is missing "${PRESET_MARKER}"`);
-    assert.ok(!fm.includes(CRAFTED_MARKER), `${file} claims to be a crafted style`);
+// --- what craft-style produces ---------------------------------------------
+//
+// The skill's promise is that a style can be rewritten into any voice and still
+// keep hush's mechanics. This stands in for its output: stock's rules with the
+// words changed, the substitution held out of code spans, and the passages that
+// must survive byte for byte left alone. It is derived from stock at run time,
+// so it cannot fall behind the way the shipped presets did.
+function inVoice(body) {
+  return body
+    .split("\n")
+    .map((line) =>
+      line.startsWith("## ")
+        ? line
+        : line
+            .split(/(`[^`\n]*`)/)
+            .map((part, i) => (i % 2 ? part : part.replace(/\byou\b/g, "ye").replace(/\byour\b/g, "yer")))
+            .join("")
+    )
+    .join("\n");
+}
+
+test("the voice rewrite this suite checks really is a rewrite", () => {
+  const voiced = inVoice(canonicalBody);
+  assert.notStrictEqual(voiced, canonicalBody);
+  const opening = canonicalBody.split("\n").map((line) => line.trim()).find(Boolean);
+  assert.ok(voiced.includes(opening), "the opening rule was reworded");
+  for (const para of canonicalBody.split(/\n{2,}/)) {
+    if (para.includes("[hush") || /hook reminder/i.test(para))
+      assert.ok(voiced.includes(para.trim()), "a verbatim passage was reworded");
   }
 });
 
-test("the two markers cannot be mistaken for one another", () => {
-  assert.ok(!PRESET_MARKER.includes(CRAFTED_MARKER));
-  assert.ok(!CRAFTED_MARKER.includes(PRESET_MARKER));
+test("a style rewritten into another voice passes every check", () => {
+  const result = verify(canonical, variant(inVoice(canonicalBody)));
+  assert.deepStrictEqual(result.problems, []);
 });
 
-// No hardcoded roster: the README's style table is the documentation surface,
-// so disk and table are reconciled against each other instead of a fixed list.
-test("the README style table matches the presets on disk", () => {
-  const readme = fs
-    .readFileSync(path.join(pluginRoot, "README.md"), "utf-8")
-    .replace(/\r\n/g, "\n");
-  const lines = readme.split("\n");
-  const start = lines.findIndex((l) => /^\|\s*Style\s*\|/.test(l));
-  assert.ok(start !== -1, "README style table not found");
-  const labels = [];
-  for (let i = start + 2; i < lines.length && lines[i].startsWith("|"); i++) {
-    const m = lines[i].match(/^\|\s*\*\*([^*]+)\*\*\s*\|/);
-    if (m) labels.push(m[1].trim());
+test("the same rewrite, gutted section by section, always fails", () => {
+  const voiced = inVoice(canonicalBody);
+  for (const name of GUARDED_SECTIONS) {
+    assert.strictEqual(verify(canonical, variant(gut(voiced, name))).ok, false, name + " survived being gutted");
   }
-  assert.ok(labels.length > 0, "README style table holds no rows");
-  const documented = labels.map((l) => `Hush ${l}`).sort();
-  const onDisk = presets
-    .map(({ text }) => (frontmatter(text).match(/^name:\s*(.*)$/m) || [])[1])
-    .sort();
-  assert.deepStrictEqual(onDisk, documented);
+});
+
+// --- the skills and the verifier agree -------------------------------------
+
+const skillsDir = path.join(pluginRoot, "skills");
+const skill = (name) => fs.readFileSync(path.join(skillsDir, name, "SKILL.md"), "utf-8");
+
+test("craft-style tells the author the exact marker the verifier demands", () => {
+  assert.ok(skill("craft-style").includes(CRAFTED_MARKER));
+});
+
+test("craft-style names every section the verifier guards", () => {
+  const named = GUARDED_SECTIONS.filter((name) => skill("craft-style").includes("`" + name + "`"));
+  assert.deepStrictEqual(named, GUARDED_SECTIONS, "craft-style promises a different set of guarded sections");
+});
+
+// hush shipped four preset voices until 1.10.0. They were unmeasured and they
+// fell behind the stock voice at every release, so they were cut.
+test("the plugin ships stock and nothing else", () => {
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "styles")), false, "styles/ is back");
+  for (const name of ["craft-style", "pick-style"]) {
+    assert.ok(!/preset/i.test(skill(name)), name + " still describes a shipped preset");
+  }
+  assert.ok(!/preset/i.test(fs.readFileSync(path.join(pluginRoot, "README.md"), "utf-8")));
 });
 
 test("output-styles/ registers hush.md and nothing else, at any depth", () => {

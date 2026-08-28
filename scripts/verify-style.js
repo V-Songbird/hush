@@ -3,9 +3,11 @@
 
 // Mechanical check that a crafted output style kept hush's mechanics.
 // Reports what didn't survive and exits 1 — it never edits anything.
-// Everything except CORE_PHRASES, GUARDED_SECTIONS and the two markers is
-// derived from the canonical file at run time; those lists are literal and
-// must be re-checked whenever output-styles/hush.md is reworded.
+// Everything except CORE_PHRASES, GUARDED_SECTIONS and the marker is derived
+// from the canonical file at run time; those lists are literal and must be
+// re-checked whenever output-styles/hush.md is reworded. A section added to the
+// canonical file and left out of GUARDED_SECTIONS has its heading required and
+// its rules unguarded — tests/verify_style.test.js fails on that gap.
 
 // Sections whose RULES must survive a voice rewrite. They are checked by the
 // anchors the rules are made of — the numbers, the inline code, the bolded
@@ -13,16 +15,15 @@
 // byte. A style that keeps these sections in stock's plain English teaches the
 // reply plain English, whatever the Register section asks for, so the prose
 // around the anchors has to stay the author's to rewrite.
-const GUARDED_SECTIONS = ["Quiet while you work", "The note at the end", "What stays whole"];
+const GUARDED_SECTIONS = ["Quiet while you work", "The note at the end", "Shape", "What stays whole"];
 
 // A rewrite may tighten prose. Losing a third of a section is losing a rule.
 const WORD_FLOOR = 0.6;
 
-// The exact sentences pick-style and craft-style key on. A description that
+// The exact sentence pick-style and craft-style key on. A description that
 // only says "unmeasured" passes every other check and is then invisible to
 // both, so the marker is checked here rather than trusted.
 const CRAFTED_MARKER = "Unmeasured variant of Hush.";
-const PRESET_MARKER = "Unmeasured preset shipped with Hush.";
 
 // The core contract holds in every mode — full mode checks the readability
 // frame on top of these phrases, never instead of them.
@@ -125,8 +126,8 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
     if ("force-for-plugin" in fm)
       problems.push("frontmatter: force-for-plugin must not be copied");
     const description = (fm.description || "").trim();
-    if (!description.endsWith(CRAFTED_MARKER) && !description.endsWith(PRESET_MARKER))
-      problems.push(`frontmatter: description must end with the unmeasured marker "${CRAFTED_MARKER}" (crafted) or "${PRESET_MARKER}" (shipped preset)`);
+    if (!description.endsWith(CRAFTED_MARKER))
+      problems.push(`frontmatter: description must end with the unmeasured marker "${CRAFTED_MARKER}"`);
   }
 
   const canSections = sections(canonical.body);
@@ -228,4 +229,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize, CRAFTED_MARKER, PRESET_MARKER };
+module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize, sections, CRAFTED_MARKER, GUARDED_SECTIONS };

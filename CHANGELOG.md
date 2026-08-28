@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.10.0 — 2026-08-28
+
+The four preset voices are gone. What ships is the measured voice and the two commands that build on it: `/hush:craft-style` writes a voice from your description, and `/hush:pick-style` switches between what you have built.
+
+A crafted voice is now checked on the shape of the final message too — the file link, the backticks around names, the single bold mark. A voice that drops one of those is refused instead of activated.
+
 ## 1.9.0 — 2026-08-28
 
 The final message now carries what a reader needs to act. It links the file to open, anchored to the line. It says where things stand, not only what just changed. It closes with the next move, or says none is needed. And when the answer was written into a file, the message still states the findings.

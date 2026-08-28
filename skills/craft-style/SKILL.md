@@ -12,9 +12,7 @@ Builds and manages output styles the user owns: their voice, hush's machinery. T
 
 ## 1. Take stock
 
-Crafted styles carry the sentence `Unmeasured variant of Hush.` in their frontmatter description — that is how this skill recognizes its own work. `node "${CLAUDE_PLUGIN_ROOT}/scripts/list-styles.js"` walks every styles folder and marks them `source: "crafted"`, each with its name and path.
-
-The presets hush ships say `Unmeasured preset shipped with Hush.` instead and live under `${CLAUDE_PLUGIN_ROOT}/styles/`. They are never this skill's work; `hush:pick-style` lists them.
+Crafted styles carry the sentence `Unmeasured variant of Hush.` in their frontmatter description — that is how this skill recognizes its own work. `node "${CLAUDE_PLUGIN_ROOT}/scripts/list-styles.js"` walks every styles folder and marks them `source: "crafted"`, each with its name and path. Stock is the only other entry on that shelf; hush ships no other voice.
 
 Also read the frontmatter of `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md` and note whether the `force-for-plugin: true` line is present.
 
@@ -22,14 +20,14 @@ Then route:
 
 - **No crafted styles found** → go to step 2 and create one.
 - **Crafted styles found** → ask the user (AskUserQuestion) what to do, listing every crafted style by name and destination alongside `Hush (stock, benchmarked)`: create a new style, or edit one of the listed. A request to switch goes to `hush:pick-style`, which owns the whole shelf.
-- **That same JSON reports `restoredOverTakeover: true`** → a plugin update wrote over the style that was active. Say so and offer step 5 before anything else. A preset holding the slot is `hush:pick-style`'s business, not a lost takeover.
+- **That same JSON reports `restoredOverTakeover: true`** → a plugin update wrote over the style that was active. Say so and offer step 5 before anything else.
 
 ## 2. Gather three inputs
 
 From the invocation arguments, or by asking:
 
 - **Voice** — how the style should sound, in the user's words ("robotic", "pirate", "extremely dry British"). When editing, gather what should change instead.
-- **Name** — a short style name, and not one a shipped preset already answers to; derive one from the voice if the user doesn't care.
+- **Name** — a short style name, and not `Hush`, which stock answers to; derive one from the voice if the user doesn't care.
 - **Destination** — `~/.claude/output-styles/` (every project) or `<project>/.claude/output-styles/` (this project only). Default to user-level.
 
 The filename is the kebab-cased name plus `.md`. If that file already exists and wasn't picked for editing in step 1, show its path and ask before overwriting.
@@ -48,7 +46,7 @@ keep-coding-instructions: true
 ---
 ```
 
-The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and it is what keeps a crafted style distinct from the presets hush ships. `force-for-plugin` stays out — activation adds it.
+The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and step 4 refuses a style without it. `force-for-plugin` stays out — activation adds it.
 
 **Write the whole file in the voice.** Every section, top to bottom: the silence rules, the caps, the what-stays-whole rules, the pre-send pass. When the voice needs an extra push — a distant register, a weak first draft — open the file with one line above the opening rule: `Core persona: <the voice in one sentence>.` Write that sentence as the speaking behavior itself, its register and signature markers named — "speaks every report in full, heavy pirate dialect, peppered with 'Arrr!'" — because a described behavior gets enacted where a role name alone sits inert. The reply comes out in the register the file is written in, so the sections that stay in stock's plain English are the ones that decide how the reply sounds. This single choice is the difference between a style that speaks in the voice and one that only names it.
 
@@ -62,7 +60,9 @@ What has to come through the rewrite intact, everywhere in the file:
 - the first line above the first heading, and every `## ` heading text
 - verbatim: the paragraph about the `[hush ...]` notes and hook reminders
 
-Step 4 checks the numbers, the spans, the listed-item counts, the paragraph counts and the word floor inside Quiet while you work, The note at the end and What stays whole — and, file-wide, the frontmatter, the opening rule, every `## ` heading, the core phrases and the verbatim telemetry paragraph. The prose around those anchors is yours to get right.
+Step 4 checks the numbers, the spans, the listed-item counts, the paragraph counts and the word floor inside `Quiet while you work`, `The note at the end`, `Shape` and `What stays whole` — and, file-wide, the frontmatter, the opening rule, every `## ` heading, the core phrases and the verbatim telemetry paragraph. The prose around those anchors is yours to get right.
+
+`Shape` is guarded like the rest, so the file-link form, the backtick rule, the one-bold-mark rule and the table and numbered-list rules all have to reach the rewrite. A voice that drops the link form costs the reader the one thing the answer test showed hush winning on.
 
 Then three things, in this order:
 

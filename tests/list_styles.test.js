@@ -19,10 +19,6 @@ function makeFixture() {
   const homeDir = path.join(root, "home");
 
   write(
-    path.join(pluginRoot, "styles", "pirate.md"),
-    "---\nname: Hush Pirate\ndescription: Pirate voice. Unmeasured preset shipped with Hush.\n---\nbody\n"
-  );
-  write(
     path.join(pluginRoot, "output-styles", "hush.md"),
     "---\nname: Hush\ndescription: Silent-by-default communication\nforce-for-plugin: true\n---\nbody\n"
   );
@@ -38,27 +34,25 @@ test("stock is active when hush.md carries neither marker", () => {
   assert.strictEqual(result.restoredOverTakeover, false);
 });
 
-test("a shipped preset is listed and numbered alongside stock", () => {
+test("stock alone is on the shelf until something is crafted", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const result = shelf(pluginRoot, projectDir, homeDir);
-  const names = result.styles.map((s) => s.name);
-  assert.deepStrictEqual(names, ["Hush Pirate", "Hush (stock)"]);
   assert.deepStrictEqual(
-    result.styles.map((s) => s.index),
-    [1, 2]
+    result.styles.map((s) => [s.name, s.source, s.index]),
+    [["Hush (stock)", "stock", 1]]
   );
 });
 
-test("a shipped preset forced into the slot is detected as active", () => {
+// hush shipped four preset voices until 1.10.0. A style folder left behind by
+// that install must not reappear on the shelf.
+test("a leftover styles/ folder from an older install is ignored", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   write(
-    path.join(pluginRoot, "output-styles", "hush.md"),
-    "---\nname: Hush Pirate\ndescription: Pirate voice. Unmeasured preset shipped with Hush.\nforce-for-plugin: true\n---\nbody\n"
+    path.join(pluginRoot, "styles", "pirate.md"),
+    "---\nname: Hush Pirate\ndescription: Pirate voice. Unmeasured preset shipped with Hush.\n---\nbody\n"
   );
   const result = shelf(pluginRoot, projectDir, homeDir);
-  const active = result.styles.find((s) => s.active);
-  assert.strictEqual(active.name, "Hush Pirate");
-  assert.strictEqual(active.source, "shipped");
+  assert.deepStrictEqual(result.styles.map((s) => s.name), ["Hush (stock)"]);
 });
 
 test("a crafted style in the project dir is listed and, once forced, detected as active", () => {
@@ -134,7 +128,6 @@ test("every listed entry carries its provenance", () => {
   assert.deepStrictEqual(
     result.styles.map((s) => [s.name, s.source]),
     [
-      ["Hush Pirate", "shipped"],
       ["Hush (stock)", "stock"],
       ["Robo", "crafted"],
     ]

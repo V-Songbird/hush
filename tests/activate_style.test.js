@@ -29,6 +29,15 @@ const VALID_VARIANT = [
   "",
 ].join("\n");
 
+// hush ships stock alone, so every activatable file is a crafted variant.
+function variantText(name, body) {
+  return VALID_VARIANT.replace("name: Robo", "name: " + name).replace(/^body$/m, body);
+}
+
+function craftedPath(projectDir, file) {
+  return path.join(projectDir, ".claude", "output-styles", file);
+}
+
 function makeFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hush-activate-style-"));
   const pluginRoot = path.join(root, "plugin");
@@ -45,17 +54,17 @@ function slot(pluginRoot) {
   return fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf-8");
 }
 
-test("activating a preset backs up stock and writes it into the forced slot", () => {
+test("activating a variant backs up stock and writes it into the forced slot", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Pirate voice. Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
 
-  const result = activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   assert.strictEqual(result.ok, true);
-  assert.strictEqual(result.name, "Hush Pirate");
+  assert.strictEqual(result.name, "Pirate");
   const hushMd = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf-8");
-  assert.match(hushMd, /name: Hush Pirate/);
+  assert.match(hushMd, /name: Pirate/);
   assert.match(hushMd, /force-for-plugin: true/);
   assert.match(hushMd, /ARR body/);
   const backup = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8");
@@ -64,12 +73,12 @@ test("activating a preset backs up stock and writes it into the forced slot", ()
 
 test("activating twice does not overwrite an existing stock backup", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
-  const otherPath = path.join(pluginRoot, "styles", "rock.md");
-  write(otherPath, "---\nname: Hush Rock\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
+  const otherPath = craftedPath(projectDir, "rock.md");
+  write(otherPath, variantText("Rock", "body"));
 
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
   activate(otherPath, { pluginRoot, projectDir, homeDir });
 
   const backup = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8");
@@ -80,9 +89,9 @@ test("restoring stock copies the backup back and requires one to exist", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   assert.throws(() => activate("stock", { pluginRoot, projectDir, homeDir }), /no stock backup/);
 
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   const result = activate("stock", { pluginRoot, projectDir, homeDir });
   assert.strictEqual(result.name, "Hush");
@@ -92,9 +101,9 @@ test("restoring stock copies the backup back and requires one to exist", () => {
 
 test("restoring stock keeps the pristine copy, so it restores again", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   const result = activate("stock", { pluginRoot, projectDir, homeDir });
 
@@ -102,7 +111,7 @@ test("restoring stock keeps the pristine copy, so it restores again", () => {
   assert.ok(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.stock")));
   assert.strictEqual(shelf(pluginRoot, projectDir, homeDir).restoredOverTakeover, false);
 
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
   assert.strictEqual(activate("stock", { pluginRoot, projectDir, homeDir }).name, "Hush");
   assert.match(slot(pluginRoot), /name: Hush\n/);
 });
@@ -128,48 +137,26 @@ test("a variant that dropped hush's mechanics is refused, slot untouched", () =>
   assert.strictEqual(slot(pluginRoot), before);
 });
 
-test("a variant answering to a shipped preset's name is refused", () => {
+test("the chosen style file is never modified by an activation", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  write(
-    path.join(pluginRoot, "styles", "pirate.md"),
-    "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n"
-  );
-  const variantPath = path.join(homeDir, ".claude", "output-styles", "mine.md");
-  write(variantPath, VALID_VARIANT.replace("name: Robo", "name: hush pirate"));
-  const before = slot(pluginRoot);
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  const text = variantText("Pirate", "ARR body");
+  write(variantPath, text);
 
-  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /is the name of a style hush ships/);
-  assert.strictEqual(slot(pluginRoot), before);
-});
-
-test("a variant wearing the shipped-preset marker is refused", () => {
-  const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const variantPath = path.join(homeDir, ".claude", "output-styles", "fake.md");
-  write(variantPath, VALID_VARIANT.replace("Unmeasured variant of Hush.", "Unmeasured preset shipped with Hush."));
-
-  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /claims to be one/);
-});
-
-test("bundled styles are never modified by an activation", () => {
-  const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  const preset = "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n";
-  write(presetPath, preset);
-
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
   activate("stock", { pluginRoot, projectDir, homeDir });
 
-  assert.strictEqual(fs.readFileSync(presetPath, "utf-8"), preset);
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text);
 });
 
 // An interrupted swap: the slot is written, then the active-state record write
 // fails on a path that cannot be replaced.
 test("a write that fails mid-swap leaves the previous style active", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const first = path.join(pluginRoot, "styles", "pirate.md");
-  write(first, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
-  const second = path.join(pluginRoot, "styles", "rock.md");
-  write(second, "---\nname: Hush Rock\ndescription: Unmeasured preset shipped with Hush.\n---\nrock body\n");
+  const first = craftedPath(projectDir, "pirate.md");
+  write(first, variantText("Pirate", "ARR body"));
+  const second = craftedPath(projectDir, "rock.md");
+  write(second, variantText("Rock", "rock body"));
   activate(first, { pluginRoot, projectDir, homeDir });
   const active = slot(pluginRoot);
 
@@ -187,27 +174,27 @@ test("a write that fails mid-swap leaves the previous style active", () => {
 
 test("a settings file that cannot be cleaned warns, and the swap still stands", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   write(path.join(settingsPath, "blocker"), "x");
 
-  const result = activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   assert.strictEqual(result.ok, true);
   assert.deepStrictEqual(result.settingsUpdated, []);
   assert.strictEqual(result.warnings.length, 1);
   assert.match(result.warnings[0], /could not remove the outputStyle setting from/);
   assert.ok(result.warnings[0].includes(settingsPath));
-  assert.match(slot(pluginRoot), /name: Hush Pirate/);
+  assert.match(slot(pluginRoot), /name: Pirate/);
 });
 
 test("a clean activation warns about nothing", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
 
-  assert.deepStrictEqual(activate(presetPath, { pluginRoot, projectDir, homeDir }).warnings, []);
+  assert.deepStrictEqual(activate(variantPath, { pluginRoot, projectDir, homeDir }).warnings, []);
 });
 
 test("a variant answering to stock's own name is refused", () => {
@@ -216,27 +203,26 @@ test("a variant answering to stock's own name is refused", () => {
   write(variantPath, VALID_VARIANT.replace("name: Robo", "name: hush"));
   const before = slot(pluginRoot);
 
-  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /is the name of a style hush ships/);
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /is the name of the style hush ships/);
   assert.strictEqual(slot(pluginRoot), before);
 });
 
-// Windows resolves either casing to the same file, so a preset addressed in a
-// different case is still a bundled preset and not a variant colliding with
-// its own name.
-test("a bundled preset addressed in another case still activates", { skip: process.platform !== "win32" }, () => {
+// Windows resolves either casing to the same file, so the same variant
+// addressed in a different case still reaches the slot.
+test("a variant addressed in another case still activates", { skip: process.platform !== "win32" }, () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
 
-  const result = activate(presetPath.toLowerCase(), { pluginRoot, projectDir, homeDir });
+  const result = activate(variantPath.toLowerCase(), { pluginRoot, projectDir, homeDir });
 
-  assert.strictEqual(result.name, "Hush Pirate");
+  assert.strictEqual(result.name, "Pirate");
 });
 
 test("a rollback that also fails keeps the pristine stock copy", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
   const stock = slot(pluginRoot);
   const realRename = fs.renameSync;
   fs.renameSync = () => {
@@ -244,7 +230,7 @@ test("a rollback that also fails keeps the pristine stock copy", () => {
   };
 
   try {
-    assert.throws(() => activate(presetPath, { pluginRoot, projectDir, homeDir }), /rename blocked/);
+    assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /rename blocked/);
   } finally {
     fs.renameSync = realRename;
   }
@@ -255,11 +241,11 @@ test("a rollback that also fails keeps the pristine stock copy", () => {
 
 test("a first activation that fails leaves no backup for the shelf to misread", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nARR body\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
   write(path.join(pluginRoot, "output-styles", "hush.md.active.json", "blocker"), "x");
 
-  assert.throws(() => activate(presetPath, { pluginRoot, projectDir, homeDir }));
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }));
 
   const result = shelf(pluginRoot, projectDir, homeDir);
   assert.strictEqual(result.stockBackupExists, false);
@@ -269,19 +255,19 @@ test("a first activation that fails leaves no backup for the shelf to misread", 
 test("a missing chosen file is an error, not a partial write", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const before = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf-8");
-  assert.throws(() => activate(path.join(pluginRoot, "styles", "missing.md"), { pluginRoot, projectDir, homeDir }), /not found/);
+  assert.throws(() => activate(craftedPath(projectDir, "missing.md"), { pluginRoot, projectDir, homeDir }), /not found/);
   const after = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf-8");
   assert.strictEqual(before, after);
 });
 
 test("an outputStyle setting pointing at the activated style is stripped", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
-  write(settingsPath, JSON.stringify({ outputStyle: "Hush Pirate", model: "sonnet" }, null, 2) + "\n");
+  write(settingsPath, JSON.stringify({ outputStyle: "Pirate", model: "sonnet" }, null, 2) + "\n");
 
-  const result = activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   assert.deepStrictEqual(result.settingsUpdated, [settingsPath]);
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
@@ -291,12 +277,12 @@ test("an outputStyle setting pointing at the activated style is stripped", () =>
 
 test("stripping outputStyle keeps the rest of the settings file as the user wrote it", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
-  write(settingsPath, '{\n    "outputStyle": "Hush Pirate",\n    "env": {\n        "A": "1"\n    }\n}\n');
+  write(settingsPath, '{\n    "outputStyle": "Pirate",\n    "env": {\n        "A": "1"\n    }\n}\n');
 
-  activate(presetPath, { pluginRoot, projectDir, homeDir });
+  activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), '{\n    "env": {\n        "A": "1"\n    }\n}\n');
 });
@@ -307,9 +293,9 @@ test("stripping outputStyle keeps the rest of the settings file as the user wrot
 // when it does not: an interrupted activation, a slot that cannot be written,
 // and a second activation arriving on top of a half-finished one.
 
-function preset(pluginRoot, file, name, body) {
-  const p = path.join(pluginRoot, "styles", file);
-  write(p, `---\nname: ${name}\ndescription: Unmeasured preset shipped with Hush.\n---\n${body}\n`);
+function variant(projectDir, file, name, body) {
+  const p = craftedPath(projectDir, file);
+  write(p, variantText(name, body));
   return p;
 }
 
@@ -321,8 +307,8 @@ function strays(pluginRoot) {
 
 test("a slot that cannot be written leaves the previous style active and named", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const first = preset(pluginRoot, "pirate.md", "Hush Pirate", "ARR body");
-  const second = preset(pluginRoot, "rock.md", "Hush Rock", "rock body");
+  const first = variant(projectDir, "pirate.md", "Pirate", "ARR body");
+  const second = variant(projectDir, "rock.md", "Rock", "rock body");
   activate(first, { pluginRoot, projectDir, homeDir });
   const active = slot(pluginRoot);
   const record = path.join(pluginRoot, "output-styles", "hush.md.active.json");
@@ -346,9 +332,9 @@ test("a slot that cannot be written leaves the previous style active and named",
 
 test("a second activation over a half-finished one still refuses, and the slot never drifts", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const first = preset(pluginRoot, "pirate.md", "Hush Pirate", "ARR body");
-  const second = preset(pluginRoot, "rock.md", "Hush Rock", "rock body");
-  const third = preset(pluginRoot, "opera.md", "Hush Opera", "aria body");
+  const first = variant(projectDir, "pirate.md", "Pirate", "ARR body");
+  const second = variant(projectDir, "rock.md", "Rock", "rock body");
+  const third = variant(projectDir, "opera.md", "Opera", "aria body");
   activate(first, { pluginRoot, projectDir, homeDir });
   const active = slot(pluginRoot);
   const stock = fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8");
@@ -373,9 +359,9 @@ test("a second activation over a half-finished one still refuses, and the slot n
   // the slot and the record naming the same style.
   fs.rmSync(record, { recursive: true });
   const result = activate(third, { pluginRoot, projectDir, homeDir });
-  assert.strictEqual(result.name, "Hush Opera");
-  assert.match(slot(pluginRoot), /name: Hush Opera/);
-  assert.strictEqual(JSON.parse(fs.readFileSync(record, "utf-8")).name, "Hush Opera");
+  assert.strictEqual(result.name, "Opera");
+  assert.match(slot(pluginRoot), /name: Opera/);
+  assert.strictEqual(JSON.parse(fs.readFileSync(record, "utf-8")).name, "Opera");
   assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), stock);
 });
 
@@ -393,12 +379,12 @@ test("a refused variant leaves no temp file and no record behind", () => {
 
 test("an outputStyle setting pointing elsewhere is left untouched", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const presetPath = path.join(pluginRoot, "styles", "pirate.md");
-  write(presetPath, "---\nname: Hush Pirate\ndescription: Unmeasured preset shipped with Hush.\n---\nbody\n");
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   write(settingsPath, JSON.stringify({ outputStyle: "Some Other Style" }, null, 2) + "\n");
 
-  const result = activate(presetPath, { pluginRoot, projectDir, homeDir });
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
 
   assert.deepStrictEqual(result.settingsUpdated, []);
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));

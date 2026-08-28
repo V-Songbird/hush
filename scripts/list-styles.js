@@ -2,15 +2,19 @@
 "use strict";
 
 // Mechanical shelf-reader for hush:pick-style. Replaces the skill's own
-// prose-driven file scan: this is the one place that walks styles/,
-// output-styles/hush.md, and the user's/project's crafted-style folders,
-// and decides which entry is currently active. The skill only renders the
-// JSON this prints — it makes no classification calls of its own.
+// prose-driven file scan: this is the one place that walks
+// output-styles/hush.md and the user's/project's crafted-style folders, and
+// decides which entry is currently active. The skill only renders the JSON
+// this prints — it makes no classification calls of its own.
+//
+// The shelf holds stock plus whatever craft-style has built. hush shipped four
+// preset voices until 1.10.0; they were unmeasured, they drifted behind the
+// stock voice at every release, and they are gone.
 
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { splitFrontmatter, parseFrontmatter, normalize, PRESET_MARKER, CRAFTED_MARKER } = require("./verify-style.js");
+const { splitFrontmatter, parseFrontmatter, normalize, CRAFTED_MARKER } = require("./verify-style.js");
 
 function readFrontmatter(filePath) {
   const text = normalize(fs.readFileSync(filePath, "utf-8"));
@@ -29,11 +33,6 @@ function listMdFiles(dir) {
 
 function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
   const entries = [];
-
-  for (const file of listMdFiles(path.join(pluginRoot, "styles"))) {
-    const fm = readFrontmatter(file);
-    entries.push({ name: fm.name || path.basename(file), description: fm.description || "", source: "shipped", path: file });
-  }
 
   const hushPath = path.join(pluginRoot, "output-styles", "hush.md");
   entries.push({ name: "Hush (stock)", description: "The benchmarked default — no takeover.", source: "stock", path: "stock" });
@@ -54,10 +53,7 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
   const activeFm = fs.existsSync(hushPath) ? readFrontmatter(hushPath) : {};
   const activeDesc = activeFm.description || "";
   let activeIndex = entries.findIndex((e) => e.source === "stock");
-  if (activeDesc.includes(PRESET_MARKER)) {
-    const found = entries.findIndex((e) => e.source === "shipped" && e.name === activeFm.name);
-    if (found !== -1) activeIndex = found;
-  } else if (activeDesc.includes(CRAFTED_MARKER)) {
+  if (activeDesc.includes(CRAFTED_MARKER)) {
     const found = entries.findIndex((e) => e.source === "crafted" && e.name === activeFm.name);
     activeIndex = found !== -1 ? found : -1;
   }
@@ -100,4 +96,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { shelf, listMdFiles, readFrontmatter, PRESET_MARKER };
+module.exports = { shelf, listMdFiles, readFrontmatter };

@@ -15,7 +15,6 @@ const path = require("path");
 const os = require("os");
 const { safeWriteFileSync } = require("../hooks/lib/safe-write.js");
 const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore } = require("./verify-style.js");
-const { listMdFiles, readFrontmatter, PRESET_MARKER } = require("./list-styles.js");
 
 function injectForcePlugin(text) {
   const { frontmatter, body } = splitFrontmatter(normalize(text));
@@ -58,29 +57,18 @@ function stripOutputStyle(settingsPath, targetName) {
   return true;
 }
 
-function isBundled(target, pluginRoot) {
-  const fold = (p) => (process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p));
-  return fold(target).startsWith(fold(path.join(pluginRoot, "styles")) + path.sep);
-}
-
-// The presets under styles/ ship with the plugin and the suite verifies them.
-// Everything else is a user variant: it has to prove it kept hush's mechanics
-// before it can hold the slot, and it may not answer to a bundled style's name
-// or wear the shipped-preset marker. craft-style builds on the full frame and
+// Stock is the only style hush ships. Everything else is a user variant: it
+// has to prove it kept hush's mechanics before it can hold the slot, and it
+// may not answer to stock's own name. craft-style builds on the full frame and
 // on the stripped one, so either verifier passing is enough.
-function validateVariant(target, text, canonicalText, pluginRoot) {
+function validateVariant(target, text, canonicalText) {
   const fm = parseFrontmatter(splitFrontmatter(normalize(text)).frontmatter);
   const name = (fm.name || "").trim().toLowerCase();
+  // Stock's name is taken: a variant wearing it makes the record and the slot
+  // agree even after an update wrote over the takeover.
   const stockName = parseFrontmatter(splitFrontmatter(normalize(canonicalText)).frontmatter).name;
-  const shipped = listMdFiles(path.join(pluginRoot, "styles"));
-  // Stock's own name is taken too: a variant wearing it makes the record and
-  // the slot agree even after an update wrote over the takeover.
-  for (const bundled of [stockName, ...shipped.map((f) => readFrontmatter(f).name)]) {
-    if (bundled && bundled.trim().toLowerCase() === name)
-      throw new Error(`"${fm.name}" is the name of a style hush ships — rename this variant before activating it`);
-  }
-  if ((fm.description || "").includes(PRESET_MARKER))
-    throw new Error(`${target} is not a style hush ships, but its description claims to be one`);
+  if (stockName && stockName.trim().toLowerCase() === name)
+    throw new Error(`"${fm.name}" is the name of the style hush ships — rename this variant before activating it`);
   if (verify(canonicalText, text).ok) return;
   const core = verifyCore(canonicalText, text);
   if (!core.ok) throw new Error(`${target} did not keep hush's mechanics: ${core.problems.join("; ")}`);
@@ -101,8 +89,7 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir() }) {
     const chosen = fs.readFileSync(target, "utf-8");
     // Stock lives in the backup once a takeover holds the slot, so that is the
     // canonical file to check a variant against.
-    if (!isBundled(target, pluginRoot))
-      validateVariant(target, chosen, fs.readFileSync(fs.existsSync(backupPath) ? backupPath : hushPath, "utf-8"), pluginRoot);
+    validateVariant(target, chosen, fs.readFileSync(fs.existsSync(backupPath) ? backupPath : hushPath, "utf-8"));
     next = injectForcePlugin(chosen);
   }
 
