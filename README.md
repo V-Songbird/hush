@@ -6,9 +6,9 @@
   <h1>hush</h1>
   <p><strong>Claude narrates every step and dumps every log line into your chat. hush gives you one short answer at the end instead.</strong></p>
 
-  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 32 sessions without the plugin spike to 93 words, and the loudest breaks in 7 separate times. Right of it, the same 32 sessions with hush run flat: every one of them speaks at most once, and nothing runs over 8 words. It reads: Quiet." width="700" />
+  <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 36 sessions without the plugin spike to 190 words, and the loudest breaks in 10 separate times. Right of it, the same 36 sessions with hush run flat: every one of them speaks at most once, and nothing runs over 8 words. It reads: Quiet." width="700" />
 
-  <p><em>The same eight jobs, Claude Opus 5, 32 sessions each way.</em></p>
+  <p><em>The same nine jobs, Claude Opus 5, 36 sessions each way.</em></p>
 </div>
 
 <p align="center">
@@ -49,19 +49,19 @@ That's the whole plugin.
 
 Here is a real one. The job was a red test suite. Same job, same starting files.
 
-**Without hush**, it opened with `I'll start by looking at the project layout and figuring out how
-to run the suite.`, spoke again in the middle, and closed with a 306-word write-up.
+**Without hush**, it opened with `I'll start by looking at the project structure and finding the
+pricing suite.`, spoke three more times while it worked, and closed with a 254-word write-up.
 
 **With hush**, nothing at all until the work was done, and then this — the whole message, exactly
 as it was written:
 
-> **Suite is green. 625 passing, 0 failing.**
+> **Green: 625 passing, 0 failing.**
 >
-> Only 3 cases were broken, all in `order totals`. `orderTotal` taxed the full base, not the discounted amount.
+> Only 3 cases failed, all in `order totals`. One bug in [pricing.js:39](src/pricing.js:39). `orderTotal` taxed the full `cents`, not the discounted amount.
 >
-> Fix in [src/pricing.js:39](src/pricing.js:39). It now taxes what the customer pays.
+> Rows with a zero discount or zero tax hid it. Only 3 rows had both.
 >
-> Rows with a zero discount or zero tax hid the bug. Only the 3 rows with both non-zero caught it.
+> Fix: tax the discounted subtotal via `applyTax`.
 >
 > Next: nothing.
 
@@ -124,7 +124,7 @@ makes the answer readable; the trimming is what keeps a long session cheap.
 
 ## The numbers
 
-Eight jobs, each in its own throwaway folder. Real sessions from start to finish — reading files,
+Nine jobs, each in its own throwaway folder. Real sessions from start to finish — reading files,
 editing code, running commands. Every job ends with a check, so a short answer that breaks the job
 counts as a failure, not a win.
 
@@ -132,31 +132,31 @@ counts as a failure, not a win.
 
 | setup | jobs right |
 | --- | --- |
-| no plugin | 48 / 48 |
-| **hush** | **48 / 48** |
+| no plugin | 54 / 54 |
+| **hush** | **54 / 54** |
 
 **How quiet?** Every model opens with a line about what it is about to do. The number that matters
-is whether it keeps talking after that. On Claude Opus 5, 32 sessions each way:
+is whether it keeps talking after that. On Claude Opus 5, 36 sessions each way:
 
 | setup | spoke at most once before the answer | worst single session |
 | --- | --- | --- |
-| no plugin | 9 of 32 | 7 separate messages |
-| **hush** | **32 of 32** | **1** |
+| no plugin | 12 of 36 | 10 separate messages |
+| **hush** | **36 of 36** | **1** |
 
 **How readable?** The final message, scored on measures that have been around for decades:
 
 | setup | words | reading ease | school grade |
 | --- | --- | --- | --- |
-| no plugin | 420 | 69.0 | 7.0 |
-| **hush** | **68** | **87.6** | **2.6** |
+| no plugin | 406 | 70.0 | 6.8 |
+| **hush** | **71** | **88.7** | **2.6** |
 
-<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 8 jobs on Opus 5 at medium effort, 4 runs each way. command output: no plugin 21.9k chars, hush 19.8k chars, minus 9%. chatter while working: no plugin 32 words, hush 3 words, minus 90%. Claude's whole-session output: no plugin 8,006 tok, hush 5,138 tok, minus 36%." width="700"></p>
+<p align="center"><img src="assets/bench-cuts.svg" alt="What hush cuts, averaged per session over the same 9 jobs on Opus 5 at medium effort, 4 runs each way. command output: no plugin 23.1k chars, hush 16.5k chars, minus 28%. chatter while working: no plugin 41 words, hush 2 words, minus 96%. Claude's whole-session output: no plugin 7,365 tok, hush 4,442 tok, minus 40%." width="700"></p>
 
 > [!IMPORTANT]
-> **Where hush doesn't win.** A quiet job that searches a lot and prints little can cost *more* —
-> hush's writing rules ride along on every step, and there is nothing to trim against them. On the
-> 76-file rename it cost 24% more. On Sonnet, slightly fewer of a job's checklist facts survive
-> into its answers than without it. The full picture, wins and losses and every job's bill, is in
+> **Where hush doesn't win.** A quiet job that prints little can cost *more* — hush's writing rules
+> ride along on every step, and there is nothing to trim against them. On Sonnet the router job
+> cost 31% more, and four others cost 7-8% more. On Opus the answer test comes out a tie rather
+> than a win. The full picture, wins and losses and every job's bill, is in
 > [the numbers](docs/BENCHMARKS.md).
 
 *Numbers move between runs, sometimes by a lot. Run it yourself — see [benchmarks/](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush).*

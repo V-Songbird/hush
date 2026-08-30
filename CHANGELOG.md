@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.11.1 — 2026-08-29
+
+The published figures are re-measured on a wider suite. It now includes a job
+that asks how Claude would approach a change without letting it write anything,
+which is where the new code-instead-of-a-list rule shows up.
+
 ## 1.11.0 — 2026-08-29
 
 Ask how Claude would approach something and you now get the code it would
