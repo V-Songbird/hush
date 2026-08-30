@@ -4,6 +4,22 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.11.0 — 2026-08-29
+
+Ask how Claude would approach something and you now get the code it would
+write, instead of a numbered list describing it.
+
+Every message ends with a line that starts with `Next:`. When there is nothing
+left to do it says `Next: nothing` and why, rather than inventing work.
+
+A finding no longer arrives on its own while the work is still running. It
+waits for the message at the end.
+
+The README is now a front page: what hush is, why you'd want it, and how to
+install it. Everything technical moved into its own pages, linked from
+**Going deeper** — how it works, every setting, and the full benchmark results
+including where hush loses.
+
 ## 1.10.1 — 2026-08-28
 
 The README now opens with a short list of links, so you can jump straight to

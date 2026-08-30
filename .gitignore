@@ -1,4 +1,10 @@
+# docs/ is local working notes by default. The pages the README links to are
+# published, so each one is named here explicitly — a new file under docs/ is
+# private until someone adds a line for it.
 /docs/*
+!/docs/HOW-IT-WORKS.md
+!/docs/SETTINGS.md
+!/docs/BENCHMARKS.md
 
 # Style-slot state written at run time by /hush:pick-style, never published
 /output-styles/hush.md.stock

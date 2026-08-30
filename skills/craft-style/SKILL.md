@@ -106,7 +106,7 @@ For a maximum-compression style built on the stripped frame, append `--core` —
 
 ## 5. Activate — only with the user's consent
 
-A style delivered through `force-for-plugin: true` binds; the same content merely selected in settings under-delivers on the mechanics it copied. So ask the user first, every time — and if they say yes, run:
+`force-for-plugin: true` beats the `outputStyle` setting, not just ties with it — the resolver takes the first forced plugin style and only falls back to the selected one when there is none. So while stock Hush holds that line, a crafted style merely selected in settings never loads at all; activation is what puts it in the slot that wins. That is a takeover, so ask the user first, every time — and if they say yes, run:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<the file you just wrote>"
