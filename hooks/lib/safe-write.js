@@ -2,8 +2,8 @@
 
 // Symlink-refusing, atomic-rename file write.
 //
-// Duplicated verbatim in another plugin in this marketplace; mirror any
-// functional fix.
+// The function below is duplicated verbatim in another plugin in this
+// marketplace; mirror any functional fix.
 //
 // Throws on refusal or I/O failure; every call site wraps the call in
 // try/catch, so a throw here degrades to the feature silently skipping
@@ -23,10 +23,15 @@ function safeWriteFileSync(target, content) {
   const dir = path.dirname(target);
   fs.mkdirSync(dir, { recursive: true });
 
-  let realDir = dir;
-  const dstat = fs.lstatSync(dir);
-  if (dstat.isSymbolicLink()) {
-    realDir = fs.realpathSync(dir);
+  // realpath resolves the WHOLE path, not just the last segment: only the
+  // final directory used to be tested for being a link, so a symlinked
+  // ancestor redirected the write with nothing looking at it. A case-only or
+  // short-path difference on win32 is not a redirect, so compare folded.
+  const realDir = fs.realpathSync(dir);
+  const same = process.platform === 'win32'
+    ? realDir.toLowerCase() === path.resolve(dir).toLowerCase()
+    : realDir === path.resolve(dir);
+  if (!same) {
     const rstat = fs.statSync(realDir);
     if (!rstat.isDirectory()) throw new Error('safe-write: dir target not a directory');
     if (typeof process.getuid === 'function') {

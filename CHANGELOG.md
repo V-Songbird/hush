@@ -12,6 +12,10 @@ your temporary and home folders compared those folders as written, so a folder
 that resolved to a different spelling of itself was refused — and since these
 writes fail quietly, the feature just stopped working with nothing to see.
 
+The same check now looks at the whole path, not just the last folder in
+it. A link partway up a path sent sidecar and state writes wherever it
+pointed, and nothing looked.
+
 ## 1.11.1 — 2026-08-29
 
 The published figures are re-measured on a wider suite. It now includes a job

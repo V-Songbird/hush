@@ -88,6 +88,31 @@ describe('safeWriteFileSync: symlink refusal', () => {
   });
 });
 
+describe('safeWriteFileSync: an ancestor is a link too', () => {
+  // Only the final directory used to be tested for being a link, so a
+  // symlinked ANCESTOR redirected the write with nothing looking at it.
+  test('refuses a dir whose ancestor resolves outside tmpdir/home (win32 branch)', () => {
+    const dir = tmpDir();
+    const target = path.join(dir, 'a.json');
+    const outside = path.join('C:' + path.sep, 'nonexistent-outside-root', 'evil');
+    const origRealpath = fs.realpathSync;
+    const origStat = fs.statSync;
+    const origGetuid = process.getuid;
+    delete process.getuid;
+    // The dir itself is NOT a link here -- an ancestor of it is, which is what
+    // realpath resolves and lstat on the last segment never saw.
+    fs.realpathSync = (p, ...rest) => (p === dir ? outside : origRealpath(p, ...rest));
+    fs.statSync = (p, ...rest) => (p === outside ? { isDirectory: () => true } : origStat(p, ...rest));
+    try {
+      assert.throws(() => safeWriteFileSync(target, 'x'), /outside trusted roots/);
+    } finally {
+      fs.realpathSync = origRealpath;
+      fs.statSync = origStat;
+      if (origGetuid) process.getuid = origGetuid;
+    }
+  });
+});
+
 describe('safeWriteFileSync: failure cleanup', () => {
   test('cleans up the temp file when rename fails (target is a directory)', () => {
     const dir = tmpDir();
