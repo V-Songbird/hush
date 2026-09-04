@@ -32,7 +32,23 @@ function safeWriteFileSync(target, content) {
     if (typeof process.getuid === 'function') {
       if (rstat.uid !== process.getuid()) throw new Error('safe-write: dir owned by another user');
     } else {
-      const roots = [os.tmpdir(), os.homedir()].map((r) => path.win32.resolve(r).toLowerCase() + path.win32.sep);
+      // Every root is realpath'd the same way the candidate dir is. A root
+      // left unresolved fails to match its own contents the moment it holds a
+      // short 8.3 segment or a junction, and the write dies with it — state
+      // that never lands is the plugin silently doing nothing.
+      // CLAUDE_PLUGIN_DATA is a trusted root because the harness hands it to
+      // us as the place to write; omitting it refused the caller's own dir.
+      const roots = [os.tmpdir(), os.homedir(), process.env.CLAUDE_PLUGIN_DATA]
+        .filter(Boolean)
+        .map((r) => {
+          let p = path.win32.resolve(r);
+          try {
+            p = path.win32.resolve(fs.realpathSync(p));
+          } catch {
+            /* unresolvable root stays as written */
+          }
+          return p.toLowerCase().replace(/[\\/]+$/, '') + path.win32.sep;
+        });
       const real = path.win32.resolve(realDir).toLowerCase() + path.win32.sep;
       if (!roots.some((r) => real.startsWith(r))) throw new Error('safe-write: dir outside trusted roots');
     }

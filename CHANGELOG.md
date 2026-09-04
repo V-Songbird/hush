@@ -4,6 +4,14 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## Unreleased
+
+Sidecar and state files now write to directories reached through a Windows
+junction or a short 8.3 path. The check that keeps hush from writing outside
+your temporary and home folders compared those folders as written, so a folder
+that resolved to a different spelling of itself was refused — and since these
+writes fail quietly, the feature just stopped working with nothing to see.
+
 ## 1.11.1 — 2026-08-29
 
 The published figures are re-measured on a wider suite. It now includes a job
