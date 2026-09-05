@@ -4,6 +4,12 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.11.5 — 2026-09-05
+
+Ember's cartoon now ends on a note in hush's own shape: the outcome in bold,
+the file to open as a link, and a Next line. Nothing hush does in a session
+changed.
+
 ## 1.11.4 — 2026-09-05
 
 Meet Ember. The README now opens with a short cartoon of the Foundry mascot
