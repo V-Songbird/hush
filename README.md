@@ -4,7 +4,7 @@
     <img src="assets/logo.svg" alt="hush" width="240" />
   </picture>
   <h1>hush</h1>
-  <p><strong>Claude narrates every step and dumps every log line into your chat. hush gives you one short answer at the end instead.</strong></p>
+  <p><strong>Claude shuts up until it's done. One short answer, the file to open, and no log dumps in your chat.</strong></p>
 
   <img src="assets/hero.svg" alt="A poster of the whole benchmark suite as one waveform, one spike per run — words of play-by-play before the answer. Left of the hush-installed divider, 36 sessions without the plugin spike to 134 words, and the loudest breaks in 7 separate times. Right of it, the same 36 sessions with hush run flat: every one of them speaks at most once, and nothing runs over 7 words. It reads: Quiet." width="700" />
 
@@ -28,6 +28,8 @@
 > **TL;DR** — Claude Code talks while it works, and pastes whole log files into the conversation. hush stops both. You get one short message at the end that leads with the answer and names the file to open. In 36 test sessions it spoke at most once before that answer, every single time.
 
 ---
+
+<p align="center"><img src="assets/demo.svg" alt="The same job played twice, side by side. The prompt: The pricing suite is red and the output is a wall of text I can't read through. Can you run it, work out what's actually broken, and get it green? Without hush, Claude sends 5 messages: 4 progress notes while it works, then a 254-word write-up. With hush, nothing until the work is done, then one 42-word answer. Both sessions left the suite green. One real session each on Claude Opus 5, replayed on the recorded wall clock." width="700"></p>
 
 ## What is this?
 
@@ -129,7 +131,9 @@ editing code, running commands. Every job ends with a check, so a short answer t
 counts as a failure, not a win. All of it on Claude Opus 5, 36 sessions per setup, in one run.
 
 Beside hush: [caveman](https://github.com/JuliusBrussee/caveman), which makes Claude talk like a
-caveman, and the only other setup here that ever stops narrating.
+caveman, and the only other setup here that ever stops narrating. If you already run caveman:
+hush is quieter still, and the answer comes back in plain sentences you can read at the end of
+the day.
 
 **Does it still work?**
 
