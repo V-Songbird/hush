@@ -4,6 +4,13 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.11.3 — 2026-09-04
+
+The README now opens with a replay of one real job, side by side: every
+message Claude sent without hush, beside the one message it sent with it.
+The one-line pitch above it says plainly what you get. Nothing hush does in a
+session changed.
+
 ## 1.11.2 — 2026-09-04
 
 Sidecar and state files now write to directories reached through a Windows
