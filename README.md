@@ -75,6 +75,12 @@ the job is finished it says so, instead of inventing a next step.
 It is built for reading on an empty tank — at the end of a long day, or with an ADHD brain that has
 already spent its patience on the actual work.
 
+> [!NOTE]
+> **Anthropic reached for the same lever.** Its own cost tool, run on a coding benchmark, cut
+> spend 55% with two changes: a lower effort setting and telling the agent to answer in a few
+> concise sentences. The second one is what hush does for you, on every job.
+> [Their write-up.](https://x.com/ClaudeDevs/status/2097369738968195513)
+
 ## How it works
 
 Two moments, and that is the list.
