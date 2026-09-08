@@ -1117,8 +1117,8 @@ const NOTE_TEXT =
 // Empty sentinel file, atomically claimed with wx so two hook fires racing on
 // parallel tool calls emit at most one note. Sessions without a session_id
 // (bare test harnesses) never emit — a shared "unknown" key would leak the
-// once-only state across unrelated runs. The sentinel is left for OS temp
-// cleaning.
+// once-only state across unrelated runs. session-end-cleanup.js unlinks the
+// sentinel when the session ends; postcompact-rearm.js unlinks it at compaction.
 function claimSessionNote(sessionId, tmpDir) {
   if (typeof sessionId !== "string" || !sessionId) return false;
   try {

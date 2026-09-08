@@ -200,6 +200,23 @@ describe('sidecar cleanup: session end', () => {
     assert.strictEqual(fs.existsSync(finished), false);
   });
 
+  test("the session's note sentinel goes with its sidecar directory, another session's stays", () => {
+    const temp = scratchTemp('note');
+    const sid = 'hhhh8888';
+    const parked = plantSidecar(temp, sid);
+    const note = path.join(temp, `hush-note-${sid}`);
+    const otherNote = path.join(temp, 'hush-note-iiii9999');
+    fs.writeFileSync(note, '');
+    fs.writeFileSync(otherNote, '');
+
+    const r = runCleanup(temp, { hook_event_name: 'SessionEnd', session_id: sid });
+    assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+    assert.strictEqual(r.stdout, '');
+    assert.strictEqual(fs.existsSync(parked), false);
+    assert.strictEqual(fs.existsSync(note), false, 'the once-per-session note sentinel is session-scoped too');
+    assert.strictEqual(fs.existsSync(otherNote), true, "another session's sentinel is not this session's to delete");
+  });
+
   test('missing directories are a no-op: no output, no error, nothing created', () => {
     const temp = scratchTemp('missing');
     const before = fs.readdirSync(temp);

@@ -2,9 +2,10 @@
 "use strict";
 
 // SessionEnd hook: sidecar files are session-scoped, so this is where they go.
-// The session's own directory is deleted outright; anything a crashed session
-// left behind is caught by the age-graced sweep, which never touches a
-// directory a live session has written to recently.
+// The session's own directory is deleted outright, and so is the once-per-
+// session note sentinel compress-tool-output.js claims in tmpdir; anything a
+// crashed session left behind is caught by the age-graced sweep, which never
+// touches a directory a live session has written to recently.
 //
 // Deletion happens only at session end, never at compaction: the PreCompact
 // summary hands the model those exact paths, and a within-session compaction
@@ -16,6 +17,7 @@
 
 const { readInputOrNull: readInput } = require("./lib/harness");
 const { removeSession, sweepStale } = require("./lib/sidecar-store");
+const { unlinkSentinels } = require("./postcompact-rearm");
 const { coreOff } = require("./lib/gate");
 
 function main() {
@@ -23,7 +25,10 @@ function main() {
     if (coreOff()) return;
     const data = readInput();
     if (data === null) return; // malformed stdin
-    if (typeof data.session_id === "string" && data.session_id) removeSession(data.session_id);
+    if (typeof data.session_id === "string" && data.session_id) {
+      removeSession(data.session_id);
+      unlinkSentinels(data.session_id);
+    }
     sweepStale();
   } catch {
     /* fail-open: never break a session over cleanup */
