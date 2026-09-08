@@ -23,7 +23,7 @@ checklist. **A short answer that breaks the job counts as a failure, not a win.*
 
 Every price is the real bill, read back from the API.
 
-Below: Claude Opus 5 at its recommended medium effort, four runs each way, plus the same nine jobs
+Below: Claude Opus 5 at medium effort, four runs each way, plus the same nine jobs
 twice each way on Claude Sonnet. Failing-command trimming was on (`HUSH_WRAP=1`).
 
 ## Does it still work?
