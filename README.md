@@ -16,7 +16,7 @@ Choose the version for your coding assistant. Both use the **Foundry** marketpla
 | Platform | Status | Documentation |
 | --- | --- | --- |
 | Claude Code | Available | [Claude Code version](https://github.com/V-Songbird/hush/tree/Claude) |
-| Codex | In development; not available to install | [Codex version](https://github.com/V-Songbird/hush/tree/Codex) |
+| Codex | In development; not available to install | Not published |
 
 ### Claude Code
 
@@ -28,8 +28,8 @@ Choose the version for your coding assistant. Both use the **Foundry** marketpla
 ## Going deeper
 
 Platform documentation, configuration, and source code live on the
-[Claude](https://github.com/V-Songbird/hush/tree/Claude) and
-[Codex](https://github.com/V-Songbird/hush/tree/Codex) branches.
+[Claude](https://github.com/V-Songbird/hush/tree/Claude) branch.
+The Codex version is not published yet.
 
 Created by **Victor Villegas** · victor.villegas@tuta.com
 
