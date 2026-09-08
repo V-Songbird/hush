@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [main]
+    branches: [Claude]
   pull_request:
-    branches: [main]
+    branches: [Claude]
 
 jobs:
   test:
@@ -26,3 +26,4 @@ jobs:
           else
             echo "no tests/ directory, nothing to run"
           fi
+
