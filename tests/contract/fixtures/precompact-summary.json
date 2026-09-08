@@ -1,5 +1,0 @@
-{
-  "hook_event_name": "PreCompact",
-  "session_id": "{{SESSION}}",
-  "trigger": "auto"
-}

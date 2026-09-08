@@ -1,5 +1,0 @@
-{
-  "hook_event_name": "SessionEnd",
-  "session_id": "{{SESSION}}",
-  "reason": "clear"
-}
