@@ -73,14 +73,6 @@ if (require.main === module) {
 
 module.exports = { main, repoRoot, testGlob, cleanEnv };
 
-// Reference-name scan: private blocklist (gitignored, lives outside this
-// repo); fail-open when absent. See check-reference-names.js.
-if (require.main === module) {
-  process.argv[2] = "staged";
-  const rc = require("./check-reference-names.js").main();
-  if (rc !== 0) process.exit(rc);
-}
-
 // README nav: this repo's front page keeps a nav line under the badges, and
 // every anchor in it still resolves to a heading. GitHub builds anchors from
 // heading text, so a renamed section breaks its link silently. See

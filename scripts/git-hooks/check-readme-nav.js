@@ -19,7 +19,8 @@
 
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
+const slugCharacters = require("./vendor/github-slugger-regex");
 
 // The minimum that reads as a nav rather than one stray cross-reference.
 const MIN_LINKS = 3;
@@ -28,22 +29,34 @@ function repoRoot() {
   return execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim();
 }
 
-// GitHub's own slug rule: lowercase, drop everything that is not a word
-// character, whitespace or hyphen, then spaces to hyphens.
+// Preserve Unicode letters and each literal space: removing an em dash
+// between two spaces must leave two hyphens, not collapse them into one.
 function slug(text) {
-  return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
+  return text.toLowerCase().replace(slugCharacters, "").replace(/ /g, "-");
 }
 
 // Headings inside a fenced block are content, not sections -- flint's README
 // quotes a reply whose ten `##` lines would otherwise register as anchors.
 function headingSlugs(markdown) {
   const slugs = new Set();
-  let inFence = false;
+  let fence = null;
   for (const line of markdown.split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
-    if (inFence) continue;
-    const m = line.match(/^#{1,6}\s+(.*)$/);
-    if (m) slugs.add(slug(m[1]));
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (marker) {
+      if (!fence) fence = marker[1];
+      else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+      continue;
+    }
+    if (fence) continue;
+    const m = line.match(/^ {0,3}#{1,6}\s+(.*)$/);
+    if (m) {
+      const text = m[1].replace(/\s+#+\s*$/, "").replace(/<[^>]+>/g, "")
+        .replace(/!?\[([^\]]+)\]\([^)]*\)/g, "$1");
+      const base = slug(text.trim());
+      let anchor = base, suffix = 0;
+      while (slugs.has(anchor)) anchor = `${base}-${++suffix}`;
+      slugs.add(anchor);
+    }
   }
   return slugs;
 }
@@ -76,7 +89,10 @@ function checkMarkdown(markdown, label) {
     );
   }
 
-  for (const a of anchorsIn(markdown)) {
+  for (const encoded of anchorsIn(markdown)) {
+    let a;
+    try { a = decodeURIComponent(encoded); }
+    catch { problems.push(`${label}: invalid encoded anchor #${encoded}`); continue; }
     if (!heads.has(a)) {
       problems.push(
         `${label}: "#${a}" matches no heading in this file. GitHub builds anchors from heading ` +
@@ -96,23 +112,20 @@ function checkFiles(files) {
   return problems;
 }
 
-function stagedRootReadme(root) {
-  const staged = execSync("git diff --cached --name-only", { cwd: root, encoding: "utf-8" })
-    .split("\n")
-    .filter(Boolean);
-  return staged.includes("README.md") ? [path.join(root, "README.md")] : [];
+function checkStagedReadme(root) {
+  const staged = execFileSync("git", ["diff", "--cached", "--name-only", "--no-renames", "--diff-filter=ACM", "-z", "--", "README.md"],
+    { cwd: root, encoding: "utf8" }).split("\0");
+  if (!staged.includes("README.md")) return [];
+  const text = execFileSync("git", ["show", ":README.md"], { cwd: root, encoding: "utf8" });
+  return checkMarkdown(text, "README.md (staged)");
 }
 
 // argv is a parameter, not read from process: the hooks that call this run it
 // after another check has already rewritten process.argv.
 function main(argv = process.argv.slice(2)) {
   const args = argv;
-  let files;
-  if (args[0] === "staged") files = stagedRootReadme(repoRoot());
-  else if (args.length) files = args;
-  else files = [path.join(repoRoot(), "README.md")];
-
-  const problems = checkFiles(files);
+  const problems = args[0] === "staged" ? checkStagedReadme(repoRoot())
+    : checkFiles(args.length ? args : [path.join(repoRoot(), "README.md")]);
   if (problems.length === 0) return 0;
 
   process.stderr.write("\nREADME nav check:\n\n");
@@ -125,4 +138,4 @@ if (require.main === module) {
   process.exit(main());
 }
 
-module.exports = { main, slug, headingSlugs, anchorsIn, navRegion, checkMarkdown, checkFiles };
+module.exports = { main, slug, headingSlugs, anchorsIn, navRegion, checkMarkdown, checkFiles, checkStagedReadme };
