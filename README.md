@@ -11,27 +11,16 @@
 
 ## Install
 
-Choose the version for your coding assistant. Both use the **Foundry** marketplace.
+Choose your coding assistant. Its edition page contains the source, requirements, installation instructions and usage guide.
 
-| Platform | Status | Documentation |
-| --- | --- | --- |
-| Claude Code | Available | [Claude Code version](https://github.com/V-Songbird/hush/tree/Claude) |
-| Codex | In development; not available to install | Not published |
-
-### Claude Code
-
-```text
-/plugin marketplace add V-Songbird/foundry
-/plugin install hush@foundry
-```
+| Platform | Edition |
+| --- | --- |
+| Claude Code | [Open the Claude Code edition](https://github.com/V-Songbird/hush/tree/Claude) |
+| Codex | [Development status — not available to install](https://github.com/V-Songbird/hush/tree/Codex) |
 
 ## Going deeper
 
-Platform documentation, configuration, and source code live on the
-[Claude](https://github.com/V-Songbird/hush/tree/Claude) branch.
-The Codex version is not published yet.
-
-Created by **Victor Villegas** · victor.villegas@tuta.com
+[Foundry](https://github.com/V-Songbird/foundry) contains the collection overview, research and benchmark tools. This branch is the entry page; the linked editions contain the plugin.
 
 ## License
 
