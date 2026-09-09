@@ -1,8 +1,8 @@
 <!-- foundry:edition Claude -->
 <div align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-    <img src="assets/logo.svg" alt="hush" width="240" />
+    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png" />
+    <img src="assets/banner-light.png" alt="hush" width="900" />
   </picture>
   <h1>hush</h1>
   <p><strong>Less narration while work happens. A short, useful answer when it is done.</strong></p>
