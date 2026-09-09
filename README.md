@@ -1,38 +1,87 @@
+<!-- foundry:edition Codex -->
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-    <img src="assets/logo.svg" alt="hush" width="160" />
+    <img src="assets/logo.svg" alt="hush" width="240" />
   </picture>
   <h1>hush</h1>
-  <p>Reduce noisy tool output and keep replies concise while preserving useful results.</p>
+  <p><strong>Less narration while work happens. A short, useful answer when it is done.</strong></p>
 </div>
 
-[Install](#install) · [Going deeper](#going-deeper) · [License](#license)
+<!-- foundry:platform identity -->
+**Edition: Codex.** In development; not available to install.
+<!-- /foundry:platform identity -->
+
+[**Install**](#install) · [What is this?](#what-is-this) · [What you can do](#what-you-can-do) · [The numbers](#the-numbers) · [Going deeper](#going-deeper)
+
+> **TL;DR** — Less narration while work happens. A short, useful answer when it is done.
+
+<p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
+
+## What is this?
+
+hush is designed to reduce running commentary and long tool-output dumps. The aim is a clear final answer with the result and the file or command you need next. Check the edition status above for availability.
+
+## Why you'd want it
+
+- Read the result without scrolling through a running monologue.
+- Keep important details accessible when output is shortened.
+- Choose a writing voice that fits how you work.
+
+## How it works
+
+The product combines quieter narration, a chosen writing style and reduced tool-output noise. The integration and availability of those controls are documented for each edition below.
 
 ## Install
 
-Choose the version for your coding assistant. Both use the **Foundry** marketplace.
+<!-- foundry:platform install -->
+Hush for Codex is in development. This branch has no installable plugin package yet. Installation instructions will be added with a supported package.
+<!-- /foundry:platform install -->
 
-| Platform | Status | Documentation |
-| --- | --- | --- |
-| Claude Code | Available | [Claude Code version](https://github.com/V-Songbird/hush/tree/Claude) |
-| Codex | In development; not available to install | [Codex version](https://github.com/V-Songbird/hush/tree/Codex) |
+## What you can do
 
-### Claude Code
+| You want to | Outcome |
+| --- | --- |
+| Keep work quiet | Limit running commentary before the final answer |
+| Change the writing voice | Choose or describe the style you want |
+| Inspect shortened output | Follow the reference to the complete output when the edition provides it |
 
-```text
-/plugin marketplace add V-Songbird/foundry
-/plugin install hush@foundry
-```
+<!-- foundry:platform commands -->
+No native Codex commands or skills are available yet.
+<!-- /foundry:platform commands -->
+
+## The numbers
+
+Each result belongs to the named model and recorded run. Missing measurements remain marked as unmeasured.
+
+<!-- foundry:platform benchmarks -->
+<!-- foundry:evidence {"platform":"Codex","status":"pending","reason":"No installable Codex edition or paired benchmark yet."} -->
+| Model | Setup | Jobs right | At most one update | Final words |
+| --- | --- | --- | --- | --- |
+| Not measured | Without plugin | Not measured | Not measured | Not measured |
+| Not measured | hush | Not measured | Not measured | Not measured |
+
+No Codex performance claim is available while the package is in development.
+<!-- /foundry:platform benchmarks -->
+
+*Results can vary between runs.*
 
 ## Going deeper
 
-Platform documentation, configuration, and source code live on the
-[Claude](https://github.com/V-Songbird/hush/tree/Claude) and
-[Codex](https://github.com/V-Songbird/hush/tree/Codex) branches.
+<!-- foundry:platform links -->
+[Project overview](https://github.com/V-Songbird/hush/tree/main)
+<!-- /foundry:platform links -->
 
-Created by **Victor Villegas** · victor.villegas@tuta.com
+[Foundry](https://github.com/V-Songbird/foundry) holds the research, methodology and detailed evidence for this plugin.
+
+## Good to know
+
+A shorter answer is useful only when it preserves the result and the next action. Correctness comes before silence. Model behavior can vary between runs.
+
+<!-- foundry:platform compatibility -->
+The shared description states the product’s purpose. It does not establish that these behaviors exist in the unfinished Codex edition.
+<!-- /foundry:platform compatibility -->
 
 ## License
 
-[MIT](LICENSE).
+MIT — see [LICENSE](LICENSE).

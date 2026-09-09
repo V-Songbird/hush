@@ -1,0 +1,26 @@
+name: Platform isolation
+
+on:
+  push:
+    branches: [Claude, Codex]
+  pull_request:
+    branches: [Claude, Codex]
+
+permissions:
+  contents: read
+
+jobs:
+  platform-layout:
+    name: Platform layout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test the platform checker
+        run: node --test scripts/git-hooks/check-platform-layout.test.js
+      - name: Check the complete committed tree for the destination platform
+        env:
+          PLATFORM: ${{ github.base_ref || github.ref_name }}
+        run: node scripts/git-hooks/check-platform-layout.js --platform "$PLATFORM" --ref HEAD
