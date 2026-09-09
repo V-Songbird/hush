@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const FILES = ["LICENSE", "README.md", "assets/logo-dark.svg", "assets/logo.svg", "assets/mascot.svg",
+  "assets/icon-on-light.png", "assets/icon-on-dark.png", "assets/logo-on-light.png", "assets/logo-on-dark.png", "assets/banner-light.png", "assets/banner-dark.png",
   ".github/check-main-frontpage.cjs", ".github/workflows/test.yml"];
 const SHARED_SECTIONS = ["What is this?", "Why you'd want it", "How it works", "What you can do", "Good to know"];
 
@@ -57,9 +58,9 @@ function checkFiles(files, readme, plugin) {
   return errors;
 }
 
-function git(repo, args) {
+function git(repo, args, encoding = "utf8") {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
-  return execFileSync("git", ["-C", repo, ...args], { env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 4 * 1024 * 1024 });
+  return execFileSync("git", ["-C", repo, ...args], { env, encoding, stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
 }
 
 function main(args = process.argv.slice(2)) {
@@ -88,10 +89,11 @@ function main(args = process.argv.slice(2)) {
       if (!options['claude-ref'] || !options['codex-ref']) throw Error("Provide both edition refs for shared-content verification.");
       const refs = ['claude-ref', 'codex-ref'].map(key => git(repo, ['rev-parse', '--verify', '--end-of-options', `${options[key]}^{commit}`]).trim());
       errors.push(...checkCommon(readme, ...refs.map(ref => git(repo, ['show', `${ref}:README.md`]))));
-      for (const asset of ['assets/logo.svg', 'assets/logo-dark.svg', 'assets/mascot.svg']) {
-        const current = options.worktree ? fs.readFileSync(path.join(repo, asset), 'utf8') : git(repo, ['show', `${mainSha}:${asset}`]);
-        const values = refs.map(ref => git(repo, ['show', `${ref}:${asset}`]));
-        if (values.some(value => value.replace(/\r\n/g, '\n') !== current.replace(/\r\n/g, '\n'))) errors.push(`Main and both editions must share ${asset}`);
+      for (const asset of FILES.filter(file => file.startsWith('assets/'))) {
+        const current = options.worktree ? fs.readFileSync(path.join(repo, asset)) : git(repo, ['show', `${mainSha}:${asset}`], null);
+        const values = refs.map(ref => git(repo, ['show', `${ref}:${asset}`], null));
+        const same = value => asset.endsWith('.png') ? value.equals(current) : value.toString().replace(/\r\n/g, '\n') === current.toString().replace(/\r\n/g, '\n');
+        if (values.some(value => !same(value))) errors.push(`Main and both editions must share ${asset}`);
       }
     }
     if (errors.length) { for (const error of errors) console.error(error); return 1; }
