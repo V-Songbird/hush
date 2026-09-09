@@ -4,6 +4,10 @@ All notable changes to hush are documented here. Looking for a version
 number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
 listing — that's why `plugin.json` here carries none.
 
+## 1.11.7 — 2026-09-09
+
+New Tinta y oficio banners adapt to light and dark GitHub themes.
+
 ## 1.11.6 — 2026-09-09
 
 Product guides and decisions now accompany the Claude edition. Research and
