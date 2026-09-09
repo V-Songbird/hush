@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const FILES = ["LICENSE", "README.md", "assets/logo-dark.svg", "assets/logo.svg", "assets/mascot.svg",
+  "assets/hero.svg", "assets/demo.svg",
   "assets/icon-on-light.png", "assets/icon-on-dark.png", "assets/logo-on-light.png", "assets/logo-on-dark.png", "assets/banner-light.png", "assets/banner-dark.png",
   ".github/check-main-frontpage.cjs", ".github/workflows/test.yml"];
 const SHARED_SECTIONS = ["What is this?", "Why you'd want it", "How it works", "What you can do", "Good to know"];
@@ -31,7 +32,8 @@ function checkCommon(readme, claude, codex) {
     text = text.replace(/\r\n/g, '\n');
     return [text.match(/^<div align="center">[\s\S]*?^<\/div>/m)?.[0],
       text.split('\n').find(line => line.startsWith('> **TL;DR**')),
-      text.match(/^<p align="center"><img src="assets\/mascot\.svg"[^\n]+/m)?.[0]];
+      text.match(/^<p align="center"><img src="assets\/mascot\.svg"[^\n]+/m)?.[0],
+      text.match(/<!-- foundry:hero -->[\s\S]*?<!-- \/foundry:hero -->/)?.[0]];
   };
   const mainBrand = branding(readme), aBrand = branding(claude), bBrand = branding(codex);
   for (let i = 0; i < aBrand.length; i++) if (aBrand[i] || bBrand[i]) {
@@ -48,6 +50,7 @@ function checkFiles(files, readme, plugin) {
   const sections = productSections(readme);
   for (const heading of SHARED_SECTIONS) if (!sections[heading]) errors.push(`Missing product overview section: ${heading}`);
   if (!/src="assets\/mascot\.svg"/.test(readme)) errors.push("Main must include the shared product animation.");
+  if (!/src="assets\/hero\.svg"/.test(readme) || !/src="assets\/demo\.svg"/.test(readme)) errors.push("Main must retain the product hero and demo.");
   for (const edition of ["Claude", "Codex"]) {
     const target = `https://github.com/V-Songbird/${plugin}/tree/${edition}`;
     const links = [...readme.matchAll(/\[[^\]\n]+\]\((https:\/\/[^\s)]+)\)/g)].map(match => match[1]);
