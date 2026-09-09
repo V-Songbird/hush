@@ -1,5 +1,0 @@
-{
-  "hook_event_name": "PostCompact",
-  "session_id": "{{SESSION}}",
-  "trigger": "auto"
-}
