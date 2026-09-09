@@ -22,4 +22,6 @@ jobs:
       - name: Validate the documentation-only main tree
         env:
           PLUGIN: ${{ github.event.repository.name }}
-        run: node .github/check-main-frontpage.cjs --repo . --plugin "$PLUGIN" --ref HEAD
+        run: |
+          git fetch origin "+refs/heads/Claude:refs/remotes/origin/Claude" "+refs/heads/Codex:refs/remotes/origin/Codex"
+          node .github/check-main-frontpage.cjs --repo . --plugin "$PLUGIN" --ref HEAD --claude-ref refs/remotes/origin/Claude --codex-ref refs/remotes/origin/Codex
