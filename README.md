@@ -16,6 +16,19 @@
 
 > **TL;DR** — Less narration while work happens. A short, useful answer when it is done.
 
+<!-- foundry:hero -->
+<p align="center"><img src="assets/hero.svg" alt="Hush original product visualization" width="700"></p>
+
+Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance. [Evidence and methodology](https://github.com/V-Songbird/foundry/tree/main/docs/hush).
+
+<details>
+<summary>Watch the recorded Claude Code demo</summary>
+
+<p align="center"><img src="assets/demo.svg" alt="Recorded Claude Code demonstration of Hush" width="700"></p>
+
+</details>
+<!-- /foundry:hero -->
+
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
 ## What is this?
