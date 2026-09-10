@@ -22,26 +22,31 @@
 
 ## What is this?
 
-A coding assistant can finish the job and still leave you with a lot to read. Hush reduces that reading: less narration during the work, shorter command output, and a final answer focused on the result.
+You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. By the time it finishes, the result is buried in the conversation. Hush reduces that reading.
 
-For a task such as fixing a failing test, the useful answer tells you what was fixed, whether the check passed and anything you still need to do. That is the kind of answer Hush aims for. This is an illustration of the goal, not a recorded result.
+It quiets routine narration, shortens noisy tool output and shapes the final answer around what changed, whether it worked and what comes next. The example illustrates the workflow; the measurements below describe recorded sessions.
 
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
 ## Why you'd want it
 
-The point is to make the work easier to follow. Routine narration gets less space; the outcome, relevant detail and next action should remain. When shortened output is not enough, its reference gives you a way to inspect the full result where supported.
+- Read the result with less play-by-play.
+- Keep noisy command output from crowding the conversation.
+- Inspect retained full output when you need more detail.
+- Choose a writing voice that suits you.
 
 ## How it works
 
-There are two layers. Session controls reduce narration and tool-output noise. A writing style shapes the answer you read at the end. You can change the voice without changing the quiet-session controls.
+A writing style asks the assistant to stay quiet during routine work and finish with a short, useful answer. Session controls reinforce that behavior and trim selected tool results. Large outputs can be stored temporarily, with a reference for closer inspection. You can change the voice while keeping the session controls.
 
 ## What you can do
 
-- **Keep the default voice** for short, plain answers.
-- **Choose another voice** when you want a different tone.
-- **Describe a new voice** when the available styles do not fit.
-- **Inspect the full output** when a shortened command result needs closer reading.
+| You want to | Outcome |
+| --- | --- |
+| Keep the default voice | Short, plain answers focused on the result |
+| Choose another voice | A different tone with the session controls retained |
+| Describe a new voice | A custom style checked against Hush’s requirements |
+| Inspect shortened output | A reference to the retained full result where available |
 
 ## Get started
 
@@ -55,7 +60,7 @@ commands and compatibility notes for your setup.
 
 ## Good to know
 
-Correctness comes before silence. A short answer can still omit something you need, and quieter sessions do not always cost less. Check the result and next action, especially when trying a different voice.
+Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
 ## Evidence and benchmarks
 
