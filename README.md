@@ -7,9 +7,16 @@
   <p><strong>You asked for a change. Read what changed.</strong></p>
 </div>
 
-**Available for [Claude Code](https://github.com/V-Songbird/hush/tree/Claude).** The [Codex edition](https://github.com/V-Songbird/hush/tree/Codex) is not currently installable.
+<p align="center"><strong>Available on</strong></p>
+<p align="center">
+  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude">Claude</a>
+</p>
+<p align="center"><small>Codex is not currently installable.</small></p>
 
-[**Get started**](#get-started) · [What is this?](#what-is-this) · [How it works](#how-it-works) · [What you can do](#what-you-can-do) · [Evidence](#evidence-and-benchmarks)
+<p align="center"><a href="#get-started"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#evidence-and-benchmarks">Evidence</a></p>
+
+
 
 
 
@@ -21,8 +28,6 @@ For a task such as fixing a failing test, the useful answer tells you what was f
 
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
-
-
 ## Why you'd want it
 
 The point is to make the work easier to follow. Routine narration gets less space; the outcome, relevant detail and next action should remain. When shortened output is not enough, its reference gives you a way to inspect the full result where supported.
@@ -30,13 +35,6 @@ The point is to make the work easier to follow. Routine narration gets less spac
 ## How it works
 
 There are two layers. Session controls reduce narration and tool-output noise. A writing style shapes the answer you read at the end. You can change the voice without changing the quiet-session controls.
-
-## What you can do
-
-- **Keep the default voice** for short, plain answers.
-- **Choose another voice** when you want a different tone.
-- **Describe a new voice** when the available styles do not fit.
-- **Inspect the full output** when a shortened command result needs closer reading.
 
 ## What you can do
 

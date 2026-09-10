@@ -5,6 +5,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const FILES = ["LICENSE", "README.md", "assets/logo-dark.svg", "assets/logo.svg", "assets/mascot.svg",
   "assets/hero.svg", "assets/demo.svg",
+  "assets/edition-codex.svg", "assets/edition-claude.svg",
   "assets/icon-on-light.png", "assets/icon-on-dark.png", "assets/logo-on-light.png", "assets/logo-on-dark.png", "assets/banner-light.png", "assets/banner-dark.png",
   ".github/check-main-frontpage.cjs", ".github/workflows/test.yml"];
 const SHARED_SECTIONS = ["What is this?", "Why you'd want it", "How it works", "What you can do", "Good to know"];
