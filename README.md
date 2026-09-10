@@ -8,11 +8,18 @@
   <p><strong>You asked for a change. Read what changed.</strong></p>
 </div>
 
+<p align="center"><strong>Available on</strong></p>
+<p align="center">
+  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude">Claude</a>
+</p>
+<p align="center"><small>Codex is not currently installable.</small></p>
+
 <!-- foundry:platform identity -->
-**Edition: Codex.** In development; not available to install.
+<p align="center"><strong>Edition: Codex.</strong> In development; not available to install.</p>
 <!-- /foundry:platform identity -->
 
-[Install](#install) · [Using Hush](#what-you-can-do) · [Evidence](#the-numbers) · [Limits](#good-to-know)
+<p align="center"><a href="#install"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#the-numbers">Evidence</a></p>
 
 ## What is this?
 
