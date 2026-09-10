@@ -1,7 +1,10 @@
 # The numbers, in full
 
-Wins and losses. The front page carries the headline; this page carries everything, including the
-rows where hush comes out behind.
+The README uses the September 1, 2026 comparison, `rivalA-762f888b`: nine fixture jobs, four repetitions per setup, with the recorded `opus` alias at medium effort (identified as Opus 5 by the published source). Median final prose was 367 words without a plugin and 69 with Hush; both passed 36/36 task checks. The readability check detected runnable content in 94% of Hush answers versus 100% without a plugin. Three jobs cost 1–10% more.
+
+The tables below preserve the earlier August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
+
+[Records, definitions and source reconciliation](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md). Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. Readability word counts are medians; reading-ease and grade scores are heuristic averages, not a reader study.
 
 ← [Back to the README](../README.md)
 
@@ -23,8 +26,7 @@ checklist. **A short answer that breaks the job counts as a failure, not a win.*
 
 Every price is the real bill, read back from the API.
 
-Below: Claude Opus 5 at medium effort, four runs each way, plus the same nine jobs
-twice each way on Claude Sonnet. Failing-command trimming was on (`HUSH_WRAP=1`).
+Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the shipped writing voice.
 
 ## Does it still work?
 
@@ -37,8 +39,7 @@ Nothing on this page was bought with a wrong answer.
 
 ## How quiet
 
-Every model opens a turn with a line about what it is about to do. No wording removes that for
-good, so the claim worth making is not *never speaks* — it is *speaks once, then nothing*.
+Some sessions still open with a line about what the assistant is about to do. These comparisons count both fully silent sessions and sessions with at most one update before the answer.
 
 | Claude Opus 5, 36 sessions each | no plugin | hush |
 | --- | --- | --- |
@@ -56,8 +57,7 @@ good, so the claim worth making is not *never speaks* — it is *speaks once, th
 | words of play-by-play, per session | 30.1 | **8.1** |
 
 The zero-word count is the softer of the two. It slides with how long a session runs — on the same
-build it reads near 100% on short jobs and drops away on the longest ones. The at-most-once count
-does not move with length.
+build it reads near 100% on short jobs and drops away on the longest ones. The at-most-once result held across these Opus sessions; it is not a guarantee for other workloads.
 
 ## How much it cuts
 
@@ -133,8 +133,7 @@ words a text uses.
 | no plugin | 167 | 16.5 | 11.3% | 61.8 | 8.7 |
 | **hush** | **82** | **10.9** | **8.4%** | **73.7** | **5.7** |
 
-Higher reading ease is easier. Lower grade level is easier. hush is three to four school grades
-easier than plain Claude Code on both models, in a sixth of the words on Opus.
+Higher reading ease and lower grade level indicate simpler text in these formulas. Hush scores three to four grades lower on these replies. That is a comparison of text features, not proof of comprehension or accessibility for a particular reader.
 
 ## Can you act on it without asking?
 
@@ -186,7 +185,7 @@ four other Sonnet jobs cost 7-8% more. On Opus the effect is smaller: two jobs, 
 what had happened.
 
 **The zero-word silence count drops as sessions get longer.** It is a real number and it is on this
-page, but it is not a promise. The at-most-one-message count is.
+page, but it is not a promise. The at-most-one-message count also describes these runs, not a guarantee.
 
 ## Run it yourself
 
