@@ -23,26 +23,31 @@
 
 ## What is this?
 
-A coding assistant can finish the job and still leave you with a lot to read. Hush reduces that reading: less narration during the work, shorter command output, and a final answer focused on the result.
+You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. By the time it finishes, the result is buried in the conversation. Hush reduces that reading.
 
-For a task such as fixing a failing test, the useful answer tells you what was fixed, whether the check passed and anything you still need to do. That is the kind of answer Hush aims for. This is an illustration of the goal, not a recorded result.
+It quiets routine narration, shortens noisy tool output and shapes the final answer around what changed, whether it worked and what comes next. The example illustrates the workflow; the measurements below describe recorded sessions.
 
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
 ## Why you'd want it
 
-The point is to make the work easier to follow. Routine narration gets less space; the outcome, relevant detail and next action should remain. When shortened output is not enough, its reference gives you a way to inspect the full result where supported.
+- Read the result with less play-by-play.
+- Keep noisy command output from crowding the conversation.
+- Inspect retained full output when you need more detail.
+- Choose a writing voice that suits you.
 
 ## How it works
 
-There are two layers. Session controls reduce narration and tool-output noise. A writing style shapes the answer you read at the end. You can change the voice without changing the quiet-session controls.
+A writing style asks the assistant to stay quiet during routine work and finish with a short, useful answer. Session controls reinforce that behavior and trim selected tool results. Large outputs can be stored temporarily, with a reference for closer inspection. You can change the voice while keeping the session controls.
 
 ## What you can do
 
-- **Keep the default voice** for short, plain answers.
-- **Choose another voice** when you want a different tone.
-- **Describe a new voice** when the available styles do not fit.
-- **Inspect the full output** when a shortened command result needs closer reading.
+| You want to | Outcome |
+| --- | --- |
+| Keep the default voice | Short, plain answers focused on the result |
+| Choose another voice | A different tone with the session controls retained |
+| Describe a new voice | A custom style checked against Hush’s requirements |
+| Inspect shortened output | A reference to the retained full result where available |
 
 <!-- foundry:platform commands -->
 Use `/hush:pick-style` to choose a voice and `/hush:craft-style` to describe a new one. See the settings guide for disabling the session controls.
@@ -63,7 +68,7 @@ Start a new session to load the plugin.
 
 ## Good to know
 
-Correctness comes before silence. A short answer can still omit something you need, and quieter sessions do not always cost less. Check the result and next action, especially when trying a different voice.
+Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
 <!-- foundry:platform compatibility -->
 Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/SETTINGS.md) for switches and platform-specific retention behavior.
@@ -74,15 +79,20 @@ Full-output references point to temporary files. Disabling runtime controls and 
 The comparison asks whether jobs were completed correctly, how often the assistant gave at most one update, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
 
 <!-- foundry:platform benchmarks -->
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/hush/validation/claude-readme-benchmark-source-2026-09-08.md","date":"unknown","revision":"13c24a9bd610a39740eb2816b54cc16b090978ed","dateReason":"The retained source excerpt does not state a run date.","reviewedAt":"2026-09-08"} -->
-| Model | Setup | Jobs right | At most one update | Final words |
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/hush/validation/claude-readme-benchmark-2026-09-10.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
+| Model | Setup | Jobs right | At most one update | Median final prose words |
 | --- | --- | --- | --- | --- |
 | Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
 | Claude Opus 5 | caveman | 36/36 | 31/36 | 151 |
 | Claude Opus 5 | hush | 36/36 | 36/36 | 69 |
 
-The final answer was shorter, but the next runnable action was retained in 94% of hush sessions versus 100% for the other setups. Three quiet jobs cost 1–10% more. These results describe the recorded Claude run.
-The retained source describes nine jobs and 36 sessions per setup. The run date is unknown; the source was reviewed on 2026-09-08. The settings guide states that published measurements used `HUSH_WRAP=1` and the shipped writing voice. [Retained benchmark source](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-source-2026-09-08.md).
+In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush gave at most one mid-work update in every session.
+
+The readability check detected runnable content in 94% of Hush answers versus 100% for the other setups. Three quiet jobs cost 1–10% more. Detection is a text heuristic, not a check that the suggested action is correct or complete.
+
+Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. [Records, definitions and earlier comparisons](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md).
+
+Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
 <!-- /foundry:platform benchmarks -->
 
 <!-- foundry:hero -->
