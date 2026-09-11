@@ -3,13 +3,11 @@
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 const { HOOKS_DIR } = require('./helpers');
-const { insideTmp } = require('../hooks/postcompact-rearm');
-const { sessionDir } = require('../hooks/lib/sidecar-store');
+const { sessionDir, notePath, SIDECAR_ROOT } = require('../hooks/lib/sidecar-store');
 
 /** Run postcompact-rearm.js with raw stdin (not necessarily JSON); returns spawnSync result. */
 function runRaw(stdinData, env) {
@@ -27,14 +25,23 @@ function runHook(stdinObj, env) {
 
 const freshSessionId = () => crypto.randomBytes(6).toString('hex');
 
-function notePath(sessionId) {
-  return path.join(os.tmpdir(), `hush-note-${sessionId}`);
+// Plants a claimed sentinel where compress-tool-output.js puts it: inside the
+// session's sidecar directory. Every directory planted is removed in after().
+const planted = new Set();
+after(() => {
+  for (const d of planted) fs.rmSync(d, { recursive: true, force: true });
+});
+function plantNote(sessionId) {
+  const dir = sessionDir(sessionId);
+  fs.mkdirSync(dir, { recursive: true });
+  planted.add(dir);
+  fs.writeFileSync(notePath(sessionId), '');
 }
 
 describe('postcompact-rearm hook', () => {
   test('removes the sentinel when present', () => {
     const sessionId = freshSessionId();
-    fs.writeFileSync(notePath(sessionId), '');
+    plantNote(sessionId);
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: sessionId });
     assert.strictEqual(r.status, 0);
@@ -64,7 +71,7 @@ describe('postcompact-rearm hook', () => {
 
   test('HUSH_DISABLE=1 -> files left untouched', () => {
     const sessionId = freshSessionId();
-    fs.writeFileSync(notePath(sessionId), '');
+    plantNote(sessionId);
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: sessionId }, { HUSH_DISABLE: '1' });
     assert.strictEqual(r.status, 0);
@@ -85,7 +92,7 @@ describe('postcompact-rearm: nothing stale survives as live', () => {
 
   test('repeated compactions: the second is a silent no-op, and a note re-claimed between them still re-arms', () => {
     const sessionId = freshSessionId();
-    fs.writeFileSync(notePath(sessionId), '');
+    plantNote(sessionId);
 
     const first = runHook({ hook_event_name: 'PostCompact', session_id: sessionId });
     assert.strictEqual(first.status, 0);
@@ -95,7 +102,7 @@ describe('postcompact-rearm: nothing stale survives as live', () => {
     assert.strictEqual(second.status, 0);
     assert.strictEqual(second.stdout, '');
 
-    fs.writeFileSync(notePath(sessionId), ''); // the note fired again after compaction
+    plantNote(sessionId); // the note fired again after compaction
     const third = runHook({ hook_event_name: 'PostCompact', session_id: sessionId });
     assert.strictEqual(third.status, 0);
     assert.strictEqual(fs.existsSync(notePath(sessionId)), false);
@@ -108,7 +115,7 @@ describe('postcompact-rearm: nothing stale survives as live', () => {
     sidecarDirs.add(dir);
     const parked = path.join(dir, 'abc123.txt');
     fs.writeFileSync(parked, 'full output');
-    fs.writeFileSync(notePath(sessionId), '');
+    plantNote(sessionId);
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: sessionId });
     assert.strictEqual(r.status, 0);
@@ -117,10 +124,11 @@ describe('postcompact-rearm: nothing stale survives as live', () => {
       'sidecars are removed at session end, never at compaction');
   });
 
-  test('a session_id that resolves outside tmpdir is not a hush file and is not deleted', () => {
+  test('a session_id shaped like a path traversal names a directory hush owns, never a file outside the sidecar root', () => {
     const escaping = `../../../hush-168-escape-${freshSessionId()}`;
-    assert.strictEqual(insideTmp(path.join(os.tmpdir(), `hush-note-${escaping}`)), false);
-    assert.strictEqual(insideTmp(path.join(os.tmpdir(), `hush-note-${freshSessionId()}`)), true);
+    const root = path.resolve(SIDECAR_ROOT) + path.sep;
+    assert.ok(path.resolve(notePath(escaping)).startsWith(root), 'the sanitized id stays under the sidecar root');
+    assert.ok(!path.relative(root, notePath(escaping)).startsWith('..'));
 
     const r = runHook({ hook_event_name: 'PostCompact', session_id: escaping });
     assert.strictEqual(r.status, 0);

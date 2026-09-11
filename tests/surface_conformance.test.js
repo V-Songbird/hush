@@ -45,7 +45,7 @@ function plantedTemp(sessionId) {
   const dir = path.join(SCRATCH_ROOT, `temp-${sessionId}-${++seq}`);
   const safe = sessionId.replace(/[^a-zA-Z0-9-]/g, '_');
   fs.mkdirSync(path.join(dir, 'hush-sidecar', safe), { recursive: true });
-  fs.writeFileSync(path.join(dir, `hush-note-${sessionId}`), '');
+  fs.writeFileSync(path.join(dir, 'hush-sidecar', safe, 'hush-note'), '');
   fs.writeFileSync(path.join(dir, `hush-debug-${safe}.jsonl`), '');
   fs.writeFileSync(path.join(dir, 'hush-sidecar', safe, 'planted.txt'), 'kept\n');
   return dir;

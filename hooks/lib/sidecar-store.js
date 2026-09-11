@@ -7,8 +7,9 @@
 // machine-persisted tool output.
 //
 // Layout: tmpdir/hush-sidecar/<session>/<content-hash>.txt — the directory IS
-// the registration. One non-.txt file shares the directory: saved.json, the
-// session's running compression total (see addSaved below). A flat shared directory made ownership a filename prefix
+// the registration. Two non-.txt files share the directory: saved.json, the
+// session's running compression total (see addSaved below), and hush-note, the
+// once-per-session telemetry note's sentinel (see notePath below). A flat shared directory made ownership a filename prefix
 // and, since files are content-addressed and an existing file is never
 // rewritten, let two sessions silently share one file: whoever's cleanup ran
 // first pulled the recovery location out from under the other. Per-session
@@ -118,6 +119,19 @@ function savedPath(sessionId) {
   return path.join(sessionDir(sessionId), 'saved.json');
 }
 
+// The once-per-session telemetry note's sentinel: an empty file whose
+// existence says "delivered" (compress-tool-output.js claims it, postcompact-
+// rearm.js unlinks it to re-arm the note). It lives in the session directory
+// for the reason saved.json does: removeSession takes it at session end and
+// the stale sweep after a crash. A sentinel written to the tmpdir root instead
+// outlived every session that never reached SessionEnd — killed, crashed, or
+// closed without the event — and 32,000 of them piled up. Not .txt, so
+// precompact-summary never offers it to the summarizer as a recovery file.
+const NOTE_FILE = 'hush-note';
+function notePath(sessionId) {
+  return path.join(sessionDir(sessionId), NOTE_FILE);
+}
+
 // Adds one tool call's before/after sizes to the total. Read-modify-write on
 // every handled tool output, measured at ~0.45ms against the ~60ms node start
 // each hook fire already pays, so it runs unconditionally rather than behind a
@@ -149,4 +163,4 @@ function addSaved(sessionId, bytesIn, bytesOut) {
   }
 }
 
-module.exports = { SIDECAR_ROOT, sessionDir, isSidecarPath, removeSession, sweepStale, savedPath, addSaved };
+module.exports = { SIDECAR_ROOT, NOTE_FILE, sessionDir, isSidecarPath, removeSession, sweepStale, savedPath, addSaved, notePath };

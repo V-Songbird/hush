@@ -1117,12 +1117,15 @@ const NOTE_TEXT =
 // Empty sentinel file, atomically claimed with wx so two hook fires racing on
 // parallel tool calls emit at most one note. Sessions without a session_id
 // (bare test harnesses) never emit — a shared "unknown" key would leak the
-// once-only state across unrelated runs. session-end-cleanup.js unlinks the
-// sentinel when the session ends; postcompact-rearm.js unlinks it at compaction.
-function claimSessionNote(sessionId, tmpDir) {
+// once-only state across unrelated runs. It lives in the session's sidecar
+// directory (sidecar-store's notePath), so session-end-cleanup.js removes it
+// with the parked copies and the stale sweep catches it after a crash;
+// postcompact-rearm.js unlinks it at compaction. `dir` is a test seam only:
+// the directory to claim in, instead of the session's own.
+function claimSessionNote(sessionId, dir) {
   if (typeof sessionId !== "string" || !sessionId) return false;
   try {
-    const notePath = path.join(tmpDir || os.tmpdir(), `hush-note-${sessionId}`);
+    const notePath = dir ? path.join(dir, sidecarStore.NOTE_FILE) : sidecarStore.notePath(sessionId);
     // Refuse a pre-planted symlink at the sentinel path before wx even tries
     // it — same residual-defense posture as safe-write's lstat gate.
     try {
@@ -1130,6 +1133,9 @@ function claimSessionNote(sessionId, tmpDir) {
     } catch (e) {
       if (e.code !== "ENOENT") return false;
     }
+    // The session directory is created lazily by the first parked output; a
+    // note can fire before any output is parked, so create it here too.
+    fs.mkdirSync(path.dirname(notePath), { recursive: true });
     fs.writeFileSync(notePath, "", { flag: "wx" });
     return true;
   } catch {
