@@ -2,8 +2,8 @@
 
 `main` is hush's package branch: the Claude Code plugin, developed and released
 from here. Make changes on a topic branch and merge them into `main` through a
-pull request. The `Claude` and `Codex` branches are historical; `Claude` keeps
-the last edition release, 1.11.8, and neither takes new work.
+pull request. The separate editions ended with the Claude edition's 1.11.8
+release, and their `Claude` and `Codex` branches were deleted on 2026-09-15.
 
 Hush has no Codex package. Do not add a `.codex-plugin/` manifest, a Codex hook
 registration or Codex installation steps unless a Codex port is decided and
