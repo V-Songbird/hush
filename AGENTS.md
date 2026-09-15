@@ -1,7 +1,8 @@
 ## One package on main
 
 `main` is hush's Claude Code plugin. Develop on a topic branch and merge into
-`main` through a pull request; the `Claude` and `Codex` branches are history.
+`main` through a pull request; the former `Claude` and `Codex` branches were
+deleted.
 Hush has no Codex package: do not add Codex manifests, hook registrations or
 installation steps unless a Codex port is decided and validated. The version
 lives in `.claude-plugin/plugin.json`. README results come from Claude Code

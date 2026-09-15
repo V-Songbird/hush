@@ -204,8 +204,9 @@ describe('sidecar cleanup: session end', () => {
     const temp = scratchTemp('note');
     const sid = 'hhhh8888';
     const parked = plantSidecar(temp, sid);
-    const note = path.join(temp, `hush-note-${sid}`);
-    const otherNote = path.join(temp, 'hush-note-iiii9999');
+    const note = path.join(scratchSessionDir(temp, sid), 'hush-note');
+    const otherNote = path.join(scratchSessionDir(temp, 'iiii9999'), 'hush-note');
+    fs.mkdirSync(path.dirname(otherNote), { recursive: true });
     fs.writeFileSync(note, '');
     fs.writeFileSync(otherNote, '');
 

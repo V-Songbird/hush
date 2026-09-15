@@ -3,6 +3,13 @@
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## 1.12.1 — 2026-09-15
+
+hush no longer leaves a marker file in the system temporary folder when a
+session closes without its normal cleanup. File locations in answers are now
+links to the exact line. A style you activate in hush's slot that shares
+progress updates no longer receives hush's silence reminders.
+
 ## 1.12.0 — 2026-09-15
 
 hush now installs from its `main` branch, where all of its development

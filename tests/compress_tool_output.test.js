@@ -774,9 +774,10 @@ describe('hook: enumeration carve-out (transcript-driven)', () => {
 
 describe('hook: once-per-session telemetry note', () => {
   const { claimSessionNote, hasHushNote, NOTE_TEXT } = require('../hooks/compress-tool-output');
+  const { sessionDir } = require('../hooks/lib/sidecar-store');
 
   // Unique per test-process so reruns never see a stale sentinel; every id
-  // used gets its sentinel removed in after().
+  // used gets its sidecar directory, sentinel included, removed in after().
   const sids = [];
   function sid(label) {
     const id = `hush-test-note-${label}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -784,7 +785,7 @@ describe('hook: once-per-session telemetry note', () => {
     return id;
   }
   after(() => {
-    for (const id of sids) fs.rmSync(path.join(os.tmpdir(), `hush-note-${id}`), { force: true });
+    for (const id of sids) fs.rmSync(sessionDir(id), { recursive: true, force: true });
   });
 
   const noisy = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');

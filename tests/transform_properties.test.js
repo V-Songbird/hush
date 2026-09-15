@@ -667,19 +667,19 @@ describe('pinned: narrow edges of the current transforms', () => {
     assert.strictEqual(parked.length, 1, 'the copy written before the size check is left behind');
   });
 
-  test('a session id shaped like a path traversal writes outside the directory it was given', () => {
+  test('a session id shaped like a path traversal cannot steer the sentinel outside the sidecar root', () => {
+    const sessionId = '../../../escaped';
+    const target = sidecarStore.notePath(sessionId);
+    const root = path.resolve(sidecarStore.SIDECAR_ROOT) + path.sep;
+    assert.ok(path.resolve(target).startsWith(root), 'the id is flattened to one path segment under the root');
+    assert.ok(!path.relative(root, target).startsWith('..'));
+
+    // The test seam names the directory outright, and the id plays no part in
+    // the file name: the sentinel is the fixed hush-note inside that directory.
     const home = path.join(SCRATCH, 'note-home');
     fs.mkdirSync(home, { recursive: true });
-    const sessionId = '../../../escaped';
-    const notePath = path.join(home, `hush-note-${sessionId}`);
-    assert.ok(path.relative(home, notePath).startsWith('..'), 'the id has to resolve outside for this pin to mean anything');
-
     assert.strictEqual(claimSessionNote(sessionId, home), true);
-
-    // Pinned as it is: the id goes into the file name raw, so the sentinel
-    // lands wherever the traversal points. Bounded — the file is empty and
-    // still `hush-note-`-shaped — and here it stays inside the scratch tree.
-    assert.strictEqual(fs.readFileSync(notePath, 'utf-8'), '');
-    assert.ok(path.resolve(notePath).startsWith(path.resolve(SCRATCH)), 'the pin must not write outside its own scratch tree');
+    assert.strictEqual(fs.readFileSync(path.join(home, sidecarStore.NOTE_FILE), 'utf-8'), '');
+    assert.deepStrictEqual(fs.readdirSync(home), [sidecarStore.NOTE_FILE], 'nothing lands outside the directory it was given');
   });
 });

@@ -40,9 +40,9 @@ Bold the outcome. One mark per note. Never a whole line in bold.
 
 Blank line between blocks.
 
-Backticks around every name. Files, flags, commands, errors.
+Backticks around flags, commands, errors, and code identifiers. File citations use links instead.
 
-Changed, found, or wrote a file? Link it, like `[file.js:37](path/to/file.js:37)`.
+Changed, found, wrote, or cited a file? Link each source location, like `[file.js:37](path/to/file.js:37)`. This includes findings from subagents. Use the verified project-relative path, not just a basename. Keep links outside backticks and code fences. If a path has spaces, enclose the link target in angle brackets. If the location is unknown, say so instead of inventing a target. Before sending, check every file citation, including those late in a list. A link locates evidence; it does not mean you verified the finding.
 
 Three rows with the same fields? Make a table. One row each. Rows do not count against the line cap.
 

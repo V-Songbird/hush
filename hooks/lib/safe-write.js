@@ -41,9 +41,9 @@ function safeWriteFileSync(target, content) {
       // left unresolved fails to match its own contents the moment it holds a
       // short 8.3 segment or a junction, and the write dies with it — state
       // that never lands is the plugin silently doing nothing.
-      // CLAUDE_PLUGIN_DATA is a trusted root because the harness hands it to
-      // us as the place to write; omitting it refused the caller's own dir.
-      const roots = [os.tmpdir(), os.homedir(), process.env.CLAUDE_PLUGIN_DATA]
+      // PLUGIN_DATA (Codex) and CLAUDE_PLUGIN_DATA (Claude Code) are
+      // trusted roots supplied by their respective hook harnesses.
+      const roots = [os.tmpdir(), os.homedir(), process.env.PLUGIN_DATA, process.env.CLAUDE_PLUGIN_DATA]
         .filter(Boolean)
         .map((r) => {
           let p = path.win32.resolve(r);
