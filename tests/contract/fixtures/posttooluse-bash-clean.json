@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "tool_name": "Bash",
+  "tool_input": { "command": "git status --short" },
+  "tool_response": " M hush\n M razor\n"
+}

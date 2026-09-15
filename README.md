@@ -9,16 +9,12 @@
 
 <p align="center"><strong>Available on</strong></p>
 <p align="center">
-  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
-  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude">Claude</a>
+  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="#install"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#install">Claude</a>
 </p>
 <p align="center"><small>Codex is not currently installable.</small></p>
 
-<p align="center"><a href="#get-started"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#evidence-and-benchmarks">Evidence</a></p>
-
-
-
-
+<p align="center"><a href="#install"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#the-numbers">Evidence</a></p>
 
 ## What is this?
 
@@ -48,23 +44,46 @@ A writing style asks the assistant to stay quiet during routine work and finish 
 | Describe a new voice | A custom style checked against Hush’s requirements |
 | Inspect shortened output | A reference to the retained full result where available |
 
-## Get started
+Use `/hush:pick-style` to choose a voice and `/hush:craft-style` to describe a new one. See the settings guide for disabling the session controls.
 
-Choose the assistant you use. Its edition page has the installation steps,
-commands and compatibility notes for your setup.
+## Install
 
-| Your assistant | Status | Next step |
-| --- | --- | --- |
-| Claude Code | Available | [Install and get started](https://github.com/V-Songbird/hush/tree/Claude) |
-| Codex | Not currently installable | [Read the edition status](https://github.com/V-Songbird/hush/tree/Codex) |
+Hush runs in Claude Code. It is not available for Codex.
+
+Inside Claude Code:
+
+```text
+/plugin marketplace add V-Songbird/foundry
+/plugin install hush@foundry
+```
+
+Start a new session to load the plugin.
 
 ## Good to know
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
-## Evidence and benchmarks
+Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/SETTINGS.md) for switches and platform-specific retention behavior.
 
-<!-- foundry:hero -->
+## The numbers
+
+The comparison asks whether jobs were completed correctly, how often the assistant gave at most one update, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
+
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/hush/validation/claude-readme-benchmark-2026-09-10.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
+| Model | Setup | Jobs right | At most one update | Median final prose words |
+| --- | --- | --- | --- | --- |
+| Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
+| Claude Opus 5 | caveman | 36/36 | 31/36 | 151 |
+| Claude Opus 5 | hush | 36/36 | 36/36 | 69 |
+
+In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush gave at most one mid-work update in every session.
+
+The readability check detected runnable content in 94% of Hush answers versus 100% for the other setups. Three quiet jobs cost 1–10% more. Detection is a text heuristic, not a check that the suggested action is correct or complete.
+
+Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. [Records, definitions and earlier comparisons](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md).
+
+Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
+
 <p align="center"><img src="assets/hero.svg" alt="Hush original product visualization" width="700"></p>
 
 Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance. [Evidence and methodology](https://github.com/V-Songbird/foundry/tree/main/docs/hush).
@@ -75,17 +94,14 @@ Original Claude Code benchmark visualization. These measurements describe the re
 <p align="center"><img src="assets/demo.svg" alt="Recorded Claude Code demonstration of Hush" width="700"></p>
 
 </details>
-<!-- /foundry:hero -->
 
-Measurements belong to the model and setup that produced them. Each edition
-keeps its own results, limitations and any measurements still missing:
-
-- [Claude Code results and limitations](https://github.com/V-Songbird/hush/tree/Claude#the-numbers)
-- [Codex evidence and measurement status](https://github.com/V-Songbird/hush/tree/Codex#the-numbers)
+*Results can vary between runs.*
 
 ## Going deeper
 
-[Research and validation](https://github.com/V-Songbird/foundry/tree/main/docs/hush) · [Benchmark instruments and retained evidence](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush) · [Foundry](https://github.com/V-Songbird/foundry)
+[How it works](docs/HOW-IT-WORKS.md) · [Settings](docs/SETTINGS.md) · [Benchmark details](docs/BENCHMARKS.md)
+
+[Foundry](https://github.com/V-Songbird/foundry) holds the research, methodology and detailed evidence.
 
 ## License
 

@@ -1,0 +1,5 @@
+{
+  "hook_event_name": "SubagentStart",
+  "session_id": "{{SESSION}}",
+  "agent_type": "general-purpose"
+}

@@ -1,0 +1,5 @@
+{
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "{{SESSION}}",
+  "prompt": "fix the failing suite"
+}

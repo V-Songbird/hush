@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+"use strict";
+
+// Legacy hook path retained for existing installations. Public source names
+// and attribution are allowed in commit messages; no name blocklist applies.
+process.exitCode = 0;

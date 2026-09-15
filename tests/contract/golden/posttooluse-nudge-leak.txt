@@ -1,0 +1,1 @@
+{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"hush: your next output is a tool call. The final message is the only place you explain anything."}}

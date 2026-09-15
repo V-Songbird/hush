@@ -1,4 +1,4 @@
-name: Main documentation
+name: Test
 
 on:
   push:
@@ -11,17 +11,48 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: test
-    runs-on: ubuntu-latest
+  suite:
+    name: Suite (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Preserve committed line endings
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate the documentation-only main tree
-        env:
-          PLUGIN: ${{ github.event.repository.name }}
+
+      - name: Manifest and hook registration parse
+        run: node -e 'for (const f of [".claude-plugin/plugin.json","hooks/hooks.json"]) JSON.parse(require("fs").readFileSync(f,"utf-8"))'
+
+      - name: No benchmark tree in the package
         run: |
-          git fetch origin "+refs/heads/Claude:refs/remotes/origin/Claude" "+refs/heads/Codex:refs/remotes/origin/Codex"
-          node .github/check-main-frontpage.cjs --repo . --plugin "$PLUGIN" --ref HEAD --claude-ref refs/remotes/origin/Claude --codex-ref refs/remotes/origin/Codex
+          if git ls-files | grep -iE '^\.?benchmarks/'; then
+            echo "benchmark harnesses belong in Foundry, not in the plugin"
+            exit 1
+          fi
+
+      - name: README navigation
+        run: node scripts/git-hooks/check-readme-nav.js README.md
+
+      - name: Tests
+        run: node --test tests/*.test.js
+
+  test:
+    name: test
+    needs: [suite]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every suite run to pass
+        env:
+          RESULT: ${{ needs.suite.result }}
+        run: test "$RESULT" = success

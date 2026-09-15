@@ -1,0 +1,13 @@
+{
+  "name": "hush",
+  "version": "1.12.0",
+  "description": "Quieter sessions for Claude Code: less narration, shorter tool output and concise answers focused on the result.",
+  "license": "MIT",
+  "author": {
+    "name": "Victor Villegas",
+    "email": "victor.villegas@tuta.com"
+  },
+  "homepage": "https://github.com/V-Songbird/hush",
+  "repository": "https://github.com/V-Songbird/hush",
+  "keywords": ["tokens", "token-optimization", "output-style", "compression", "hooks", "terse", "cost"]
+}
