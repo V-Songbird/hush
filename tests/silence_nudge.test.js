@@ -5,8 +5,9 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { runHook, hookOutput } = require('./helpers.js');
-const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText } = require('../hooks/silence-nudge.js');
+const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText, styleKeepsQuiet, QUIET_PHRASE } = require('../hooks/silence-nudge.js');
 
 // The default's corrective counts mid-turn text blocks per session; a shared
 // id would let one test spend another's state, so each case that touches the
@@ -186,6 +187,57 @@ test('an unknown event under max falls back to the step reminder', () => {
 test('HUSH_DISABLE=1 beats HUSH_NUDGE=max', () => {
   const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse' }, { HUSH_DISABLE: '1', HUSH_NUDGE: 'max' });
   assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+// --- the style in hush's slot decides whether the reminders run ------------
+
+// A copy of hooks/ beside its own style slot, so the spawned hook reads that
+// slot the way the installed plugin reads output-styles/hush.md.
+function pluginWithSlot(styleText) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-slot-'));
+  fs.cpSync(path.join(__dirname, '..', 'hooks'), path.join(root, 'hooks'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'output-styles'));
+  fs.writeFileSync(path.join(root, 'output-styles', 'hush.md'), styleText);
+  return root;
+}
+function runSlotHook(root, stdinData, env) {
+  return spawnSync('node', [path.join(root, 'hooks', 'silence-nudge.js')], {
+    input: JSON.stringify(stdinData),
+    encoding: 'utf-8',
+    timeout: 30000,
+    env: { ...process.env, ...(env || {}) },
+  });
+}
+const STOCK_STYLE = fs.readFileSync(path.join(__dirname, '..', 'output-styles', 'hush.md'), 'utf-8');
+const UPDATES_STYLE = '---\nname: Updates\n---\n\nShare a short update between tool calls when you learn something.\n';
+
+test('stock carries the phrase the reminders key on', () => {
+  assert.ok(STOCK_STYLE.includes(QUIET_PHRASE), QUIET_PHRASE);
+});
+
+test('a slot style with the quiet rule keeps the dial reminder', () => {
+  const out = hookOutput(runSlotHook(pluginWithSlot(STOCK_STYLE), { hook_event_name: 'UserPromptSubmit' }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
+});
+
+test('a slot style without the quiet rule gets no reminder at the top of the turn', () => {
+  const r = runSlotHook(pluginWithSlot(UPDATES_STYLE), { hook_event_name: 'UserPromptSubmit' });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+test('a slot style without the quiet rule gets no corrective after an update, under either mode', () => {
+  const root = pluginWithSlot(UPDATES_STYLE);
+  const tp = writeTranscript([prompt('go'), toolUse(), leak('The config loads twice; checking its caller next.'), toolUse()]);
+  for (const env of [{}, { HUSH_NUDGE: 'max' }]) {
+    const r = runSlotHook(root, { hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp }, env);
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.strictEqual((r.stdout || '').trim(), '', JSON.stringify(env));
+  }
+});
+
+test('an unreadable slot keeps the reminders on', () => {
+  assert.strictEqual(styleKeepsQuiet(path.join(os.tmpdir(), `hush-no-plugin-${process.pid}`)), true);
 });
 
 // --- cross-cutting ----------------------------------------------------------
