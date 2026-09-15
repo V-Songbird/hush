@@ -1,6 +1,6 @@
 {
   "name": "hush",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Quieter sessions for Claude Code: less narration, shorter tool output and concise answers focused on the result.",
   "license": "MIT",
   "author": {
