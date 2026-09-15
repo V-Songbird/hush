@@ -13,11 +13,11 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 
 ## Structure
 
+`main` holds the plugin: one package for Claude Code, developed and released from this branch. Hush has no Codex package.
+
 ```
 .claude-plugin/
-└── plugin.json        # name, description, author, keywords — NO version
-                        # field (the version is owned by foundry's
-                        # .claude-plugin/marketplace.json)
+└── plugin.json        # name, version, description, author, keywords
 CHANGELOG.md            # dated entries, newest first
 LICENSE                 # MIT
 README.md               # plain-language intro first, technical depth after
@@ -51,7 +51,7 @@ If this plugin has scripted behavior, run its tests before submitting:
 node --test tests/*.test.js
 ```
 
-PRs that change script behavior without updating tests will not be merged.
+CI runs the suite on Linux and Windows with Node 22. PRs that change script behavior without updating tests will not be merged.
 
 ---
 
@@ -69,7 +69,7 @@ This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blo
 
 ## Changelog
 
-Add a dated entry at the top of `CHANGELOG.md` for every user-visible change. Version bumps and marketplace listing changes happen in [foundry](https://github.com/V-Songbird/foundry), not here.
+Add a dated entry at the top of `CHANGELOG.md` for every user-visible change. The version lives in `.claude-plugin/plugin.json`; bump it in the release commit. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
 
 ---
 

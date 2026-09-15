@@ -2,37 +2,57 @@ name: Test
 
 on:
   push:
-    branches: [Claude]
+    branches: [main]
   pull_request:
-    branches: [Claude]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  suite:
+    name: Suite (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Preserve committed line endings
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: manifests parse
+      - name: Manifest and hook registration parse
         run: node -e 'for (const f of [".claude-plugin/plugin.json","hooks/hooks.json"]) JSON.parse(require("fs").readFileSync(f,"utf-8"))'
 
-      - name: run tests (no-op if this plugin has no tests/ directory)
+      - name: No benchmark tree in the package
         run: |
-          if [ -d tests ]; then
-            node --test tests/*.test.js
-          else
-            echo "no tests/ directory, nothing to run"
+          if git ls-files | grep -iE '^\.?benchmarks/'; then
+            echo "benchmark harnesses belong in Foundry, not in the plugin"
+            exit 1
           fi
-  runtime-check:
-    name: Runtime tests
-    needs: [test]
+
+      - name: README navigation
+        run: node scripts/git-hooks/check-readme-nav.js README.md
+
+      - name: Tests
+        run: node --test tests/*.test.js
+
+  test:
+    name: test
+    needs: [suite]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require every runtime test job to pass
+      - name: Require every suite run to pass
         env:
-          RESULT: ${{ needs.test.result }}
+          RESULT: ${{ needs.suite.result }}
         run: test "$RESULT" = success

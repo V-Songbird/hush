@@ -1,8 +1,13 @@
 # Changelog
 
-All notable changes to hush are documented here. Looking for a version
-number? It lives in the [foundry marketplace](https://github.com/V-Songbird/foundry)
-listing — that's why `plugin.json` here carries none.
+All notable changes to hush are documented here. The version number lives in
+`.claude-plugin/plugin.json`.
+
+## 1.12.0 — 2026-09-15
+
+hush now installs from its `main` branch, where all of its development
+happens. It still runs in Claude Code only. Nothing hush does in a session
+changed.
 
 ## 1.11.8 — 2026-09-09
 

@@ -1,4 +1,3 @@
-<!-- foundry:edition Claude -->
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png" />
@@ -10,14 +9,10 @@
 
 <p align="center"><strong>Available on</strong></p>
 <p align="center">
-  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
-  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="https://github.com/V-Songbird/hush/tree/Claude">Claude</a>
+  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="#install"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#install">Claude</a>
 </p>
 <p align="center"><small>Codex is not currently installable.</small></p>
-
-<!-- foundry:platform identity -->
-<p align="center"><strong>Edition: Claude Code.</strong> Use this edition’s installation and compatibility notes below.</p>
-<!-- /foundry:platform identity -->
 
 <p align="center"><a href="#install"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#the-numbers">Evidence</a></p>
 
@@ -49,13 +44,12 @@ A writing style asks the assistant to stay quiet during routine work and finish 
 | Describe a new voice | A custom style checked against Hush’s requirements |
 | Inspect shortened output | A reference to the retained full result where available |
 
-<!-- foundry:platform commands -->
 Use `/hush:pick-style` to choose a voice and `/hush:craft-style` to describe a new one. See the settings guide for disabling the session controls.
-<!-- /foundry:platform commands -->
 
 ## Install
 
-<!-- foundry:platform install -->
+Hush runs in Claude Code. It is not available for Codex.
+
 Inside Claude Code:
 
 ```text
@@ -64,21 +58,17 @@ Inside Claude Code:
 ```
 
 Start a new session to load the plugin.
-<!-- /foundry:platform install -->
 
 ## Good to know
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
-<!-- foundry:platform compatibility -->
 Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/SETTINGS.md) for switches and platform-specific retention behavior.
-<!-- /foundry:platform compatibility -->
 
 ## The numbers
 
 The comparison asks whether jobs were completed correctly, how often the assistant gave at most one update, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
 
-<!-- foundry:platform benchmarks -->
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/hush/validation/claude-readme-benchmark-2026-09-10.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
 | Model | Setup | Jobs right | At most one update | Median final prose words |
 | --- | --- | --- | --- | --- |
@@ -93,9 +83,7 @@ The readability check detected runnable content in 94% of Hush answers versus 10
 Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. [Records, definitions and earlier comparisons](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md).
 
 Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
-<!-- /foundry:platform benchmarks -->
 
-<!-- foundry:hero -->
 <p align="center"><img src="assets/hero.svg" alt="Hush original product visualization" width="700"></p>
 
 Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance. [Evidence and methodology](https://github.com/V-Songbird/foundry/tree/main/docs/hush).
@@ -106,15 +94,12 @@ Original Claude Code benchmark visualization. These measurements describe the re
 <p align="center"><img src="assets/demo.svg" alt="Recorded Claude Code demonstration of Hush" width="700"></p>
 
 </details>
-<!-- /foundry:hero -->
 
 *Results can vary between runs.*
 
 ## Going deeper
 
-<!-- foundry:platform links -->
 [How it works](docs/HOW-IT-WORKS.md) · [Settings](docs/SETTINGS.md) · [Benchmark details](docs/BENCHMARKS.md)
-<!-- /foundry:platform links -->
 
 [Foundry](https://github.com/V-Songbird/foundry) holds the research, methodology and detailed evidence.
 
