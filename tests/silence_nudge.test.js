@@ -1,6 +1,6 @@
 'use strict';
 
-const { test } = require('node:test');
+const { test, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -8,6 +8,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { runHook, hookOutput } = require('./helpers.js');
 const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText, styleKeepsQuiet, QUIET_PHRASE } = require('../hooks/silence-nudge.js');
+const { sessionDir } = require('../hooks/lib/sidecar-store.js');
 
 // The default's corrective counts mid-turn text blocks per session; a shared
 // id would let one test spend another's state, so each case that touches the
@@ -15,12 +16,22 @@ const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText, styleKeepsQuiet
 let sessionSeq = 0;
 const freshSession = () => `nudge-test-${process.pid}-${sessionSeq++}`;
 
+// Everything this file creates in the system temp folder goes when it
+// finishes: each session's sidecar directory, where the corrective keeps its
+// counter, plus the transcript folders and plugin copies below.
+const tempDirs = [];
+after(() => {
+  for (let i = 0; i < sessionSeq; i++) fs.rmSync(sessionDir(`nudge-test-${process.pid}-${i}`), { recursive: true, force: true });
+  for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+});
+
 // A synthetic session transcript the corrective can read. Entries are the
 // real JSONL shapes: real prompts are type:user with plain content; tool
 // results are type:user with tool_result blocks; leaks are type:assistant
 // with text blocks.
 function writeTranscript(entries) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-nudge-'));
+  tempDirs.push(dir);
   const file = path.join(dir, 't.jsonl');
   fs.writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
   return file;
@@ -195,6 +206,7 @@ test('HUSH_DISABLE=1 beats HUSH_NUDGE=max', () => {
 // slot the way the installed plugin reads output-styles/hush.md.
 function pluginWithSlot(styleText) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-slot-'));
+  tempDirs.push(root);
   fs.cpSync(path.join(__dirname, '..', 'hooks'), path.join(root, 'hooks'), { recursive: true });
   fs.mkdirSync(path.join(root, 'output-styles'));
   fs.writeFileSync(path.join(root, 'output-styles', 'hush.md'), styleText);

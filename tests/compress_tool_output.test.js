@@ -6,6 +6,15 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { runHook, hookOutput } = require('./helpers');
+const sidecarStore = require('../hooks/lib/sidecar-store');
+
+// A test that writes a sidecar also creates its session's directory under the
+// system temp folder, with the note sentinel and saved.json beside the parked
+// copy. Every block that writes one removes those directories whole when it
+// finishes, and only the ids it used.
+function removeSessions(ids) {
+  for (const id of ids) fs.rmSync(sidecarStore.sessionDir(id), { recursive: true, force: true });
+}
 
 // Sidecar mode defaults ON in the hook; these tests exercise the inline-cap
 // semantics, so pin it off for the whole file (child hooks inherit it via
@@ -1041,7 +1050,11 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
     delete process.env.HUSH_SIDECAR;
     try { return fn(); } finally { process.env.HUSH_SIDECAR = prev; }
   }
-  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  const e2eSession = 'hush-test-side-' + Date.now();
+  after(() => {
+    for (const f of created) fs.rmSync(f, { force: true });
+    removeSessions(['sidetest', e2eSession]);
+  });
 
   const bigLog = (() => {
     const ls = [];
@@ -1092,7 +1105,7 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   test('e2e: a big log Read is delivered as a digest and the note still rides once', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'Read',
-      session_id: 'hush-test-side-' + Date.now(),
+      session_id: e2eSession,
       tool_input: { file_path: '/var/logs/app.log' },
       tool_response: { type: 'text', file: { filePath: '/var/logs/app.log', content: bigLog, numLines: 2000, startLine: 1, totalLines: 2000 } },
     }, { HUSH_SIDECAR: '' });
@@ -1183,6 +1196,9 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
   const NL = String.fromCharCode(10);
   const os2 = require('os');
   const sideDir = path.join(os2.tmpdir(), 'hush-sidecar');
+  const readSession = 'hush-test-sideread-' + Date.now();
+  const rangeSession = 'hush-test-siderange-' + Date.now();
+  after(() => removeSessions([readSession, rangeSession]));
 
   test('isSidecarPath matches files under the sidecar root, session namespace included', () => {
     assert.strictEqual(isSidecarPath(path.join(sideDir, 'sess1234', 'abc123.txt')), true);
@@ -1201,7 +1217,7 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
     try {
       const r = runHook('compress-tool-output.js', {
         tool_name: 'Read',
-        session_id: 'hush-test-sideread-' + Date.now(),
+        session_id: readSession,
         tool_input: { file_path: f },
         tool_response: { type: 'text', file: { filePath: f, content: big, numLines: 2000, startLine: 1, totalLines: 2000 } },
       }, { HUSH_SIDECAR: '' });
@@ -1220,7 +1236,7 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
       const range = Array.from({ length: 12 }, (_, i) => 'line ' + (500 + i)).join(NL);
       const r = runHook('compress-tool-output.js', {
         tool_name: 'Read',
-        session_id: 'hush-test-siderange-' + Date.now(),
+        session_id: rangeSession,
         tool_input: { file_path: f, offset: 500, limit: 12 },
         tool_response: { type: 'text', file: { filePath: f, content: range, numLines: 12, startLine: 500, totalLines: 2000 } },
       }, { HUSH_SIDECAR: '' });
@@ -1233,7 +1249,10 @@ describe('signal-first digest + compound-error signal matching', () => {
   const { capLines, compress } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
   const created = [];
-  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  after(() => {
+    for (const f of created) fs.rmSync(f, { force: true });
+    removeSessions(['sigfirst', 'nosig']);
+  });
   function pathFrom(d) { const m = d.match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
 
@@ -1283,7 +1302,10 @@ describe('census-grade sidecar digests', () => {
   const { compress: comp2 } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
   const created = [];
-  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  after(() => {
+    for (const f of created) fs.rmSync(f, { force: true });
+    removeSessions(['fewsignals', 'manysignals', 'budget2KB']);
+  });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
 
@@ -1362,7 +1384,10 @@ describe('the keep vocabulary, pinned category by category', () => {
   const { compress: comp3 } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
   const created = [];
-  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  after(() => {
+    for (const f of created) fs.rmSync(f, { force: true });
+    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest']);
+  });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
 
@@ -1524,7 +1549,10 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
   const { compress } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
   const created = [];
-  after(() => { for (const f of created) fs.rmSync(f, { force: true }); });
+  after(() => {
+    for (const f of created) fs.rmSync(f, { force: true });
+    removeSessions(['s']);
+  });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
   function bigText(chars) { const a = []; let n = 0; while (a.join(NL).length < chars) { a.push('info line ' + n + ' padding padding padding padding ' + n); n++; } return a.join(NL); }
@@ -1825,6 +1853,7 @@ describe('every transform is accounted for, and no lossy view ships without reco
   after(() => {
     for (const id of sessions) fs.rmSync(debugManifestPath(id), { force: true });
     for (const f of sidecarFiles) fs.rmSync(f, { force: true });
+    removeSessions(sessions);
   });
 
   function newSession(label) {
