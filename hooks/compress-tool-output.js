@@ -712,17 +712,25 @@ const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
 const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 
-// Subpatterns of SIGNAL_RE's own alternation (never edited independently),
-// so every line that reached signalIdx matches exactly one of these. Priority
-// order when a line matches several (e.g. "ERROR ... ReferenceError"):
-// error > failure > critical > warning > deprecation — each line counts once,
-// under whichever category wins.
+// Every line that reached signalIdx (the keep vocabulary, isKeepLine) matches
+// at least one of these. The first five are subpatterns of SIGNAL_RE's own
+// alternation, never edited independently. The last takes the failure
+// evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
+// `exception`, cross marks, plural errors and failures, and traceback frames.
+// Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
+// error > failure > critical > warning > deprecation > failure evidence — each
+// line counts once, under whichever category wins.
 const CENSUS_CATEGORIES = [
   { singular: "error", plural: "errors", re: /Error\b|\bERR(?:OR)?\b/i },
   { singular: "failure", plural: "failures", re: /\bFAIL(?:URE|ED)?\b/i },
   { singular: "critical", plural: "criticals", re: /\bCRITICAL\b/i },
   { singular: "warning", plural: "warnings", re: /Warning\b|\bWARN(?:INGS?)?\b/i },
   { singular: "deprecation", plural: "deprecations", re: /\bDEPRECATED\b/i },
+  {
+    singular: "failure-evidence line",
+    plural: "failure-evidence lines",
+    re: new RegExp(`${FAILURE_RE.source}|${TRACEBACK_FRAME_RE.source}`, FAILURE_RE.flags),
+  },
 ];
 
 // A bare count ("14 with warnings/errors/failures") makes a model misreport
@@ -759,9 +767,12 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   // separator is not output, and a raw element count reads as one-more-than-
   // the-records to anyone doing arithmetic on it.
   const nonBlank = lines.filter((l) => l.trim() !== "").length;
+  // The keep vocabulary, the same set every capped view keeps: a traceback's
+  // header and frames carry the causal file and line, and SIGNAL_RE names
+  // neither.
   const signalIdx = [];
   lines.forEach((l, i) => {
-    if (SIGNAL_RE.test(l)) signalIdx.push(i);
+    if (isKeepLine(l)) signalIdx.push(i);
   });
 
   // Signal (and prompt-named) lines lead the digest, ahead of the structural

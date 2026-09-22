@@ -1405,9 +1405,9 @@ describe('the keep vocabulary, pinned category by category', () => {
     assert.match(out, /lines omitted from this view/);
   });
 
-  // The census runs off SIGNAL_RE's own match set, so this one fixture pins
-  // both alternations at once: drop an alternative from either and the totals
-  // or the named counts move.
+  // The census runs off the keep vocabulary's match set, so this one fixture
+  // pins SIGNAL_RE's alternatives and the failure-evidence category at once:
+  // drop an alternative and the totals or the named counts move.
   test('the sidecar digest census names every category on one mixed fixture', () => {
     const lines = Array.from({ length: 1500 }, (_, i) => 'info line ' + i + ' padded a bit for width');
     const samples = [
@@ -1424,14 +1424,44 @@ describe('the keep vocabulary, pinned category by category', () => {
       '3 warnings generated.',
       'DeprecationWarning: Buffer() is obsolete',
       'DEPRECATED formatAmount takes one argument now',
+      'not ok 7 - parses the receipt',
+      'fatal: bad object HEAD',
     ];
-    samples.forEach((s, i) => { lines[100 + i * 100] = s; });
+    samples.forEach((s, i) => { lines[100 + i * 90] = s; });
     const digest = withSidecar(() => comp3(lines.join(NL), 0, true, false, [], 1, 'censusvocab'));
     pathFrom(digest);
-    const census = '3 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation';
+    const census = '3 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation, 2 failure-evidence lines';
     assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
-    assert.ok(digest.includes(`Signal lines (13 total: ${census}):`), 'the digest census drifted');
+    assert.ok(digest.includes(`Signal lines (15 total: ${census}):`), 'the digest census drifted');
     for (const s of samples) assert.ok(digest.includes(s), `digest dropped the ${s.split(' ')[0]} sample`);
+  });
+
+  // A Python traceback deep inside a large output. Its header and frame lines
+  // hold the causal file and line, and SIGNAL_RE names none of them, so only
+  // a digest that samples the keep vocabulary shows them. The caller's source
+  // line between two frames is no keep line, here or in a capped view.
+  test('a traceback in the middle of a 1,000-line output keeps its header and frames in the digest', () => {
+    const lines = Array.from({ length: 1000 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    const traceback = [
+      'Traceback (most recent call last):',
+      '  File "app/server.py", line 88, in dispatch',
+      '    return handler(request)',
+      '  File "app/handler.py", line 42, in handle',
+      '    raise ValueError("bad value")',
+      'ValueError: bad value',
+    ];
+    lines.splice(500, traceback.length, ...traceback);
+    const text = lines.join(NL);
+    const digest = withSidecar(() => comp3(text, 1, false, false, [], 1, 'tracebackdigest'));
+    const file = pathFrom(digest);
+    assert.ok(file, 'the output was parked');
+    traceback.forEach((l, k) => {
+      if (k !== 2) assert.ok(digest.includes(`L${501 + k}: ${l}`), `digest dropped L${501 + k}: ${l}`);
+    });
+    const census = '2 errors, 3 failure-evidence lines';
+    assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
+    assert.ok(digest.includes(`Signal lines (5 total: ${census}):`), 'the digest census drifted');
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), text, 'the parked file keeps every line');
   });
 });
 
