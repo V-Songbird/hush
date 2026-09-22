@@ -539,9 +539,9 @@ function requestsEnumeration(prompt) {
 //   1. Every matched file keeps its first GREP_KEEP_PER_FILE match lines, in
 //      order, verbatim — with their path:line coordinates intact, so any kept
 //      match is one targeted Read away from its own context.
-//   2. Every SIGNAL_RE match line and every match line naming a prompt-quoted
-//      identifier survives regardless of position (usableRelevanceTokens
-//      applies the too-common guard first).
+//   2. Every keep line (isKeepLine, the vocabulary the capped views keep) and
+//      every match line naming a prompt-quoted identifier survives regardless
+//      of position (usableRelevanceTokens applies the too-common guard first).
 //   3. No matched file ever vanishes: a file whose extra matches were elided
 //      is named in the summary with its exact total and shown counts, and the
 //      aggregate omitted count is stated.
@@ -587,7 +587,7 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
       perFile.set(key, s);
     }
     s.total++;
-    const forced = SIGNAL_RE.test(line) || named(line);
+    const forced = isKeepLine(line) || named(line);
     if (forced || s.shown < GREP_KEEP_PER_FILE) {
       s.shown++;
       kept.push(line);
@@ -1129,8 +1129,8 @@ function extractExitCode(response) {
 // different things. A capped or collapsed view keeps every keep line
 // (isKeepLine). The sidecar digest shows only DIGEST_SIGNAL_SAMPLE of its
 // signal lines from each end and leaves the rest to its file, so a blanket
-// "never cut" would promise more than the digest keeps. Grep elision is not
-// covered by either sentence; its own marker states what it keeps.
+// "never cut" would promise more than the digest keeps. Grep elision keeps
+// every keep line too, so the first sentence holds for a match list as well.
 const NOTE_TEXT =
   "hush's compression hook is active in this session. Bracketed notes beginning with " +
   "[hush inside tool results are its own telemetry, added as the output is delivered. " +

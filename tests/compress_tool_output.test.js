@@ -1555,6 +1555,18 @@ describe('grep match-list compression', () => {
     assert.ok(!out.includes('app.js:17:'));
   });
 
+  // A match list keeps the keep vocabulary the capped views keep, so failure
+  // evidence SIGNAL_RE does not name, such as a standalone Exception, survives
+  // past the per-file keep. The control swaps the word for a plain one and is
+  // elided as usual.
+  test('200 failure-shaped matches in one file all survive; plain ones are elided', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => `src/a.js:${i + 1}:  throw new Exception("case ${i} ${'x'.repeat(30)}")`);
+    const content = lines.join('\n');
+    assert.strictEqual(H.compressGrep(content, []), content, 'every Exception match survives');
+    const plain = H.compressGrep(content.replace(/Exception/g, 'Oops'), []);
+    assert.ok(plain.includes('src/a.js: 200 matches, 3 shown'), 'plain matches are still elided');
+  });
+
   test('drive-letter paths group as one file; unparseable lines pass verbatim', () => {
     const lines = [];
     for (let i = 1; i <= 10; i++) lines.push(`C:\\proj\\x.js:${i}: item ${'y'.repeat(40)}`);
