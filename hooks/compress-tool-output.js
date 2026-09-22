@@ -211,6 +211,9 @@ const TEMPLATE_COLLAPSE_NOTE =
 // misses because the "Error" suffix sits mid-word (no word boundary before
 // it). Over-matching a stray "NoError"-style token only keeps a few extra
 // lines, never fewer, so the broad form is safe by the same logic as the rest.
+// `Exception` does the same for Java-style names — IllegalStateException,
+// NullPointerException — which FAILURE_RE misses, because it needs a
+// non-alphanumeric character before "exception".
 // Deliberately UNANCHORED on the left: a leading `\w*` matches the same set of
 // lines (it can always match empty, and nothing here reads the matched text)
 // while making the pattern backtrack quadratically on a long run of word
@@ -221,7 +224,7 @@ const TEMPLATE_COLLAPSE_NOTE =
 // never means the run failed, so that pattern has no warning alternative. The
 // plural sits in the left-anchored alternation, so a longer word that merely
 // ends in "warnings" never matches.
-const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning)\b/i;
+const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning|Exception)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
 // this gap." On a completeness task ("report EVERY warning") that distrust is
@@ -716,12 +719,12 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 // at least one of these. The first five are subpatterns of SIGNAL_RE's own
 // alternation, never edited independently. The last takes the failure
 // evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
-// `exception`, cross marks, plural errors and failures, and traceback frames.
+// cross marks, plural errors and failures, and traceback frames.
 // Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
 // error > failure > critical > warning > deprecation > failure evidence — each
 // line counts once, under whichever category wins.
 const CENSUS_CATEGORIES = [
-  { singular: "error", plural: "errors", re: /Error\b|\bERR(?:OR)?\b/i },
+  { singular: "error", plural: "errors", re: /Error\b|Exception\b|\bERR(?:OR)?\b/i },
   { singular: "failure", plural: "failures", re: /\bFAIL(?:URE|ED)?\b/i },
   { singular: "critical", plural: "criticals", re: /\bCRITICAL\b/i },
   { singular: "warning", plural: "warnings", re: /Warning\b|\bWARN(?:INGS?)?\b/i },

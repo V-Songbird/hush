@@ -1389,6 +1389,8 @@ describe('the keep vocabulary, pinned category by category', () => {
     ['CRITICAL', 'CRITICAL disk at ninety nine percent'],
     ['compound *Error', 'ReferenceError: retries is not defined'],
     ['compound *Warning', 'DeprecationWarning: Buffer() is obsolete'],
+    ['compound *Exception', 'Caused by: java.lang.IllegalStateException: boom'],
+    ['qualified *Exception', 'java.lang.NullPointerException'],
     ['traceback frame', '  File "app/handler.py", line 42'],
   ];
 
@@ -1414,6 +1416,8 @@ describe('the keep vocabulary, pinned category by category', () => {
       'ERR 42 socket closed by peer',
       'ERROR redis ECONNREFUSED on attempt three',
       'ReferenceError: retries is not defined',
+      'Caused by: java.lang.IllegalStateException: boom',
+      'java.lang.NullPointerException',
       'FAIL assertion in suite alpha',
       'FAILURE building target beta',
       'FAILED to bind the configured port',
@@ -1427,12 +1431,12 @@ describe('the keep vocabulary, pinned category by category', () => {
       'not ok 7 - parses the receipt',
       'fatal: bad object HEAD',
     ];
-    samples.forEach((s, i) => { lines[100 + i * 90] = s; });
+    samples.forEach((s, i) => { lines[100 + i * 80] = s; });
     const digest = withSidecar(() => comp3(lines.join(NL), 0, true, false, [], 1, 'censusvocab'));
     pathFrom(digest);
-    const census = '3 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation, 2 failure-evidence lines';
+    const census = '5 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation, 2 failure-evidence lines';
     assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
-    assert.ok(digest.includes(`Signal lines (15 total: ${census}):`), 'the digest census drifted');
+    assert.ok(digest.includes(`Signal lines (17 total: ${census}):`), 'the digest census drifted');
     for (const s of samples) assert.ok(digest.includes(s), `digest dropped the ${s.split(' ')[0]} sample`);
   });
 
