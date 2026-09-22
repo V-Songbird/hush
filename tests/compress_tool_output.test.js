@@ -1567,6 +1567,22 @@ describe('grep match-list compression', () => {
     assert.ok(plain.includes('src/a.js: 200 matches, 3 shown'), 'plain matches are still elided');
   });
 
+  // The keep check reads the match text, not the path: a directory named
+  // after a keep word holds ordinary code. A prompt that quotes a file name
+  // still keeps every match in that file, because the prompt match reads the
+  // whole line.
+  test('a keep word in the path alone does not force its matches; a quoted file name does', () => {
+    const content = grepContent(['src/errors/a.js', 'src/error/b.js', 'test/failing/c.js'], 40);
+    const out = H.compressGrep(content, []);
+    for (const f of ['src/errors/a.js', 'src/error/b.js', 'test/failing/c.js']) {
+      assert.ok(out.includes(`${f}: 40 matches, 3 shown`), `${f} was not collapsed`);
+    }
+    const named = H.compressGrep(grepContent(['src/auth/tokens.js', 'src/b.js'], 40), ['tokens.js']);
+    assert.ok(named.includes('src/auth/tokens.js:40:'), 'the quoted file keeps its last match');
+    assert.ok(!named.includes('src/auth/tokens.js: 40 matches'), 'the quoted file is not collapsed');
+    assert.ok(named.includes('src/b.js: 40 matches, 3 shown'));
+  });
+
   test('drive-letter paths group as one file; unparseable lines pass verbatim', () => {
     const lines = [];
     for (let i = 1; i <= 10; i++) lines.push(`C:\\proj\\x.js:${i}: item ${'y'.repeat(40)}`);
