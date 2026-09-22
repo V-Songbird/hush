@@ -385,8 +385,13 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 // `Traceback`, `exception`, `err!`, `failing` classified a run as failed while
 // nothing preserved those same lines — so a capped view could promise every
 // failure line was kept and drop most of them. One vocabulary, one promise.
+// Zero-quantified counts are blanked first, as looksLikeFailure blanks them: a
+// passing summary ("Failures: 0, Errors: 0", "0 failed", node's "# fail 0")
+// states a score, not a failure, so it is neither kept past the cap nor
+// counted in a digest. Any non-zero count still keeps its line.
 function isKeepLine(line) {
-  return SIGNAL_RE.test(line) || FAILURE_RE.test(line) || TRACEBACK_FRAME_RE.test(line);
+  const scored = line.replace(ZERO_COUNT_RE, "");
+  return SIGNAL_RE.test(scored) || FAILURE_RE.test(scored) || TRACEBACK_FRAME_RE.test(line);
 }
 
 // Node, Java and Go print a stack after the error line, and its first frame
@@ -430,12 +435,17 @@ function firstFrameIdx(lines) {
 // zero-quantified counts before the sniff keeps a passing test run on the pass
 // cap; any non-zero count is left alone and still classifies as a failure.
 //
-// The second branch only blanks when the zero ENDS the phrase — end of line,
-// comma, other punctuation. "Error: 0 tests found" counts a different noun,
-// and blanking it there left no failure token in a line that plainly is one.
-// The lookahead is space/tab-scoped rather than \s so a "# fail 0" ending a
-// line still blanks when more output follows on the next line.
-const ZERO_COUNT_RE = /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:fail\w*|error\w*)\s*[:=]?\s*0\b(?![ \t]*\w)/gi;
+// A label with `:` or `=` ("Failures: 0,", "errors=0") only blanks when the
+// zero ENDS the phrase — end of line, comma, other punctuation. "Error: 0
+// tests found" counts a different noun, and blanking it there left no failure
+// token in a line that plainly is one. The lookahead is space/tab-scoped
+// rather than \s so a zero ending a line still blanks when more output follows
+// on the next line. A bare label ("# fail 0") blanks only when the zero ends
+// the line: "ERROR 0: connection refused" numbers an error rather than
+// counting one, and isKeepLine blanks zero counts too, so blanking it would
+// cut a real error line from a capped view.
+const ZERO_COUNT_RE =
+  /\b(?:0|no)\s+(?:\w+\s+){0,2}?(?:fail\w*|error\w*)\b|\b(?:fail\w*|error\w*)\s*[:=]\s*0\b(?![ \t]*\w)|\b(?:fail\w*|error\w*)[ \t]+0[ \t]*(?=\r?\n|$)/gi;
 
 function looksLikeFailure(text, exitCode) {
   // Exit-code evidence outranks text sniffing: when preserve-exit-code's

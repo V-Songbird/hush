@@ -27,6 +27,7 @@ const {
   collapseTemplates,
   capLines,
   looksLikeFailure,
+  isKeepLine,
   isFileDump,
   isLogPath,
   requestsEnumeration,
@@ -176,6 +177,13 @@ describe('unit: transforms', () => {
   test('a zero that counts a different noun leaves the failure token standing', () => {
     assert.strictEqual(looksLikeFailure('Error: 0 tests found', undefined), true);
     assert.strictEqual(looksLikeFailure("ERROR: 0 matches for required pattern 'main'", undefined), true);
+  });
+
+  // A bare label only scores when the zero ends the line; mid-line, the zero
+  // numbers the error, and the line stays failure evidence either way.
+  test('a zero that numbers an error is no count', () => {
+    assert.strictEqual(looksLikeFailure('ERROR 0: connection refused', undefined), true);
+    assert.strictEqual(isKeepLine('ERROR 0: connection refused'), true);
   });
 
   test('a non-zero count in that same shape still classifies as a failure', () => {
@@ -1386,7 +1394,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   const created = [];
   after(() => {
     for (const f of created) fs.rmSync(f, { force: true });
-    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest']);
+    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
@@ -1431,6 +1439,23 @@ describe('the keep vocabulary, pinned category by category', () => {
     const out = cappedView(plain);
     assert.ok(!out.includes(plain), 'nothing was cut, so the samples above prove nothing');
     assert.match(out, /lines omitted from this view/);
+  });
+
+  // A passing summary states a score, not a failure: its zero counts are
+  // blanked before the keep test, so it is cut like an ordinary line and a
+  // digest never counts it. One non-zero count keeps the line.
+  test('a zero-count summary is cut and uncounted; a non-zero one is kept', () => {
+    const zero = '[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0';
+    const one = 'Tests run: 12, Failures: 1, Errors: 0';
+    assert.ok(!cappedView(zero).includes(zero), 'the zero-count summary survived the cap');
+    assert.ok(cappedView(one).includes(one), 'the non-zero summary was cut');
+    const lines = Array.from({ length: 1000 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    lines[300] = zero;
+    lines[600] = one;
+    const digest = withSidecar(() => comp3(lines.join(NL), 1, false, false, [], 1, 'zerocount'));
+    pathFrom(digest);
+    assert.ok(digest.includes('Signal lines (1 total: 1 failure-evidence line):'), 'the census drifted');
+    assert.ok(!digest.includes(zero), 'the zero-count summary reached the digest');
   });
 
   // One stack per runtime: the error line, whatever the runtime prints before
