@@ -1,16 +1,29 @@
-# docs/ is local working notes by default. The pages the README links to are
-# published, so each one is named here explicitly — a new file under docs/ is
-# private until someone adds a line for it.
-/docs/*
-!/docs/HOW-IT-WORKS.md
-!/docs/SETTINGS.md
-!/docs/BENCHMARKS.md
+# hush repository visibility and local generated files.
+# Keep the runtime, the shipped voice, tests and public documentation visible.
+
+# Private working material and documentation
+.private/
+docs/tasks/
+docs/decisions/
+docs/knowledge/private/
+docs/apis/private/
+
+# Machine-local agent state; shared instructions stay visible
+**/.claude/settings.local.json
+**/.claude/memory/
+CLAUDE.local.md
+AGENTS.override.md
 
 # Style-slot state written at run time by /hush:pick-style, never published
 /output-styles/hush.md.stock
 /output-styles/hush.md.active.json
 
-# Plugin-local session state — written at run time, never published.
+# Plugin-local session state written at run time, never published
 .assay/
 .foreman/
 .scribe/
+
+# Dependency cache and operating-system metadata
+node_modules/
+.DS_Store
+Thumbs.db

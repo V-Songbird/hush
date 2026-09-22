@@ -1,12 +1,20 @@
+---
+type: knowledge
+summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, readability, answer usefulness and where hush loses; read before changing a published number."
+related_files:
+  - README.md
+  - output-styles/hush.md
+---
+
 # The numbers, in full
 
 The README uses the September 1, 2026 comparison, `rivalA-762f888b`: nine fixture jobs, four repetitions per setup, with the recorded `opus` alias at medium effort (identified as Opus 5 by the published source). Median final prose was 367 words without a plugin and 69 with Hush; both passed 36/36 task checks. The readability check detected runnable content in 94% of Hush answers versus 100% without a plugin. Three jobs cost 1–10% more.
 
 The tables below preserve the earlier August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
-[Records, definitions and source reconciliation](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md). Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. Readability word counts are medians; reading-ease and grade scores are heuristic averages, not a reader study.
+The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. Readability word counts are medians; reading-ease and grade scores are heuristic averages, not a reader study.
 
-← [Back to the README](../README.md)
+← [Back to the README](../../README.md)
 
 ---
 
@@ -187,8 +195,7 @@ what had happened.
 **The zero-word silence count drops as sessions get longer.** It is a real number and it is on this
 page, but it is not a promise. The at-most-one-message count also describes these runs, not a guarantee.
 
-## Run it yourself
+## The harness
 
-The whole harness is public, in the marketplace repo under
-[`benchmarks/hush`](https://github.com/V-Songbird/foundry/tree/main/benchmarks/hush). Same jobs,
-same checks, your own API key.
+The harness that ran these jobs is kept outside this repository and is not distributed with the
+plugin. Each table above keeps its run's setup, model and date so the figures can be judged.

@@ -1,3 +1,11 @@
+---
+type: knowledge
+summary: "Records user-facing hush changes by release; read when upgrading or checking when a behavior changed."
+related_files:
+  - README.md
+  - .claude-plugin/plugin.json
+---
+
 # Changelog
 
 All notable changes to hush are documented here. The version number lives in

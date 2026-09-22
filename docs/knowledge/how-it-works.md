@@ -1,8 +1,18 @@
+---
+type: knowledge
+summary: "What hush does to a command's output, where parked output goes, when it trims a failing command, how the reminder and the voice slot work; read before changing a hook or the shipped voice."
+related_files:
+  - hooks/
+  - output-styles/hush.md
+  - scripts/activate-style.js
+  - scripts/verify-style.js
+---
+
 # How hush works
 
 Everything on this page happens on your machine, while Claude works. Nothing is sent anywhere.
 
-← [Back to the README](../README.md)
+← [Back to the README](../../README.md)
 
 ---
 
@@ -45,7 +55,7 @@ hush deletes the folder when the session ends, and clears anything a crashed ses
 once it is a day old.
 
 Beside the parked files it keeps `saved.json` — characters in, characters actually delivered. That
-is the count the status-line snippet in [Settings](SETTINGS.md) reads.
+is the count the status-line snippet in [Settings](settings.md) reads.
 
 ## The markers you will see
 

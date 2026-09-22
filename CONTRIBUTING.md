@@ -18,9 +18,11 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 ```
 .claude-plugin/
 └── plugin.json        # name, version, description, author, keywords
-CHANGELOG.md            # dated entries, newest first
+AGENTS.md               # contributor rules; CLAUDE.md imports them
 LICENSE                 # MIT
 README.md               # plain-language intro first, technical depth after
+docs/knowledge/         # how it works, settings, benchmark details and the
+                        # changelog, dated entries newest first
 skills/                 # if the plugin has skills
 ├── skill-name/
 │   ├── SKILL.md        # Claude Code skill definition
@@ -31,7 +33,7 @@ scripts/                # if the plugin has helper CLIs
 tests/                  # required when the plugin has scripted behavior
 ```
 
-Every README shares one skeleton, tone, and style, defined in foundry's [`.github/PLUGIN_README_TEMPLATE.md`](https://github.com/V-Songbird/foundry/blob/main/.github/PLUGIN_README_TEMPLATE.md).
+The README puts plain-language sections first and technical depth behind links; [`AGENTS.md`](AGENTS.md) holds the rules for results and host labels.
 
 ---
 
@@ -69,7 +71,7 @@ This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blo
 
 ## Changelog
 
-Add a dated entry at the top of `CHANGELOG.md` for every user-visible change. The version lives in `.claude-plugin/plugin.json`; bump it in the release commit. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
+Add a dated entry at the top of [`docs/knowledge/changelog.md`](docs/knowledge/changelog.md) for every user-visible change. The version lives in `.claude-plugin/plugin.json`; bump it in the release commit. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
 
 ---
 

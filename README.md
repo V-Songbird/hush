@@ -63,7 +63,7 @@ Start a new session to load the plugin.
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
-Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/SETTINGS.md) for switches and platform-specific retention behavior.
+Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/knowledge/settings.md) for switches and platform-specific retention behavior.
 
 ## The numbers
 
@@ -80,13 +80,13 @@ In this recorded comparison, Hush’s median final prose was 69 words against 36
 
 The readability check detected runnable content in 94% of Hush answers versus 100% for the other setups. Three quiet jobs cost 1–10% more. Detection is a text heuristic, not a check that the suggested action is correct or complete.
 
-Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. [Records, definitions and earlier comparisons](https://github.com/V-Songbird/foundry/blob/main/docs/hush/validation/claude-readme-benchmark-2026-09-10.md).
+Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
 Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
 
 <p align="center"><img src="assets/hero.svg" alt="Hush original product visualization" width="700"></p>
 
-Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance. [Evidence and methodology](https://github.com/V-Songbird/foundry/tree/main/docs/hush).
+Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance.
 
 <details>
 <summary>Watch the recorded Claude Code demo</summary>
@@ -99,9 +99,9 @@ Original Claude Code benchmark visualization. These measurements describe the re
 
 ## Going deeper
 
-[How it works](docs/HOW-IT-WORKS.md) · [Settings](docs/SETTINGS.md) · [Benchmark details](docs/BENCHMARKS.md)
+[How it works](docs/knowledge/how-it-works.md) · [Settings](docs/knowledge/settings.md) · [Benchmark details](docs/knowledge/benchmarks.md) · [Changelog](docs/knowledge/changelog.md)
 
-[Foundry](https://github.com/V-Songbird/foundry) holds the research, methodology and detailed evidence.
+[Foundry](https://github.com/V-Songbird/foundry) lists this plugin. The research records and the benchmark harness are kept outside this repository and are not distributed with the plugin.
 
 ## License
 

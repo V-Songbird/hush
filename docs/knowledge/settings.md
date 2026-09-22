@@ -1,9 +1,19 @@
+---
+type: knowledge
+summary: "hush's environment variables, the output style setting, the status-line count and the two voice commands; read before changing a switch or the style slot."
+related_files:
+  - hooks/lib/gate.js
+  - output-styles/hush.md
+  - skills/pick-style/SKILL.md
+  - skills/craft-style/SKILL.md
+---
+
 # Settings
 
 Most people never touch any of this. hush trims one way, always — there are no levels and no
 profiles to pick between.
 
-← [Back to the README](../README.md)
+← [Back to the README](../../README.md)
 
 ---
 
