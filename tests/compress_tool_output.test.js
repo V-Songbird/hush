@@ -1378,6 +1378,8 @@ describe('the keep vocabulary, pinned category by category', () => {
   const KEEP_SAMPLES = [
     ['WARN', 'WARN cache ratio above the configured threshold'],
     ['WARNING', 'WARNING stale lockfile still in use'],
+    ['plural warnings summary', 'Compiled with warnings.'],
+    ['plural warnings count', '3 warnings generated.'],
     ['ERR', 'ERR 42 socket closed by peer'],
     ['ERROR', 'ERROR redis ECONNREFUSED on attempt three'],
     ['FAIL', 'FAIL assertion in suite alpha'],
@@ -1418,15 +1420,17 @@ describe('the keep vocabulary, pinned category by category', () => {
       'CRITICAL disk at ninety nine percent',
       'WARN cache ratio above the configured threshold',
       'WARNING stale lockfile still in use',
+      'Compiled with warnings.',
+      '3 warnings generated.',
       'DeprecationWarning: Buffer() is obsolete',
       'DEPRECATED formatAmount takes one argument now',
     ];
     samples.forEach((s, i) => { lines[100 + i * 100] = s; });
     const digest = withSidecar(() => comp3(lines.join(NL), 0, true, false, [], 1, 'censusvocab'));
     pathFrom(digest);
-    const census = '3 errors, 3 failures, 1 critical, 3 warnings, 1 deprecation';
+    const census = '3 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation';
     assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
-    assert.ok(digest.includes(`Signal lines (11 total: ${census}):`), 'the digest census drifted');
+    assert.ok(digest.includes(`Signal lines (13 total: ${census}):`), 'the digest census drifted');
     for (const s of samples) assert.ok(digest.includes(s), `digest dropped the ${s.split(' ')[0]} sample`);
   });
 });

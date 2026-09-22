@@ -216,7 +216,12 @@ const TEMPLATE_COLLAPSE_NOTE =
 // while making the pattern backtrack quadratically on a long run of word
 // characters — one 256KB line of base64 or minified JS measured at 68 seconds,
 // against this hook's own 5-second budget.
-const SIGNAL_RE = /\b(WARN(?:ING)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning)\b/i;
+// `WARNINGS?` takes the plural a toolchain summary uses ("Compiled with
+// warnings.", "3 warnings generated."). FAILURE_RE cannot supply it: a warning
+// never means the run failed, so that pattern has no warning alternative. The
+// plural sits in the left-anchored alternation, so a longer word that merely
+// ends in "warnings" never matches.
+const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
 // this gap." On a completeness task ("report EVERY warning") that distrust is
@@ -716,7 +721,7 @@ const CENSUS_CATEGORIES = [
   { singular: "error", plural: "errors", re: /Error\b|\bERR(?:OR)?\b/i },
   { singular: "failure", plural: "failures", re: /\bFAIL(?:URE|ED)?\b/i },
   { singular: "critical", plural: "criticals", re: /\bCRITICAL\b/i },
-  { singular: "warning", plural: "warnings", re: /Warning\b|\bWARN(?:ING)?\b/i },
+  { singular: "warning", plural: "warnings", re: /Warning\b|\bWARN(?:INGS?)?\b/i },
   { singular: "deprecation", plural: "deprecations", re: /\bDEPRECATED\b/i },
 ];
 
