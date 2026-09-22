@@ -253,10 +253,12 @@ function omittedMarker(n) {
 // Closing line on a capped view of a FAILING run — the same recovery advice
 // the sidecar header gives its own path, for the failures that stay inline.
 // capLines keeps every keep line by construction — and the keep vocabulary is
-// the union of signal and failure evidence, so the first causal error (header,
-// frame and exception alike) and the failing summary are all above this line:
-// the guarantee is provable, which is why it is stated as one rather than as
-// reassurance.
+// the union of signal and failure evidence, so the first causal error and the
+// failing summary are all above this line, with stack frames as well:
+// every frame of a Python traceback is a keep line, and for Node, Java and Go
+// the first frame after each keep line joins them (firstFrameIdx), never the
+// rest of the stack. The guarantee is provable, which is why it is stated as
+// one rather than as reassurance.
 const FAILURE_RERUN_NOTE =
   "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
   "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
@@ -328,6 +330,7 @@ function capLines(lines, cap, relevanceTokens) {
     if (isKeepLine(line)) signalIdx.add(i);
   });
   for (const i of relevanceLineIdx(lines, relevanceTokens)) signalIdx.add(i);
+  for (const i of firstFrameIdx(lines)) signalIdx.add(i);
   const budget = Math.max(0, cap - signalIdx.size);
   const head = Math.ceil(budget * 0.6);
   const tail = budget - head;
@@ -384,6 +387,42 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 // failure line was kept and drop most of them. One vocabulary, one promise.
 function isKeepLine(line) {
   return SIGNAL_RE.test(line) || FAILURE_RE.test(line) || TRACEBACK_FRAME_RE.test(line);
+}
+
+// Node, Java and Go print a stack after the error line, and its first frame
+// is where the causal file and line usually sit. The rest is mostly runtime
+// and framework frames, so these frames are not keep lines on their own:
+// only the first frame after each keep line joins the kept set
+// (firstFrameIdx), never the whole stack. Each pattern is anchored and has no
+// nested quantifier, so a long line cannot make it backtrack quadratically.
+const STACK_FRAME_RES = [
+  /^\s+at (?:async )?(?:[^()]*\()?[^\s()]+:\d+:\d+\)?$/, // Node: at fn (file:line:col)
+  /^\s+at [\w$.<>/@]+\([^()]*:\d+\)$/, // Java, Kotlin: at pkg.Class.method(File.java:N)
+  /^\t\S+\.go:\d+(?:\s|$)/, // Go: <tab>/path/file.go:N +0x1d
+];
+// How far after a keep line the first frame may sit: a Jest code excerpt or a
+// Go goroutine header comes between the error and its first frame.
+const FIRST_FRAME_WINDOW = 10;
+
+function isStackFrame(line) {
+  return STACK_FRAME_RES.some((re) => re.test(line));
+}
+
+// Indices of the first Node, Java or Go frame after each keep line, within
+// FIRST_FRAME_WINDOW lines and before the next keep line.
+function firstFrameIdx(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!isKeepLine(lines[i]) || isStackFrame(lines[i])) continue;
+    for (let j = i + 1; j < lines.length && j - i <= FIRST_FRAME_WINDOW; j++) {
+      if (isStackFrame(lines[j])) {
+        out.push(j);
+        break;
+      }
+      if (isKeepLine(lines[j])) break;
+    }
+  }
+  return out;
 }
 
 // A green summary states its own score — "0 failures", "no errors", node's own
@@ -719,7 +758,8 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 // at least one of these. The first five are subpatterns of SIGNAL_RE's own
 // alternation, never edited independently. The last takes the failure
 // evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
-// cross marks, plural errors and failures, and traceback frames.
+// cross marks, plural errors and failures, Python traceback frames, and the
+// first Node, Java or Go frame after a keep line.
 // Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
 // error > failure > critical > warning > deprecation > failure evidence — each
 // line counts once, under whichever category wins.
@@ -732,7 +772,7 @@ const CENSUS_CATEGORIES = [
   {
     singular: "failure-evidence line",
     plural: "failure-evidence lines",
-    re: new RegExp(`${FAILURE_RE.source}|${TRACEBACK_FRAME_RE.source}`, FAILURE_RE.flags),
+    re: new RegExp([FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES].map((r) => r.source).join("|"), FAILURE_RE.flags),
   },
 ];
 
@@ -770,13 +810,15 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   // separator is not output, and a raw element count reads as one-more-than-
   // the-records to anyone doing arithmetic on it.
   const nonBlank = lines.filter((l) => l.trim() !== "").length;
-  // The keep vocabulary, the same set every capped view keeps: a traceback's
-  // header and frames carry the causal file and line, and SIGNAL_RE names
-  // neither.
+  // The keep vocabulary plus the first frame after each keep line, the same
+  // set every capped view keeps: a traceback's header and frames carry the
+  // causal file and line, and SIGNAL_RE names neither.
   const signalIdx = [];
   lines.forEach((l, i) => {
     if (isKeepLine(l)) signalIdx.push(i);
   });
+  for (const i of firstFrameIdx(lines)) if (!isKeepLine(lines[i])) signalIdx.push(i);
+  signalIdx.sort((a, b) => a - b);
 
   // Signal (and prompt-named) lines lead the digest, ahead of the structural
   // head/tail. When a raw output is large enough to trip Claude Code's own

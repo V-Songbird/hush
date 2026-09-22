@@ -38,7 +38,7 @@ Every time Claude runs something, hush looks at what came back and decides betwe
 | --- | --- |
 | Something short | Nothing. It goes through untouched. |
 | A long clean run | Keeps a tail of it. The last stretch is almost always the part that matters. |
-| A long failing run | Keeps up to 250 lines, and pulls every error and warning line through no matter where they sat. |
+| A long failing run | Keeps up to 250 lines, and pulls every error and warning line through no matter where they sat. After a Node, Java or Go error it also keeps the first stack frame, the line that names a file and line number. A Python traceback keeps all its frames. |
 | Something very large — a full log, a lockfile | Writes the whole thing to a file on your machine, then hands Claude a short summary that names that file. |
 
 That last one is the important one. Without it, a 300 KB log is not read once. It sits in the

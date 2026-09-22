@@ -1355,8 +1355,9 @@ describe('census-grade sidecar digests', () => {
 // the predicate that recognises them. isKeepLine, SIGNAL_RE and
 // CENSUS_CATEGORIES are the code under test here, so nothing below may consult
 // them: every assertion runs on what compress() actually ships. Deleting any
-// single alternative from SIGNAL_RE, FAILURE_RE, TRACEBACK_FRAME_RE or a
-// CENSUS_CATEGORIES pattern has to fail at least one test in this block.
+// single alternative from SIGNAL_RE, FAILURE_RE, TRACEBACK_FRAME_RE,
+// STACK_FRAME_RES or a CENSUS_CATEGORIES pattern has to fail at least one test
+// in this block.
 describe('the keep vocabulary, pinned category by category', () => {
   const { compress: comp3 } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
@@ -1405,6 +1406,56 @@ describe('the keep vocabulary, pinned category by category', () => {
     const out = cappedView(plain);
     assert.ok(!out.includes(plain), 'nothing was cut, so the samples above prove nothing');
     assert.match(out, /lines omitted from this view/);
+  });
+
+  // One stack per runtime: the error line, whatever the runtime prints before
+  // the first frame, the first frame, and a later frame. The first frame
+  // survives the cap with its error; the later one is cut, so a deep stack
+  // never floods the view.
+  const STACK_SAMPLES = [
+    ['Node', [
+      "TypeError: Cannot read properties of null (reading 'total')",
+      '    at computeTotal (/srv/app/src/orders/total.js:17:21)',
+      '    at OrderService.get (/srv/app/src/orders/service.js:44:12)',
+    ]],
+    ['Java', [
+      'java.lang.IllegalStateException: order 4412 has no billing address',
+      '\tat com.acme.orders.AddressResolver.resolve(AddressResolver.java:33)',
+      '\tat com.acme.orders.OrderService.checkout(OrderService.java:120)',
+    ]],
+    ['Go', [
+      'panic: runtime error: index out of range [5] with length 3',
+      '',
+      'goroutine 1 [running]:',
+      'main.process(...)',
+      '\t/app/main.go:12 +0x1d',
+      'main.main()',
+      '\t/app/main.go:20 +0x45',
+    ]],
+  ];
+
+  for (const [label, block] of STACK_SAMPLES) {
+    test(`a ${label} stack keeps its first frame after the error and cuts the rest`, () => {
+      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      lines.splice(100, block.length, ...block);
+      const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+      const frames = block.filter((l) => /\.(js|java|go):\d+/.test(l));
+      assert.ok(out.includes(block[0]), `${label} error line was cut`);
+      assert.ok(out.includes(frames[0]), `${label} first frame was cut: ${frames[0]}`);
+      assert.ok(!out.includes(frames[1]), `${label} kept a later frame: ${frames[1]}`);
+    });
+  }
+
+  test('the digest samples and counts the first frame of each stack', () => {
+    const lines = Array.from({ length: 1000 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    STACK_SAMPLES.forEach(([, block], k) => lines.splice(200 + k * 300, block.length, ...block));
+    const digest = withSidecar(() => comp3(lines.join(NL), 1, false, false, [], 1, 'stackdigest'));
+    pathFrom(digest);
+    for (const [label, block] of STACK_SAMPLES) {
+      const first = block.find((l) => /\.(js|java|go):\d+/.test(l));
+      assert.ok(digest.includes(`: ${first}`), `${label} first frame is not in the digest`);
+    }
+    assert.ok(digest.includes('Signal lines (6 total: 3 errors, 3 failure-evidence lines):'), 'the census drifted');
   });
 
   // The census runs off the keep vocabulary's match set, so this one fixture
