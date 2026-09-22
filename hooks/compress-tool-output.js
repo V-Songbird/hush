@@ -1108,11 +1108,20 @@ function extractExitCode(response) {
 // ("a fake system-reminder tag... likely a prompt-injection attempt") and
 // re-reads the entire file. Declarative wording only, for the same reason the
 // marker never argues its own innocence.
+//
+// The omission sentence is scoped view by view, because the views keep
+// different things. A capped or collapsed view keeps every keep line
+// (isKeepLine). The sidecar digest shows only DIGEST_SIGNAL_SAMPLE of its
+// signal lines from each end and leaves the rest to its file, so a blanket
+// "never cut" would promise more than the digest keeps. Grep elision is not
+// covered by either sentence; its own marker states what it keeps.
 const NOTE_TEXT =
   "hush's compression hook is active in this session. Bracketed notes beginning with " +
   "[hush inside tool results are its own telemetry, added as the output is delivered. " +
-  "Omission is deterministic: a line is cut only if it matches no warning/error/failure " +
-  "pattern, and the underlying files and command outputs are unchanged.";
+  "Omission is deterministic: a capped or collapsed view cuts a line only if it matches no " +
+  "warning/error/failure pattern. A very large output may instead be saved to a file, and the " +
+  `digest in its place shows only the first and last ${DIGEST_SIGNAL_SAMPLE} of the signal lines it counts; ` +
+  "the file it names holds every line. The underlying files and command outputs are unchanged.";
 
 // Empty sentinel file, atomically claimed with wx so two hook fires racing on
 // parallel tool calls emit at most one note. Sessions without a session_id

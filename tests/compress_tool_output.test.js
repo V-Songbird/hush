@@ -851,6 +851,44 @@ describe('hook: once-per-session telemetry note', () => {
     assert.match(out.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
   });
 
+  // The note is the one omission statement every view shares, so it has to
+  // hold for the largest view too. Thirty error lines, more than a digest
+  // shows, sit between the head and tail windows of one output: the capped
+  // view keeps all thirty, the digest shows exactly the first and last n the
+  // note names, and the file it points at holds every one of them.
+  test('the note promises no more than a large-output digest keeps (30 signal lines)', () => {
+    const lines = Array.from({ length: 1000 }, (_, i) => `info step ${i} ok`);
+    const errors = Array.from({ length: 30 }, (_, k) => `ERROR case ${k}: cannot resolve module`);
+    errors.forEach((e, k) => { lines[100 + k * 25] = e; });
+    const log = lines.join('\n');
+
+    assert.match(NOTE_TEXT, /a capped or collapsed view cuts a line only if it matches no warning\/error\/failure pattern/);
+    const n = Number((NOTE_TEXT.match(/shows only the first and last (\d+) of the signal lines it counts/) || [])[1]);
+    assert.ok(n > 0 && 2 * n < errors.length, `the note must name a sample smaller than the ${errors.length} errors`);
+
+    const capped = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: sid('capped'), tool_response: log,
+    })).hookSpecificOutput;
+    assert.strictEqual(capped.additionalContext, NOTE_TEXT);
+    for (const e of errors) assert.ok(capped.updatedToolOutput.includes(e), `the capped view cut: ${e}`);
+
+    const parked = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: sid('digest'), tool_response: log,
+    }, { HUSH_SIDECAR: '' })).hookSpecificOutput;
+    assert.strictEqual(parked.additionalContext, NOTE_TEXT);
+    const digest = parked.updatedToolOutput;
+    const file = (digest.match(/saved in full to ([^;]+);/) || [])[1];
+    assert.ok(file, 'the output was parked in full');
+    assert.match(digest, /Signal lines \(30 total: 30 errors\):/);
+    assert.deepStrictEqual(
+      errors.filter((e) => digest.includes(e)),
+      [...errors.slice(0, n), ...errors.slice(-n)],
+      'the digest shows the first and last n signal lines and no others'
+    );
+    const saved = fs.readFileSync(file.trim(), 'utf8').split('\n');
+    errors.forEach((e, k) => assert.strictEqual(saved[100 + k * 25], e, `the file lacks ${e}`));
+  });
+
   test('unit: claimSessionNote claims exactly once per id; hasHushNote spots markers in any shape', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-note-unit-'));
     try {
