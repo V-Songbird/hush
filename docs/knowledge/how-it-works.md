@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "What hush does to a command's output, where parked output goes, when it trims a failing command, how the reminder and the voice slot work; read before changing a hook or the shipped voice."
+summary: "What each hush hook does: the output trims, parked output, failing commands, the reminder, compaction, the subagent brief and the voice slot; read before changing a hook or the shipped voice."
 related_files:
   - hooks/
   - output-styles/hush.md
@@ -99,6 +99,37 @@ itself, but only when it has to.
 By default it reminds Claude once at the start of each of your turns, and again only in the moments
 where chatter actually slipped through. A session that stays quiet pays nothing extra. `HUSH_NUDGE=max`
 reminds on every single command result instead — quieter, and it costs the most.
+
+## When the conversation is compacted
+
+Claude Code summarizes a long conversation to make room. That summary replaces everything before it
+and is re-sent on every turn after, so hush shapes it.
+
+Before compaction, hush asks for a compact structured list that keeps every file path, identifier,
+command, version number, error message, decision and open thread word for word, and drops narration.
+If the session has parked files still on disk, it lists up to 20 of them, and says how many more
+there are, so the summary carries the paths instead of the content.
+
+After compaction, hush re-arms its one-time note about the `[hush ...]` markers, since the summary
+dropped it. The note comes back with the next marker, not before.
+
+## Subagents
+
+An output style never reaches a subagent, and a subagent's final message lands in the conversation
+and is re-sent on every turn after. So each subagent gets a short brief when it starts: return the
+findings themselves with no preamble and no offers of more help, mark what could not be confirmed and
+where it looked, and write nothing between tool calls.
+
+## Which hook does what
+
+| Hook | When it runs | What it does |
+| --- | --- | --- |
+| `compress-tool-output` | After Bash, PowerShell, Read and Grep | The trims above |
+| `preserve-exit-code` | Before Bash and PowerShell | Keeps a failing command trimmable; see the section on failing commands |
+| `silence-nudge` | At each prompt and after each tool | The reminder |
+| `precompact-summary`, `postcompact-rearm` | Around compaction | Shapes the summary, then re-arms the note |
+| `subagent-brief` | When a subagent starts | The brief |
+| `session-end-cleanup` | When the session ends | Deletes the session's parked files |
 
 ## The voice slot
 
