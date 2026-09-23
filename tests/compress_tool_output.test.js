@@ -1631,6 +1631,71 @@ describe('the keep vocabulary, pinned category by category', () => {
     });
   }
 
+  // The same-shape fold runs before the cap. A failed check's lines share a
+  // shape when a table test reports each case, so in a failing run they stay
+  // out of the fold, up to REPORT_LINES_MAX per failed test. Lines of the
+  // same shape anywhere else fold as before.
+  /** go test -v output for one test whose `count` lines share one shape. */
+  const goTable = (test, result, count, message) => [
+    `=== RUN   ${test}`,
+    ...Array.from({ length: count }, (_, k) => `    orders_test.go:${40 + k}: order ${101 + k}: ${message(k)}`),
+    `--- ${result}: ${test} (0.00s)`,
+  ];
+  const expected = (k) => `expected total ${250 + k}, got ${2500 + k}`;
+  const charged = (k) => `charged ${250 + k} to card ${4242 + k}`;
+  const goFailed = goTable('TestTotals', 'FAIL', 8, expected).concat('FAIL', 'FAIL\texample.com/orders\t0.005s');
+  const collapsedMarker = (n) => `[hush hook: ${n} similar lines collapsed (same shape, varying values)]`;
+
+  test('a failing go test keeps eight same-shape messages past the cap', () => {
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+    lines.splice(150, 0, ...goFailed);
+    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    assert.match(out, /lines omitted from this view/);
+    for (const line of goFailed.slice(1, 9)) assert.ok(out.includes(line), `folded or cut: ${line.trim()}`);
+  });
+
+  test('in a failing run, a passing test\'s same-shape lines still fold', () => {
+    const lines = goTable('TestCharges', 'PASS', 8, charged).concat(goFailed);
+    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(out.includes(`${lines[1]}${NL}${collapsedMarker(7)}`), 'the passing test\'s lines did not fold');
+    for (const line of goFailed.slice(1, 9)) assert.ok(out.includes(line), `folded: ${line.trim()}`);
+  });
+
+  test('the control: a passing go test with the same shape still folds', () => {
+    const lines = goTable('TestTotals', 'PASS', 8, expected).concat('PASS', 'ok  \texample.com/orders\t0.005s');
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(out.includes(`${lines[1]}${NL}${collapsedMarker(7)}`), 'the passing run did not fold');
+    assert.ok(!out.includes(lines[2]), 'a passing run kept a folded line');
+  });
+
+  test('a failing go test keeps ten of its same-shape lines out of the fold, and the rest fold', () => {
+    const lines = goTable('TestTotals', 'FAIL', 16, expected).concat('FAIL', 'FAIL\texample.com/orders\t0.005s');
+    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    for (const line of lines.slice(1, 11)) assert.ok(out.includes(line), `folded: ${line.trim()}`);
+    assert.ok(out.includes(`${lines[11]}${NL}${collapsedMarker(5)}`), 'the lines past the limit did not fold');
+    assert.ok(!out.includes(lines[12]), 'a line past the limit stayed out of the fold');
+  });
+
+  test('a failing pytest report keeps its same-shape explanation lines past the cap', () => {
+    const report = [
+      '================================== FAILURES ===================================',
+      '_____________________________ test_order_totals ______________________________',
+      '',
+      '    def test_order_totals():',
+      '>       assert not mismatches, "\\n".join(mismatches)',
+      'E       AssertionError: totals differ',
+      ...Array.from({ length: 6 }, (_, k) => `E         order ${101 + k}: expected ${250 + k}, got ${2500 + k}`),
+      '',
+      'test_orders.py:9: AssertionError',
+      '=========================== short test summary info ===========================',
+    ];
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+    lines.splice(150, 0, ...report);
+    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    assert.match(out, /lines omitted from this view/);
+    for (const line of report.slice(6, 12)) assert.ok(out.includes(line), `folded or cut: ${line}`);
+  });
+
   // Jest prints a failed test's detail under an indented `●` header. The
   // header, the Expected and Received lines and the first `at` frame survive
   // the cap as one block; the code excerpt and the later frames do not.

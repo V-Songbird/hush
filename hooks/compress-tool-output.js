@@ -131,16 +131,22 @@ function shareTemplate(aTokens, bTokens) {
 //   4. A line that names a failing go test (`=== RUN` and the like, see
 //      goFailureIdx) is never collapsed, so capLines can still tell which
 //      test the lines after it belong to.
-//   5. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
+//   5. In a failing run, a line kept for where it sits next to a failure
+//      (contextIdx: a first frame, a failed check's values and file:line) is
+//      never collapsed, so capLines can keep what the fold would have hidden.
+//      go test lines count at most REPORT_LINES_MAX per failed test, the
+//      bound every other runner's report already has; the rest may fold.
+//   6. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
 //      the run is emitted verbatim.
 //
-// Anything outside 2-5 is fair game, and the dropped lines are NOT recoverable
+// Anything outside 2-6 is fair game, and the dropped lines are NOT recoverable
 // from the view — only from the source, which is what the footer names.
-function collapseTemplates(lines, relevanceTokens) {
+function collapseTemplates(lines, relevanceTokens, failed) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
   const named = relevanceMatcher(lines, relevanceTokens);
   const goNames = new Set(goFailureIdx(lines, true));
-  const exempt = (line, i) => isKeepLine(line) || named(line) || goNames.has(i);
+  const context = new Set(failed ? contextIdx(lines, REPORT_LINES_MAX) : []);
+  const exempt = (line, i) => isKeepLine(line) || named(line) || goNames.has(i) || context.has(i);
   const out = [];
   let runStart = -1;
   let anchorTokens = null;
@@ -464,15 +470,20 @@ const GO_TEST_NAME_RE = /^\s*(?:=== (?:RUN|CONT|NAME)|--- (FAIL|PASS|SKIP):)\s+(
 const GOTESTSUM_NAME_RE = /^=== (FAIL): (?:\S+ )?(\S+) \(/;
 const GO_PACKAGE_RESULT_RE = /^(?:ok|FAIL)\s+\S/;
 
-// Indices of the go test lines that belong to a failing test or, with
-// `names`, of the lines that name a failing test.
-function goFailureIdx(lines, names) {
+// Indices of the go test lines that belong to a failing test, at most `max`
+// per test, or, with `names`, of the lines that name a failing test.
+function goFailureIdx(lines, names, max = Infinity) {
   const out = [];
   let failed = new Set();
   let owned = [];
   let test = null;
   const settle = () => {
-    for (const [i, t] of owned) if (failed.has(t)) out.push(i);
+    const counts = new Map();
+    for (const [i, t] of owned) {
+      const n = counts.get(t) || 0;
+      if (failed.has(t) && n < max) out.push(i);
+      counts.set(t, n + 1);
+    }
     failed = new Set();
     owned = [];
     test = null;
@@ -637,11 +648,12 @@ function pytestFailureIdx(lines) {
 }
 
 // Lines kept for where they sit next to a failure rather than for their
-// words. capLines and the sidecar digest keep the same set.
-function contextIdx(lines) {
+// words. capLines and the sidecar digest keep the same set; a failing run's
+// template collapse spares it, with `goMax` go test lines per failed test.
+function contextIdx(lines, goMax) {
   return [
     ...firstFrameIdx(lines),
-    ...goFailureIdx(lines),
+    ...goFailureIdx(lines, false, goMax),
     ...blockIdx(lines, JEST_BLOCK),
     ...blockIdx(lines, VITEST_MESSAGE_BLOCK),
     ...blockIdx(lines, VITEST_DETAIL_BLOCK),
@@ -1275,7 +1287,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // completeness request ("list every compiled module") asked to see.
   let lines = dedupeConsecutive(cleaned.split("\n"));
   const dedupedLen = lines.length;
-  if (!enumerate) lines = collapseTemplates(lines, relevanceTokens);
+  if (!enumerate) lines = collapseTemplates(lines, relevanceTokens, failed);
   const beforeCapLen = lines.length;
   const collapsed = beforeCapLen < dedupedLen;
   const capped = beforeCapLen > cap; // capLines' own no-op guard is `length <= cap`
