@@ -63,7 +63,7 @@ Start a new session to load the plugin.
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
-Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/knowledge/settings.md) for switches and platform-specific retention behavior.
+Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/knowledge/settings.md) for switches, and [How hush works](docs/knowledge/how-it-works.md#where-the-parked-output-goes) for how long those files are kept and who can read them on each platform.
 
 ## The numbers
 

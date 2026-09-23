@@ -24,7 +24,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice is a separate switch — run `/hush:pick-style` to put the original back, or uninstall. |
-| `HUSH_DEBUG=1` | Writes a local record of what hush did to each command result: sizes in and out, and where the full copy went. It lands in `hush-debug-<session>.jsonl` in your system temp folder. |
+| `HUSH_DEBUG=1` | Writes a local record of what hush did to each command result: sizes in and out, and where the full copy went. It lands in `hush-debug-<session>.jsonl` in your system temp folder, outside the session's parked-output folder. hush never deletes these files: they stay until you remove them. |
 | `HUSH_NUDGE=max` | As quiet as hush gets. A reminder on every command result, whether or not anything slipped. Costs the most too. |
 | `HUSH_WRAP=1` | Lets hush trim failing commands as well as passing ones. See below. |
 
