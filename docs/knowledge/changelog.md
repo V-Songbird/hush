@@ -56,7 +56,8 @@ says so before activation does. Switching styles keeps a namespaced
 git, the stock backup now follows the new stock voice after a pull. The style
 check now catches a changed number at the end of a sentence.
 
-hush's hooks now start node directly instead of through a shell. hush's
+hush's hooks now start node directly instead of through a shell, so hush needs
+Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so
 a slow start on Windows no longer cancels it.
 

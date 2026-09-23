@@ -63,6 +63,8 @@ Start a new session to load the plugin. Hush's voice applies on its own. The pub
 set `"outputStyle": "hush:Hush"` in `~/.claude/settings.json`, which adds Claude Code's per-turn
 reminder that the style is active; see [Settings](docs/knowledge/settings.md#the-output-style-setting).
 
+Requirements: Claude Code 2.1.139 or later, and Node.js 22 or later.
+
 ## Good to know
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
