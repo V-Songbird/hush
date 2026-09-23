@@ -228,6 +228,11 @@ const TEMPLATE_COLLAPSE_NOTE =
 // never means the run failed, so that pattern has no warning alternative. The
 // plural sits in the left-anchored alternation, so a longer word that merely
 // ends in "warnings" never matches.
+// `ERR(?:OR)?` and `FAIL(?:URE|ED)?` name the signal words here and widen
+// nothing: isKeepLine ORs SIGNAL_RE with FAILURE_RE, which matches every line
+// those two match, so deleting them would change no line kept. What only
+// SIGNAL_RE keeps is warnings, deprecations, criticals and the compound
+// *Error, *Warning and *Exception names.
 const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning|Exception)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
@@ -983,7 +988,9 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 
 // Every line that reached signalIdx (the keep vocabulary, isKeepLine, and the
 // lines contextIdx keeps) counts under one of these. The first five are
-// subpatterns of SIGNAL_RE's own alternation, never edited independently. The
+// subpatterns of SIGNAL_RE's alternation, never edited independently; the
+// error and failure words among them are FAILURE_RE's words too, so each
+// names only lines isKeepLine keeps. The
 // last takes every other signal line, all of it failure evidence SIGNAL_RE
 // does not name: `not ok`, `panic`, `fatal`, `Traceback`, cross marks, plural
 // errors and failures, Python traceback frames, and the frames, values and
