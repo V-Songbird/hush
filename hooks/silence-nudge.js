@@ -16,19 +16,13 @@
 //              the top of the turn — what shipped as the only mode through
 //              1.3.0.
 //
-// Why the default reminds reactively instead of on every tool result: a
-// reminder injected mid-turn does not survive a session resume byte-stably —
-// every resume re-writes several thousand cached tokens at cache-write
-// prices, no matter which hook fires it or how short it is. Reminding on
-// every tool result (`max`) cost 14-45% over no plugin on six long
-// engineering fixtures (Sonnet, 2026-08-08, n=12 per arm across several
-// batches). The reactive default pays that tax only in the sessions that
-// actually slip: measured across three independent batches (2026-08-11), it
-// came in cheaper than even the no-mid-turn design every time, with equal or
-// fewer mid-turn leaks — the corrective lands with maximum recency, right
-// where a turn-top reminder has decayed. Older values `turn`, `lean`, and
-// `react` are accepted as synonyms for the default, so nothing anyone set
-// ever breaks.
+// Why the default reminds reactively instead of on every tool result: every
+// reminder is context the session carries and pays for, and `max` adds two on
+// every tool result whether or not anything slipped. The default adds one
+// only after a mid-turn text block shows up, so a session that stays quiet
+// pays nothing extra, and the corrective lands right where the turn-top
+// reminder has faded. Older values `turn`, `lean`, and `react` are accepted
+// as synonyms for the default, so nothing anyone set ever breaks.
 //
 // Positive-forward wording only, at every level. Naming the unwanted
 // behavior primes it — a clause that describes narrating produces narrating.
