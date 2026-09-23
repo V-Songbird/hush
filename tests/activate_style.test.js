@@ -1,6 +1,6 @@
 "use strict";
 
-const { test } = require("node:test");
+const { test, after } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -38,8 +38,15 @@ function craftedPath(projectDir, file) {
   return path.join(projectDir, ".claude", "output-styles", file);
 }
 
+// Every fixture root is removed once the file's tests end.
+const roots = [];
+after(() => {
+  for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
+});
+
 function makeFixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "hush-activate-style-"));
+  roots.push(root);
   const pluginRoot = path.join(root, "plugin");
   const projectDir = path.join(root, "project");
   const homeDir = path.join(root, "home");
