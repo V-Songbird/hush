@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 390" role="img" aria-labelledby="title desc">
-<title id="title">Ember esencial — la calma de Hush</title><desc id="desc">Ember teclea estresado; la llama se agita y se acumulan narración y registros. Aparece Hush, Ember hace shh y sigue escribiendo tranquilo. Respuesta conservada literalmente del SVG original: Done. One line to fix. The fix is in pricing.js:39. Next: nothing. La coreografía es ilustrativa, no una reproducción de tiempos del benchmark.</desc>
+<title id="title">Ember — hush</title><desc id="desc">Ember types under stress while narration and logs pile up. Hush appears, Ember goes shh and types calmly, then answers: Done. One line to fix. The fix is in pricing.js:39. Original closing line: Next: nothing. Illustrative animation, not benchmark timing.</desc>
 <style>
 :root{--paper:#fff;--ink:#252820;--muted:#67716a;--line:#dadfd8;--blue:#2c75a5;--wash:#edf4f7;--warm:#f4f0e8}
 @media(prefers-color-scheme:dark){:root{--paper:#191c1b;--ink:#eee9de;--muted:#b5bfb7;--line:#49524b;--blue:#79b6de;--wash:#253740;--warm:#30342e}}
