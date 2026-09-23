@@ -124,9 +124,9 @@ function savedPath(sessionId) {
 // existence says "delivered" (compress-tool-output.js claims it, postcompact-
 // rearm.js unlinks it to re-arm the note). It lives in the session directory
 // for the reason saved.json does: removeSession takes it at session end and
-// the stale sweep after a crash. A sentinel written to the tmpdir root instead
-// outlived every session that never reached SessionEnd — killed, crashed, or
-// closed without the event — and 32,000 of them piled up. Not .txt, so
+// the stale sweep after a crash. Nothing sweeps the tmpdir root, so a sentinel
+// written there would outlive every session that never reaches SessionEnd —
+// killed, crashed, or closed without the event. Not .txt, so
 // precompact-summary never offers it to the summarizer as a recovery file.
 const NOTE_FILE = 'hush-note';
 function notePath(sessionId) {
