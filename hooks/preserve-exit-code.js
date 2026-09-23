@@ -102,7 +102,7 @@ function wrapBash(command) {
 // wrapping is safe exactly there. `HUSH_WRAP=1` opts back in for sessions
 // whose rules are blanket per-tool grants (plain `Bash` / `PowerShell`,
 // no command pattern) — those match the wrapped command as a whole; the
-// bundled benchmark harness runs that way.
+// benchmark harness runs that way.
 function permissionsAllowWrapping(data) {
   if (process.env.HUSH_WRAP === "1") return true;
   return data.permission_mode === "bypassPermissions";

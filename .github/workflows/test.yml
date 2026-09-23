@@ -36,7 +36,7 @@ jobs:
       - name: No benchmark tree in the package
         run: |
           if git ls-files | grep -iE '^\.?benchmarks/'; then
-            echo "benchmark harnesses belong in Foundry, not in the plugin"
+            echo "benchmark harnesses are kept outside the plugin package"
             exit 1
           fi
 

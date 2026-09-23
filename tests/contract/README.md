@@ -55,12 +55,12 @@ threshold produces an empty golden and pins nothing. The thresholds, from
 | --- | --- |
 | Passing shell/Read cap | more than `CAP_PASS` (60) lines after collapse |
 | Failing shell cap | more than `CAP_FAIL` (250) lines — a 120-line failure is not cut |
-| Shell sidecar | between `SIDECAR_MIN_CHARS` (15,000) and `SIDECAR_SHELL_MAX` (28,000) chars |
+| Shell sidecar | at least `SIDECAR_MIN_CHARS` (15,000) chars |
 
-Above `SIDECAR_SHELL_MAX` a *passing* shell output deliberately steps aside —
-the host may already have truncated it — so an oversized fixture measures the
-guard, not the sidecar. Content also has to survive template collapse to reach
-the sidecar at all: same-shape lines collapse first and never park.
+From `SIDECAR_SHELL_MAX` (28,000) chars a shell output is still parked, passing or
+failing, but the host may already have truncated it, so its digest says the copy
+was saved as hush received it rather than in full. The sidecar check runs before
+template collapse, so same-shape lines park like any other content.
 
 ## Porting
 

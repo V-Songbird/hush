@@ -23,14 +23,19 @@ LICENSE                 # MIT
 README.md               # plain-language intro first, technical depth after
 docs/knowledge/         # how it works, settings, benchmark details and the
                         # changelog, dated entries newest first
-skills/                 # if the plugin has skills
-├── skill-name/
-│   ├── SKILL.md        # Claude Code skill definition
-│   └── references/     # Reference files loaded by the skill
+output-styles/
+└── hush.md             # the shipped voice
+skills/
+├── craft-style/
+│   └── SKILL.md        # /hush:craft-style: build a voice on hush's frame
+└── pick-style/
+    └── SKILL.md        # /hush:pick-style: list voices and swap the active one
 hooks/
-└── hooks.json          # Hook event wiring (PreToolUse, PostToolUse, etc.)
-scripts/                # if the plugin has helper CLIs
-tests/                  # required when the plugin has scripted behavior
+├── hooks.json          # Hook event wiring (PreToolUse, PostToolUse, etc.)
+├── *.js                # one script per hook
+└── lib/                # gate, harness, sidecar store and transforms
+scripts/                # activate-style, list-styles, verify-style; git-hooks/
+tests/                  # node:test suite, with contract/ and fixtures/
 ```
 
 The README puts plain-language sections first and technical depth behind links; [`AGENTS.md`](AGENTS.md) holds the rules for results and host labels.

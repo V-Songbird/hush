@@ -1251,8 +1251,9 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   const cleaned = resolveCarriageReturns(stripAnsi(original));
   const linesIn = cleaned.split("\n").length;
   if (decision) decision.linesIn = linesIn;
-  // Classified once, up front: the same answer picks the cap below AND decides
-  // whether the sidecar's shell-window guard steps aside (see maybeSidecar).
+  // Classified once, up front: the same answer picks the cap below. maybeSidecar
+  // parks every oversized output, passing or failing; past SIDECAR_SHELL_MAX a
+  // shell copy is labelled as received rather than in full.
   const failed = looksLikeFailure(cleaned, exitCode);
   if (!enumerate && !noSidecar) {
     const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed);
