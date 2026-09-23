@@ -134,8 +134,8 @@ function shareTemplate(aTokens, bTokens) {
 //   5. In a failing run, a line kept for where it sits next to a failure
 //      (contextIdx: a first frame, a failed check's values and file:line) is
 //      never collapsed, so capLines can keep what the fold would have hidden.
-//      go test lines count at most REPORT_LINES_MAX per failed test, the
-//      bound every other runner's report already has; the rest may fold.
+//      That set holds at most REPORT_LINES_MAX go test lines per failed
+//      test, so the rest of a long test may fold.
 //   6. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
 //      the run is emitted verbatim.
 //
@@ -145,7 +145,7 @@ function collapseTemplates(lines, relevanceTokens, failed) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
   const named = relevanceMatcher(lines, relevanceTokens);
   const goNames = new Set(goFailureIdx(lines, true));
-  const context = new Set(failed ? contextIdx(lines, REPORT_LINES_MAX) : []);
+  const context = new Set(failed ? contextIdx(lines) : []);
   const exempt = (line, i) => isKeepLine(line) || named(line) || goNames.has(i) || context.has(i);
   const out = [];
   let runStart = -1;
@@ -469,6 +469,11 @@ function firstFrameIdx(lines) {
 // gotestsum's summary names each failed test as `=== FAIL: <pkg> <Test>
 // (0.00s)`, with the test's lines under it; the last token before the
 // parenthesis is the test (GOTESTSUM_NAME_RE, same groups).
+// A failing test keeps its first REPORT_LINES_MAX lines, like every other
+// runner's report, so a test that logs hundreds of lines cannot flood a
+// capped view. The first ones, because go prints a test's lines in the
+// order they ran: the earliest failed check is where the test first went
+// wrong, and the checks after it usually fail because of it.
 const GO_TEST_LINE_RE = /^\s+\S+_test\.go:\d+:(?:\s|$)/;
 const GO_TEST_NAME_RE = /^\s*(?:=== (?:RUN|CONT|NAME)|--- (FAIL|PASS|SKIP):)\s+(\S+)/;
 const GOTESTSUM_NAME_RE = /^=== (FAIL): (?:\S+ )?(\S+) \(/;
@@ -652,12 +657,12 @@ function pytestFailureIdx(lines) {
 }
 
 // Lines kept for where they sit next to a failure rather than for their
-// words. capLines and the sidecar digest keep the same set; a failing run's
-// template collapse spares it, with `goMax` go test lines per failed test.
-function contextIdx(lines, goMax) {
+// words. capLines and the sidecar digest keep the same set, and a failing
+// run's template collapse spares it.
+function contextIdx(lines) {
   return [
     ...firstFrameIdx(lines),
-    ...goFailureIdx(lines, false, goMax),
+    ...goFailureIdx(lines, false, REPORT_LINES_MAX),
     ...blockIdx(lines, JEST_BLOCK),
     ...blockIdx(lines, VITEST_MESSAGE_BLOCK),
     ...blockIdx(lines, VITEST_DETAIL_BLOCK),

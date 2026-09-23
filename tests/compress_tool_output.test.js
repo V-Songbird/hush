@@ -1701,6 +1701,20 @@ describe('the keep vocabulary, pinned category by category', () => {
     assert.ok(!out.includes(lines[12]), 'a line past the limit stayed out of the fold');
   });
 
+  // A failing test that prints hundreds of distinct lines keeps only its
+  // first REPORT_LINES_MAX past the cap, so the view stays within CAP_FAIL.
+  test('a failing go test with 300 distinct lines comes back within the fail cap', () => {
+    const own = Array.from({ length: 300 }, (_, k) => `    orders_test.go:${k + 1}: step ${k} ${'ok '.repeat(k % 5)}`.trimEnd());
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i)).concat(
+      '=== RUN   TestTotals', ...own, '--- FAIL: TestTotals (0.00s)', 'FAIL', 'FAIL\texample.com/orders\t0.005s');
+    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false).split(NL);
+    const kept = out.filter((l) => !/^\[hush hook: /.test(l));
+    assert.ok(kept.length <= 250, `${kept.length} lines kept past a cap of 250`);
+    assert.ok(out.includes('--- FAIL: TestTotals (0.00s)'), 'the --- FAIL line was cut');
+    for (const line of own.slice(0, 10)) assert.ok(out.includes(line), `cut: ${line.trim()}`);
+    assert.ok(!out.includes(own[150]), 'a line past the bound, mid-output, survived the cap');
+  });
+
   test('a failing pytest report keeps its same-shape explanation lines past the cap', () => {
     const report = [
       '================================== FAILURES ===================================',
