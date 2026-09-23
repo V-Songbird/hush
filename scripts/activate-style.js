@@ -40,6 +40,11 @@ function withoutOutputStyle(raw, expected) {
   return JSON.stringify(expected, null, 2) + "\n";
 }
 
+// A crafted style lives in .claude/output-styles, where a selection names it by
+// its bare name. Once that style holds the forced slot, the selection is
+// redundant, so it goes. A namespaced value such as "hush:Hush" names a
+// plugin's style, never the crafted copy, and it is the setting that turns on
+// Claude Code's per-turn style reminder, so it always stays.
 function stripOutputStyle(settingsPath, targetName) {
   if (!fs.existsSync(settingsPath)) return false;
   const raw = fs.readFileSync(settingsPath, "utf-8");
@@ -49,7 +54,11 @@ function stripOutputStyle(settingsPath, targetName) {
   } catch {
     return false;
   }
-  if (typeof data.outputStyle !== "string" || data.outputStyle.trim().toLowerCase() !== targetName.trim().toLowerCase()) {
+  if (
+    typeof data.outputStyle !== "string" ||
+    data.outputStyle.includes(":") ||
+    data.outputStyle.trim().toLowerCase() !== targetName.trim().toLowerCase()
+  ) {
     return false;
   }
   delete data.outputStyle;

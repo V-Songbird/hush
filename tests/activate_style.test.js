@@ -432,3 +432,32 @@ test("an outputStyle setting pointing elsewhere is left untouched", () => {
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
   assert.strictEqual(settings.outputStyle, "Some Other Style");
 });
+
+test("a namespaced outputStyle setting survives activating the style it names", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
+  const settingsPath = path.join(projectDir, ".claude", "settings.json");
+  const kept = JSON.stringify({ outputStyle: "hush:Pirate" }, null, 2) + "\n";
+  write(settingsPath, kept);
+
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
+
+  assert.deepStrictEqual(result.settingsUpdated, []);
+  assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
+});
+
+test("hush:Hush survives a variant that answers to it and a restore of stock", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const variantPath = craftedPath(projectDir, "clash.md");
+  write(variantPath, variantText("hush:Hush", "body"));
+  const settingsPath = path.join(homeDir, ".claude", "settings.json");
+  const kept = JSON.stringify({ outputStyle: "hush:Hush" }, null, 2) + "\n";
+  write(settingsPath, kept);
+
+  for (const target of [variantPath, "stock"]) {
+    const result = activate(target, { pluginRoot, projectDir, homeDir });
+    assert.deepStrictEqual(result.settingsUpdated, []);
+    assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
+  }
+});
