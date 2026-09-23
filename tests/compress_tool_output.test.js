@@ -1394,7 +1394,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   const created = [];
   after(() => {
     for (const f of created) fs.rmSync(f, { force: true });
-    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest', 'jestdigest']);
+    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest', 'jestdigest', 'runnerdigest']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
@@ -1622,6 +1622,162 @@ describe('the keep vocabulary, pinned category by category', () => {
     pathFrom(digest);
     for (const k of JEST_KEPT) assert.ok(digest.includes(`L${501 + k}: ${JEST_BLOCK[k]}`), `digest dropped ${JEST_BLOCK[k].trim()}`);
     assert.ok(digest.includes('Signal lines (4 total: 4 failure-evidence lines):'), 'the census drifted');
+  });
+
+  // cargo test, pytest, Vitest and RSpec print a failed check's values and
+  // file:line on lines no keep pattern names. A failing report keeps them past
+  // the cap. Each passing control prints the same shapes outside a failure's
+  // report and keeps none of them.
+  const RUNNER_REPORTS = [
+    ['cargo test', {
+      fail: [
+        'running 3 tests',
+        "thread 'tests::charges_the_stored_card' (52404) panicked at src\\lib.rs:8:36:",
+        'assertion `left == right` failed',
+        '  left: 2500',
+        ' right: 250',
+        'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace',
+        'test tests::charges_the_stored_card ... FAILED',
+        'test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s',
+      ],
+      kept: [1, 3, 4],
+      // A passing #[should_panic] test under --nocapture.
+      pass: [
+        'running 3 tests',
+        "thread 'tests::rejects_zero' (14188) panicked at src\\lib.rs:11:25:",
+        'zero amount',
+        'note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace',
+        'test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s',
+      ],
+      cut: [1, 2],
+    }],
+    ['pytest', {
+      fail: [
+        '================================== FAILURES ===================================',
+        '________________________ test_charges_the_stored_card _________________________',
+        '',
+        '    def test_charges_the_stored_card():',
+        '>       assert total() == 250',
+        'E       assert 2500 == 250',
+        'E        +  where 2500 = total()',
+        '',
+        'test_orders.py:9: AssertionError',
+        '=========================== short test summary info ===========================',
+      ],
+      kept: [5, 6],
+      pass: [
+        '============================== warnings summary ===============================',
+        'E       assert 2500 == 250',
+        '============================== 2 passed in 0.05s ==============================',
+      ],
+      cut: [1],
+    }],
+    ['Vitest', {
+      fail: [
+        ' ❯ src/orders.test.ts (2 tests | 1 failed) 7ms',
+        '   × orders > charges the stored card 5ms',
+        '     → expected 250 to be 2500 // Object.is equality',
+        '',
+        ' FAIL  src/orders.test.ts > orders > charges the stored card',
+        'AssertionError: expected 250 to be 2500 // Object.is equality',
+        '',
+        '- Expected',
+        '+ Received',
+        '',
+        '- 2500',
+        '+ 250',
+        '',
+        ' ❯ src/orders.test.ts:12:17',
+        "     10|   it('charges the stored card', () => {",
+        '⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯',
+      ],
+      kept: [2, 13],
+      pass: [
+        ' ✓ src/orders.test.ts (2 tests) 3ms',
+        '   ✓ orders > charges the stored card 1ms',
+        '     → retried once before it passed',
+        ' ❯ src/orders.test.ts:12:17',
+      ],
+      cut: [2, 3],
+    }],
+    ['RSpec', {
+      fail: [
+        'Failures:',
+        '',
+        '  1) Order charges the stored card',
+        '     Failure/Error: expect(total).to eq(2500)',
+        '',
+        '       expected: 2500',
+        '            got: 250',
+        '',
+        '       (compared using ==)',
+        "     # ./spec/order_spec.rb:42:in 'block (2 levels) in <top (required)>'",
+        "     # ./spec/spec_helper.rb:10:in 'block (2 levels) in <top (required)>'",
+        '',
+        'Finished in 0.01 seconds (files took 0.1 seconds to load)',
+      ],
+      kept: [5, 6, 9],
+      // A pending example fails on purpose and leaves the run green.
+      pass: [
+        "Pending: (Failures listed here are expected and do not affect your suite's status)",
+        '',
+        '  1) Order charges the stored card',
+        '     # not implemented yet',
+        '     Failure/Error: expect(total).to eq(2500)',
+        '',
+        '       expected: 2500',
+        '            got: 250',
+        "     # ./spec/order_spec.rb:42:in 'block (2 levels) in <top (required)>'",
+        '',
+        'Finished in 0.01 seconds (files took 0.1 seconds to load)',
+      ],
+      cut: [6, 7, 8],
+    }],
+  ];
+
+  for (const [runner, r] of RUNNER_REPORTS) {
+    const view = (block) => {
+      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      lines.splice(100, block.length, ...block);
+      return comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    };
+
+    test(`a failing ${runner} report keeps its values and location past the cap`, () => {
+      const out = view(r.fail);
+      for (const k of r.kept) assert.ok(out.includes(r.fail[k]), `cut: ${r.fail[k].trim()}`);
+    });
+
+    test(`the control: a passing ${runner} run keeps none of those shapes`, () => {
+      const out = view(r.pass);
+      assert.match(out, /lines omitted from this view/);
+      for (const k of r.cut) assert.ok(!out.includes(r.pass[k]), `kept: ${r.pass[k].trim()}`);
+    });
+  }
+
+  // Test names repeat across a workspace's test binaries, so a panic belongs
+  // to the run it prints in: a name that failed in one run keeps nothing in
+  // the next.
+  test('a cargo panic is kept only when its test failed in the same run', () => {
+    const { fail, pass } = RUNNER_REPORTS[0][1];
+    const later = pass.map((l) => l.replace('tests::rejects_zero', 'tests::charges_the_stored_card'));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+    lines.splice(200, later.length, ...later);
+    lines.splice(100, fail.length, ...fail);
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(out.includes(fail[1]), 'the failed run lost its panic');
+    assert.ok(!out.includes(later[1]), 'the next run kept a passing test\'s panic');
+  });
+
+  // A kept report line that matches no named category still counts, so the
+  // digest's total and its named counts agree.
+  test('the digest counts a cargo panic and its values as failure evidence', () => {
+    const lines = Array.from({ length: 1000 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    const cargo = RUNNER_REPORTS[0][1].fail;
+    lines.splice(500, cargo.length, ...cargo);
+    const digest = withSidecar(() => comp3(lines.join(NL), 1, false, false, [], 1, 'runnerdigest'));
+    pathFrom(digest);
+    assert.ok(digest.includes(`L502: ${cargo[1]}`), 'the panic line is not in the digest');
+    assert.ok(digest.includes('Signal lines (6 total: 3 failures, 3 failure-evidence lines):'), 'the census drifted');
   });
 
   // The census runs off the keep vocabulary's match set, so this one fixture

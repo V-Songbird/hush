@@ -261,9 +261,10 @@ function omittedMarker(n) {
 // failing summary are all above this line, with stack frames as well:
 // every frame of a Python traceback is a keep line, and for Node, Java and Go
 // the first frame after each keep line joins them (firstFrameIdx), never the
-// rest of the stack. A failing go test's own `_test.go:N:` lines and a Jest
-// failure's detail block join them too (contextIdx). The guarantee is
-// provable, which is why it is stated as one rather than as reassurance.
+// rest of the stack. The values and file:line lines of a failure's own
+// report join them too (contextIdx), for go test, Jest, Vitest, RSpec,
+// cargo test and pytest. The guarantee is provable, which is why it is
+// stated as one rather than as reassurance.
 const FAILURE_RERUN_NOTE =
   "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
   "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
@@ -482,40 +483,150 @@ function goFailureIdx(lines, names) {
   return out;
 }
 
-// Jest prints a failed test's detail under an indented bullet header,
-// `  ● orders › charges the stored card`: the matcher, the Expected and
-// Received values, a code excerpt, then the stack. None of those lines is
-// failure vocabulary, and the bullet is no failure evidence on its own: Jest
-// prints it before a passing run's warnings too. So a header that names no
-// warning or console block, the value lines under it and its first stack
-// frame join the kept set as one block (jestFailureIdx), never through
-// FAILURE_RE. The block ends at the next header or at a file or summary line.
-const JEST_HEADER_RE = /^\s+● (?!Console\s*$)(?!.*Warning)/;
-const JEST_VALUE_RE = /^\s+(?:[-+] )?(?:Expected|Received)\b/;
-const JEST_BLOCK_END_RE = /^\s*(?:PASS|FAIL) |^(?:Test Suites|Tests|Snapshots|Time):/;
+// Test runners print a failed check's values and its file:line on lines no
+// keep pattern names, and each runner prints some of the same shapes on a
+// passing run too. So these lines join the kept set only inside a failure's
+// own report, never through FAILURE_RE, and a report keeps at most
+// REPORT_LINES_MAX value lines, so a long diff cannot flood a capped view.
+const REPORT_LINES_MAX = 10;
 
-// Indices of each Jest failure header, its value lines and its first frame.
-function jestFailureIdx(lines) {
+// A report under its own header: the value lines under the header and its
+// first frame. The block ends at the next header or at a line `end` matches.
+// `offset` maps a slice's indices back to the whole output.
+function blockIdx(lines, { header, value, frame, end }, offset = 0) {
   const out = [];
   for (let i = 0; i < lines.length; i++) {
-    if (!JEST_HEADER_RE.test(lines[i])) continue;
-    out.push(i);
-    let frame = false;
-    for (let j = i + 1; j < lines.length && !JEST_HEADER_RE.test(lines[j]) && !JEST_BLOCK_END_RE.test(lines[j]); j++) {
-      if (JEST_VALUE_RE.test(lines[j])) out.push(j);
-      else if (!frame && isStackFrame(lines[j])) {
-        out.push(j);
-        frame = true;
+    if (!header.test(lines[i])) continue;
+    out.push(offset + i);
+    let values = 0;
+    let framed = !frame;
+    for (let j = i + 1; j < lines.length && !header.test(lines[j]) && !end.test(lines[j]); j++) {
+      if (value && values < REPORT_LINES_MAX && value.test(lines[j])) {
+        out.push(offset + j);
+        values++;
+      } else if (!framed && frame.test(lines[j])) {
+        out.push(offset + j);
+        framed = true;
       }
     }
   }
   return out;
 }
 
+// Jest: a failed test's detail sits under an indented bullet header,
+// `  ● orders › charges the stored card`, with the Expected and Received
+// values and then the stack. Jest prints the bullet before a passing run's
+// warnings and console blocks too, so those headers start no block.
+const JEST_BLOCK = {
+  header: /^\s+● (?!Console\s*$)(?!.*Warning)/,
+  value: /^\s+(?:[-+] )?(?:Expected|Received)\b/,
+  frame: { test: (line) => isStackFrame(line) },
+  end: /^\s*(?:PASS|FAIL) |^(?:Test Suites|Tests|Snapshots|Time):/,
+};
+
+// Vitest: the `→ expected ...` lines right under a failed test's `×`, and
+// the first ` ❯ file:line:col` frame under each ` FAIL  file > test` detail.
+const VITEST_MESSAGE_BLOCK = { header: /^\s+× /, value: /^\s+→ /, end: /^(?!\s+→ )/ };
+const VITEST_DETAIL_BLOCK = {
+  header: /^\s*FAIL\s+\S+ > /,
+  frame: /^\s*❯ (?:\S+ )?\S+:\d+:\d+$/,
+  end: /^\s*⎯/,
+};
+
+// RSpec: `expected:` and `got:` under `Failure/Error:`, and the first
+// `# ./spec/file_spec.rb:N:in` frame. Only inside the Failures section: the
+// Pending section prints the same report for examples that fail on purpose.
+const RSPEC_BLOCK = {
+  header: /^\s+Failure\/Error:/,
+  value: /^\s+(?:expected|got)\b/,
+  frame: /^\s+# \S+:\d+:in /,
+  end: /^\s+\d+\) /,
+};
+
+function rspecFailureIdx(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i] !== "Failures:") continue;
+    let end = i + 1;
+    while (end < lines.length && !/^\S/.test(lines[end])) end++;
+    out.push(...blockIdx(lines.slice(i + 1, end), RSPEC_BLOCK, i + 1));
+    i = end - 1;
+  }
+  return out;
+}
+
+// cargo test: the panic line and the message under it (`left:`, `right:`),
+// for a test the same run lists as FAILED. A passing #[should_panic] test
+// prints its panic too under --nocapture. `test result:` closes a run,
+// because test names repeat across a workspace's test binaries.
+const CARGO_PANIC_RE = /^thread '([^']+)'(?: \(\d+\))? panicked at (?:'.*', )?\S+:\d+:\d+:?$/;
+const CARGO_FAILED_RE = /^(?:test )?(\S+) (?:\.\.\.|---) FAILED$/;
+const CARGO_MESSAGE_END_RE = /^\s*$|^(?:note|stack backtrace):|^(?:thread|test) /;
+
+function cargoFailureIdx(lines) {
+  const out = [];
+  let failed = new Set();
+  let panics = [];
+  const settle = () => {
+    for (const [test, idx] of panics) if (failed.has(test)) out.push(...idx);
+    failed = new Set();
+    panics = [];
+  };
+  lines.forEach((line, i) => {
+    const panic = CARGO_PANIC_RE.exec(line);
+    const fail = CARGO_FAILED_RE.exec(line);
+    if (panic) {
+      const idx = [i];
+      for (let j = i + 1; j < lines.length && idx.length <= REPORT_LINES_MAX && !CARGO_MESSAGE_END_RE.test(lines[j]); j++) idx.push(j);
+      panics.push([panic[1], idx]);
+    } else if (fail) {
+      failed.add(fail[1]);
+    } else if (line.startsWith("test result: ")) {
+      settle();
+    }
+  });
+  settle();
+  return out;
+}
+
+// pytest: the `E   ` explanation lines inside the FAILURES or ERRORS section,
+// at most REPORT_LINES_MAX under each `____ test ____` report header.
+const PYTEST_SECTION_RE = /^={3,} (.+?) ={3,}$/;
+const PYTEST_REPORT_RE = /^_{3,} .+ _{3,}$/;
+const PYTEST_E_RE = /^E {2,}\S/;
+
+function pytestFailureIdx(lines) {
+  const out = [];
+  let inFailures = false;
+  let left = 0;
+  lines.forEach((line, i) => {
+    const section = PYTEST_SECTION_RE.exec(line);
+    if (section) {
+      inFailures = section[1] === "FAILURES" || section[1] === "ERRORS";
+      left = REPORT_LINES_MAX;
+    } else if (PYTEST_REPORT_RE.test(line)) {
+      left = REPORT_LINES_MAX;
+    } else if (inFailures && left > 0 && PYTEST_E_RE.test(line)) {
+      out.push(i);
+      left--;
+    }
+  });
+  return out;
+}
+
 // Lines kept for where they sit next to a failure rather than for their
 // words. capLines and the sidecar digest keep the same set.
 function contextIdx(lines) {
-  return [...firstFrameIdx(lines), ...goFailureIdx(lines), ...jestFailureIdx(lines)];
+  return [
+    ...firstFrameIdx(lines),
+    ...goFailureIdx(lines),
+    ...blockIdx(lines, JEST_BLOCK),
+    ...blockIdx(lines, VITEST_MESSAGE_BLOCK),
+    ...blockIdx(lines, VITEST_DETAIL_BLOCK),
+    ...rspecFailureIdx(lines),
+    ...cargoFailureIdx(lines),
+    ...pytestFailureIdx(lines),
+  ];
 }
 
 // A green summary states its own score — "0 failures", "no errors", node's own
@@ -852,13 +963,13 @@ const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
 const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 
-// Every line that reached signalIdx (the keep vocabulary, isKeepLine) matches
-// at least one of these. The first five are subpatterns of SIGNAL_RE's own
-// alternation, never edited independently. The last takes the failure
-// evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
-// cross marks, plural errors and failures, Python traceback frames, and the
-// lines contextIdx keeps: the first Node, Java or Go frame after a keep line,
-// a failing go test's own lines and a Jest failure's detail block.
+// Every line that reached signalIdx (the keep vocabulary, isKeepLine, and the
+// lines contextIdx keeps) counts under one of these. The first five are
+// subpatterns of SIGNAL_RE's own alternation, never edited independently. The
+// last takes every other signal line, all of it failure evidence SIGNAL_RE
+// does not name: `not ok`, `panic`, `fatal`, `Traceback`, cross marks, plural
+// errors and failures, Python traceback frames, and the frames, values and
+// file:line lines a failure's own report carries.
 // Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
 // error > failure > critical > warning > deprecation > failure evidence — each
 // line counts once, under whichever category wins.
@@ -871,10 +982,7 @@ const CENSUS_CATEGORIES = [
   {
     singular: "failure-evidence line",
     plural: "failure-evidence lines",
-    re: new RegExp(
-      [FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES, GO_TEST_LINE_RE, JEST_HEADER_RE, JEST_VALUE_RE].map((r) => r.source).join("|"),
-      FAILURE_RE.flags
-    ),
+    re: /^/,
   },
 ];
 
