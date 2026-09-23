@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
-// The pre-commit hook every plugin repo installs at
-// scripts/git-hooks/pre-commit. Canonical source:
-// scripts/git-hooks/plugin-pre-commit-template.js in the marketplace repo --
-// anywhere else this file is a copy, and an edit belongs in the template
-// first. See CONTRIBUTING.md "Git hooks" in each plugin repo.
+// The pre-commit hook a plugin installs at scripts/git-hooks/pre-commit.
+// The three plugins keep byte-identical copies of this file, and they change
+// together. Setup and the checks it runs are in the "Git hooks" section of
+// this plugin's CONTRIBUTING.md.
 //
 // Blocks a commit if `node --test tests/*.test.js` fails. No-ops when the
 // plugin has no tests/ directory (skill/prompt-only plugins with no
