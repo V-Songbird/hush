@@ -1394,7 +1394,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   const created = [];
   after(() => {
     for (const f of created) fs.rmSync(f, { force: true });
-    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount']);
+    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
@@ -1514,6 +1514,64 @@ describe('the keep vocabulary, pinned category by category', () => {
       assert.ok(digest.includes(`: ${first}`), `${label} first frame is not in the digest`);
     }
     assert.ok(digest.includes('Signal lines (6 total: 3 errors, 3 failure-evidence lines):'), 'the census drifted');
+  });
+
+  // go test prints a failed check as `<indent><file>_test.go:<N>: <message>`,
+  // and under -v a passing test's t.Log lines in the same shape. Only the
+  // lines of a test with a `--- FAIL:` line survive the cap: -v prints them
+  // after the test's `=== RUN` line, and plain go test after its `--- FAIL:`.
+  const GO_FAIL = '    orders_test.go:42: expected total 250, got 2500';
+  const GO_PASS_LOG = '    orders_test.go:15: case 90: charged 250';
+  /**
+   * go test -v over `count` passing tests that log, with a table test after
+   * the 66th whose subtest h prints GO_FAIL. Subtests b to g print nothing, so
+   * their `=== RUN` lines form a run the template collapse folds.
+   */
+  const goVerbose = (result, count) => {
+    const cases = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const table = [
+      '=== RUN   TestTotal',
+      ...cases.map((c) => `=== RUN   TestTotal/${c}`),
+      GO_FAIL,
+      `--- ${result}: TestTotal (0.00s)`,
+      ...cases.map((c) => `    --- ${c === 'h' ? result : 'PASS'}: TestTotal/${c} (0.00s)`),
+    ];
+    table.splice(2, 0, '    orders_test.go:30: case a: charged 250');
+    const lines = [];
+    for (let i = 0; i < count; i++) {
+      lines.push(`=== RUN   TestCase${i}`, `    orders_test.go:15: case ${i}: charged 250`, `--- PASS: TestCase${i} (0.00s)`);
+      if (i === 65) lines.push(...table);
+    }
+    return lines.concat(result === 'FAIL' ? ['FAIL', 'FAIL\texample.com/orders\t0.005s'] : ['PASS', 'ok  \texample.com/orders\t0.005s']);
+  };
+
+  test('a failing go test keeps its file:line message past the cap, with -v and without', () => {
+    // The next package has a passing test with the failing test's name.
+    const other = ['=== RUN   TestTotal', '    orders_test.go:9: charged in another package', '--- PASS: TestTotal (0.00s)'];
+    for (let i = 0; i < 150; i++) other.push(`=== RUN   TestOther${i}`, `--- PASS: TestOther${i} (0.00s)`);
+    other.push('PASS', 'ok  \texample.com/other\t0.005s');
+    const verbose = comp3(goVerbose('FAIL', 130).concat(other).join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(verbose.includes(GO_FAIL), 'the -v failure message was cut');
+    assert.ok(!verbose.includes(GO_PASS_LOG), 'a passing test kept its t.Log line');
+    assert.ok(!verbose.includes('case a: charged 250'), 'a passing subtest kept its t.Log line');
+    assert.ok(!verbose.includes('charged in another package'), 'a passing test in another package kept its t.Log line');
+    const packages = Array.from({ length: 300 }, (_, i) => `ok  \texample.com/pkg${i}\t0.0${i % 10}s`);
+    packages.splice(150, 0, '--- FAIL: TestTotal (0.00s)', GO_FAIL, 'FAIL', 'FAIL\texample.com/orders\t0.005s');
+    const plain = comp3(packages.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(plain.includes(GO_FAIL), 'the failure message after --- FAIL: was cut');
+  });
+
+  test('the control: a passing go test -v run keeps none of its t.Log lines', () => {
+    const out = comp3(goVerbose('PASS', 130).join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    assert.match(out, /lines omitted from this view/);
+    for (const log of [GO_FAIL, GO_PASS_LOG]) assert.ok(!out.includes(log), `a passing test kept ${log.trim()}`);
+  });
+
+  test('the digest samples and counts a failing go test message', () => {
+    const digest = withSidecar(() => comp3(goVerbose('FAIL', 400).join(NL), 1, false, false, [], 1, 'godigest'));
+    pathFrom(digest);
+    assert.ok(digest.includes(`L209: ${GO_FAIL}`), 'the go failure message is not in the digest');
+    assert.ok(digest.includes('Signal lines (5 total: 4 failures, 1 failure-evidence line):'), 'the census drifted');
   });
 
   // The census runs off the keep vocabulary's match set, so this one fixture

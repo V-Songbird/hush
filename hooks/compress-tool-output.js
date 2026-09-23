@@ -128,15 +128,19 @@ function shareTemplate(aTokens, bTokens) {
 //      the same terms capLines and compressGrep use it: high-precision spans
 //      only, and a span matching more than RELEVANCE_COMMON lines is dropped as
 //      too common to discriminate.
-//   4. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
+//   4. A line that names a failing go test (`=== RUN` and the like, see
+//      goFailureIdx) is never collapsed, so capLines can still tell which
+//      test the lines after it belong to.
+//   5. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
 //      the run is emitted verbatim.
 //
-// Anything outside 2-4 is fair game, and the dropped lines are NOT recoverable
+// Anything outside 2-5 is fair game, and the dropped lines are NOT recoverable
 // from the view — only from the source, which is what the footer names.
 function collapseTemplates(lines, relevanceTokens) {
   if (process.env.HUSH_TEMPLATE === "off") return lines;
   const named = relevanceMatcher(lines, relevanceTokens);
-  const exempt = (line) => isKeepLine(line) || named(line);
+  const goNames = new Set(goFailureIdx(lines, true));
+  const exempt = (line, i) => isKeepLine(line) || named(line) || goNames.has(i);
   const out = [];
   let runStart = -1;
   let anchorTokens = null;
@@ -156,7 +160,7 @@ function collapseTemplates(lines, relevanceTokens) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (exempt(line)) {
+    if (exempt(line, i)) {
       if (runLen > 0) flushRun();
       out.push(line);
       continue;
@@ -257,7 +261,8 @@ function omittedMarker(n) {
 // failing summary are all above this line, with stack frames as well:
 // every frame of a Python traceback is a keep line, and for Node, Java and Go
 // the first frame after each keep line joins them (firstFrameIdx), never the
-// rest of the stack. The guarantee is provable, which is why it is stated as
+// rest of the stack. A failing go test's own `_test.go:N:` lines join them
+// too (goFailureIdx). The guarantee is provable, which is why it is stated as
 // one rather than as reassurance.
 const FAILURE_RERUN_NOTE =
   "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
@@ -331,6 +336,7 @@ function capLines(lines, cap, relevanceTokens) {
   });
   for (const i of relevanceLineIdx(lines, relevanceTokens)) signalIdx.add(i);
   for (const i of firstFrameIdx(lines)) signalIdx.add(i);
+  for (const i of goFailureIdx(lines)) signalIdx.add(i);
   const budget = Math.max(0, cap - signalIdx.size);
   const head = Math.ceil(budget * 0.6);
   const tail = budget - head;
@@ -431,6 +437,49 @@ function firstFrameIdx(lines) {
       if (isKeepLine(lines[j])) break;
     }
   }
+  return out;
+}
+
+// go test prints every t.Error and t.Log line as <indent><file>_test.go:<N>:
+// <message>, so a failed check names its file, line and values there. A
+// passing test prints its t.Log lines in the same shape under -v, so the
+// shape alone is no failure evidence: a line joins the kept set only when
+// the test it belongs to has a `--- FAIL:` line. It belongs to the test named
+// last before it: -v streams a test's lines after its `=== RUN`, `=== CONT`
+// or `=== NAME` line, and without -v they follow its `--- FAIL:` line. Test
+// names repeat across packages, so each package's `ok` or `FAIL` result line
+// closes its tests. collapseTemplates never drops a line that names a failing
+// test, so a capped view still knows whose lines follow a collapsed run.
+const GO_TEST_LINE_RE = /^\s+\S+_test\.go:\d+:(?:\s|$)/;
+const GO_TEST_NAME_RE = /^\s*(?:=== (?:RUN|CONT|NAME)|--- (FAIL|PASS|SKIP):)\s+(\S+)/;
+const GO_PACKAGE_RESULT_RE = /^(?:ok|FAIL)\s+\S/;
+
+// Indices of the go test lines that belong to a failing test or, with
+// `names`, of the lines that name a failing test.
+function goFailureIdx(lines, names) {
+  const out = [];
+  let failed = new Set();
+  let owned = [];
+  let test = null;
+  const settle = () => {
+    for (const [i, t] of owned) if (failed.has(t)) out.push(i);
+    failed = new Set();
+    owned = [];
+    test = null;
+  };
+  lines.forEach((line, i) => {
+    const m = GO_TEST_NAME_RE.exec(line);
+    if (m) {
+      test = m[2];
+      if (m[1] === "FAIL") failed.add(test);
+      if (names) owned.push([i, test]);
+    } else if (!names && test !== null && GO_TEST_LINE_RE.test(line)) {
+      owned.push([i, test]);
+    } else if (GO_PACKAGE_RESULT_RE.test(line)) {
+      settle();
+    }
+  });
+  settle();
   return out;
 }
 
@@ -772,8 +821,9 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 // at least one of these. The first five are subpatterns of SIGNAL_RE's own
 // alternation, never edited independently. The last takes the failure
 // evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
-// cross marks, plural errors and failures, Python traceback frames, and the
-// first Node, Java or Go frame after a keep line.
+// cross marks, plural errors and failures, Python traceback frames, the
+// first Node, Java or Go frame after a keep line, and a failing go test's
+// own lines.
 // Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
 // error > failure > critical > warning > deprecation > failure evidence — each
 // line counts once, under whichever category wins.
@@ -786,7 +836,7 @@ const CENSUS_CATEGORIES = [
   {
     singular: "failure-evidence line",
     plural: "failure-evidence lines",
-    re: new RegExp([FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES].map((r) => r.source).join("|"), FAILURE_RE.flags),
+    re: new RegExp([FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES, GO_TEST_LINE_RE].map((r) => r.source).join("|"), FAILURE_RE.flags),
   },
 ];
 
@@ -824,14 +874,16 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   // separator is not output, and a raw element count reads as one-more-than-
   // the-records to anyone doing arithmetic on it.
   const nonBlank = lines.filter((l) => l.trim() !== "").length;
-  // The keep vocabulary plus the first frame after each keep line, the same
-  // set every capped view keeps: a traceback's header and frames carry the
-  // causal file and line, and SIGNAL_RE names neither.
+  // The keep vocabulary plus the first frame after each keep line and a
+  // failing go test's own lines, the same set every capped view keeps: a
+  // traceback's header and frames carry the causal file and line, and
+  // SIGNAL_RE names neither.
   const signalIdx = [];
   lines.forEach((l, i) => {
     if (isKeepLine(l)) signalIdx.push(i);
   });
   for (const i of firstFrameIdx(lines)) if (!isKeepLine(lines[i])) signalIdx.push(i);
+  for (const i of goFailureIdx(lines)) if (!isKeepLine(lines[i])) signalIdx.push(i);
   signalIdx.sort((a, b) => a - b);
 
   // Signal (and prompt-named) lines lead the digest, ahead of the structural
