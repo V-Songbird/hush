@@ -261,9 +261,9 @@ function omittedMarker(n) {
 // failing summary are all above this line, with stack frames as well:
 // every frame of a Python traceback is a keep line, and for Node, Java and Go
 // the first frame after each keep line joins them (firstFrameIdx), never the
-// rest of the stack. A failing go test's own `_test.go:N:` lines join them
-// too (goFailureIdx). The guarantee is provable, which is why it is stated as
-// one rather than as reassurance.
+// rest of the stack. A failing go test's own `_test.go:N:` lines and a Jest
+// failure's detail block join them too (contextIdx). The guarantee is
+// provable, which is why it is stated as one rather than as reassurance.
 const FAILURE_RERUN_NOTE =
   "[hush hook: this run failed and the view above is capped — every warning/error/failure line " +
   "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
@@ -335,8 +335,7 @@ function capLines(lines, cap, relevanceTokens) {
     if (isKeepLine(line)) signalIdx.add(i);
   });
   for (const i of relevanceLineIdx(lines, relevanceTokens)) signalIdx.add(i);
-  for (const i of firstFrameIdx(lines)) signalIdx.add(i);
-  for (const i of goFailureIdx(lines)) signalIdx.add(i);
+  for (const i of contextIdx(lines)) signalIdx.add(i);
   const budget = Math.max(0, cap - signalIdx.size);
   const head = Math.ceil(budget * 0.6);
   const tail = budget - head;
@@ -481,6 +480,42 @@ function goFailureIdx(lines, names) {
   });
   settle();
   return out;
+}
+
+// Jest prints a failed test's detail under an indented bullet header,
+// `  ● orders › charges the stored card`: the matcher, the Expected and
+// Received values, a code excerpt, then the stack. None of those lines is
+// failure vocabulary, and the bullet is no failure evidence on its own: Jest
+// prints it before a passing run's warnings too. So a header that names no
+// warning or console block, the value lines under it and its first stack
+// frame join the kept set as one block (jestFailureIdx), never through
+// FAILURE_RE. The block ends at the next header or at a file or summary line.
+const JEST_HEADER_RE = /^\s+● (?!Console\s*$)(?!.*Warning)/;
+const JEST_VALUE_RE = /^\s+(?:[-+] )?(?:Expected|Received)\b/;
+const JEST_BLOCK_END_RE = /^\s*(?:PASS|FAIL) |^(?:Test Suites|Tests|Snapshots|Time):/;
+
+// Indices of each Jest failure header, its value lines and its first frame.
+function jestFailureIdx(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!JEST_HEADER_RE.test(lines[i])) continue;
+    out.push(i);
+    let frame = false;
+    for (let j = i + 1; j < lines.length && !JEST_HEADER_RE.test(lines[j]) && !JEST_BLOCK_END_RE.test(lines[j]); j++) {
+      if (JEST_VALUE_RE.test(lines[j])) out.push(j);
+      else if (!frame && isStackFrame(lines[j])) {
+        out.push(j);
+        frame = true;
+      }
+    }
+  }
+  return out;
+}
+
+// Lines kept for where they sit next to a failure rather than for their
+// words. capLines and the sidecar digest keep the same set.
+function contextIdx(lines) {
+  return [...firstFrameIdx(lines), ...goFailureIdx(lines), ...jestFailureIdx(lines)];
 }
 
 // A green summary states its own score — "0 failures", "no errors", node's own
@@ -821,9 +856,9 @@ const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 // at least one of these. The first five are subpatterns of SIGNAL_RE's own
 // alternation, never edited independently. The last takes the failure
 // evidence SIGNAL_RE does not name: `not ok`, `panic`, `fatal`, `Traceback`,
-// cross marks, plural errors and failures, Python traceback frames, the
-// first Node, Java or Go frame after a keep line, and a failing go test's
-// own lines.
+// cross marks, plural errors and failures, Python traceback frames, and the
+// lines contextIdx keeps: the first Node, Java or Go frame after a keep line,
+// a failing go test's own lines and a Jest failure's detail block.
 // Priority order when a line matches several (e.g. "ERROR ... ReferenceError"):
 // error > failure > critical > warning > deprecation > failure evidence — each
 // line counts once, under whichever category wins.
@@ -836,7 +871,10 @@ const CENSUS_CATEGORIES = [
   {
     singular: "failure-evidence line",
     plural: "failure-evidence lines",
-    re: new RegExp([FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES, GO_TEST_LINE_RE].map((r) => r.source).join("|"), FAILURE_RE.flags),
+    re: new RegExp(
+      [FAILURE_RE, TRACEBACK_FRAME_RE, ...STACK_FRAME_RES, GO_TEST_LINE_RE, JEST_HEADER_RE, JEST_VALUE_RE].map((r) => r.source).join("|"),
+      FAILURE_RE.flags
+    ),
   },
 ];
 
@@ -874,17 +912,15 @@ function buildSidecarDigest(cleaned, relevanceTokens) {
   // separator is not output, and a raw element count reads as one-more-than-
   // the-records to anyone doing arithmetic on it.
   const nonBlank = lines.filter((l) => l.trim() !== "").length;
-  // The keep vocabulary plus the first frame after each keep line and a
-  // failing go test's own lines, the same set every capped view keeps: a
+  // The keep vocabulary plus the lines kept for their place next to a
+  // failure (contextIdx), the same set every capped view keeps: a
   // traceback's header and frames carry the causal file and line, and
   // SIGNAL_RE names neither.
-  const signalIdx = [];
+  const signal = new Set(contextIdx(lines));
   lines.forEach((l, i) => {
-    if (isKeepLine(l)) signalIdx.push(i);
+    if (isKeepLine(l)) signal.add(i);
   });
-  for (const i of firstFrameIdx(lines)) if (!isKeepLine(lines[i])) signalIdx.push(i);
-  for (const i of goFailureIdx(lines)) if (!isKeepLine(lines[i])) signalIdx.push(i);
-  signalIdx.sort((a, b) => a - b);
+  const signalIdx = [...signal].sort((a, b) => a - b);
 
   // Signal (and prompt-named) lines lead the digest, ahead of the structural
   // head/tail. When a raw output is large enough to trip Claude Code's own

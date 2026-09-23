@@ -1394,7 +1394,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   const created = [];
   after(() => {
     for (const f of created) fs.rmSync(f, { force: true });
-    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest']);
+    removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest', 'jestdigest']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
   function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
@@ -1572,6 +1572,56 @@ describe('the keep vocabulary, pinned category by category', () => {
     pathFrom(digest);
     assert.ok(digest.includes(`L209: ${GO_FAIL}`), 'the go failure message is not in the digest');
     assert.ok(digest.includes('Signal lines (5 total: 4 failures, 1 failure-evidence line):'), 'the census drifted');
+  });
+
+  // Jest prints a failed test's detail under an indented `●` header. The
+  // header, the Expected and Received lines and the first `at` frame survive
+  // the cap as one block; the code excerpt and the later frames do not.
+  const JEST_BLOCK = [
+    '  ● orders › charges the stored card',
+    '',
+    '    expect(received).toBe(expected) // Object.is equality',
+    '',
+    '    Expected: 2500',
+    '    Received: 250',
+    '',
+    "      10 |   it('charges the stored card', () => {",
+    '      11 |     const total = charge(card);',
+    '    > 12 |     expect(total).toBe(2500);',
+    '         |                   ^',
+    '      13 |   });',
+    '      14 | });',
+    '',
+    '      at Object.toBe (src/orders.test.js:12:19)',
+    '      at Promise.then.completed (node_modules/jest-circus/build/utils.js:298:28)',
+  ];
+  const JEST_KEPT = [0, 4, 5, 14];
+
+  test('a Jest failure keeps its header, its values and its first frame past the cap', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    lines.splice(100, JEST_BLOCK.length, ...JEST_BLOCK);
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    for (const k of JEST_KEPT) assert.ok(out.includes(JEST_BLOCK[k]), `cut: ${JEST_BLOCK[k].trim()}`);
+    for (const k of [9, 15]) assert.ok(!out.includes(JEST_BLOCK[k]), `kept: ${JEST_BLOCK[k].trim()}`);
+  });
+
+  test('the control: a passing Jest run keeps none of its console frames', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => `    ✓ ${filler(i)} (${i % 9} ms)`);
+    lines.splice(100, 0, '  ● Console', '', '    console.log', '      charged 250', '', '      at Object.log (src/orders.test.js:8:13)');
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    assert.match(out, /lines omitted from this view/);
+    for (const line of ['  ● Console', '      at Object.log (src/orders.test.js:8:13)']) {
+      assert.ok(!out.includes(line), `a passing run kept ${line.trim()}`);
+    }
+  });
+
+  test('the digest samples and counts a Jest failure block', () => {
+    const lines = Array.from({ length: 1000 }, (_, i) => 'info line ' + i + ' padded a bit for width');
+    lines.splice(500, JEST_BLOCK.length, ...JEST_BLOCK);
+    const digest = withSidecar(() => comp3(lines.join(NL), 1, false, false, [], 1, 'jestdigest'));
+    pathFrom(digest);
+    for (const k of JEST_KEPT) assert.ok(digest.includes(`L${501 + k}: ${JEST_BLOCK[k]}`), `digest dropped ${JEST_BLOCK[k].trim()}`);
+    assert.ok(digest.includes('Signal lines (4 total: 4 failure-evidence lines):'), 'the census drifted');
   });
 
   // The census runs off the keep vocabulary's match set, so this one fixture
