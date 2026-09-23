@@ -545,16 +545,25 @@ const VITEST_DETAIL_BLOCK = {
 // RSpec: `expected:` and `got:` under `Failure/Error:`, and the first
 // `# ./spec/file_spec.rb:N:in` frame. Only inside the Failures section: the
 // Pending section prints the same report for examples that fail on purpose.
+// The Failed examples section then lists one rerun line per failure,
+// `rspec ./spec/file_spec.rb:42 # description`, and every one of them is kept.
 const RSPEC_BLOCK = {
   header: /^\s+Failure\/Error:/,
   value: /^\s+(?:expected|got)\b/,
   frame: /^\s+# \S+:\d+:in /,
   end: /^\s+\d+\) /,
 };
+const RSPEC_RERUN_RE = /^rspec \S+ # /;
 
 function rspecFailureIdx(lines) {
   const out = [];
   for (let i = 0; i < lines.length; i++) {
+    if (lines[i] === "Failed examples:") {
+      for (let j = i + 1; j < lines.length && (lines[j].trim() === "" || RSPEC_RERUN_RE.test(lines[j])); j++) {
+        if (lines[j].trim() !== "") out.push(j);
+      }
+      continue;
+    }
     if (lines[i] !== "Failures:") continue;
     let end = i + 1;
     while (end < lines.length && !/^\S/.test(lines[end])) end++;

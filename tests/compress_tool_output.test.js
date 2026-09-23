@@ -1842,6 +1842,29 @@ describe('the keep vocabulary, pinned category by category', () => {
     });
   }
 
+  // RSpec closes a failing run with one rerun line per failed example. Each
+  // one names its file:line, so every line of that section survives the cap.
+  // The same shape outside the section is cut.
+  const RSPEC_RERUNS = [
+    'rspec ./spec/order_spec.rb:42 # Order charges the stored card',
+    'rspec ./spec/order_spec.rb[1:2:1] # Order totals the cart',
+  ];
+
+  test('a failing RSpec run keeps every rerun line of its Failed examples', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    lines.splice(100, 0, '2 examples, 2 failures', '', 'Failed examples:', '', ...RSPEC_RERUNS, '');
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    for (const rerun of RSPEC_RERUNS) assert.ok(out.includes(rerun), `cut: ${rerun}`);
+  });
+
+  test('the control: a rerun-shaped line outside Failed examples is cut', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    lines.splice(100, 0, 'Finished in 0.01 seconds (files took 0.1 seconds to load)', '2 examples, 0 failures', '', RSPEC_RERUNS[0]);
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    assert.match(out, /lines omitted from this view/);
+    assert.ok(!out.includes(RSPEC_RERUNS[0]), 'a passing run kept a rerun-shaped line');
+  });
+
   // Test names repeat across a workspace's test binaries, so a panic belongs
   // to the run it prints in: a name that failed in one run keeps nothing in
   // the next.
