@@ -368,8 +368,12 @@ function capLines(lines, cap, relevanceTokens) {
 // the 60-line pass cap while SIGNAL_RE simultaneously read them as signal.
 // Beyond those, false positives only make the cap more generous — safe
 // direction.
+// The cross marks are the marks test runners print beside a failed test: ✕
+// is Jest's, and × is Vitest's and Jest's on Windows. A mark that passing
+// output also prints stays out: ESLint opens its summary with ✖ even when
+// the run found only warnings and exited 0.
 const FAILURE_RE =
-  /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|err!|not ok|traceback|exception|panic|fatal|✗|✘)([^0-9a-zA-Z]|$)/im;
+  /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|err!|not ok|traceback|exception|panic|fatal|✗|✘|✕|×)([^0-9a-zA-Z]|$)/im;
 
 // A Python traceback's causal location lives in its frame lines, and those
 // match neither vocabulary — only the `Traceback` header and the trailing

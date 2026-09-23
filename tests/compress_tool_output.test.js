@@ -1426,6 +1426,8 @@ describe('the keep vocabulary, pinned category by category', () => {
     ['compound *Exception', 'Caused by: java.lang.IllegalStateException: boom'],
     ['qualified *Exception', 'java.lang.NullPointerException'],
     ['traceback frame', '  File "app/handler.py", line 42'],
+    ['Jest cross mark', '    ✕ charges the stored card (12 ms)'],
+    ['Vitest cross mark, also Jest on Windows', '   × orders > charges the stored card 5ms'],
   ];
 
   for (const [label, sample] of KEEP_SAMPLES) {
@@ -1439,6 +1441,12 @@ describe('the keep vocabulary, pinned category by category', () => {
     const out = cappedView(plain);
     assert.ok(!out.includes(plain), 'nothing was cut, so the samples above prove nothing');
     assert.match(out, /lines omitted from this view/);
+  });
+
+  test('a passing test mark in the same position is cut', () => {
+    for (const pass of ['    ✓ charges the stored card (12 ms)', '    √ charges the stored card (12 ms)']) {
+      assert.ok(!cappedView(pass).includes(pass), `a pass mark survived the cap: ${pass}`);
+    }
   });
 
   // A passing summary states a score, not a failure: its zero counts are
@@ -1531,13 +1539,15 @@ describe('the keep vocabulary, pinned category by category', () => {
       'DEPRECATED formatAmount takes one argument now',
       'not ok 7 - parses the receipt',
       'fatal: bad object HEAD',
+      '    ✕ charges the stored card (12 ms)',
+      '   × orders > charges the stored card 5ms',
     ];
-    samples.forEach((s, i) => { lines[100 + i * 80] = s; });
+    samples.forEach((s, i) => { lines[100 + i * 75] = s; });
     const digest = withSidecar(() => comp3(lines.join(NL), 0, true, false, [], 1, 'censusvocab'));
     pathFrom(digest);
-    const census = '5 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation, 2 failure-evidence lines';
+    const census = '5 errors, 3 failures, 1 critical, 5 warnings, 1 deprecation, 4 failure-evidence lines';
     assert.ok(digest.includes(`(${census})`), `header census drifted: ${digest.slice(0, 400)}`);
-    assert.ok(digest.includes(`Signal lines (17 total: ${census}):`), 'the digest census drifted');
+    assert.ok(digest.includes(`Signal lines (19 total: ${census}):`), 'the digest census drifted');
     for (const s of samples) assert.ok(digest.includes(s), `digest dropped the ${s.split(' ')[0]} sample`);
   });
 
