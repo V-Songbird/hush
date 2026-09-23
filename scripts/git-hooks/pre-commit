@@ -35,10 +35,9 @@ function testGlob(root) {
 //   there. If a plugin's own tests shell out to `git` against a temp
 //   fixture (a `cwd` override), these inherited vars win over `cwd` for
 //   repo discovery -- so "isolated" git commands in the test suite land in
-//   THIS repo's real .git instead of the fixture, corrupting it. Confirmed
-//   empirically 2026-07-07: a test helper that ran `git init` in a tmpdir,
-//   with `cwd` pointed at that tmpdir, still wrote its config into the real
-//   repo's gitdir when this hook ran through an actual `git commit`.
+//   THIS repo's real .git instead of the fixture, corrupting it: a test
+//   helper that runs `git init` with `cwd` set to a tmpdir writes its
+//   config into this repo's gitdir when the hook runs under `git commit`.
 function cleanEnv() {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
