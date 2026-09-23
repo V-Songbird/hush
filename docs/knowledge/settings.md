@@ -10,8 +10,10 @@ related_files:
 
 # Settings
 
-Most people never touch any of this. hush trims one way, always — there are no levels and no
-profiles to pick between.
+Most people never touch any of this. hush trims one way, always: the first and last stretch of a
+long output plus every warning, error and failure line, and a digest with the full copy on disk for
+a very large one. There are no levels and no profiles to pick between. The caps tighten on their own
+as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-commands-output).
 
 ← [Back to the README](../../README.md)
 

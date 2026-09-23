@@ -32,18 +32,33 @@ the plugin.
 
 ## What happens to a command's output
 
-Every time Claude runs something, hush looks at what came back and decides between three doors.
+Every time Claude runs something, hush looks at what came back and decides between four doors.
 
 | What came back | What hush does |
 | --- | --- |
-| Something short | Nothing. It goes through untouched. |
-| A long clean run | Keeps a tail of it. The last stretch is almost always the part that matters. |
-| A long failing run | Keeps up to 250 lines, and pulls every error and warning line through no matter where they sat. After a Node, Java or Go error it also keeps the first stack frame, the line that names a file and line number. A Python traceback keeps all its frames. |
-| Something very large — a full log, a lockfile | Writes the whole thing to a file on your machine, then hands Claude a short summary that names that file. |
+| Something short | Lets it through. Only exact repeats, and runs of five or more same-shape lines, fold into one line and a count. |
+| A long clean run | Keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat. |
+| A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: the first stack frame after a Node, Java or Go error, every frame of a Python traceback, and the values and file:line lines a test runner prints for a failed check — go test, Jest, Vitest, pytest, cargo test and RSpec. |
+| Something very large — 15,000 characters or more | Writes the whole thing to a file on your machine, then hands Claude a digest that names that file: the first 20 and last 15 lines, the first and last 10 warning, error and failure lines with their line numbers, and a count of each kind. The file holds every line. |
 
 That last one is the important one. Without it, a 300 KB log is not read once. It sits in the
 conversation and gets re-sent on every turn after it. Parking it means Claude can still go and read
-it, but only if it decides it needs to.
+it, but only if it decides it needs to. A shell result of 28,000 characters or more may already have
+been cut short by Claude Code, so hush saves it as it received it and says so.
+
+Two other tools get the same treatment:
+
+- **Read.** A log file, or a file nobody writes by hand — a lockfile, a minified bundle, anything
+  under `node_modules` or `dist` — is trimmed like a failing run. Any other file, and any read with
+  an offset or a limit, comes back untouched.
+- **Grep.** A match list of 4,000 characters or more keeps the first 3 matches in each file and
+  every match that reads like a warning or an error. It counts the rest per file and saves the full
+  list to a file.
+
+The caps tighten as a session grows. Past 400 KB of conversation every cap is three quarters of its
+size, and past 1 MB it is half, never below 30 lines for a clean run or 125 for a failing one. When
+you ask for every item — "list every warning" — the cap rises to 2,000 lines, and nothing is folded
+by shape or parked in a file.
 
 ## Where the parked output goes
 
@@ -63,8 +78,9 @@ When hush shortens something it leaves a short note in square brackets, like
 `[hush hook: 12 lines omitted from this view, none with warnings/errors/failures]`. That note is
 hush talking, not the command. It always says what was dropped and how to get it back.
 
-Omission is deterministic. A line is cut only when it matches no warning, error or failure pattern.
-The file on disk and the command's real output are never changed.
+Omission is deterministic. In a trimmed view, a line is cut only when it matches no warning, error
+or failure pattern. A digest shows a sample of those lines instead, and names the file that holds
+all of them. The file on disk and the command's real output are never changed.
 
 ## A command that fails is a special case
 
@@ -97,6 +113,7 @@ Updating the plugin puts the shipped voice back. Pick again after an update.
 
 ## What hush never does
 
-It never edits your files. It never sends anything off your machine. It never removes a warning, an
-error or a failure line from what Claude reads. And it never claims it can regenerate output that
+It never edits your files. It never sends anything off your machine. It never cuts a warning, an
+error or a failure line from a trimmed view, and when a digest samples them, the file it names holds
+every one. And it never claims it can regenerate output that
 was lost — if the parked file is gone, it tells you to run the command again.
