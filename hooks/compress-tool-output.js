@@ -29,8 +29,8 @@ const CAP_FAIL = intEnv("HUSH_CAP_FAIL", 250);
 const CAP_ENUMERATE = 2000;
 // Grep content-mode results below this size pass whole; above it, each
 // matched file keeps its first few match lines and the rest collapse to a
-// per-file count (compressGrep). Corpus-measured: the mass is in the >=4KB
-// tail, and per-file counts keep the file map intact.
+// per-file count (compressGrep). A small result costs little to send whole,
+// and per-file counts keep the file map intact.
 const GREP_MIN_CHARS = 4000;
 const GREP_KEEP_PER_FILE = 3;
 
@@ -960,8 +960,8 @@ function isGeneratedPath(filePath) {
 // for how full the context already is. Deep in a long session every kept line
 // is re-sent more times and pushes auto-compaction (an expensive full-context
 // summarization, plus permanent detail loss) closer — so caps tighten as the
-// session grows. Inert below 400KB (every benchmark session and most short
-// real ones), floors keep failing output useful, and the enumeration
+// session grows. Inert below 400KB (most short sessions never reach it),
+// floors keep failing output useful, and the enumeration
 // carve-out is never scaled: its whole point is a completeness promise.
 const PRESSURE_MID_BYTES = 400 * 1024;
 const PRESSURE_HIGH_BYTES = 1024 * 1024;
@@ -992,14 +992,12 @@ const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
 // large-output persistence, keeping the full text in a native file it points
 // at. So a shell output arriving at ~28KB+ was likely already truncated: its
 // tail — where a build's error or a run's final result usually lives — may be
-// gone before this hook sees it, and sidecaring it both (a) writes a "saved in
-// full" file that is actually the truncated portion, and (b) adds a second
-// "full output elsewhere" pointer competing with Claude Code's own, which just
-// sends the model reading the native raw file. Above this bound, shell outputs
-// fall through to the normal inline cap (no sidecar, no extra pointer) so hush
-// tracks baseline instead of doing worse. Read results are exempt: Read returns
-// the file's full content to the hook (its own limits are far larger), so a big
-// lockfile/log Read is complete and the sidecar is genuinely full and helpful.
+// gone before this hook sees it. At or above this bound maybeSidecar still
+// writes the output and hands back the digest, but the header says the file
+// holds the output "as hush received it" instead of "in full", so it never
+// claims to hold lines the host already cut. Read results are exempt: Read
+// returns the file's full content to the hook (its own limits are far
+// larger), so a big lockfile/log Read is complete and its sidecar is full.
 const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 28000);
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
