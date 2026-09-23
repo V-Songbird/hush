@@ -249,6 +249,22 @@ test("a variant answering to stock's own name is refused", () => {
   assert.strictEqual(slot(pluginRoot), before);
 });
 
+test("a variant whose name contains a colon is refused, and nothing changes", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const variantPath = craftedPath(projectDir, "clash.md");
+  write(variantPath, variantText("hush:Hush", "body"));
+  const settingsPath = path.join(homeDir, ".claude", "settings.json");
+  const kept = JSON.stringify({ outputStyle: "hush:Hush" }, null, 2) + "\n";
+  write(settingsPath, kept);
+  const before = slot(pluginRoot);
+
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /contains a colon/);
+  assert.strictEqual(slot(pluginRoot), before);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.stock")), false);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.active.json")), false);
+  assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
+});
+
 // Windows resolves either casing to the same file, so the same variant
 // addressed in a different case still reaches the slot.
 test("a variant addressed in another case still activates", { skip: process.platform !== "win32" }, () => {
@@ -447,10 +463,16 @@ test("a namespaced outputStyle setting survives activating the style it names", 
   assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
 });
 
-test("hush:Hush survives a variant that answers to it and a restore of stock", () => {
+// A crafted name cannot hold a colon, so only a stock that answers to the
+// namespaced name reaches the strip with a matching value.
+test("hush:Hush survives a variant swap and a restore of a stock that answers to it", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
-  const variantPath = craftedPath(projectDir, "clash.md");
-  write(variantPath, variantText("hush:Hush", "body"));
+  write(
+    path.join(pluginRoot, "output-styles", "hush.md"),
+    "---\nname: hush:Hush\ndescription: Silent-by-default communication\nforce-for-plugin: true\n---\nbody\n"
+  );
+  const variantPath = craftedPath(projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "body"));
   const settingsPath = path.join(homeDir, ".claude", "settings.json");
   const kept = JSON.stringify({ outputStyle: "hush:Hush" }, null, 2) + "\n";
   write(settingsPath, kept);

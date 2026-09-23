@@ -73,6 +73,10 @@ function stripOutputStyle(settingsPath, targetName) {
 function validateVariant(target, text, canonicalText) {
   const fm = parseFrontmatter(splitFrontmatter(normalize(text)).frontmatter);
   const name = (fm.name || "").trim().toLowerCase();
+  // Claude Code names a plugin's style plugin:name, so a colon in the name
+  // would show an id where a name belongs, on the shelf and in the record.
+  if (name.includes(":"))
+    throw new Error(`"${fm.name}" contains a colon, which Claude Code uses for plugin style ids such as hush:Hush — rename this variant without one before activating it`);
   // Stock's name is taken: a variant wearing it makes the record and the slot
   // agree even after an update wrote over the takeover.
   const stockName = parseFrontmatter(splitFrontmatter(normalize(canonicalText)).frontmatter).name;
