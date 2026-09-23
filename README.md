@@ -9,8 +9,8 @@
 
 <p align="center"><strong>Available on</strong></p>
 <p align="center">
-  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="#install"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
-  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#install">Claude</a>
+  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="#claude-code"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#claude-code">Claude</a>
 </p>
 <p align="center"><small>Codex is not currently installable.</small></p>
 
@@ -49,6 +49,8 @@ Use `/hush:pick-style` to choose a voice and `/hush:craft-style` to describe a n
 ## Install
 
 Hush runs in Claude Code. It is not available for Codex.
+
+### Claude Code
 
 Inside Claude Code:
 
