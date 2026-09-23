@@ -37,6 +37,17 @@ to approve each step, or when this variable is set.
 Leave it unset and failing output arrives in full. That is the safe default. Set it and a failing
 build gets the same treatment as a passing one, keeping every error and warning line.
 
+`HUSH_WRAP=1` works by wrapping each Bash and PowerShell command so its exit code survives. Set it
+only when your permission rules let a wrapped command through:
+
+- **Safe:** `bypassPermissions` mode, or blanket grants with no command pattern — plain `Bash` or
+  `PowerShell` in your allow rules. Those match the wrapped command as a whole.
+- **Not safe:** scoped allow rules such as `Bash(node*)` or `PowerShell(node*)`. Claude Code checks
+  the wrapped command statement by statement, and the wrapper's extra statements match no rule, so
+  every wrapped command is denied.
+
+In `bypassPermissions` mode hush wraps even without `HUSH_WRAP`, since nothing is checked there.
+
 Every published number was measured with `HUSH_WRAP=1`.
 
 ## The output style setting

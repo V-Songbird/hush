@@ -91,6 +91,10 @@ each step, or when you set `HUSH_WRAP=1`.
 If you never set that, failing output comes through in full. That is the safe default, and it is
 why the benchmark numbers were measured with `HUSH_WRAP=1`.
 
+`HUSH_WRAP=1` is safe only in `bypassPermissions` mode or with blanket `Bash` and `PowerShell`
+grants. Under scoped allow rules such as `Bash(node*)`, Claude Code denies every wrapped command.
+[Settings](settings.md#why-hush_wrap-exists) has the details.
+
 ## The reminder
 
 A writing rule read once at the start of a session fades as the session gets long. So hush repeats
