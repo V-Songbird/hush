@@ -84,14 +84,14 @@ Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. 
 
 Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
 
-<p align="center"><img src="assets/hero.svg" alt="Hush original product visualization" width="700"></p>
+<p align="center"><img src="assets/hero.svg" alt="One spike per recorded session for words of play-by-play before the answer: 36 sessions without hush reach 134 words, and the same 36 with hush speak at most once, never past 7 words." width="700"></p>
 
-Original Claude Code benchmark visualization. These measurements describe the recorded Claude sessions, not Codex performance.
+Batch rivalA-762f888b: nine fixture jobs, four runs each, in Claude Code with Opus 5 at medium effort, September 1, 2026. These measurements describe the recorded Claude sessions, not Codex performance.
 
 <details>
-<summary>Watch the recorded Claude Code demo</summary>
+<summary>Watch the recorded Claude Code demo: one real session each on Claude Opus 5, replayed on the recorded clock, published September 4, 2026</summary>
 
-<p align="center"><img src="assets/demo.svg" alt="Recorded Claude Code demonstration of Hush" width="700"></p>
+<p align="center"><img src="assets/demo.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 4 progress notes and a 254-word write-up; with hush it stays quiet, then sends one 42-word answer. Both leave the suite green." width="700"></p>
 
 </details>
 
