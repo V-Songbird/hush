@@ -11,6 +11,11 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+hush's reminder when you send a prompt now has 10 seconds to start instead
+of 5, so a slow start on Windows no longer cancels it.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a
