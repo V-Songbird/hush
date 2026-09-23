@@ -13,9 +13,17 @@
 // anchors the rules are made of — the numbers, the inline code, the bolded
 // caps, the count of listed exceptions, the shape-table rows — not byte for
 // byte. A style that keeps these sections in stock's plain English teaches the
-// reply plain English, whatever the Register section asks for, so the prose
-// around the anchors has to stay the author's to rewrite.
-const GUARDED_SECTIONS = ["Quiet while you work", "The note at the end", "Shape", "What stays whole"];
+// reply plain English, whatever `How you sound` asks for, so the prose around
+// the anchors has to stay the author's to rewrite.
+const GUARDED_SECTIONS = [
+  "Quiet while you work",
+  "The message at the end",
+  "Plain words, exact names",
+  "Things they can click",
+  "Structure that carries weight",
+  "How you sound",
+  "What stays whole",
+];
 
 // A rewrite may tighten prose. Losing a third of a section is losing a rule.
 const WORD_FLOOR = 0.6;

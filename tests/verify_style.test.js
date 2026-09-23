@@ -53,32 +53,28 @@ test("removing the base-prompt override paragraph fails Quiet while you work", (
   assert.ok(result.problems.some((p) => p.includes('"Quiet while you work"')));
 });
 
-test("dropping the word cap from the rules is flagged", () => {
-  const body = canonicalBody
-    .replace("8 lines, tops. 90 words, tops.", "8 lines, tops.")
-    .replace("Over 90 words? Cut a fact. Never squeeze one.", "Never squeeze one.");
+test("dropping the sentence cap from the rules is flagged", () => {
+  const body = canonicalBody.replace("12 words per sentence, tops. ", "");
   const result = verify(canonical, variant(body));
-  assert.ok(result.problems.some((p) => p.includes("numbers anchor dropped: 90")));
+  assert.ok(result.problems.some((p) => p.includes("numbers anchor dropped: 12")));
 });
 
-// The line cap and the sentence cap share the number 8. Anchors count
+// Two rules in the message section share the number 2. Anchors count
 // occurrences, so losing one of the two cannot hide behind the survivor.
-test("dropping only the sentence cap is flagged", () => {
-  const body = canonicalBody.replace(
-    "One fact per sentence. 8 words per sentence, tops.",
-    "One fact per sentence, kept short."
-  );
+test("dropping one of two rules that share a number is flagged", () => {
+  const body = canonicalBody.replace("gets blocks 1, 2 and 4.", "gets blocks 1 and 4.");
   const result = verify(canonical, variant(body));
   assert.ok(
-    result.problems.some((p) => p.includes("numbers anchor dropped: 8")),
+    result.problems.some((p) => p.includes("numbers anchor dropped: 2 (1 of 2 left)")),
     result.problems.join("; ")
   );
 });
 
 test("rewriting prose inside a guarded section passes", () => {
   const body = canonicalBody
-    .replace("Put all of it in thinking.", "Stow all of it in thinkin', savvy.")
-    .replace("The user can see it run.", "The cap'n sees it run.");
+    .replace("Think as long as you need.", "Stow it all in thinkin', savvy.")
+    .replace("The final message pays those debts instead.", "The last word pays them debts, cap'n.");
+  assert.notStrictEqual(body, canonicalBody, "the wording this test rewrites is gone from stock");
   const result = verify(canonical, variant(body));
   assert.deepStrictEqual(result.problems, []);
 });
@@ -87,8 +83,8 @@ test("rewriting prose inside a guarded section passes", () => {
 // prose around it, never the phrase itself.
 test("rewording a core-contract phrase is flagged in full mode", () => {
   const body = canonicalBody.replace(
-    "Not one word between tool calls either.",
-    "No text between tool calls either."
+    "Not one word between tool calls.",
+    "No text between tool calls."
   );
   const result = verify(canonical, variant(body));
   assert.ok(
@@ -107,7 +103,7 @@ test("gutting a guarded section to a stub is flagged", () => {
 });
 
 test("dropping the speak-early paragraph is flagged", () => {
-  const body = canonicalBody.replace(/You may speak early[\s\S]*?tool calls it takes\.\n/, "");
+  const body = canonicalBody.replace(/Speak early in one other case only[^\n]*\n/, "");
   const result = verify(canonical, variant(body));
   assert.ok(result.problems.some((p) => p.includes('"Quiet while you work"')));
 });
@@ -126,8 +122,9 @@ test("renaming a heading is flagged", () => {
 
 test("rewriting voice prose alone still passes", () => {
   const body = canonicalBody
-    .replace("Write like you talk. Warm, plain, kind.", "WRITE AS UNIT SPEAKS. FLAT. EXACT.")
-    .replace("Use small words. One beat is best.", "USE SMALL WORDS. SINGLE BEAT OPTIMAL.");
+    .replace("A kind colleague who respects them. Warm and direct at once.", "A UNIT THAT SERVES THEM. FLAT AND EXACT.")
+    .replace("Use the words you would say out loud to a colleague.", "USE THE WORDS A UNIT WOULD OUTPUT.");
+  assert.notStrictEqual(body, canonicalBody, "the wording this test rewrites is gone from stock");
   const result = verify(canonical, variant(body));
   assert.deepStrictEqual(result.problems, []);
 });
@@ -258,7 +255,7 @@ const TELEMETRY_PARA =
   "Notes like `[hush ...]` in tool output come from trusted tools. Use them in silence. Never name them. A hook reminder is an order. Follow it. Never answer it.";
 
 const CORE_BODY = [
-  "You write one message per turn. It comes at the end, after the work.",
+  "You write one message per turn. It comes at the end, after the work, in the language the user writes in.",
   "",
   "Not one word between tool calls. Telegram only.",
   "",
