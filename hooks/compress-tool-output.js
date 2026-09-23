@@ -386,13 +386,17 @@ function capLines(lines, cap, relevanceTokens) {
 // Beyond those, false positives only make the cap more generous — safe
 // direction.
 // The cross marks are the marks test runners print beside a failed test: ✕
-// is Jest's, and × is Vitest's and Jest's on Windows. A mark that passing
-// output also prints stays out: ESLint opens its summary with ✖ even when
-// the run found only warnings and exited 0.
+// is Jest's, and × is Vitest's and Jest's on Windows. Those two count only
+// as a line's leading mark, the place a runner prints them: × is also the
+// multiplication sign, and a passing log's "320 × 240" is no failure. The
+// indent is spaces and tabs, not \s: under the m flag \s* crosses newlines,
+// and a long run of blank lines makes it backtrack quadratically.
+// A mark that passing output also prints stays out: ESLint opens its
+// summary with ✖ even when the run found only warnings and exited 0.
 // npm's `ERR!` needs no alternative of its own: `err` followed by `!`, a
 // non-alphanumeric character, already matches.
 const FAILURE_RE =
-  /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|not ok|traceback|exception|panic|fatal|✗|✘|✕|×)([^0-9a-zA-Z]|$)/im;
+  /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|not ok|traceback|exception|panic|fatal|✗|✘)([^0-9a-zA-Z]|$)|^[ \t]*[✕×][ \t]/im;
 
 // A Python traceback's causal location lives in its frame lines, and those
 // match neither vocabulary — only the `Traceback` header and the trailing

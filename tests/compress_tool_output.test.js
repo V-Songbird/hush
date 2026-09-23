@@ -1474,6 +1474,31 @@ describe('the keep vocabulary, pinned category by category', () => {
     });
   }
 
+  // × is also the multiplication sign, so ✕ and × mark a failed test only as
+  // a line's leading mark. The same sign mid-line leaves a passing run a pass,
+  // and a runner's indented mark still reads as a failure.
+  const markView = (sample) => {
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+    lines[150] = sample;
+    return comp3(lines.join(NL), undefined, false, false, [], 1, 'keepvocab', true, false);
+  };
+
+  test('a mid-line × or ✕ does not mark a run as failed', () => {
+    for (const sample of ['resized the thumbnail to 320 × 240', 'rendered the 3 ✕ 3 grid']) {
+      const out = markView(sample);
+      assert.ok(!out.includes(FAILURE_RERUN_NOTE), `read as failed: ${sample}`);
+      assert.ok(!out.includes(sample), `kept past the cap: ${sample}`);
+    }
+  });
+
+  test('an indented Jest ✕ or Vitest × still marks a run as failed', () => {
+    for (const sample of ['    ✕ charges the stored card (12 ms)', '   × orders > charges the stored card 5ms']) {
+      const out = markView(sample);
+      assert.ok(out.includes(FAILURE_RERUN_NOTE), `read as a pass: ${sample}`);
+      assert.ok(out.includes(sample), `cut: ${sample}`);
+    }
+  });
+
   test('a passing test mark in the same position is cut', () => {
     for (const pass of ['    ✓ charges the stored card (12 ms)', '    √ charges the stored card (12 ms)']) {
       assert.ok(!cappedView(pass).includes(pass), `a pass mark survived the cap: ${pass}`);
