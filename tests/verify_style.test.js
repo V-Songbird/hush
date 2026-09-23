@@ -70,6 +70,26 @@ test("dropping one of two rules that share a number is flagged", () => {
   );
 });
 
+// A number that ends a sentence is still a rule: "between 2 and 3." says
+// where the extra blocks go.
+test("changing a number that ends a sentence is flagged", () => {
+  const body = canonicalBody.replace("between 2 and 3.", "between 2 and 5.");
+  assert.notStrictEqual(body, canonicalBody, "the wording this test edits is gone from stock");
+  const result = verify(canonical, variant(body));
+  assert.ok(
+    result.problems.some((p) => p.includes("numbers anchor dropped: 3")),
+    result.problems.join("; ")
+  );
+});
+
+// List markers are counted by the listed-item check, not as numbers, so a
+// list renumbered the Markdown way, 1. 1. 1. 1., still passes.
+test("renumbering an ordered list as 1. 1. 1. 1. passes", () => {
+  const body = canonicalBody.replace(/^[2-9]\. /gm, "1. ");
+  assert.notStrictEqual(body, canonicalBody, "stock has no ordered list to renumber");
+  assert.deepStrictEqual(verify(canonical, variant(body)).problems, []);
+});
+
 test("rewriting prose inside a guarded section passes", () => {
   const body = canonicalBody
     .replace("Think as long as you need.", "Stow it all in thinkin', savvy.")

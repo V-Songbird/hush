@@ -98,7 +98,10 @@ function rulesOnly(text) {
 function anchors(sectionBody) {
   const rules = rulesOnly(sectionBody);
   const rows = rules.match(/^\|.*\|$/gm) || [];
-  const nums = rules.match(/(?<![\w.])\d+(?![\w.])/g) || [];
+  // A number that ends a sentence ("between 2 and 3.") is a rule like any
+  // other. A list marker ("1. ") is not: `ordered` counts those. A decimal or
+  // a version stays one token, so neither half of "3.14" counts.
+  const nums = rules.replace(/^[ \t]*\d+\.(?=\s)/gm, "").match(/(?<![\w.])\d+(?!\w|\.\d)/g) || [];
   return {
     code: rules.match(/`[^`\n]+`/g) || [],
     bold: rules.match(/\*\*[^*\n]+\*\*/g) || [],
