@@ -12,6 +12,15 @@ const path = require("node:path");
 const cp = require("node:child_process");
 
 const CHECK = path.join(__dirname, "..", "scripts", "git-hooks", "check-readme-nav.js");
+// The spawn limit this plugin's tests/helpers.js exports, or 30 s where it
+// exports none, so the file stays the same in every plugin that carries it.
+const SPAWN_TIMEOUT_MS = (() => {
+  try {
+    return require("./helpers").SPAWN_TIMEOUT_MS || 30000;
+  } catch {
+    return 30000;
+  }
+})();
 const { slug, headingSlugs, anchorsIn, navRegion, checkMarkdown, main } = require(CHECK);
 
 const NAV = [
@@ -156,7 +165,11 @@ describe("main", () => {
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
     const git = (args) => cp.execFileSync("git", args, { cwd: root, env, stdio: "pipe" });
     const file = path.join(root, "README.md");
-    const run = () => cp.spawnSync(process.execPath, [CHECK, "staged"], { cwd: root, env, encoding: "utf8" });
+    const run = () => {
+      const result = cp.spawnSync(process.execPath, [CHECK, "staged"], { cwd: root, env, encoding: "utf8", timeout: SPAWN_TIMEOUT_MS });
+      if (result.error && result.error.code === "ETIMEDOUT") throw new Error(`check-readme-nav.js timed out after ${SPAWN_TIMEOUT_MS} ms`);
+      return result;
+    };
     try {
       git(["init", "-q"]);
       fs.writeFileSync(file, NAV.replace("## License", "## Different heading"));
