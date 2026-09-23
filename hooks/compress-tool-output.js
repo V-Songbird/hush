@@ -521,11 +521,14 @@ function blockIdx(lines, { header, value, frame, end }, offset = 0) {
 
 // Jest: a failed test's detail sits under an indented bullet header,
 // `  ● orders › charges the stored card`, with the Expected and Received
-// values and then the stack. Jest prints the bullet before a passing run's
+// values and then the stack. A toEqual failure prints its values as a diff
+// instead: the `- Expected` / `+ Received` legend, then `-` and `+` lines for
+// what differs, which REPORT_LINES_MAX caps per block; unchanged lines carry
+// no sign and stay out. Jest prints the bullet before a passing run's
 // warnings and console blocks too, so those headers start no block.
 const JEST_BLOCK = {
   header: /^\s+● (?!Console\s*$)(?!.*Warning)/,
-  value: /^\s+(?:[-+] )?(?:Expected|Received)\b/,
+  value: /^\s+(?:[-+] |Expected\b|Received\b)/,
   frame: { test: (line) => isStackFrame(line) },
   end: /^\s*(?:PASS|FAIL) |^(?:Test Suites|Tests|Snapshots|Time):/,
 };

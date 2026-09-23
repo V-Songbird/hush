@@ -1662,6 +1662,37 @@ describe('the keep vocabulary, pinned category by category', () => {
     for (const k of [9, 15]) assert.ok(!out.includes(JEST_BLOCK[k]), `kept: ${JEST_BLOCK[k].trim()}`);
   });
 
+  // A toEqual failure prints its values as a diff under the legend: `-` and
+  // `+` lines for the fields that differ, unchanged fields unsigned. The
+  // differing lines survive the cap up to the per-block limit, which the
+  // legend shares; unchanged fields and the rest of a long diff do not.
+  const TO_EQUAL_BLOCK = [
+    '  ● orders › totals the cart',
+    '',
+    '    expect(received).toEqual(expected) // deep equality',
+    '',
+    '    - Expected  - 12',
+    '    + Received  + 12',
+    '',
+    '      Object {',
+    ...Array.from({ length: 12 }, (_, i) => [`    -   "line${i}": ${i * 100 + 7},`, `    +   "line${i}": ${i * 10 + 7},`]).flat(),
+    '        "currency": "EUR",',
+    '      }',
+    '',
+    '      at Object.toEqual (src/orders.test.js:11:20)',
+  ];
+
+  test('a Jest toEqual failure keeps its first differing lines, up to the block limit', () => {
+    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    lines.splice(100, TO_EQUAL_BLOCK.length, ...TO_EQUAL_BLOCK);
+    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    const kept = [0, 4, 5, ...Array.from({ length: 8 }, (_, k) => 8 + k), TO_EQUAL_BLOCK.length - 1];
+    for (const k of kept) assert.ok(out.includes(TO_EQUAL_BLOCK[k]), `cut: ${TO_EQUAL_BLOCK[k].trim()}`);
+    for (const line of ['    -   "line4": 407,', '    +   "line11": 117,', '        "currency": "EUR",']) {
+      assert.ok(!out.includes(line), `kept past the block limit: ${line.trim()}`);
+    }
+  });
+
   test('the control: a passing Jest run keeps none of its console frames', () => {
     const lines = Array.from({ length: 200 }, (_, i) => `    ✓ ${filler(i)} (${i % 9} ms)`);
     lines.splice(100, 0, '  ● Console', '', '    console.log', '      charged 250', '', '      at Object.log (src/orders.test.js:8:13)');
