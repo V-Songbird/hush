@@ -13,8 +13,55 @@ All notable changes to hush are documented here. The version number lives in
 
 ## Unreleased
 
-hush's reminder when you send a prompt now has 10 seconds to start instead
-of 5, so a slow start on Windows no longer cancels it.
+A new voice. Claude still stays quiet while it works and writes one message
+at the end, now in the language you write in. That message opens with the
+result in one bold line, then the idea in one sentence, how it was checked,
+and one exact next step. A request with several parts, or for the long
+version, gets one short block per part. A request to understand something
+ends with a short question you can check yourself against. The old limits of
+8 lines and 90 words per reply are gone. Its effect on cost has not been
+measured yet.
+
+Long command output keeps more of what explains a failure:
+
+- The first stack frame after a Node, Java or Go error.
+- The values and file:line lines a failed check prints under go test,
+  gotestsum, Jest, Vitest, pytest, cargo test and RSpec, up to 10 per failed
+  test. They also survive the folding of same-shape lines.
+- RSpec's rerun line for each failed example.
+- Java-style names such as `IllegalStateException`, and lines that say
+  "warnings" in the plural.
+- A very large output's digest now keeps traceback frames and other failure
+  evidence, not only warning and error lines.
+- A line that Jest marks with `✕`, or Vitest with `×`, counts as a failure
+  line.
+- A long grep result keeps every failure-shaped match, not only the first
+  three per file. A search inside a folder such as `errors/` still shortens,
+  since only the matched text is checked, not the path.
+
+Some lines no longer count as failures when nothing failed. A passing
+summary with zero counts, such as "Failures: 0", is no longer kept or counted
+as a failure line. A mid-line `×`, as in "320 × 240", no longer makes a
+passing run read as failed. The note
+hush adds once per session now says plainly that a large output's digest
+shows only part of its signal lines, and that the saved file holds all of
+them.
+
+Subagents are now asked to mark what they could not confirm and say where
+they looked.
+
+Styles: a crafted style's name can no longer contain a colon, and craft-style
+says so before activation does. Switching styles keeps a namespaced
+`outputStyle` setting such as `"hush:Hush"`. In a checkout you update with
+git, the stock backup now follows the new stock voice after a pull. The style
+check now catches a changed number at the end of a sentence.
+
+hush's hooks now start node directly instead of through a shell. hush's
+reminder when you send a prompt now has 10 seconds to start instead of 5, so
+a slow start on Windows no longer cancels it.
+
+The README's demo animation stops for readers who ask for reduced motion, and
+its mascot image has an English title and description.
 
 ## 1.12.1 — 2026-09-15
 
