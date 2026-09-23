@@ -14,7 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { safeWriteFileSync } = require("../hooks/lib/safe-write.js");
-const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore } = require("./verify-style.js");
+const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore, CRAFTED_MARKER } = require("./verify-style.js");
 
 function injectForcePlugin(text) {
   const { frontmatter, body } = splitFrontmatter(normalize(text));
@@ -79,6 +79,18 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir() }) {
   const backupPath = hushPath + ".stock";
   const activePath = hushPath + ".active.json";
   const previous = fs.existsSync(hushPath) ? fs.readFileSync(hushPath, "utf-8") : null;
+
+  // A marketplace update installs a fresh directory with no backup in it. A
+  // checkout loaded in place keeps its backup when a pull rewrites the slot.
+  // So stock in the slot that differs from its backup is the newer voice, and
+  // it becomes the backup before anything is checked against it or restored
+  // from it. A crafted style in the slot never becomes the backup.
+  const slotIsStock =
+    previous !== null &&
+    !(parseFrontmatter(splitFrontmatter(normalize(previous)).frontmatter).description || "").includes(CRAFTED_MARKER);
+  if (slotIsStock && fs.existsSync(backupPath) && fs.readFileSync(backupPath, "utf-8") !== previous) {
+    fs.copyFileSync(hushPath, backupPath);
+  }
 
   let next;
   if (target === "stock") {

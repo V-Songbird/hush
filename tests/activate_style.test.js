@@ -116,6 +116,41 @@ test("restoring stock keeps the pristine copy, so it restores again", () => {
   assert.match(slot(pluginRoot), /name: Hush\n/);
 });
 
+// A checkout loaded in place keeps its backup across a pull that rewrites the
+// slot. The stock now in the slot is the newer voice, so it replaces the stale
+// backup before a restore or a variant check reads it.
+const PULLED_STOCK = "---\nname: Hush\ndescription: Silent-by-default communication\nforce-for-plugin: true\n---\nnew body\n";
+
+function pullAfterRestore() {
+  const fixture = makeFixture();
+  const variantPath = craftedPath(fixture.projectDir, "pirate.md");
+  write(variantPath, variantText("Pirate", "ARR body"));
+  activate(variantPath, fixture);
+  activate("stock", fixture);
+  write(path.join(fixture.pluginRoot, "output-styles", "hush.md"), PULLED_STOCK);
+  return { ...fixture, variantPath };
+}
+
+test("after a pull rewrites the slot, restoring stock writes the new voice", () => {
+  const { pluginRoot, projectDir, homeDir } = pullAfterRestore();
+  const current = craftedPath(projectDir, "rock.md");
+  write(current, variantText("Rock", "new body"));
+
+  activate(current, { pluginRoot, projectDir, homeDir });
+  assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), PULLED_STOCK);
+  activate("stock", { pluginRoot, projectDir, homeDir });
+  assert.strictEqual(slot(pluginRoot), PULLED_STOCK);
+});
+
+test("after a pull rewrites the slot, a variant is checked against the new voice", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath } = pullAfterRestore();
+
+  // The variant keeps the old opening line, `body`, and not the new one.
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir }), /did not keep hush's mechanics/);
+  assert.strictEqual(slot(pluginRoot), PULLED_STOCK);
+  assert.strictEqual(fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md.stock"), "utf-8"), PULLED_STOCK);
+});
+
 test("a crafted variant that kept the mechanics activates", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const variantPath = path.join(projectDir, ".claude", "output-styles", "robo.md");
