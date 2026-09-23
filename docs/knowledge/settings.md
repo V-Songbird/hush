@@ -52,17 +52,19 @@ Every published number was measured with `HUSH_WRAP=1`.
 
 ## The output style setting
 
-Claude Code's **Output style** setting is what picks hush's voice. Installing the plugin sets it for
-you. If it did not take, write it in by hand in `~/.claude/settings.json`:
+Installing hush does not write Claude Code's **Output style** setting, and the voice does not need
+it: the plugin marks its voice to apply whenever the plugin is enabled, so it is active from your next
+session either way.
+
+The setting still changes one thing. When `outputStyle` names hush, Claude Code also adds a short
+reminder on every turn that the style is active. Every published number was measured with it set. To
+run that same setup, add this line to `~/.claude/settings.json`:
 
 ```json
 {
   "outputStyle": "hush:Hush"
 }
 ```
-
-Leave that line in place. Claude Code reads it at the start of every turn, and that is the setup
-every published number was measured on.
 
 `/hush:pick-style` swaps voices for you after that, and it will not remove this line.
 

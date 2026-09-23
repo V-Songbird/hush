@@ -59,7 +59,9 @@ Inside Claude Code:
 /plugin install hush@foundry
 ```
 
-Start a new session to load the plugin.
+Start a new session to load the plugin. Hush's voice applies on its own. The published numbers also
+set `"outputStyle": "hush:Hush"` in `~/.claude/settings.json`, which adds Claude Code's per-turn
+reminder that the style is active; see [Settings](docs/knowledge/settings.md#the-output-style-setting).
 
 ## Good to know
 
