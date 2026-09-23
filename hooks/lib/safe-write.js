@@ -23,9 +23,8 @@ function safeWriteFileSync(target, content) {
   const dir = path.dirname(target);
   fs.mkdirSync(dir, { recursive: true });
 
-  // realpath resolves the WHOLE path, not just the last segment: only the
-  // final directory used to be tested for being a link, so a symlinked
-  // ancestor redirected the write with nothing looking at it. A case-only or
+  // realpath resolves the WHOLE path, not just the last segment, so a
+  // symlinked ancestor cannot redirect the write unseen. A case-only or
   // short-path difference on win32 is not a redirect, so compare folded.
   const realDir = fs.realpathSync(dir);
   const same = process.platform === 'win32'

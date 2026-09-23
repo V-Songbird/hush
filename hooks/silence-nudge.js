@@ -3,18 +3,17 @@
 
 // Re-states the silence rule from a hook channel, next to the text the model
 // is about to write. The output style alone does not hold mid-turn silence on
-// the larger models: style wording changes measured flat, while the same rule
-// delivered here cut mid-turn narration by roughly 90%.
+// the larger models; the same rule delivered here, where the model is about to
+// write, does.
 //
-// Two levels, picked by HUSH_NUDGE — the default changed 2026-08-11:
+// Two levels, picked by HUSH_NUDGE:
 //
 //   (default)  One reminder at the top of the turn, plus a corrective one
 //              fired ONLY when the transcript shows a new mid-turn assistant
 //              text block this turn. A turn that stays silent gets nothing
 //              mid-turn at all.
 //   max        A reminder on every tool result (doubled), plus the one at
-//              the top of the turn — what shipped as the only mode through
-//              1.3.0.
+//              the top of the turn.
 //
 // Why the default reminds reactively instead of on every tool result: every
 // reminder is context the session carries and pays for, and `max` adds two on
@@ -37,9 +36,9 @@ const nudgeEnv = String(process.env.HUSH_NUDGE || "").trim();
 const OFF = OFF_TOKEN.test(nudgeEnv);
 const MAX_MODE = /^max$/i.test(nudgeEnv);
 
-// max's own wording. Paired with a step reminder present, "until the work is
-// done" measured BETTER than the closed-boundary text below — the two texts
-// are proven in their own configuration only, not interchangeable.
+// max's own wording. With a step reminder beside it, "until the work is done"
+// holds better than the closed-boundary text below. Each text belongs to its
+// own configuration; the two are not interchangeable.
 const TURN =
   "hush: this turn is silent until the work is done. Everything you learn goes in the final message.";
 const STEP =
@@ -48,9 +47,8 @@ const TOOL = `${STEP} ${STEP}`;
 
 // The default's turn text. Closes a boundary TURN leaves open: "until the
 // work is done" let the model call the work done and announce a verification
-// step out loud, mid-turn, right before running it. Measured cutting leaks
-// roughly in half against TURN in the configuration this text is used in —
-// no standing step reminder present.
+// step out loud, mid-turn, right before running it. It is the text for the
+// configuration with no standing step reminder.
 const TURN_DIAL =
   "hush: this turn is silent until the final message. It opens with a tool call, not a line about what you will look at. Everything you learn goes in the final message.";
 

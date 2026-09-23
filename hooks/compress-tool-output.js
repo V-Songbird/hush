@@ -397,11 +397,10 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 
 // The one KEEP vocabulary, shared by every transform that elides lines
 // (dedupeConsecutive, collapseTemplates, capLines). It is the union of what
-// hush calls signal and what it calls failure evidence: the classification
-// half used to be strictly wider — `not ok`, `✗`, `panic`, `fatal`,
-// `Traceback`, `exception`, `err!`, `failing` classified a run as failed while
-// nothing preserved those same lines — so a capped view could promise every
-// failure line was kept and drop most of them. One vocabulary, one promise.
+// hush calls signal and what it calls failure evidence, so every word that
+// makes a run read as failed — `not ok`, `✗`, `panic`, `fatal`, `Traceback`,
+// `exception`, `failing` — also keeps its line past the cap, and a capped view
+// can promise that every failure line was kept. One vocabulary, one promise.
 // Zero-quantified counts are blanked first, as looksLikeFailure blanks them: a
 // passing summary ("Failures: 0, Errors: 0", "0 failed", node's "# fail 0")
 // states a score, not a failure, so it is neither kept past the cap nor
@@ -908,8 +907,8 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
 // capped Read can never cut lines the model might need to edit byte-exactly —
 // and for genuine logs, capLines' signal preservation (every WARN/ERROR/FAIL
 // line survives) is the same guarantee shell output already gets. Without this
-// a 60k-char `Read logs/app.log` enters context whole and is re-sent on every
-// subsequent API call — the one noisy-input path hush used to leave open.
+// a 60k-char `Read logs/app.log` would enter context whole and be re-sent on
+// every subsequent API call.
 const LOG_PATH_RE = /\.log(?:\.\d+)?$|[\\/]logs?[\\/][^\\/]+\.(?:log|txt|out)$/i;
 
 function isLogPath(filePath) {
@@ -1190,15 +1189,11 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, fail
   // (see SIDECAR_SHELL_MAX), so the copy hush writes cannot claim to be the
   // whole thing — the header says "as hush received it" instead of "in full".
   //
-  // It still gets written. hush used to step aside here, and that made the one
-  // case it was guarding worse: the same size is where the host parks the
-  // result and hands the model a 2KB preview, so falling through to the inline
-  // cap shipped something the host parked anyway, and the model read the parked
-  // file straight back into context. Measured on a real 54KB replay: stepping
-  // aside returned 45,035 chars, the recovery copy returns 3,491 — and the
-  // digest keeps the summary line the model was going after. Getting under the
-  // host's threshold is what removes the competing pointer, because the host
-  // then never parks anything.
+  // It still gets written. The same size is where the host parks a result and
+  // hands the model a 2KB preview; an inline cap that stays over that size gets
+  // parked anyway, and the model reads the parked file straight back into
+  // context. The digest gets the view under the host's threshold, so the host
+  // parks nothing and no second pointer competes with hush's own.
   const partial = !!(hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX);
   try {
     // sidecarTarget scans for secrets before ever handing back a path, so a
@@ -1399,11 +1394,10 @@ function extractExitCode(response) {
 // the one channel the base system prompt itself vouches for ("injected by the
 // harness, not the user"). That legitimizes the whole [hush ...] note family
 // up front, for any output style and any model. The note must ride this
-// channel and never be embedded in the tool result body: a <system-reminder>
-// tag written INTO file content was tried and measured strictly worse — the
-// model reads channel-shaped text in the wrong channel as spoofed authority
-// ("a fake system-reminder tag... likely a prompt-injection attempt") and
-// re-reads the entire file. Declarative wording only, for the same reason the
+// channel and never be embedded in the tool result body: the model reads a
+// <system-reminder> tag written INTO file content as spoofed authority, text
+// shaped like one channel arriving in another, flags it as a likely prompt
+// injection and re-reads the entire file. Declarative wording only, for the same reason the
 // marker never argues its own innocence.
 //
 // The omission sentence is scoped view by view, because the views keep

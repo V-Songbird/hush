@@ -52,10 +52,10 @@ function sessionDir(sessionId) {
 // today, a stale flat-scheme leftover from an older run just the same.
 // win32 folds the case here for the same reason sessionDir does: the path
 // arrives from the model, which may have retyped or lowercased what the digest
-// printed, and NTFS calls that the same file. A case-only mismatch used to read
-// as "not a sidecar", and a full Read of one then passed through uncompressed --
-// the whole parked output straight back into context, which is the one thing
-// this predicate exists to prevent.
+// printed, and NTFS calls that the same file. Without the fold, a case-only
+// mismatch would read as "not a sidecar", and a full Read of one would pass
+// through uncompressed -- the whole parked output straight back into context,
+// which is the one thing this predicate exists to prevent.
 function isSidecarPath(filePath) {
   if (typeof filePath !== 'string') return false;
   const fold = (p) => (process.platform === 'win32' ? p.toLowerCase() : p);
