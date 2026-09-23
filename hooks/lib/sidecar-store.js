@@ -133,8 +133,8 @@ function notePath(sessionId) {
   return path.join(sessionDir(sessionId), NOTE_FILE);
 }
 
-// Adds one tool call's before/after sizes to the total. Read-modify-write on
-// every handled tool output, measured at ~0.45ms against the ~60ms node start
+// Adds one tool call's before/after sizes to the total. The read-modify-write
+// on every handled tool output costs about 0.45ms against the ~60ms node start
 // each hook fire already pays, so it runs unconditionally rather than behind a
 // flag of its own; HUSH_CORE=off stops it with the rest of the surface.
 //

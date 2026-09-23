@@ -85,9 +85,8 @@ function wrapBash(command) {
 // PreToolUse updatedInput BEFORE permission evaluation, and its permission
 // engine both statically analyzes the rewritten command and splits it into
 // per-statement operations that must each match an allow rule. The trailer
-// cannot survive that under scoped allow rules on either shell — all
-// verified live against cli 2.1.207 with `Bash(node*)`/`PowerShell(node*)`
-// rules:
+// cannot survive that under scoped allow rules on either shell, as of
+// Claude Code 2.1.207 with `Bash(node*)`/`PowerShell(node*)` rules:
 //   - PowerShell: a `& {` opening makes the first AST element a script
 //     block ("Command name is a dynamic expression"), and even with it
 //     removed the trailer's `$LASTEXITCODE` and `exit 0` statements are
@@ -97,9 +96,9 @@ function wrapBash(command) {
 //     outright ("Contains simple_expansion") — and that check runs before
 //     rule matching, so it denied EVERY wrapped command, even ones an
 //     allow rule covered.
-// Under `bypassPermissions` none of that machinery runs (verified live:
-// the full PowerShell wrapper executes and the marker comes back), so
-// wrapping is safe exactly there. `HUSH_WRAP=1` opts back in for sessions
+// Under `bypassPermissions` none of that machinery runs (the full
+// PowerShell wrapper executes and the marker comes back), so wrapping is
+// safe exactly there. `HUSH_WRAP=1` opts back in for sessions
 // whose rules are blanket per-tool grants (plain `Bash` / `PowerShell`,
 // no command pattern) — those match the wrapped command as a whole.
 function permissionsAllowWrapping(data) {
@@ -108,8 +107,8 @@ function permissionsAllowWrapping(data) {
 }
 
 // Both wrappers put their trailer in statements that run AFTER the command, so
-// a command that calls `exit` itself never reaches them. Verified live on this
-// machine, both shells: bash leaves at the command's own code, and PowerShell
+// a command that calls `exit` itself never reaches them. In both shells:
+// bash leaves at the command's own code, and PowerShell
 // tears the process down before `Out-String` flushes, which loses the
 // command's OWN output as well as the trailer. `npm test || exit 1` is an
 // ordinary thing to write, so a command carrying its own top-level exit is

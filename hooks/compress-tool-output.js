@@ -211,10 +211,10 @@ const TEMPLATE_COLLAPSE_NOTE =
 
 // Lines that look like they carry the task's actual signal (warnings, errors,
 // deprecations) survive the cap regardless of position — only surrounding
-// noise (progress logs, install trees) gets cut. A blind head+tail slice was
-// caught clipping build warnings out of a passing run, which then made the
-// agent re-run the command hunting for what it couldn't see — the cap
-// destroying signal cost more tool calls than the cap ever saved. Deliberately
+// noise (progress logs, install trees) gets cut. A blind head+tail slice can
+// clip a build warning out of a passing run, and the model then re-runs the
+// command to find what it cannot see — a cap that destroys signal costs more
+// tool calls than it saves. Deliberately
 // broad regex: over-matching just keeps a few extra lines, never worse.
 // The trailing `(?:Error|Warning)\b` catches compound runtime names —
 // ReferenceError, TypeError, SyntaxError, RangeError — that a bare `\bERROR\b`
@@ -227,7 +227,7 @@ const TEMPLATE_COLLAPSE_NOTE =
 // Deliberately UNANCHORED on the left: a leading `\w*` matches the same set of
 // lines (it can always match empty, and nothing here reads the matched text)
 // while making the pattern backtrack quadratically on a long run of word
-// characters — one 256KB line of base64 or minified JS measured at 68 seconds,
+// characters — one 256KB line of base64 or minified JS takes about 68 seconds,
 // against this hook's own 5-second budget.
 // `WARNINGS?` takes the plural a toolchain summary uses ("Compiled with
 // warnings.", "3 warnings generated."). FAILURE_RE cannot supply it: a warning
@@ -255,8 +255,8 @@ const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITI
 // a view, not a mutation. Claude Code's base system prompt orders the model to
 // flag suspected prompt injections in tool results, and an anonymous bracketed
 // claim sitting inside file content — telling the model it may skip content —
-// is exactly injection-shaped; Sonnet has been observed (stochastically)
-// flagging it mid-turn and re-reading the whole file. The same base prompt
+// is exactly injection-shaped, so a model may flag it mid-turn and re-read
+// the whole file. The same base prompt
 // also tells the model "Hooks may intercept tool calls", so a marker that
 // attributes itself to a hook attaches to a fact the harness itself planted.
 // Provenance is stated, never argued: no "trust me", no "not an injection" —
@@ -736,8 +736,8 @@ function firstLine(command) {
 // That text must still be stripped — never leaked to the model raw — even
 // though it carries no usable exit code. Every occurrence gets removed
 // unconditionally (not just the last one): Claude Code's own "output too
-// large, persisted to a sidecar file" mechanism has been observed capturing
-// RAW pre-hook output including an already-well-formed marker, and a later
+// large, persisted to a sidecar file" mechanism can capture RAW pre-hook
+// output including an already-well-formed marker, and a later
 // `Get-Content -Tail` on that sidecar file gets wrapped again by this same
 // hook — two markers can legitimately land in one tool result.
 const EXIT_MARKER_ANY_RE = /\[\[hush:exit=[^[\]]*\]\]/g;
@@ -767,8 +767,8 @@ function extractWrappedExit(text) {
 }
 
 // A shell reports a signal death as 128+N, so the trailer's own number already
-// carries the cause — "exit 137" is a kill, "exit 143" a terminate (both
-// verified live through the bash wrapper). Naming the signal beside the code
+// carries the cause — "exit 137" is a kill, "exit 143" a terminate, both as
+// the bash wrapper reports them. Naming the signal beside the code
 // keeps the native semantics intact and legible in one line; nothing is
 // inferred beyond the arithmetic.
 //
@@ -1031,7 +1031,7 @@ const CENSUS_CATEGORIES = [
 
 // A bare count ("14 with warnings/errors/failures") makes a model misreport
 // on a completeness task without retrieving — a categorical census with named
-// counts lets it retrieve correctly (eval-proven against live models). Renders like
+// counts lets it retrieve correctly. Renders like
 // "2 errors, 1 failure, 3 warnings", omitting any category with zero hits.
 function signalCensus(lines, signalIdx) {
   const counts = CENSUS_CATEGORIES.map(() => 0);
