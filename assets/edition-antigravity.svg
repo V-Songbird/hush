@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Antigravity">
+  <style>.ink{stroke:#252820}.name{fill:#252820}@media(prefers-color-scheme:dark){.ink{stroke:#eee9de}.name{fill:#eee9de}}</style>
+  <path class="ink" d="M32 19Q63 16 96 20Q109 21 109 35L108 95Q108 108 94 109L33 108Q20 108 19 94L20 34Q20 20 32 19Z" fill="none" stroke-width="4" stroke-linejoin="round" />
+  <text class="name" x="64" y="69" text-anchor="middle" font-family="Segoe UI, system-ui, -apple-system, Helvetica, Arial, sans-serif" font-size="14.5" font-weight="700" textLength="74" lengthAdjust="spacingAndGlyphs">antigravity</text>
+</svg>
