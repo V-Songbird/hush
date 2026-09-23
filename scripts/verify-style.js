@@ -132,6 +132,9 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
   } else {
     const fm = parseFrontmatter(generated.frontmatter);
     if (!fm.name) problems.push("frontmatter: name is missing");
+    // The same refusal activation gives, so a crafted name fails here first.
+    else if (fm.name.includes(":"))
+      problems.push(`frontmatter: name "${fm.name}" contains a colon, which Claude Code uses for plugin style ids such as hush:Hush`);
     if (fm["keep-coding-instructions"] !== "true")
       problems.push("frontmatter: keep-coding-instructions must be true");
     if ("force-for-plugin" in fm)

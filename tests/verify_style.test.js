@@ -47,6 +47,16 @@ test("missing frontmatter is flagged", () => {
   assert.ok(result.problems.includes("frontmatter: missing"));
 });
 
+test("a name with a colon is refused in both modes, for the reason activation gives", () => {
+  const frontmatter = VALID_FRONTMATTER.replace("name: Robo", "name: hush:Robo");
+  const reason = 'frontmatter: name "hush:Robo" contains a colon, which Claude Code uses for plugin style ids such as hush:Hush';
+  for (const check of [verify, verifyCore]) {
+    const result = check(canonical, variant(canonicalBody, frontmatter));
+    assert.strictEqual(result.ok, false);
+    assert.deepStrictEqual(result.problems, [reason]);
+  }
+});
+
 test("removing the base-prompt override paragraph fails Quiet while you work", () => {
   const body = canonicalBody.replace(/The base prompt says:[^\n]*\n/, "");
   const result = verify(canonical, variant(body));

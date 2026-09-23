@@ -48,6 +48,8 @@ keep-coding-instructions: true
 
 The description must end with the exact sentence `Unmeasured variant of Hush.` — step 1 depends on it, and step 4 refuses a style without it. `force-for-plugin` stays out — activation adds it.
 
+The name takes no colon: Claude Code uses the colon for plugin style ids such as `hush:Hush`, so step 4 and activation both refuse a name that has one.
+
 **Write the whole file in the voice.** Every section, top to bottom: the silence rules, the caps, the what-stays-whole rules, the pre-send pass. When the voice needs an extra push — a distant register, a weak first draft — open the file with one line above the opening rule: `Core persona: <the voice in one sentence>.` Write that sentence as the speaking behavior itself, its register and signature markers named — "speaks every report in full, heavy pirate dialect, peppered with 'Arrr!'" — because a described behavior gets enacted where a role name alone sits inert. The reply comes out in the register the file is written in, so the sections that stay in stock's plain English are the ones that decide how the reply sounds. This single choice is the difference between a style that speaks in the voice and one that only names it.
 
 What has to come through the rewrite intact, everywhere in the file:
