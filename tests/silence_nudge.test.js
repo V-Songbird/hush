@@ -276,20 +276,24 @@ test('both hook events are registered in hooks.json', () => {
   );
   const registered = (list) =>
     (list || []).some((entry) =>
-      (entry.hooks || []).some((h) => (h.command || '').includes('silence-nudge.js'))
+      (entry.hooks || []).some((h) => (h.args || []).some((a) => a.includes('silence-nudge.js')))
     );
   assert.ok(registered(hooks.hooks.UserPromptSubmit), 'UserPromptSubmit');
   assert.ok(registered(hooks.hooks.PostToolUse), 'PostToolUse');
 });
 
-test('every registered command has a Windows counterpart', () => {
+// Exec form spawns node directly with the script as its one argument, so no
+// shell runs and no platform needs its own command line.
+test('every registered hook runs node in exec form', () => {
   const hooks = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'hooks', 'hooks.json'), 'utf-8')
   );
   for (const list of Object.values(hooks.hooks)) {
     for (const entry of list) {
       for (const h of entry.hooks || []) {
-        assert.ok(h.commandWindows, `missing commandWindows: ${h.command}`);
+        assert.strictEqual(h.command, 'node', JSON.stringify(h));
+        assert.match((h.args || []).join(' '), /^\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/[a-z-]+\.js$/, JSON.stringify(h));
+        assert.ok(!('commandWindows' in h), `commandWindows is never read: ${h.args}`);
       }
     }
   }

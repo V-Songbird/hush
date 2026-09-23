@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/preserve-exit-code.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\preserve-exit-code.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/preserve-exit-code.js"],
             "timeout": 5
           }
         ]
@@ -18,8 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\silence-nudge.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js"],
             "timeout": 5
           }
         ]
@@ -30,8 +30,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-brief.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\subagent-brief.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/subagent-brief.js"],
             "timeout": 5
           }
         ]
@@ -42,8 +42,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/precompact-summary.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\precompact-summary.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/precompact-summary.js"],
             "timeout": 5
           }
         ]
@@ -54,8 +54,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/postcompact-rearm.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\postcompact-rearm.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/postcompact-rearm.js"],
             "timeout": 5
           }
         ]
@@ -66,8 +66,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-end-cleanup.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\session-end-cleanup.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/session-end-cleanup.js"],
             "timeout": 5
           }
         ]
@@ -79,8 +79,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/compress-tool-output.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\compress-tool-output.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compress-tool-output.js"],
             "timeout": 5
           }
         ]
@@ -89,8 +89,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js\"",
-            "commandWindows": "node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\silence-nudge.js\"",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js"],
             "timeout": 5
           }
         ]

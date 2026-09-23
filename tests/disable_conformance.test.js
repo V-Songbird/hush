@@ -195,7 +195,7 @@ function registeredPairs() {
   for (const [event, list] of Object.entries(hooks.hooks)) {
     for (const entry of list) {
       for (const h of entry.hooks || []) {
-        const m = /([a-z-]+\.js)/.exec(h.command || '');
+        const m = /([a-z-]+\.js)/.exec((h.args || []).join(' '));
         if (m) pairs.add(`${m[1]}@${event}`);
       }
     }
