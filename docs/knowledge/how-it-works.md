@@ -66,8 +66,9 @@ Your system temp folder, in `hush-sidecar`, one folder per session. On macOS and
 readable only by you. On Windows that lock is not available, so treat it as readable by anything
 running as you.
 
-hush deletes the folder when the session ends, and clears anything a crashed session left behind
-once it is a day old.
+hush deletes the folder when the session ends. Each time a session ends, it also removes every
+session folder nothing has written to for a day: what a crashed session left behind, and the folder
+of a session left idle that long.
 
 Beside the parked files it keeps `saved.json` — characters in, characters actually delivered. That
 is the count the status-line snippet in [Settings](settings.md) reads.

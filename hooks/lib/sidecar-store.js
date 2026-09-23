@@ -18,9 +18,10 @@
 //
 // Retention is session-scoped: SessionEnd deletes this session's directory.
 // Anything left behind by a crash is caught by the age-graced sweep, which
-// only ever touches entries untouched for STALE_MS — a live concurrent
-// session's directory has a fresh mtime (creating a file inside updates it),
-// so a sweep from another session's end can't take it.
+// only ever touches entries untouched for STALE_MS. A working session keeps
+// its directory's mtime fresh — every handled tool result rewrites saved.json
+// in it — but mtime is the only liveness signal, so a live session that
+// handles no tool output for STALE_MS loses its directory to the next sweep.
 //
 // Every function here is fail-open: a missing directory is a no-op, and no
 // failure is worth raising into a hook.
@@ -81,8 +82,8 @@ function removeSession(sessionId) {
 // behind. Sweeps every root entry — directory or loose file — whose mtime is
 // older than the grace, and returns how many it removed.
 //
-// mtime on the directory is the liveness signal, which a session that wrote
-// no sidecar for a full day would fail.
+// mtime on the directory is the only liveness signal, so a live session that
+// handled no tool output for a full day is swept like a crashed one.
 function sweepStale(maxAgeMs, now) {
   const cutoff = (typeof now === 'number' ? now : Date.now()) - (typeof maxAgeMs === 'number' ? maxAgeMs : STALE_MS);
   let entries;
