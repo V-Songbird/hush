@@ -1385,9 +1385,11 @@ describe('census-grade sidecar digests', () => {
 // the predicate that recognises them. isKeepLine, SIGNAL_RE and
 // CENSUS_CATEGORIES are the code under test here, so nothing below may consult
 // them: every assertion runs on what compress() actually ships. Deleting any
-// single alternative from SIGNAL_RE, FAILURE_RE, TRACEBACK_FRAME_RE,
-// STACK_FRAME_RES or a CENSUS_CATEGORIES pattern has to fail at least one test
-// in this block.
+// single alternative from FAILURE_RE, TRACEBACK_FRAME_RE, STACK_FRAME_RES or a
+// named CENSUS_CATEGORIES pattern has to fail at least one test in this block,
+// and so does deleting a SIGNAL_RE alternative, except `ERR(?:OR)?` and
+// `FAIL(?:URE|ED)?`: FAILURE_RE matches every line those two match, so
+// isKeepLine keeps the same lines without them.
 describe('the keep vocabulary, pinned category by category', () => {
   const { compress: comp3 } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
@@ -1442,6 +1444,35 @@ describe('the keep vocabulary, pinned category by category', () => {
     assert.ok(!out.includes(plain), 'nothing was cut, so the samples above prove nothing');
     assert.match(out, /lines omitted from this view/);
   });
+
+  // FAILURE_RE decides whether a run failed, and SIGNAL_RE keeps some of its
+  // words too, so a keep sample cannot pin every alternative. Each sample
+  // here matches exactly one FAILURE_RE alternative. With no exit code, that
+  // alternative alone makes a capped run read as failed and carry the
+  // failure note; deleting it turns the run into a pass.
+  const FAILURE_SAMPLES = [
+    ['fail(ed|ure|ures|ing|s)?', '3 failing, 40 passing'],
+    ['err(or)?s?', '2 errors in the build'],
+    ['not ok', 'not ok 7 - parses the receipt'],
+    ['traceback', 'Traceback (most recent call last):'],
+    ['exception', 'unhandled exception in worker 3'],
+    ['panic', 'panic: assignment to entry in nil map'],
+    ['fatal', 'fatal: bad object HEAD'],
+    ['✗', '✗ refreshToken rejects a revoked token'],
+    ['✘', '✘ renders the cart'],
+    ['✕', '✕ charges the stored card (12 ms)'],
+    ['×', '× orders > charges the stored card 5ms'],
+  ];
+
+  for (const [alternative, sample] of FAILURE_SAMPLES) {
+    test(`the ${alternative} alternative alone marks a run as failed`, () => {
+      const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+      lines[150] = sample;
+      const out = comp3(lines.join(NL), undefined, false, false, [], 1, 'keepvocab', true, false);
+      assert.ok(out.includes(FAILURE_RERUN_NOTE), `read as a pass: ${sample}`);
+      assert.ok(out.includes(sample), `cut: ${sample}`);
+    });
+  }
 
   test('a passing test mark in the same position is cut', () => {
     for (const pass of ['    ✓ charges the stored card (12 ms)', '    √ charges the stored card (12 ms)']) {
