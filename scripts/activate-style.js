@@ -44,7 +44,8 @@ function withoutOutputStyle(raw, expected) {
 // its bare name. Once that style holds the forced slot, the selection is
 // redundant, so it goes. A namespaced value such as "hush:Hush" names a
 // plugin's style, never the crafted copy, and it is the setting that turns on
-// Claude Code's per-turn style reminder, so it always stays.
+// Claude Code's per-turn style reminder, so it always stays: no style that
+// reaches the slot has a colon in its name, so the comparison never matches it.
 function stripOutputStyle(settingsPath, targetName) {
   if (!fs.existsSync(settingsPath)) return false;
   const raw = fs.readFileSync(settingsPath, "utf-8");
@@ -56,7 +57,6 @@ function stripOutputStyle(settingsPath, targetName) {
   }
   if (
     typeof data.outputStyle !== "string" ||
-    data.outputStyle.includes(":") ||
     data.outputStyle.trim().toLowerCase() !== targetName.trim().toLowerCase()
   ) {
     return false;

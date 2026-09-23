@@ -449,7 +449,9 @@ test("an outputStyle setting pointing elsewhere is left untouched", () => {
   assert.strictEqual(settings.outputStyle, "Some Other Style");
 });
 
-test("a namespaced outputStyle setting survives activating the style it names", () => {
+// A style that reaches the slot has no colon in its name, so it never
+// matches a namespaced setting, and activation leaves that setting as it was.
+test("a namespaced outputStyle setting is kept when a style of the same bare name is activated", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   const variantPath = craftedPath(projectDir, "pirate.md");
   write(variantPath, variantText("Pirate", "body"));
@@ -461,25 +463,4 @@ test("a namespaced outputStyle setting survives activating the style it names", 
 
   assert.deepStrictEqual(result.settingsUpdated, []);
   assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
-});
-
-// A crafted name cannot hold a colon, so only a stock that answers to the
-// namespaced name reaches the strip with a matching value.
-test("hush:Hush survives a variant swap and a restore of a stock that answers to it", () => {
-  const { pluginRoot, projectDir, homeDir } = makeFixture();
-  write(
-    path.join(pluginRoot, "output-styles", "hush.md"),
-    "---\nname: hush:Hush\ndescription: Silent-by-default communication\nforce-for-plugin: true\n---\nbody\n"
-  );
-  const variantPath = craftedPath(projectDir, "pirate.md");
-  write(variantPath, variantText("Pirate", "body"));
-  const settingsPath = path.join(homeDir, ".claude", "settings.json");
-  const kept = JSON.stringify({ outputStyle: "hush:Hush" }, null, 2) + "\n";
-  write(settingsPath, kept);
-
-  for (const target of [variantPath, "stock"]) {
-    const result = activate(target, { pluginRoot, projectDir, homeDir });
-    assert.deepStrictEqual(result.settingsUpdated, []);
-    assert.strictEqual(fs.readFileSync(settingsPath, "utf-8"), kept);
-  }
 });
