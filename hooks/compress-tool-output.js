@@ -452,8 +452,12 @@ function firstFrameIdx(lines) {
 // names repeat across packages, so each package's `ok` or `FAIL` result line
 // closes its tests. collapseTemplates never drops a line that names a failing
 // test, so a capped view still knows whose lines follow a collapsed run.
+// gotestsum's summary names each failed test as `=== FAIL: <pkg> <Test>
+// (0.00s)`, with the test's lines under it; the last token before the
+// parenthesis is the test (GOTESTSUM_NAME_RE, same groups).
 const GO_TEST_LINE_RE = /^\s+\S+_test\.go:\d+:(?:\s|$)/;
 const GO_TEST_NAME_RE = /^\s*(?:=== (?:RUN|CONT|NAME)|--- (FAIL|PASS|SKIP):)\s+(\S+)/;
+const GOTESTSUM_NAME_RE = /^=== (FAIL): (?:\S+ )?(\S+) \(/;
 const GO_PACKAGE_RESULT_RE = /^(?:ok|FAIL)\s+\S/;
 
 // Indices of the go test lines that belong to a failing test or, with
@@ -470,7 +474,7 @@ function goFailureIdx(lines, names) {
     test = null;
   };
   lines.forEach((line, i) => {
-    const m = GO_TEST_NAME_RE.exec(line);
+    const m = GO_TEST_NAME_RE.exec(line) || GOTESTSUM_NAME_RE.exec(line);
     if (m) {
       test = m[2];
       if (m[1] === "FAIL") failed.add(test);

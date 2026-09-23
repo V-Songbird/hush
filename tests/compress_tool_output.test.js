@@ -1605,6 +1605,32 @@ describe('the keep vocabulary, pinned category by category', () => {
     assert.ok(digest.includes('Signal lines (5 total: 4 failures, 1 failure-evidence line):'), 'the census drifted');
   });
 
+  // gotestsum ends a run with its own summary: a Skipped section, then each
+  // failed test under `=== FAIL: <pkg> <Test> (0.00s)` with its lines under
+  // it. The failed test's message survives the cap with more output after
+  // the summary; the skipped test's line does not.
+  const gotestsumSummary = (failed) => [
+    `${failed ? '✖' : '✓'}  example.com/orders (5ms)`,
+    '',
+    '=== Skipped',
+    '=== SKIP: example.com/orders TestSlow (0.00s)',
+    '    orders_test.go:12: skipping in short mode',
+    ...(failed ? ['', '=== Failed', '=== FAIL: example.com/orders TestTotal (0.00s)', GO_FAIL] : []),
+    '',
+    `DONE 12 tests, 1 skipped${failed ? ', 1 failure' : ''} in 1.234s`,
+  ];
+
+  for (const failed of [true, false]) {
+    test(failed ? 'a gotestsum summary keeps its failed test message mid-output' : 'the control: a passing gotestsum run keeps none of its test lines', () => {
+      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      lines.splice(100, 0, ...gotestsumSummary(failed));
+      const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+      assert.match(out, /lines omitted from this view/);
+      if (failed) assert.ok(out.includes(GO_FAIL), 'the failed test message was cut');
+      assert.ok(!out.includes('skipping in short mode'), 'a skipped test kept its line');
+    });
+  }
+
   // Jest prints a failed test's detail under an indented `●` header. The
   // header, the Expected and Received lines and the first `at` frame survive
   // the cap as one block; the code excerpt and the later frames do not.
