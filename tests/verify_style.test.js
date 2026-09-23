@@ -3,8 +3,10 @@
 const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
-const { verify, verifyCore, sections, CRAFTED_MARKER, GUARDED_SECTIONS } = require("../scripts/verify-style.js");
+const { verify, verifyCore, sections, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS } = require("../scripts/verify-style.js");
+const { activate } = require("../scripts/activate-style.js");
 
 const pluginRoot = path.join(__dirname, "..");
 const canonicalPath = path.join(pluginRoot, "output-styles", "hush.md");
@@ -54,6 +56,26 @@ test("a name with a colon is refused in both modes, for the reason activation gi
     const result = check(canonical, variant(canonicalBody, frontmatter));
     assert.strictEqual(result.ok, false);
     assert.deepStrictEqual(result.problems, [reason]);
+  }
+});
+
+test("verify and activation refuse a colon name for the one shared reason", () => {
+  const text = variant(canonicalBody, VALID_FRONTMATTER.replace("name: Robo", "name: hush:Robo"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "hush-verify-style-"));
+  try {
+    const fixturePlugin = path.join(root, "plugin");
+    fs.mkdirSync(path.join(fixturePlugin, "output-styles"), { recursive: true });
+    fs.writeFileSync(path.join(fixturePlugin, "output-styles", "hush.md"), canonical);
+    const target = path.join(root, "clash.md");
+    fs.writeFileSync(target, text);
+
+    assert.throws(
+      () => activate(target, { pluginRoot: fixturePlugin, projectDir: root, homeDir: root }),
+      { message: `"hush:Robo" ${COLON_NAME_REASON} — rename this variant without one before activating it` }
+    );
+    assert.deepStrictEqual(verify(canonical, text).problems, [`frontmatter: name "hush:Robo" ${COLON_NAME_REASON}`]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

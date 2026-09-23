@@ -14,7 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { safeWriteFileSync } = require("../hooks/lib/safe-write.js");
-const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore, CRAFTED_MARKER } = require("./verify-style.js");
+const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore, CRAFTED_MARKER, COLON_NAME_REASON } = require("./verify-style.js");
 
 function injectForcePlugin(text) {
   const { frontmatter, body } = splitFrontmatter(normalize(text));
@@ -76,7 +76,7 @@ function validateVariant(target, text, canonicalText) {
   // Claude Code names a plugin's style plugin:name, so a colon in the name
   // would show an id where a name belongs, on the shelf and in the record.
   if (name.includes(":"))
-    throw new Error(`"${fm.name}" contains a colon, which Claude Code uses for plugin style ids such as hush:Hush — rename this variant without one before activating it`);
+    throw new Error(`"${fm.name}" ${COLON_NAME_REASON} — rename this variant without one before activating it`);
   // Stock's name is taken: a variant wearing it makes the record and the slot
   // agree even after an update wrote over the takeover.
   const stockName = parseFrontmatter(splitFrontmatter(normalize(canonicalText)).frontmatter).name;

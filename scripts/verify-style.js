@@ -33,6 +33,10 @@ const WORD_FLOOR = 0.6;
 // both, so the marker is checked here rather than trusted.
 const CRAFTED_MARKER = "Unmeasured variant of Hush.";
 
+// Why a crafted style name may not contain a colon. This check and activation
+// both refuse such a name, and both give this reason.
+const COLON_NAME_REASON = "contains a colon, which Claude Code uses for plugin style ids such as hush:Hush";
+
 // The core contract holds in every mode — full mode checks the readability
 // frame on top of these phrases, never instead of them.
 const CORE_PHRASES = [
@@ -133,8 +137,7 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
     const fm = parseFrontmatter(generated.frontmatter);
     if (!fm.name) problems.push("frontmatter: name is missing");
     // The same refusal activation gives, so a crafted name fails here first.
-    else if (fm.name.includes(":"))
-      problems.push(`frontmatter: name "${fm.name}" contains a colon, which Claude Code uses for plugin style ids such as hush:Hush`);
+    else if (fm.name.includes(":")) problems.push(`frontmatter: name "${fm.name}" ${COLON_NAME_REASON}`);
     if (fm["keep-coding-instructions"] !== "true")
       problems.push("frontmatter: keep-coding-instructions must be true");
     if ("force-for-plugin" in fm)
@@ -243,4 +246,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize, sections, CRAFTED_MARKER, GUARDED_SECTIONS };
+module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize, sections, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS };
