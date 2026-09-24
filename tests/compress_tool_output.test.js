@@ -39,6 +39,7 @@ const {
   exitNote,
   FAILURE_RERUN_NOTE,
 } = require('../hooks/compress-tool-output');
+const { wrapBash, wrapPowerShell } = require('../hooks/preserve-exit-code');
 
 describe('unit: transforms', () => {
   test('stripAnsi removes color and cursor codes', () => {
@@ -509,25 +510,27 @@ describe('unit: extractWrappedExit', () => {
     assert.strictEqual(r.cleanText, 'output');
   });
 
-  test('strips EVERY marker occurrence, using the last well-formed one as authoritative', () => {
+  test('reads only the trailer; a marker printed earlier stays in the text as printed', () => {
     const text = 'saw a stray [[hush:exit=99]] in some log line\nreal output\n[[hush:exit=1]]';
     const r = extractWrappedExit(text);
     assert.strictEqual(r.exitCode, 1);
-    assert.doesNotMatch(r.cleanText, /\[\[hush:exit=/, 'no raw marker of any kind should ever reach the model');
-    assert.strictEqual(r.cleanText, 'saw a stray  in some log line\nreal output');
+    assert.strictEqual(r.cleanText, 'saw a stray [[hush:exit=99]] in some log line\nreal output');
   });
 
-  // Confirmed real scenario:
+  test('a marker that does not close the output is no trailer', () => {
+    assert.strictEqual(extractWrappedExit("const t = '[[hush:exit=137]]';\nassert.ok(t);"), null);
+  });
+
   // Claude Code's own "output too large, persisted to a sidecar file"
-  // mechanism captured RAW pre-hook output including an already-well-formed
-  // marker; a later `Get-Content -Tail` on that file got wrapped AGAIN by
-  // this hook, and since that second wrap was a pure cmdlet call (no native
-  // exe), it appended a malformed marker on top of the first, well-formed one.
-  test('a double-wrapped result (well-formed marker + malformed marker) keeps the well-formed exit code and strips both', () => {
+  // mechanism captures RAW pre-hook output including a well-formed marker; a
+  // later `Get-Content -Tail` on that file is wrapped again, and a pure cmdlet
+  // call (no native exe) appends a malformed trailer. The file's marker is an
+  // earlier command's code, not this one's.
+  test('a saved marker before a malformed trailer is text, and no exit code is known', () => {
     const text = 'line one\nline two\n[[hush:exit=1]]\n[[hush:exit=\n]]';
     const r = extractWrappedExit(text);
-    assert.strictEqual(r.exitCode, 1);
-    assert.doesNotMatch(r.cleanText, /\[\[hush:exit=/);
+    assert.strictEqual(r.exitCode, null);
+    assert.strictEqual(r.cleanText, 'line one\nline two\n[[hush:exit=1]]');
   });
 
   test('handles non-string input', () => {
@@ -652,7 +655,11 @@ describe('hook: end to end', () => {
     const raw = testLines.join('\n') + '\n[[hush:exit=1]]';
     // The repeated "ok N - some subtest" shape would otherwise template-
     // collapse; pin it off so this stays a pure exit-marker/cap-generosity test.
-    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw }, { HUSH_TEMPLATE: 'off' });
+    const r = runHook(
+      'compress-tool-output.js',
+      { tool_name: 'PowerShell', tool_input: { command: wrapPowerShell('node --test') }, tool_response: raw },
+      { HUSH_TEMPLATE: 'off' }
+    );
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.doesNotMatch(updated, /\[\[hush:exit=/, 'raw wrapper marker never reaches the model');
     assert.match(updated, /\[hush: exit 1\]$/, 'clean exit marker is appended at the end');
@@ -663,7 +670,7 @@ describe('hook: end to end', () => {
   test('a wrapped PASSING command gets the tighter pass cap, not the failure cap', () => {
     const lines = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`);
     const raw = lines.join('\n') + '\n[[hush:exit=0]]';
-    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_response: raw });
+    const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command: wrapPowerShell('node --test') }, tool_response: raw });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.match(updated, /\[hush: exit 0\]$/);
     assert.ok(updated.split('\n').length <= 63, 'pass cap (60) should apply, not the fail cap (250)');
@@ -674,6 +681,7 @@ describe('hook: end to end', () => {
     const raw = lines.join('\n') + '\n[[hush:exit=1]]';
     const r = runHook('compress-tool-output.js', {
       tool_name: 'PowerShell',
+      tool_input: { command: wrapPowerShell('node build.js') },
       tool_response: { stdout: raw, stderr: '', interrupted: false },
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
@@ -707,11 +715,61 @@ describe('hook: end to end', () => {
   test('a malformed marker (pure-cmdlet call, $LASTEXITCODE never set) never leaks to the model', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'PowerShell',
+      tool_input: { command: wrapPowerShell('Get-ChildItem | Select-Object Name') },
       tool_response: 'Name\n----\nfoo.js\nbar.js\n[[hush:exit=\n\n]]',
     });
     const updated = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.doesNotMatch(updated, /\[\[hush:exit=/, 'malformed marker must be stripped, not leaked raw');
     assert.doesNotMatch(updated, /\[hush: exit /, 'no untrustworthy exit-code note should be appended either');
+  });
+
+  // Output can quote the marker: hush's own source printed with sed, a saved
+  // earlier output, a report that cites one. Only the wrapper's trailer on a
+  // wrapped command is an exit code; every other occurrence is output text.
+  describe('a printed exit marker is output, never an exit code', () => {
+    const printed = "const text = 'starting\\nKilled\\n[[hush:exit=137]]';\nassert.ok(text);";
+    const view = (r) => {
+      const out = hookOutput(r);
+      return out ? out.hookSpecificOutput.updatedToolOutput : null;
+    };
+
+    test('mid-output on a wrapped exit 0: the real code, the printed marker kept', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash("sed -n '1,2p' t.js") },
+        tool_response: { stdout: `${printed}\n[[hush:exit=\n0\n]]`, stderr: '', interrupted: false },
+      }));
+      assert.strictEqual(out.stdout, `${printed}\n[hush: exit 0]`);
+    });
+
+    test('mid-output before an empty PowerShell trailer: no exit code, the printed marker kept', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'PowerShell',
+        tool_input: { command: wrapPowerShell('Get-Content t.js') },
+        tool_response: `${printed}\r\n[[hush:exit=\r\n\r\n]]`,
+      }));
+      assert.strictEqual(out, printed);
+    });
+
+    test('an unwrapped command is left as printed, even when its output ends in a marker', () => {
+      for (const stdout of [printed, 'all tests passed\n[[hush:exit=\n1\n]]']) {
+        const out = view(runHook('compress-tool-output.js', {
+          tool_name: 'Bash',
+          tool_input: { command: 'tail -n 2 saved-output.txt' },
+          tool_response: { stdout, stderr: '', interrupted: false },
+        }));
+        assert.strictEqual(out, null, `rewrote ${JSON.stringify(stdout)}`);
+      }
+    });
+
+    test('the real trailer on a wrapped failing command still reports its code', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: { stdout: `${printed}\nnot ok 1 - x\n[[hush:exit=\n1\n]]`, stderr: '', interrupted: false },
+      }));
+      assert.strictEqual(out.stdout, `${printed}\nnot ok 1 - x\n[hush: exit 1]`);
+    });
   });
 
   test('a plain file dump keeps more lines than a same-size build log', () => {
@@ -2653,7 +2711,7 @@ describe('unit: exit code and signal', () => {
   test('end to end: the trailer surfaces the signal name to the model', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'Bash',
-      tool_input: { command: 'node stress.js' },
+      tool_input: { command: wrapBash('node stress.js') },
       tool_response: 'starting\nKilled\n[[hush:exit=\n137\n]]',
     });
     const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;

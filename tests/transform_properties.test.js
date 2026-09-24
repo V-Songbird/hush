@@ -47,6 +47,7 @@ const {
   claimSessionNote,
   FAILURE_RERUN_NOTE,
 } = require('../hooks/compress-tool-output');
+const { wrapBash } = require('../hooks/preserve-exit-code');
 const { buildRecord, recoveryGap, sizeGap, fieldGap } = require('../hooks/lib/transform-manifest');
 const sidecarStore = require('../hooks/lib/sidecar-store');
 const { HOOKS_DIR } = require('./helpers');
@@ -466,6 +467,7 @@ describe('deliver(): one boundary, one fallback', () => {
     const view = '\n'.repeat(100) + '\n[hush: exit 137 (SIGKILL)]' + 'x'.repeat(200);
     const ship = shipped(lossy({ bytesIn: raw.length, bytesOut: view.length, omitted: 41 }), view, {
       tool_name: 'Bash',
+      tool_input: { command: wrapBash('node stress.js') },
       tool_response: raw,
     });
     assert.ok(ship !== undefined, 'the sanitizing rewrite was dropped, so the raw wrapper would reach the model');
@@ -567,7 +569,7 @@ describe('e2e: main() routes every path through the same boundary', () => {
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       session_id: 'realmarker',
-      tool_input: { command: 'node build.js' },
+      tool_input: { command: wrapBash('node build.js') },
       tool_response: 'a\na\na\na\na\na\na\na\n[[hush:exit=0]]',
     });
     assert.strictEqual(r.status, 0, r.stderr);

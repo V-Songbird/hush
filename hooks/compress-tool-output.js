@@ -763,48 +763,48 @@ function firstLine(command) {
   return i === -1 ? command : command.slice(0, i);
 }
 
-// Matches the trailer preserve-exit-code.js appends. Real output splits the
+// Reads the trailer preserve-exit-code.js appends. Real output splits the
 // prefix, the number, and the suffix across three separate lines (its
 // wrapper never puts a variable inside a quoted string or parens — see that
 // file's header for why), CRLF or LF — `\s*` bridges the line breaks either
 // way.
 //
-// Two separate patterns, deliberately: MARKER_ANY has no digit requirement,
-// so it also matches a MALFORMED marker (empty capture) — PowerShell only
-// sets $LASTEXITCODE for a native executable, so a pure-cmdlet command
-// (`Get-ChildItem | Select-Object`, a bare `Get-Content`) leaves it
-// null/stale and the wrapper emits `[[hush:exit=\n\n]]` with nothing inside.
-// That text must still be stripped — never leaked to the model raw — even
-// though it carries no usable exit code. Every occurrence gets removed
-// unconditionally (not just the last one): Claude Code's own "output too
-// large, persisted to a sidecar file" mechanism can capture RAW pre-hook
-// output including an already-well-formed marker, and a later
-// `Get-Content -Tail` on that sidecar file gets wrapped again by this same
-// hook — two markers can legitimately land in one tool result.
-const EXIT_MARKER_ANY_RE = /\[\[hush:exit=[^[\]]*\]\]/g;
-const EXIT_MARKER_VALID_RE = /\[\[hush:exit=\s*(-?\d+)\s*\]\]/g;
-// The same pattern without /g, for the one caller that asks "is there a marker
-// here at all?" rather than replacing them. Derived from ANY's source so the
-// two can never drift, and non-global so a .test() carries no lastIndex state.
-const EXIT_MARKER_PRESENT_RE = new RegExp(EXIT_MARKER_ANY_RE.source);
+// Only the trailer counts: the last marker, closing the output. The wrapper's
+// statements run after the command, so the real one always comes last. Any
+// other occurrence is text the command printed (hush's own source, a saved
+// earlier output, a quoted report) and stays in the view as printed; honoring
+// it would let output fabricate an exit code. main() also requires the
+// command to carry the wrapper, so an unwrapped command's output that happens
+// to end in a marker is text too.
+//
+// A MALFORMED trailer (nothing between the brackets) is still stripped, with
+// no exit code: PowerShell only sets $LASTEXITCODE for a native executable,
+// so a pure-cmdlet command (`Get-ChildItem | Select-Object`, a bare
+// `Get-Content`) leaves it null/stale and the wrapper emits
+// `[[hush:exit=\n\n]]` with nothing inside.
+const EXIT_MARKER_PREFIX = "[[hush:exit=";
+const EXIT_TRAILER_RE = /^\[\[hush:exit=([^[\]]*)\]\]\s*$/;
 
-// Returns null when no hush marker appears at all (nothing to strip, caller
-// uses the old regex-sniffing heuristic). Otherwise always strips every
-// marker occurrence from cleanText; exitCode is the last WELL-FORMED
-// occurrence's value, or null if every marker found was malformed/empty —
-// callers must treat a null exitCode the same as "no reliable exit code
-// known" (fall back to sniffing cleanText) while still using the stripped
-// cleanText and skipping the `[hush: exit N]` trailer note.
+// Returns null when the text does not end in a marker (nothing to strip,
+// caller uses the old regex-sniffing heuristic). Otherwise cleanText is the
+// text without that trailer; exitCode is its value, or null when it was
+// malformed/empty — callers must treat a null exitCode the same as "no
+// reliable exit code known" (fall back to sniffing cleanText) while still
+// using the stripped cleanText and skipping the `[hush: exit N]` trailer note.
 function extractWrappedExit(text) {
-  if (typeof text !== "string" || !text.includes("[[hush:exit=")) return null;
+  if (typeof text !== "string") return null;
+  const start = text.lastIndexOf(EXIT_MARKER_PREFIX);
+  const trailer = start === -1 ? null : EXIT_TRAILER_RE.exec(text.slice(start));
+  if (!trailer) return null;
+  const code = /^\s*(-?\d+)\s*$/.exec(trailer[1]);
+  return { exitCode: code ? parseInt(code[1], 10) : null, cleanText: text.slice(0, start).replace(/\s+$/, "") };
+}
 
-  EXIT_MARKER_VALID_RE.lastIndex = 0;
-  let match;
-  let lastValid;
-  while ((match = EXIT_MARKER_VALID_RE.exec(text))) lastValid = match;
-
-  const cleanText = text.replace(EXIT_MARKER_ANY_RE, "").replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "");
-  return { exitCode: lastValid ? parseInt(lastValid[1], 10) : null, cleanText };
+// True when preserve-exit-code.js wrapped this call's command. PostToolUse
+// receives the command as the PreToolUse hook rewrote it.
+function isExitWrapped(data) {
+  const command = data.tool_input && data.tool_input.command;
+  return typeof command === "string" && EXIT_WRAP_TAIL_RE.test(command);
 }
 
 // A shell reports a signal death as 128+N, so the trailer's own number already
@@ -1402,14 +1402,16 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
 // is escapeMarkerLookalikes: a view that escaped a line (decision.escaped) ships
 // whatever its size, or the raw lookalike would reach the model.
 //
-// Keyed on the STRIPPABLE marker, not on the `[[hush:exit=` prefix: the host
-// truncates raw output around 29KB and can cut a real marker mid-text, and
-// hush's own source or docs dumped to stdout carry the bare prefix as
-// literal text. In both cases the stripper removes nothing, so exempting the
-// size invariant would ship a growing rewrite AND still leave the prefix in
-// front of the model — the worst of both.
-function mustSanitize(response) {
-  const strippable = (v) => typeof v === "string" && EXIT_MARKER_PRESENT_RE.test(v);
+// Keyed on the trailer extractWrappedExit strips, on a wrapped command, not on
+// the `[[hush:exit=` prefix: the host truncates raw output around 29KB and can
+// cut a real marker mid-text, and hush's own source or docs dumped to stdout
+// carry the prefix as literal text. In both cases the stripper removes
+// nothing, so exempting the size invariant would ship a growing rewrite AND
+// still leave the prefix in front of the model — the worst of both.
+function mustSanitize(data) {
+  if (!isExitWrapped(data)) return false;
+  const response = data.tool_response;
+  const strippable = (v) => extractWrappedExit(v) !== null;
   if (typeof response === "string") return strippable(response);
   if (response && typeof response === "object") {
     return SHELL_FIELDS.some((field) => strippable(response[field]));
@@ -1441,7 +1443,7 @@ function deliver(decision, updated, data) {
     const failure =
       fail("rejected-no-recovery", recoveryGap(record)) ||
       fail("rejected-field-loss", fieldGap(data.tool_response, out)) ||
-      (mustSanitize(data.tool_response) || decision.escaped ? null : fail("rejected-not-smaller", sizeGap(record)));
+      (mustSanitize(data) || decision.escaped ? null : fail("rejected-not-smaller", sizeGap(record)));
     if (failure) {
       record.action = failure.action;
       record.fallback = failure.reason;
@@ -1646,9 +1648,10 @@ function main() {
   const command = data.tool_input && data.tool_input.command;
   const isDump = isFileDump(firstLine(command));
   const bounded = isBoundedPrint(command);
+  const exitWrapped = isExitWrapped(data);
 
   if (typeof response === "string") {
-    const wrapped = extractWrappedExit(response);
+    const wrapped = exitWrapped ? extractWrappedExit(response) : null;
     // null exitCode = a marker was found but malformed (no native exe ran,
     // so $LASTEXITCODE was never set) — still strip it, but compress() gets
     // undefined so looksLikeFailure falls back to sniffing cleanText, and no
@@ -1663,7 +1666,8 @@ function main() {
     return deliver(decision, updated, data);
   } else if (response && typeof response === "object") {
     const wrapped =
-      extractWrappedExit(response.stdout) || extractWrappedExit(response.stderr) || extractWrappedExit(response.output);
+      exitWrapped &&
+      (extractWrappedExit(response.stdout) || extractWrappedExit(response.stderr) || extractWrappedExit(response.output));
     const exitCode = wrapped ? wrapped.exitCode : extractExitCode(response);
     const next = { ...response };
     let changed = false;
@@ -1681,7 +1685,7 @@ function main() {
     for (const field of SHELL_FIELDS) {
       if (typeof next[field] === "string") {
         bytesIn += next[field].length;
-        const fieldWrapped = extractWrappedExit(next[field]);
+        const fieldWrapped = exitWrapped ? extractWrappedExit(next[field]) : null;
         const decision = {};
         let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
         if (fieldWrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;

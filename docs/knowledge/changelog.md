@@ -84,6 +84,12 @@ else is part of the output, and Claude names a note when it limits a claim.
 A style you crafted keeps the old paragraph, so it will not activate until
 you edit it with `/hush:craft-style`.
 
+hush now takes a command's exit code only from the marker its own wrapper
+adds at the end of a wrapped command's output. A marker the output merely
+prints, such as hush's own source, a saved earlier output or a quoted report,
+stays in the output as printed and no longer changes the exit code Claude
+sees. Before, it could make a command that passed read as failed or killed.
+
 hush's hooks now start node directly instead of through a shell, so hush needs
 Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so

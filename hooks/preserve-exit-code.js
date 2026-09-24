@@ -23,7 +23,9 @@
 // Wrapping forces the tool call itself to always report success (so
 // PostToolUse fires, where compression works), while the real exit code
 // survives as a trailer marker compress-tool-output.js reads authoritatively
-// (see EXIT_MARKER_RE there) instead of guessing from response shape/regex.
+// (see extractWrappedExit there) instead of guessing from response shape/regex.
+// It reads only a marker that closes the output of a command carrying this
+// wrapper, so the trailer must stay the last thing the wrapped command prints.
 
 const { readInput, emitUpdatedInput } = require("./lib/harness");
 const { coreOff } = require("./lib/gate");
