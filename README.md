@@ -75,7 +75,7 @@ Full-output references point to temporary files. Disabling runtime controls and 
 
 The comparison asks whether jobs were completed correctly, how often the assistant gave at most one update, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
 
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/hush/validation/claude-readme-benchmark-2026-09-10.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
 | Model | Setup | Jobs right | At most one update | Median final prose words |
 | --- | --- | --- | --- | --- |
 | Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
