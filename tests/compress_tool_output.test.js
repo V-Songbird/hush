@@ -411,7 +411,7 @@ const overFloor = (lines) => Array.from({ length: 40 }, (_, i) =>
 // The collapse markers state what happened; the view still owed
 // the model a way to get the collapsed lines back.
 describe('template collapse: the view states its own recovery', () => {
-  const { TEMPLATE_COLLAPSE_NOTE } = require('../hooks/compress-tool-output');
+  const { TEMPLATE_COLLAPSE_NOTE, TEMPLATE_RECOVERY_NOTE } = require('../hooks/compress-tool-output');
 
   const run = (text) => compress(text, 0, false, false, [], 1, null, true, false, {});
 
@@ -443,12 +443,23 @@ describe('template collapse: the view states its own recovery', () => {
     assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE));
   });
 
-  test('the footer is dropped when stating it would cost more than the collapse saved', () => {
+  test('a collapse that saved less than the full footer still names its recovery, in the short one', () => {
     const log = overFloor(Array.from({ length: 8 }, (_, i) => `abc def ghi ${i} of the nightly batch`)).join('\n');
     const out = run(log);
     assert.ok(out.includes('similar lines collapsed'), 'the collapse still happens');
     assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE), 'but an 8-line run is not worth a paragraph of guidance');
+    assert.ok(out.endsWith(`\n${TEMPLATE_RECOVERY_NOTE}`), 'so the view names the way back in one line');
+    assert.match(TEMPLATE_RECOVERY_NOTE, /offset\/limit/);
     assert.ok(out.length < log.length, 'and the view never grows past what it was given');
+  });
+
+  test('a collapse that cannot pay even for the short footer is undone', () => {
+    const runLines = Array.from({ length: 5 }, (_, i) => `abc def ghi ${i}`);
+    const log = overFloor(runLines).join('\n');
+    const out = run(log);
+    assert.ok(!out.includes('similar lines collapsed'), 'nothing is folded');
+    assert.ok(!out.includes(TEMPLATE_RECOVERY_NOTE), 'so no recovery is owed');
+    assert.ok(out.endsWith(runLines.join('\n')), 'the run reaches the model whole');
   });
 
   test('a small output is never folded by shape; exact repeats still fold', () => {

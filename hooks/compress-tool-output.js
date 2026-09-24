@@ -210,6 +210,11 @@ const TEMPLATE_COLLAPSE_NOTE =
   "For the dropped lines themselves, Read the source file with offset/limit — ranged reads are returned verbatim — " +
   "or re-run the command into a file and read that.]";
 
+// The retrieval half alone, for a view whose collapses saved less than the
+// full note costs.
+const TEMPLATE_RECOVERY_NOTE =
+  "[hush hook: to see collapsed lines, Read the file with offset/limit or re-run the command into a file.]";
+
 // Lines that look like they carry the task's actual signal (warnings, errors,
 // deprecations) survive the cap regardless of position — only surrounding
 // noise (progress logs, install trees) gets cut. A blind head+tail slice can
@@ -1313,22 +1318,30 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // of a short table all share one shape, so a collapse hides the answer itself
   // and the model re-runs the command to get it back, which costs more than
   // the few characters the collapse saved.
-  let lines = dedupeConsecutive(cleaned.split("\n"));
-  const dedupedLen = lines.length;
-  if (!enumerate && cleaned.length >= GREP_MIN_CHARS) lines = collapseTemplates(lines, relevanceTokens, failed);
-  const beforeCapLen = lines.length;
-  const collapsed = beforeCapLen < dedupedLen;
-  const capped = beforeCapLen > cap; // capLines' own no-op guard is `length <= cap`
-  lines = capLines(lines, cap, relevanceTokens);
-  if (failed && capped) lines.push(FAILURE_RERUN_NOTE);
-  let out = lines.join("\n");
+  const deduped = dedupeConsecutive(cleaned.split("\n"));
+  const folded = !enumerate && cleaned.length >= GREP_MIN_CHARS ? collapseTemplates(deduped, relevanceTokens, failed) : deduped;
+  let collapsed = folded.length < deduped.length;
+  let capped, lines, out;
+  const build = (from) => {
+    capped = from.length > cap; // capLines' own no-op guard is `length <= cap`
+    lines = capLines(from, cap, relevanceTokens);
+    if (failed && capped) lines.push(FAILURE_RERUN_NOTE);
+    out = lines.join("\n");
+  };
+  build(folded);
   // The collapse markers themselves say nothing about how to get the collapsed
   // lines back; the footer does, once per view. Appended after the join, so it
-  // never enters the line accounting below, and only when the collapse still
-  // pays for it — a view that grew to state its own recovery would be a worse
-  // deal than not collapsing at all.
-  if (collapsed && out.length + TEMPLATE_COLLAPSE_NOTE.length + 1 < cleaned.length) {
-    out += `\n${TEMPLATE_COLLAPSE_NOTE}`;
+  // never enters the line accounting below: the full note when the collapse
+  // pays for it, else the short one. A collapse that cannot pay even for the
+  // short one is undone, so no view hides lines without naming a way back and
+  // none grows to state it.
+  if (collapsed) {
+    const note = [TEMPLATE_COLLAPSE_NOTE, TEMPLATE_RECOVERY_NOTE].find((n) => out.length + n.length + 1 < cleaned.length);
+    if (note) out += `\n${note}`;
+    else {
+      collapsed = false;
+      build(deduped);
+    }
   }
   // Line accounting for the manifest, derived from the view itself rather than
   // threaded out of dedupe/collapse/cap separately: a line hush keeps is kept
@@ -1688,6 +1701,7 @@ module.exports = {
   omittedMarker,
   FAILURE_RERUN_NOTE,
   TEMPLATE_COLLAPSE_NOTE,
+  TEMPLATE_RECOVERY_NOTE,
   looksLikeFailure,
   isKeepLine,
   exitNote,

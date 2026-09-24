@@ -82,9 +82,10 @@ When hush shortens something it leaves a short note in square brackets, like
 `[hush hook: 12 lines omitted from this view, none with warnings/errors/failures]`. That note is
 hush talking, not the command. It says what was dropped, but not always how to get it back. A
 digest names the file that holds everything, and a trimmed failing run says to re-run the command.
-A view with same-shape folds ends with one note on reading the dropped lines, left out when it
-would cost more than the folds saved. For any other note, re-run the command, or read the file
-with an offset and a limit.
+A view with same-shape folds ends with one note on reading the dropped lines. When the folds saved
+less than that note costs, a one-line version replaces it, and folds that cannot pay even for that
+line are not made. For any other note, re-run the command, or read the file with an offset and a
+limit.
 
 Omission is deterministic. In a trimmed view, a line is cut only when it matches no warning, error
 or failure pattern. A digest shows a sample of those lines instead, and names the file that holds
