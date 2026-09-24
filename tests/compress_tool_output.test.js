@@ -246,7 +246,7 @@ describe('unit: transforms', () => {
   });
 
   test('compress treats a file-dump command like a failure — keeps more of the middle', () => {
-    const big = Array.from({ length: 200 }, (_, i) => `line ${i}`).join('\n');
+    const big = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
     const asLog = compress(big, 0, false).split('\n').length;
     const asDump = compress(big, 0, true).split('\n').length;
     assert.ok(asDump > asLog, `dump cap ${asDump} should be looser than log cap ${asLog}`);
@@ -468,6 +468,19 @@ describe('template collapse: the view states its own recovery', () => {
     assert.ok(out.endsWith(runLines.join('\n')), 'the run reaches the model whole');
   });
 
+  // Undoing the fold can leave more lines than the cap: that output is long,
+  // so it gets the cap any long output gets, even though its fold fitted.
+  test('an undone collapse over the cap is capped like any long output', () => {
+    const runs = Array.from({ length: 5 }, (_, k) => [`-- batch ${k} --`, ...Array.from({ length: 5 }, (_, j) => `abc def ghi ${k}${j}`)]).flat();
+    const lines = overFloor(runs);
+    assert.ok(lines.length > 60 && collapseTemplates(lines, []).length <= 60, 'folded, the view fits under the cap');
+    const d = {};
+    const out = compress(lines.join('\n'), 0, false, false, [], 1, null, true, false, d);
+    assert.ok(!out.includes('similar lines collapsed'), 'the collapse is undone');
+    assert.strictEqual(d.action, 'cap');
+    assert.match(out, /lines omitted from this view/);
+  });
+
   test('a small output is never folded by shape; exact repeats still fold', () => {
     const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
     assert.strictEqual(run(tiny), tiny);
@@ -484,6 +497,22 @@ describe('template collapse: the view states its own recovery', () => {
     const decision = {};
     assert.strictEqual(compress(table, 0, false, false, [], 1, null, true, false, decision), table);
     assert.strictEqual(decision.action, 'passthrough');
+  });
+
+  // The same reason holds for the line cap: a short print past 60 lines is
+  // code or names the model asked for, and a cut one was fetched again.
+  test('under 4,000 characters nothing is cut by line count, however many lines or however full the session', () => {
+    const rows = (n) => Array.from({ length: n }, (_, i) => `-rw-r--r-- 1 dev ${1000 + i * 7} src/mod-${i}.js`).join('\n');
+    const listing = rows(84);
+    assert.ok(listing.length < 4000);
+    for (const [exit, scale] of [[0, 1], [0, 0.5], [1, 1]]) {
+      const decision = {};
+      assert.strictEqual(compress(listing, exit, false, false, [], scale, null, true, false, decision), listing);
+      assert.strictEqual(decision.action, 'passthrough');
+    }
+    const long = rows(130);
+    assert.ok(long.length >= 4000);
+    assert.ok(compress(long, 0, false, false, [], 1, null, true, false, {}).length < long.length, 'from 4,000 characters the trims apply');
   });
 });
 
@@ -629,7 +658,7 @@ describe('hook: end to end', () => {
   });
 
   test('string response gets compressed', () => {
-    const big = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');
+    const big = Array.from({ length: 1000 }, (_, i) => `l${i}`).join('\n');
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_response: big });
     const out = hookOutput(r);
     const updated = out.hookSpecificOutput.updatedToolOutput;
@@ -638,7 +667,7 @@ describe('hook: end to end', () => {
   });
 
   test('object response compresses stdout, preserves shape and other fields', () => {
-    const big = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');
+    const big = Array.from({ length: 1000 }, (_, i) => `l${i}`).join('\n');
     const r = runHook('compress-tool-output.js', {
       tool_name: 'PowerShell',
       tool_response: { stdout: big, stderr: '', interrupted: false },
@@ -682,7 +711,7 @@ describe('hook: end to end', () => {
   });
 
   test('wrapped exit marker on an object response (stdout field) is read and stripped the same way', () => {
-    const lines = Array.from({ length: 320 }, (_, i) => (i % 8 === 0 ? `ERROR item ${i}` : `ok ${i}`));
+    const lines = Array.from({ length: 640 }, (_, i) => (i % 8 === 0 ? `ERROR item ${i}` : `ok ${i}`));
     const raw = lines.join('\n') + '\n[[hush:exit=1]]';
     const r = runHook('compress-tool-output.js', {
       tool_name: 'PowerShell',
@@ -696,7 +725,7 @@ describe('hook: end to end', () => {
   });
 
   test('a wrapped file-dump command still gets the looser dump cap, not the log cap', () => {
-    const big = Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n');
+    const big = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
     const wrappedCommand = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
     const raw = big + '\n[[hush:exit=0]]';
     const asWrappedDump = runHook('compress-tool-output.js', {
@@ -778,7 +807,7 @@ describe('hook: end to end', () => {
   });
 
   test('a plain file dump keeps more lines than a same-size build log', () => {
-    const big = Array.from({ length: 400 }, (_, i) => `line ${i}`).join('\n');
+    const big = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
     const dumpResult = runHook('compress-tool-output.js', {
       tool_name: 'Bash',
       tool_input: { command: 'cat src/Foo.kt' },
@@ -829,7 +858,7 @@ describe('a line of the output that opens like a hush marker', () => {
   });
 
   test('reaches a capped view escaped, and the omitted count is exact', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => `row ${i + 1} value ${(i + 1) * 7}`);
+    const lines = Array.from({ length: 400 }, (_, i) => `row ${i + 1}: ${(i + 1) * 7}`);
     lines.splice(10, 0, spoof);
     const d = {};
     const view = compress(lines.join('\n'), 0, false, false, [], 1, undefined, true, false, d).split('\n');
@@ -1030,7 +1059,7 @@ describe('hook: once-per-session telemetry note', () => {
     for (const id of sids) fs.rmSync(sessionDir(id), { recursive: true, force: true });
   });
 
-  const noisy = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n');
+  const noisy = Array.from({ length: 1000 }, (_, i) => `l${i}`).join('\n');
 
   test('first compressing fire in a session rides the rewrite with the telemetry note', () => {
     const r = runHook('compress-tool-output.js', {
@@ -1303,7 +1332,7 @@ describe('unit: relevance preservation + pressure scaling', () => {
     try {
       const transcript = path.join(dir, 't.jsonl');
       fs.writeFileSync(transcript, 'x'.repeat(2 * 1024 * 1024) + NL);
-      const output = Array.from({ length: 300 }, (_, i) => 'unique ' + i).join(NL);
+      const output = Array.from({ length: 400 }, (_, i) => 'unique ' + i).join(NL);
       const omitted = (input, env) => {
         const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: 'node build.js' }, tool_response: output, ...input }, { HUSH_TEMPLATE: 'off', ...env });
         return Number(/(\d+) lines omitted/.exec(hookOutput(r).hookSpecificOutput.updatedToolOutput)[1]);
@@ -1337,9 +1366,9 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
   const omitted = (command, lines, env) => Number(/(\d+) lines omitted/.exec(view({ tool_input: { command }, tool_response: unique(lines) }, env))[1]);
 
   test('HUSH_CAP_PASS sets the cap on passing output', () => {
-    const base = omitted('node build.js', 300, {});
-    assert.ok(omitted('node build.js', 300, { HUSH_CAP_PASS: '120' }) < base, 'a larger cap keeps more lines');
-    for (const v of INVALID) assert.strictEqual(omitted('node build.js', 300, { HUSH_CAP_PASS: v }), base, v);
+    const base = omitted('node build.js', 400, {});
+    assert.ok(omitted('node build.js', 400, { HUSH_CAP_PASS: '120' }) < base, 'a larger cap keeps more lines');
+    for (const v of INVALID) assert.strictEqual(omitted('node build.js', 400, { HUSH_CAP_PASS: v }), base, v);
   });
 
   test('HUSH_CAP_FAIL sets the cap on a file dump', () => {
@@ -1403,7 +1432,7 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   });
 
   test('below the threshold the normal capped view still applies', () => {
-    const small = Array.from({ length: 300 }, (_, i) => 'l' + i).join(NL);
+    const small = Array.from({ length: 1000 }, (_, i) => 'l' + i).join(NL);
     const out = withSidecarOn(() => comp(small, 0, false, false, [], 1, 'sidetest'));
     assert.doesNotMatch(out, /saved in full to/);
     assert.match(out, /lines omitted from this view/);
@@ -1722,9 +1751,9 @@ describe('the keep vocabulary, pinned category by category', () => {
   // Varying token counts, so no two neighbours share a template and the cap —
   // not the collapse — is what decides which lines survive.
   const filler = (i) => ['info', 'step', String(i)].concat(Array.from({ length: i % 5 }, () => 'ok')).join(' ');
-  /** 200 filler lines with one sample buried at 100 — past the head, short of the tail. */
+  /** 300 filler lines with one sample buried at 100 — past the head, short of the tail. */
   const cappedView = (sample) => {
-    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines[100] = sample;
     return comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
   };
@@ -1868,7 +1897,7 @@ describe('the keep vocabulary, pinned category by category', () => {
 
   for (const [label, block] of STACK_SAMPLES) {
     test(`a ${label} stack keeps its first frame after the error and cuts the rest`, () => {
-      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      const lines = Array.from({ length: 300 }, (_, i) => filler(i));
       lines.splice(100, block.length, ...block);
       const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
       const frames = block.filter((l) => /\.(js|java|go):\d+/.test(l));
@@ -1965,7 +1994,7 @@ describe('the keep vocabulary, pinned category by category', () => {
 
   for (const failed of [true, false]) {
     test(failed ? 'a gotestsum summary keeps its failed test message mid-output' : 'the control: a passing gotestsum run keeps none of its test lines', () => {
-      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      const lines = Array.from({ length: 300 }, (_, i) => filler(i));
       lines.splice(100, 0, ...gotestsumSummary(failed));
       const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
       assert.match(out, /lines omitted from this view/);
@@ -2077,7 +2106,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   const JEST_KEPT = [0, 4, 5, 14];
 
   test('a Jest failure keeps its header, its values and its first frame past the cap', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines.splice(100, JEST_BLOCK.length, ...JEST_BLOCK);
     const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     for (const k of JEST_KEPT) assert.ok(out.includes(JEST_BLOCK[k]), `cut: ${JEST_BLOCK[k].trim()}`);
@@ -2105,7 +2134,7 @@ describe('the keep vocabulary, pinned category by category', () => {
   ];
 
   test('a Jest toEqual failure keeps its first differing lines, up to the block limit', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines.splice(100, TO_EQUAL_BLOCK.length, ...TO_EQUAL_BLOCK);
     const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     const kept = [0, 4, 5, ...Array.from({ length: 8 }, (_, k) => 8 + k), TO_EQUAL_BLOCK.length - 1];
@@ -2247,7 +2276,7 @@ describe('the keep vocabulary, pinned category by category', () => {
 
   for (const [runner, r] of RUNNER_REPORTS) {
     const view = (block) => {
-      const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+      const lines = Array.from({ length: 300 }, (_, i) => filler(i));
       lines.splice(100, block.length, ...block);
       return comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     };
@@ -2273,14 +2302,14 @@ describe('the keep vocabulary, pinned category by category', () => {
   ];
 
   test('a failing RSpec run keeps every rerun line of its Failed examples', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines.splice(100, 0, '2 examples, 2 failures', '', 'Failed examples:', '', ...RSPEC_RERUNS, '');
     const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     for (const rerun of RSPEC_RERUNS) assert.ok(out.includes(rerun), `cut: ${rerun}`);
   });
 
   test('the control: a rerun-shaped line outside Failed examples is cut', () => {
-    const lines = Array.from({ length: 200 }, (_, i) => filler(i));
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines.splice(100, 0, 'Finished in 0.01 seconds (files took 0.1 seconds to load)', '2 examples, 0 failures', '', RSPEC_RERUNS[0]);
     const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     assert.match(out, /lines omitted from this view/);
@@ -2883,9 +2912,10 @@ describe('unit: exit code and signal', () => {
 describe('listings and ranged prints pass whole up to the failing-run cap', () => {
   const { isBoundedPrint } = require('../hooks/compress-tool-output');
   const lines = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join('\n');
-  // 92 names: the clean-run cap keeps 60 of them. The code lines are over
-  // 4,000 characters and share one shape, so the normal view also folds them.
-  const names = lines(92, (i) => `note-${i}.md`);
+  // 92 names over 4,000 characters: the clean-run cap keeps 60 of them. The
+  // code lines are over 4,000 characters and share one shape, so the normal
+  // view also folds them.
+  const names = lines(92, (i) => `docs/knowledge/archive/2026/meeting-note-${i}-summary.md`);
   const code = lines(92, (i) => `  const value${i} = computeTheValue(${i}, options);`);
   const session = 'hush-test-bounded-' + Date.now();
   after(() => removeSessions([session]));
@@ -2982,11 +3012,23 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     });
   }
 
-  test('250 lines and a trailing newline pass whole; 251 lines take the normal view', () => {
+  test('250 lines and a trailing newline pass whole; past 250 a print keeps 250 lines and folds none', () => {
     const at = lines(250, (i) => `line ${i}`) + '\n';
     assert.strictEqual(compress(at, 0, false, false, [], 1, undefined, undefined, true, {}, true), at);
-    const over = lines(251, (i) => `line ${i}`);
-    assert.match(compress(over, 0, false, false, [], 1, undefined, undefined, true, {}, true), /lines omitted/);
+    const short = lines(251, (i) => `line ${i}`);
+    assert.strictEqual(compress(short, 0, false, false, [], 1, undefined, undefined, true, {}, true), short, 'under 4,000 characters it is short');
+    const over = lines(251, (i) => `  const value${i} = computeTheValue(${i}, options);`);
+    const d = {};
+    const view = compress(over, 0, false, false, [], 0.5, undefined, true, true, d, true);
+    assert.strictEqual(d.action, 'cap');
+    assert.strictEqual(d.omitted, 1, 'one line of 251 is cut, under session pressure too');
+    assert.ok(!view.includes('similar lines collapsed'), 'its same-shape lines are not folded');
+  });
+
+  test('a print past 250 lines and over the sidecar size is parked like any output', () => {
+    const wide = lines(260, (i) => `  const value${i} = computeTheValue(${i}, options, ${'x'.repeat(40)});`);
+    const r = runHook('compress-tool-output.js', { session_id: session, tool_name: 'Bash', tool_input: { command: 'head -n 260 src/app.js' }, tool_response: wide }, { HUSH_SIDECAR: '' });
+    assert.match(hookOutput(r).hookSpecificOutput.updatedToolOutput, /saved in full to/);
   });
 
   test('session pressure does not shrink the pass', () => {

@@ -39,8 +39,8 @@ Every time Claude runs something, hush looks at what came back and decides betwe
 
 | What came back | What hush does |
 | --- | --- |
-| Something short | Lets it through. Exact repeats fold into one line and a count, and from 4,000 characters up, so do runs of five or more same-shape lines. |
-| A long clean run | Keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat. |
+| Something short, under 4,000 characters | Lets it through. Only exact repeats fold, into one line and a count. |
+| A long clean run | Folds runs of five or more same-shape lines, then keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat. |
 | A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: the first stack frame after a Node, Java or Go error, every frame of a Python traceback, and the values and file:line lines a test runner prints for a failed check — go test, Jest, Vitest, pytest, cargo test and RSpec. |
 | Something very large — 15,000 characters or more | Writes the whole thing to a file on your machine, then hands Claude a digest that names that file: the first 20 and last 15 lines, the first and last 10 warning, error and failure lines with their line numbers, and a count of each kind. The file holds every line. |
 
@@ -52,8 +52,10 @@ been cut short by Claude Code, so hush saves it as it received it and says so.
 A directory listing or a print of a line range comes back whole up to 250 lines, however long the
 session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail` with a line
 count, and `Get-Content` with `-TotalCount` or `-Tail`, each run on its own rather than piped or
-chained. Nothing in it is folded, cut or parked in a file. Such output has no warning or error lines
-for a trim to keep, so a trim only cut names or code lines Claude then had to fetch again.
+chained. Nothing in it is folded, cut or parked in a file. Past 250 lines it keeps 250, the first
+and last stretch, and still folds nothing; from 15,000 characters it is parked like any other output.
+Such output has no warning or error lines for a trim to keep, so a trim only cut names or code lines
+Claude then had to fetch again.
 
 Two other tools get the same treatment:
 

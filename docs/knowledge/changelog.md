@@ -39,15 +39,18 @@ Long command output keeps more of what explains a failure:
   three per file. A search inside a folder such as `errors/` still shortens,
   since only the matched text is checked, not the path.
 
-Output under 4,000 characters is no longer folded by shape. The rows of a
-short table all share one shape, so folding them hid the answer, and Claude
-ran the command again to see it. Exact repeats still fold.
+Output under 4,000 characters is no longer folded by shape or cut by line
+count. The rows of a short table all share one shape, and a short file print
+is all code lines, so folding or cutting them hid the answer, and Claude ran
+the command again to see it. Exact repeats still fold.
 
 A directory listing or a print of a line range now comes back whole up to
 250 lines: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`,
 `head -n`, `tail -n`, and `Get-Content` with `-TotalCount` or `-Tail`, each
 run on its own. A listing or print of more than 60 lines could keep only its
-first and last stretch, so Claude read it a second time.
+first and last stretch, so Claude read it a second time. Past 250 lines it
+now keeps 250 and folds none; from 15,000 characters it is still saved to a
+file.
 
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,

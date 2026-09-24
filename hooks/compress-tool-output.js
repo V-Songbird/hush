@@ -31,7 +31,7 @@ const CAP_ENUMERATE = 2000;
 // matched file keeps its first few match lines and the rest collapse to a
 // per-file count (compressGrep). A small result costs little to send whole,
 // and per-file counts keep the file map intact. compress() uses the same floor
-// for same-shape collapse (collapseTemplates).
+// for same-shape collapse (collapseTemplates) and for the line cap (capLines).
 const GREP_MIN_CHARS = 4000;
 const GREP_KEEP_PER_FILE = 3;
 
@@ -747,7 +747,8 @@ function isFileDump(command) {
 // (sed -n, head/tail -n, Get-Content -TotalCount/-Tail), has no warning or
 // error lines for the cap to keep, so a trim cuts arbitrary names or code
 // lines and sends the model back for a second read. compress() passes these
-// whole up to CAP_FAIL lines, as main() passes a ranged Read. One command
+// whole up to CAP_FAIL lines, as main() passes a ranged Read, and past that
+// keeps CAP_FAIL of them without folding any. One command
 // only, on one line: preserve-exit-code's wrapper is taken off first (the
 // lines it appends, and PowerShell's `& { }` around the command), then a
 // stderr redirect, since it leaves stdout as printed.
@@ -1331,7 +1332,8 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   }
   // A listing or ranged print (isBoundedPrint) keeps every line up to
   // CAP_FAIL, unscaled, and skips the sidecar too; only the scrubs above,
-  // which remove no line, apply. A trailing newline is not a line.
+  // which remove no line, apply. A trailing newline is not a line. Past
+  // CAP_FAIL it is parked like any output, or keeps CAP_FAIL lines unfolded.
   if (bounded && linesIn - (cleaned.endsWith("\n") ? 1 : 0) <= CAP_FAIL) {
     if (decision && !decision.action) {
       decision.omitted = 0;
@@ -1357,21 +1359,30 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
       return side.text;
     }
   }
+  // Below GREP_MIN_CHARS the output passes unfolded and uncut for Grep's
+  // reason: the rows of a short table all share one shape, and a short file
+  // print is all code lines, so a collapse or a cap hides the answer itself
+  // and the model re-runs the command to get it back, which costs more than
+  // the few characters the trim saved.
+  const short = cleaned.length < GREP_MIN_CHARS;
   const s = typeof scale === "number" ? scale : 1;
-  const cap = enumerate
-    ? CAP_ENUMERATE
-    : isDump || failed
-      ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
-      : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
+  const cap = short
+    ? Infinity
+    : enumerate
+      ? CAP_ENUMERATE
+      : bounded
+        ? CAP_FAIL
+        : isDump || failed
+          ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
+          : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
   // Enumeration carve-out means "nothing is elided" — same reason it skips the
   // sidecar above; collapsing same-shape runs would remove the very items a
-  // completeness request ("list every compiled module") asked to see.
-  // Below GREP_MIN_CHARS the output passes unfolded for Grep's reason: the rows
-  // of a short table all share one shape, so a collapse hides the answer itself
-  // and the model re-runs the command to get it back, which costs more than
-  // the few characters the collapse saved.
+  // completeness request ("list every compiled module") asked to see. A
+  // listing or ranged print past CAP_FAIL keeps CAP_FAIL lines unfolded, for
+  // the reason it passes whole below that: its rows are the names or code
+  // lines asked for, all of one shape.
   const deduped = dedupeConsecutive(cleaned.split("\n"));
-  const folded = !enumerate && cleaned.length >= GREP_MIN_CHARS ? collapseTemplates(deduped, relevanceTokens, failed) : deduped;
+  const folded = !enumerate && !bounded && !short ? collapseTemplates(deduped, relevanceTokens, failed) : deduped;
   let collapsed = folded.length < deduped.length;
   let capped, lines, out;
   const build = (from) => {

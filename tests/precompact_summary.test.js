@@ -175,12 +175,12 @@ describe('precompact-summary hook', () => {
     const prevSidecar = process.env.HUSH_SIDECAR;
     delete process.env.HUSH_SIDECAR;
     const big = Array.from({ length: 2000 }, (_, i) => `02:00 info handled req ${i} in ${i % 90}ms`).join('\n');
-    const medium = Array.from({ length: 300 }, (_, i) => `line ${i}`).join('\n');
+    const medium = Array.from({ length: 500 }, (_, i) => `line ${i}`).join('\n');
     const tiny = 'done\n';
     let digest;
     try {
       digest = compress(big, 0, true, false, [], 1, session); // parks a sidecar
-      compress(medium, 0, false, false, [], 1, session); // capped, nothing parked
+      assert.match(compress(medium, 0, false, false, [], 1, session), /lines omitted/, 'capped, nothing parked');
       assert.strictEqual(compress(tiny, 0, false, false, [], 1, session), tiny, 'small output untouched');
     } finally {
       if (prevSidecar === undefined) delete process.env.HUSH_SIDECAR;
