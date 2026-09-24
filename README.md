@@ -73,16 +73,16 @@ Full-output references point to temporary files. Disabling runtime controls and 
 
 ## The numbers
 
-The comparison asks whether jobs were completed correctly, how often the assistant gave at most one update, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
+The comparison asks whether jobs were completed correctly, how often the assistant spoke at most once before the answer, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-01","reviewedAt":"2026-09-10"} -->
-| Model | Setup | Jobs right | At most one update | Median final prose words |
+| Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words |
 | --- | --- | --- | --- | --- |
 | Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
 | Claude Opus 5 | caveman | 36/36 | 31/36 | 151 |
 | Claude Opus 5 | hush | 36/36 | 36/36 | 69 |
 
-In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush gave at most one mid-work update in every session.
+In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush spoke at most once before the answer in every session.
 
 A text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman. Three quiet jobs cost 1–10% more. The heuristic does not check that the suggested action is correct or complete.
 
