@@ -3,6 +3,7 @@ type: knowledge
 summary: "hush's environment variables, the output style setting, the status-line count and the two voice commands; read before changing a switch or the style slot."
 related_files:
   - hooks/lib/gate.js
+  - hooks/compress-tool-output.js
   - output-styles/hush.md
   - skills/pick-style/SKILL.md
   - skills/craft-style/SKILL.md
@@ -24,9 +25,23 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice is a separate switch — run `/hush:pick-style` to put the original back, or uninstall. |
-| `HUSH_DEBUG=1` | Writes a local record of what hush did to each command result: sizes in and out, and where the full copy went. It lands in `hush-debug-<session>.jsonl` in your system temp folder, outside the session's parked-output folder. hush never deletes these files: they stay until you remove them. |
+| `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminder and the subagent brief keep running. |
+| `HUSH_QUIET=off` | Stops the reminder and the subagent brief. The trims keep running, and so does the writing voice. |
+| `HUSH_NUDGE=off` | Stops only the reminder. |
 | `HUSH_NUDGE=max` | As quiet as hush gets. A reminder on every command result, whether or not anything slipped. Costs the most too. |
+| `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
+| `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
+| `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold into one line and a count. |
+| `HUSH_COMPACT=off` | Leaves compaction to Claude Code. hush no longer asks the summary to keep paths and identifiers word for word, or lists the files it parked. |
+| `HUSH_SUBAGENT=off` | Subagents start without hush's brief. |
+| `HUSH_DEBUG=1` | Writes a local record of what hush did to each command result: sizes in and out, and where the full copy went. It lands in `hush-debug-<session>.jsonl` in your system temp folder, outside the session's parked-output folder. hush never deletes these files: they stay until you remove them. |
 | `HUSH_WRAP=1` | Lets hush trim failing commands as well as passing ones. See below. |
+
+`HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
+what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. `HUSH_CORE`, `HUSH_QUIET` and
+`HUSH_NUDGE` also take `0` or `false` for `off`; the other switches take exactly `off` or `1`, as
+shown. With `HUSH_CORE=off`, the reminder's small per-session counter stays in your temp folder
+until your system clears it.
 
 ## Why `HUSH_WRAP` exists
 
