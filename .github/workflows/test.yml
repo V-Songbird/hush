@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
 
-      - name: README navigation
+      - name: Markdown anchors and README nav
         run: node scripts/git-hooks/check-readme-nav.js
 
       - name: Tests
