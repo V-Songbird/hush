@@ -111,7 +111,7 @@ Nothing on this page was bought with a wrong answer.
 
 ## How quiet
 
-Some sessions still open with a line about what the assistant is about to do. These comparisons count both fully silent sessions and sessions that spoke at most once before the answer.
+Some sessions still open with a line about what the assistant is about to do. These comparisons count both fully silent sessions and sessions that spoke at most once before the answer. The Opus table is batch `rm320-99a236ff`, started August 30, 2026 at 02:53 UTC with the recorded `opus` alias; the Sonnet table is batch `sn320-a9885078`, started the same day at 03:30 UTC with `sonnet`.
 
 | Claude Opus 5, 36 sessions each | no plugin | hush |
 | --- | --- | --- |
