@@ -494,6 +494,23 @@ describe('template collapse: the view states its own recovery', () => {
     assert.match(out, /^\[hush hook: 40 lines omitted from this view/m, 'the omission counts every source line cut');
   });
 
+  test('a collapse the cap cut beside one it kept counts its whole run as omitted', () => {
+    const runA = Array.from({ length: 20 }, (_, i) => `abc def ghi a${i}`);
+    const runB = Array.from({ length: 20 }, (_, i) => `abc def ghi b${i}`);
+    const out = run(runA.concat(overFloor(runB), overFloor([])).join('\n'));
+    assert.strictEqual(out.split('similar lines collapsed').length - 1, 1, 'the first run keeps its collapse');
+    // 6 setup lines, the second 20-line run and 16 setup lines: folded, the
+    // run counted as 2 and the marker said 24.
+    assert.match(out, /^\[hush hook: 42 lines omitted from this view/m, 'the omission counts every source line cut');
+  });
+
+  test('a repeat marker the cap cut counts every repeat as omitted', () => {
+    const out = run(overFloor(Array(20).fill('same line again')).concat(overFloor([])).join('\n'));
+    // 4 setup lines, the line and its 19 repeats, and 16 setup lines: deduped,
+    // the repeats counted as 2 and the marker said 22.
+    assert.match(out, /^\[hush hook: 40 lines omitted from this view/m, 'the omission counts every source line cut');
+  });
+
   test('a small output is never folded by shape; exact repeats still fold', () => {
     const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
     assert.strictEqual(run(tiny), tiny);

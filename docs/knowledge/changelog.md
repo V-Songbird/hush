@@ -57,7 +57,10 @@ folds save less than the usual note costs, a one-line note takes its place,
 and folds that save less than that line are left unfolded. When a long
 output's line cut removes every fold, the output is cut unfolded instead, so
 the view carries no note about folds it no longer shows, and its count of
-omitted lines counts each line of the output.
+omitted lines counts each line of the output. When the cut removes some
+folds and keeps others, or removes a line repeated several times, that count
+now includes every line the fold or the repeats stood for, where it used to
+count them as two lines.
 
 Some lines no longer count as failures when nothing failed. A passing
 summary with zero counts, such as "Failures: 0", is no longer kept or counted

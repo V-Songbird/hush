@@ -373,6 +373,8 @@ function relevanceLineIdx(lines, relevanceTokens) {
   return lines.map((line, i) => (named(line) ? i : -1)).filter((i) => i !== -1);
 }
 
+const FOLD_MARKER_RE = /^\[hush hook: (\d+) similar lines collapsed |^\[hush: previous line repeated (\d+)x\]$/;
+
 function capLines(lines, cap, relevanceTokens) {
   if (lines.length <= cap) return lines;
   const signalIdx = new Set();
@@ -396,15 +398,21 @@ function capLines(lines, cap, relevanceTokens) {
     for (let j = i + 1; j < lines.length && HUSH_MARKER_RE.test(lines[j]); j++) kept.add(j);
   }
 
-  const sortedKept = [...kept].sort((a, b) => a - b);
+  // The omission marker counts source lines: a cut collapse or repeat marker
+  // stands for the lines it replaced, not for one line of the view.
   const out = [];
-  let last = -1;
-  for (const i of sortedKept) {
-    if (i - last > 1) out.push(omittedMarker(i - last - 1));
+  let cut = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!kept.has(i)) {
+      const folded = FOLD_MARKER_RE.exec(lines[i]);
+      cut += folded ? Number(folded[1] || folded[2]) : 1;
+      continue;
+    }
+    if (cut) out.push(omittedMarker(cut));
     out.push(lines[i]);
-    last = i;
+    cut = 0;
   }
-  if (lines.length - 1 - last > 0) out.push(omittedMarker(lines.length - 1 - last));
+  if (cut) out.push(omittedMarker(cut));
   return out;
 }
 
@@ -1398,8 +1406,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // pays for it, else the short one. A collapse that cannot pay even for the
   // short one is undone, so no view hides lines without naming a way back and
   // none grows to state it. So is a fold whose every marker the cap cut: the
-  // note would point at nothing, and the omission count would count a run as
-  // its two remaining lines.
+  // note would point at nothing.
   if (collapsed) {
     const note = lines.some((l) => /^\[hush hook: \d+ similar lines collapsed /.test(l)) &&
       [TEMPLATE_COLLAPSE_NOTE, TEMPLATE_RECOVERY_NOTE].find((n) => out.length + n.length + 1 < cleaned.length);
