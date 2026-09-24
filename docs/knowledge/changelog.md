@@ -102,6 +102,22 @@ same September 1 run, so you can check each of its figures there. A new
 table there gives that run's cost and runnable content job by job, behind the
 README's 94% and 1–10% figures.
 
+The benchmark details now also show how much of each final answer sits in
+long sentences or long unbroken blocks, beside whether the job came out
+right, and in how many of the nine jobs hush came out ahead. The page says
+that run does not separate structure from length: every difference there is
+also a length difference. Reading ease and grade level are now labeled
+prose surface, since they measure word and sentence length, not whether you
+understood the answer. The README's quiet column now reads "Spoke at most
+once before the answer", as the benchmark details do, because an opening line
+counts too.
+
+The settings page now documents eight switches it left out before, each of
+which turns off part of hush: `HUSH_CORE`, `HUSH_QUIET`, `HUSH_NUDGE=off`,
+`HUSH_SIDECAR`, `HUSH_GREP`, `HUSH_TEMPLATE`, `HUSH_COMPACT` and
+`HUSH_SUBAGENT`. It also gives the values each one takes and which one wins
+when two are set.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a
