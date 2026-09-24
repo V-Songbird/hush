@@ -3203,6 +3203,18 @@ describe('a print or a diff is never read as a failed run', () => {
     assert.ok(v.split('\n').length > 200, `kept ${v.split('\n').length} lines`);
   });
 
+  // A cmdlet never sets $LASTEXITCODE, so the PowerShell wrapper's trailer
+  // comes back empty and no exit code is known.
+  test('a wrapped Get-Content with an empty trailer gets no failure note', () => {
+    const r = runHook('compress-tool-output.js',
+      { tool_name: 'PowerShell', tool_input: { command: wrapPowerShell('Get-Content src/app.js') }, tool_response: `${code}\r\n[[hush:exit=\r\n\r\n]]` },
+      { HUSH_TEMPLATE: 'off' });
+    const v = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.ok(!v.includes(FAILURE_RERUN_NOTE), 'read as failed');
+    assert.ok(!v.includes('[[hush:exit='));
+    assert.ok(v.split('\n').length > 200, `kept ${v.split('\n').length} lines`);
+  });
+
   test('a known non-zero exit still reads as failed', () => {
     const v = view('Bash', wrapBash('git diff --exit-code'), `${diff}\n[[hush:exit=\n1\n]]`);
     assert.ok(v.includes(FAILURE_RERUN_NOTE));
