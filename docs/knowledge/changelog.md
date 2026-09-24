@@ -60,7 +60,9 @@ the view carries no note about folds it no longer shows, and its count of
 omitted lines counts each line of the output. When the cut removes some
 folds and keeps others, or removes a line repeated several times, that count
 now includes every line the fold or the repeats stood for, where it used to
-count them as two lines.
+count them as two lines. A fold's or a repeat's count no longer stays in the
+view when the cut removed the line it belongs to; its lines join the omitted
+count instead.
 
 Some lines no longer count as failures when nothing failed. A passing
 summary with zero counts, such as "Failures: 0", is no longer kept or counted

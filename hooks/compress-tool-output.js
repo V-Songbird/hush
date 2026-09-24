@@ -392,8 +392,10 @@ function capLines(lines, cap, relevanceTokens) {
   // A marker hush inserted (a repeat count, a collapse count) sits directly
   // after the line it annotates and is the only trace of the occurrences it
   // stands for — a kept line whose marker got cut silently under-reports
-  // itself. So a marker survives whenever its line does. Markers whose line is
-  // gone are dropped with it; the omission marker already covers that span.
+  // itself. So a marker survives whenever its line does, and only then: the
+  // tail can open on a marker whose line it cut. Markers whose line is gone
+  // are dropped with it; the omission marker already covers that span.
+  for (const i of kept) if (HUSH_MARKER_RE.test(lines[i])) kept.delete(i);
   for (const i of [...kept]) {
     for (let j = i + 1; j < lines.length && HUSH_MARKER_RE.test(lines[j]); j++) kept.add(j);
   }

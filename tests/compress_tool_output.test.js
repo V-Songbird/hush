@@ -136,6 +136,24 @@ describe('unit: transforms', () => {
     assert.ok(!out.includes('[hush: previous line repeated 5x]'));
   });
 
+  // Cap 10 keeps 6 head and 4 tail lines, so index 16 of 20 opens the tail and
+  // the line it annotates, index 15, is cut.
+  for (const marker of ['[hush hook: 7 similar lines collapsed (same shape, varying values)]', '[hush: previous line repeated 7x]']) {
+    test(`capLines drops a marker opening the tail when its own line was cut: ${marker}`, () => {
+      const lines = Array.from({ length: 20 }, (_, i) => `line ${i}`);
+      lines[16] = marker;
+      const out = capLines(lines, 10);
+      assert.ok(!out.includes(marker), 'no marker follows the omission');
+      // Lines 6-15 and the 7 lines the marker stood for.
+      assert.deepStrictEqual(out.slice(6), [
+        '[hush hook: 17 lines omitted from this view, none with warnings/errors/failures]',
+        'line 17',
+        'line 18',
+        'line 19',
+      ]);
+    });
+  }
+
   test('capLines with no signal lines behaves exactly as a plain head+tail cap', () => {
     const lines = Array.from({ length: 100 }, (_, i) => `line ${i}`);
     const out = capLines(lines, 10);
@@ -509,6 +527,16 @@ describe('template collapse: the view states its own recovery', () => {
     // 4 setup lines, the line and its 19 repeats, and 16 setup lines: deduped,
     // the repeats counted as 2 and the marker said 22.
     assert.match(out, /^\[hush hook: 40 lines omitted from this view/m, 'the omission counts every source line cut');
+  });
+
+  // Folded, the view is 65 lines and the cap's 24-line tail opens on the
+  // marker, one past the run's first line.
+  test('a collapse marker opening the tail after its cut first line is undone, with no recovery note', () => {
+    const runLines = Array.from({ length: 20 }, (_, i) => `abc def ghi ${i}`);
+    const out = run(overFloor(runLines).concat(overFloor([]).slice(0, 23)).join('\n'));
+    assert.ok(!out.includes('similar lines collapsed'), 'no marker follows the omission');
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE) && !out.includes(TEMPLATE_RECOVERY_NOTE), 'so no note points at it');
+    assert.match(out, /^\[hush hook: 23 lines omitted from this view/m);
   });
 
   test('a small output is never folded by shape; exact repeats still fold', () => {
