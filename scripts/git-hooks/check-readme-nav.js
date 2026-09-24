@@ -179,7 +179,7 @@ function main(argv = process.argv.slice(2)) {
   }
   if (problems.length === 0) return 0;
 
-  process.stderr.write("\nREADME nav check:\n\n");
+  process.stderr.write("\nMarkdown nav and anchor check:\n\n");
   for (const p of problems) process.stderr.write(`  - ${p}\n`);
   process.stderr.write("\n");
   return 1;

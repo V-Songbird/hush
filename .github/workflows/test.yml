@@ -41,7 +41,7 @@ jobs:
           fi
 
       - name: README navigation
-        run: node scripts/git-hooks/check-readme-nav.js README.md
+        run: node scripts/git-hooks/check-readme-nav.js
 
       - name: Tests
         run: node --test tests/*.test.js

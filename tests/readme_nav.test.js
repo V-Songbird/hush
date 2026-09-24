@@ -254,6 +254,7 @@ describe("main", () => {
       assert.equal(bad.status, 1);
       assert.match(bad.stderr, /docs\/knowledge\/settings\.md \(staged\): "#the-setting" matches no heading/);
       assert.match(bad.stderr, /README\.md \(staged\): "docs\/knowledge\/settings\.md#the-setting" matches no heading/);
+      assert.match(bad.stderr, /^\nMarkdown nav and anchor check:\n/);
       assert.equal(run(PRE_COMMIT).status, 1);
 
       // Fixed in the index, broken in the working tree: staged reads the
