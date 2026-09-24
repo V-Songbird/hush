@@ -8,7 +8,7 @@ related_files:
 
 # The numbers, in full
 
-The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison). Two of its figures have no table on this page: a text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin, and three jobs cost 1–10% more.
+The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison). Two of its figures have no table on this page: a text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman, and three jobs cost 1–10% more.
 
 Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 

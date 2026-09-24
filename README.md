@@ -84,7 +84,7 @@ The comparison asks whether jobs were completed correctly, how often the assista
 
 In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush gave at most one mid-work update in every session.
 
-The readability check detected runnable content in 94% of Hush answers versus 100% for the other setups. Three quiet jobs cost 1–10% more. Detection is a text heuristic, not a check that the suggested action is correct or complete.
+The readability check detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman. Three quiet jobs cost 1–10% more. Detection is a text heuristic, not a check that the suggested action is correct or complete.
 
 Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
