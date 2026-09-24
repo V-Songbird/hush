@@ -424,6 +424,23 @@ describe('unit: collapseTemplates', () => {
       '[hush hook: 59 similar lines collapsed (same shape, varying values)]',
     ]);
   });
+
+  // dedupeConsecutive runs first, so a run line repeated in the source reaches
+  // the fold as that line plus a repeat marker.
+  test('a repeat marker inside a run is counted in the collapse, not left after it', () => {
+    const run = Array.from({ length: 8 }, (_, i) => `INFO worker-${i} processing job ${i}`);
+    const lines = [...run.slice(0, 4), '[hush: previous line repeated 3x]', ...run.slice(4), '[hush: previous line repeated 5x]', 'done'];
+    assert.deepStrictEqual(collapseTemplates(lines), [
+      'INFO worker-0 processing job 0',
+      '[hush hook: 15 similar lines collapsed (same shape, varying values)]',
+      'done',
+    ]);
+  });
+
+  test('a run too short to fold keeps its repeat marker after its line', () => {
+    const lines = ['INFO worker-0 processing job 0', 'INFO worker-1 processing job 1', '[hush: previous line repeated 3x]', 'INFO worker-2 processing job 2', 'done'];
+    assert.deepStrictEqual(collapseTemplates(lines), lines);
+  });
 });
 
 // compress() folds same-shape lines only in output of 4,000 characters or
@@ -527,6 +544,27 @@ describe('template collapse: the view states its own recovery', () => {
     // 4 setup lines, the line and its 19 repeats, and 16 setup lines: deduped,
     // the repeats counted as 2 and the marker said 22.
     assert.match(out, /^\[hush hook: 40 lines omitted from this view/m, 'the omission counts every source line cut');
+  });
+
+  test('a repeated last line of a run is counted in its collapse, with no repeat marker left behind', () => {
+    const setup = overFloor([]);
+    const runLines = Array.from({ length: 30 }, (_, i) => `abc def ghi ${i} and some more words to pay for the note`);
+    const d = {};
+    const out = compress(setup.slice(0, 20).concat(runLines, Array(5).fill(runLines[29]), setup.slice(20)).join('\n'), 0, false, false, [], 1, null, true, false, d);
+    const view = out.split('\n');
+    const at = view.indexOf(runLines[0]);
+    assert.deepStrictEqual(view.slice(at, at + 3), [runLines[0], '[hush hook: 34 similar lines collapsed (same shape, varying values)]', setup[20]]);
+    assert.ok(!out.includes('previous line repeated'), 'the repeats of a folded line leave no marker behind');
+    assert.strictEqual(d.omitted, 34, 'the collapse counts every source line the view dropped');
+  });
+
+  test('a collapse the cap cut counts the repeats it absorbed as omitted', () => {
+    const runA = Array.from({ length: 20 }, (_, i) => `abc def ghi a${i}`);
+    const runB = Array.from({ length: 20 }, (_, i) => `abc def ghi b${i}`);
+    const out = run(runA.concat(overFloor(runB.concat(Array(5).fill(runB[19]))), overFloor([])).join('\n'));
+    assert.strictEqual(out.split('similar lines collapsed').length - 1, 1, 'the first run keeps its collapse');
+    // 6 setup lines, the second run with its 5 repeats and 16 setup lines.
+    assert.match(out, /^\[hush hook: 47 lines omitted from this view/m, 'the omission counts every source line cut');
   });
 
   // Folded, the view is 65 lines and the cap's 24-line tail opens on the

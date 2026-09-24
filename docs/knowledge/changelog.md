@@ -62,7 +62,9 @@ folds and keeps others, or removes a line repeated several times, that count
 now includes every line the fold or the repeats stood for, where it used to
 count them as two lines. A fold's or a repeat's count no longer stays in the
 view when the cut removed the line it belongs to; its lines join the omitted
-count instead.
+count instead. A line repeated inside a run of same-shape lines now counts in
+the run's fold, where its repeat count used to stay in the view after the fold
+had removed the line.
 
 Some lines no longer count as failures when nothing failed. A passing
 summary with zero counts, such as "Failures: 0", is no longer kept or counted

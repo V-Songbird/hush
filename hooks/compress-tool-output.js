@@ -152,23 +152,33 @@ function collapseTemplates(lines, relevanceTokens, failed) {
   let runStart = -1;
   let anchorTokens = null;
   let runLen = 0;
+  let repeats = 0;
 
-  function flushRun() {
+  function flushRun(end) {
     if (runLen >= TEMPLATE_MIN_RUN) {
       out.push(lines[runStart]);
-      out.push(`[hush hook: ${runLen - 1} similar lines collapsed (same shape, varying values)]`);
+      out.push(`[hush hook: ${runLen - 1 + repeats} similar lines collapsed (same shape, varying values)]`);
     } else {
-      for (let i = runStart; i < runStart + runLen; i++) out.push(lines[i]);
+      out.push(...lines.slice(runStart, end));
     }
     runStart = -1;
     anchorTokens = null;
     runLen = 0;
+    repeats = 0;
   }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    // A repeat marker counts copies of the line before it. Inside a run those
+    // copies share the run's shape, so the collapse counts them too: left in
+    // the view, the marker would follow a line the fold dropped.
+    const repeated = runLen > 0 && FOLD_MARKER_RE.exec(line)?.[2];
+    if (repeated) {
+      repeats += Number(repeated);
+      continue;
+    }
     if (exempt(line, i)) {
-      if (runLen > 0) flushRun();
+      if (runLen > 0) flushRun(i);
       out.push(line);
       continue;
     }
@@ -177,12 +187,12 @@ function collapseTemplates(lines, relevanceTokens, failed) {
       runLen++;
       continue;
     }
-    if (runLen > 0) flushRun();
+    if (runLen > 0) flushRun(i);
     runStart = i;
     anchorTokens = lineTokens;
     runLen = 1;
   }
-  if (runLen > 0) flushRun();
+  if (runLen > 0) flushRun(lines.length);
   return out;
 }
 
