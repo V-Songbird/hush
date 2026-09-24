@@ -1327,6 +1327,41 @@ describe('unit: relevance preservation + pressure scaling', () => {
   });
 });
 
+// The knobs are read once at load (intEnv), so each case runs the hook in its
+// own process. A value that is not a positive integer keeps the default.
+describe('internal tuning knobs: a valid value binds, an invalid one keeps the default', () => {
+  const NL = String.fromCharCode(10);
+  const INVALID = ['abc', '0', '-5'];
+  const unique = (n) => Array.from({ length: n }, (_, i) => 'unique ' + i).join(NL);
+  const view = (input, env) => hookOutput(runHook('compress-tool-output.js', { tool_name: 'Bash', ...input }, { HUSH_TEMPLATE: 'off', ...env })).hookSpecificOutput.updatedToolOutput;
+  const omitted = (command, lines, env) => Number(/(\d+) lines omitted/.exec(view({ tool_input: { command }, tool_response: unique(lines) }, env))[1]);
+
+  test('HUSH_CAP_PASS sets the cap on passing output', () => {
+    const base = omitted('node build.js', 300, {});
+    assert.ok(omitted('node build.js', 300, { HUSH_CAP_PASS: '120' }) < base, 'a larger cap keeps more lines');
+    for (const v of INVALID) assert.strictEqual(omitted('node build.js', 300, { HUSH_CAP_PASS: v }), base, v);
+  });
+
+  test('HUSH_CAP_FAIL sets the cap on a file dump', () => {
+    const base = omitted('cat build.log', 600, {});
+    assert.ok(omitted('cat build.log', 600, { HUSH_CAP_FAIL: '400' }) < base, 'a larger cap keeps more lines');
+    for (const v of INVALID) assert.strictEqual(omitted('cat build.log', 600, { HUSH_CAP_FAIL: v }), base, v);
+  });
+
+  test('HUSH_SIDECAR_MIN sets the size that moves an output to a sidecar', () => {
+    const session = 'hush-test-knob-' + Date.now();
+    try {
+      // About 11KB: under the 15000-character default.
+      const saved = (env) => /saved in full to/.test(view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: unique(1000) }, { HUSH_SIDECAR: '', ...env }));
+      assert.strictEqual(saved({}), false, 'default threshold');
+      assert.strictEqual(saved({ HUSH_SIDECAR_MIN: '5000' }), true, 'a lower threshold parks it');
+      for (const v of INVALID) assert.strictEqual(saved({ HUSH_SIDECAR_MIN: v }), false, v);
+    } finally {
+      removeSessions([session]);
+    }
+  });
+});
+
 describe('unit + e2e: sidecar digests for very large outputs', () => {
   const { compress: comp } = require('../hooks/compress-tool-output');
   const NL = String.fromCharCode(10);
