@@ -36,7 +36,6 @@ const {
   isLogPath,
   requestsEnumeration,
   compress,
-  firstLine,
   extractWrappedExit,
   signalCensus,
   exitNote,
@@ -304,22 +303,35 @@ describe('unit: transforms', () => {
     assert.ok(carved.includes(lines[41]), 'the warning survives');
   });
 
-  test('firstLine returns the whole string when there is no newline', () => {
-    assert.strictEqual(firstLine('node build.js'), 'node build.js');
+  test("isFileDump sees through preserve-exit-code's wrapper on either shell", () => {
+    assert.ok(isFileDump(wrapBash('cat src/Foo.kt')));
+    assert.ok(isFileDump(wrapPowerShell('Get-Content src/Foo.kt')));
+    assert.ok(isFileDump(wrapPowerShell('gc ./Foo.ps1')));
   });
 
-  test('firstLine strips everything after the first newline (survives preserve-exit-code.js wrapping)', () => {
-    const wrapped = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
-    assert.strictEqual(firstLine(wrapped), 'cat src/Foo.kt');
+  test('isFileDump refuses a multi-line script that opens with a dump, wrapped or not', () => {
+    for (const c of [
+      'cat a\nnpm test',
+      'cat a\r\nnpm test',
+      'cat\nnpm test',
+      wrapBash('cat a\nnpm test'),
+      wrapPowerShell('Get-Content a\nnpm test'),
+    ]) assert.strictEqual(isFileDump(c), false, JSON.stringify(c));
   });
 
-  test('firstLine passes through non-strings unchanged', () => {
-    assert.strictEqual(firstLine(undefined), undefined);
-  });
+  // 100 distinct code lines over 4,000 characters: the clean-run cap keeps 60,
+  // the dump cap all of them. Folding is off so the cap alone decides.
+  const source = Array.from({ length: 100 }, (_, i) => `  val value${i} = computeTheValue(${i}, options)`).join('\n');
+  for (const [shell, command] of [['PowerShell', wrapPowerShell('Get-Content src/App.kt')], ['Bash', wrapBash('cat src/App.kt')]]) {
+    test(`a wrapped ${shell} file dump keeps the dump cap`, () => {
+      const r = runHook('compress-tool-output.js', { tool_name: shell, tool_input: { command }, tool_response: `${source}\n[[hush:exit=\n\n]]` }, { HUSH_TEMPLATE: 'off' });
+      assert.strictEqual(hookOutput(r).hookSpecificOutput.updatedToolOutput.trimEnd(), source);
+    });
+  }
 
-  test('isFileDump still recognizes a wrapped file-dump command via firstLine', () => {
-    const wrapped = 'cat src/Foo.kt\n__hush_exit=$?\necho "[[hush:exit=$__hush_exit]]"\nexit 0';
-    assert.ok(isFileDump(firstLine(wrapped)));
+  test('a script that opens with a dump gets the clean-run cap', () => {
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: 'cat src/App.kt\nnpm test' }, tool_response: source }, { HUSH_TEMPLATE: 'off' });
+    assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.split('\n').length <= 61);
   });
 });
 

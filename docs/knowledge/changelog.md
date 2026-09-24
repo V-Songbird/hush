@@ -52,6 +52,13 @@ first and last stretch, so Claude read it a second time. Past 250 lines it
 now keeps 250 and folds none; from 15,000 characters it is still saved to a
 file.
 
+A whole-file print in PowerShell, `Get-Content`, `gc`, `type` or `cat` with
+nothing else, now keeps up to 250 lines when hush wraps it to read its exit
+code, as it already did unwrapped and in Bash; it was cut to 60 like a clean
+run. A script of several lines that opens with such a print is now trimmed
+like any other output, where it kept up to 250. Folding and the save to a
+file from 15,000 characters work as before.
+
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,
 and folds that save less than that line are left unfolded. When a long

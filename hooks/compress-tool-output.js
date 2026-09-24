@@ -757,10 +757,11 @@ function looksLikeFailure(text, exitCode) {
 // WARN/ERROR markers for capLines' signal-preservation to anchor on, so the
 // head+tail cap would cut arbitrary lines out of the middle of the file
 // instead of out of actual log noise. Treat these like failures: keep more.
-const FILE_DUMP_RE = /^\s*(cat|type|gc|Get-Content)\s+[^|;&<>]+$/i;
+// One command on one line, read through unwrapCommand below.
+const FILE_DUMP_RE = /^(?=[^|;&<>\r\n]*$)(?:cat|type|gc|Get-Content)\s+\S/i;
 
 function isFileDump(command) {
-  return typeof command === "string" && FILE_DUMP_RE.test(command.trim());
+  return typeof command === "string" && FILE_DUMP_RE.test(unwrapCommand(command));
 }
 
 // A directory listing, or a print of a line range the command bounds itself
@@ -781,23 +782,21 @@ const BOUNDED_PRINT_RE = new RegExp(
 const PS_WRAP_RE = /^& \{ (.*) \} 2>&1 \| Out-String -Width 4096$/;
 const EXIT_WRAP_TAIL_RE = /\r?\n(?:__hush_exit=\$\?|Write-Output '\[\[hush:exit=')[\s\S]*$/;
 
-function isBoundedPrint(command) {
-  if (typeof command !== "string") return false;
+// The command as the model wrote it. preserve-exit-code.js (a PreToolUse hook)
+// wraps Bash/PowerShell commands so a non-zero exit still reports success to
+// Claude Code — otherwise the call routes through PostToolUseFailure, which
+// this hook never sees at all (see that file's header). PostToolUse receives
+// the wrapped command, so the lines the wrapper appends and PowerShell's
+// `& { }` come off here; a multi-line script keeps its newlines.
+function unwrapCommand(command) {
   const line = command.replace(EXIT_WRAP_TAIL_RE, "").trim();
   const ps = PS_WRAP_RE.exec(line);
-  return BOUNDED_PRINT_RE.test((ps ? ps[1] : line).replace(/\s+2>\S*/g, "").trim());
+  return (ps ? ps[1] : line).trim();
 }
 
-// preserve-exit-code.js (a PreToolUse hook) wraps Bash/PowerShell commands so
-// a non-zero exit still reports success to Claude Code — otherwise the call
-// routes through PostToolUseFailure, which this hook never sees at all (see
-// that file's header). The wrapper wants an original single-line command to
-// still test true against FILE_DUMP_RE above; take only the first line so a
-// wrapped multi-statement command doesn't fail that match.
-function firstLine(command) {
-  if (typeof command !== "string") return command;
-  const i = command.indexOf("\n");
-  return i === -1 ? command : command.slice(0, i);
+function isBoundedPrint(command) {
+  if (typeof command !== "string") return false;
+  return BOUNDED_PRINT_RE.test(unwrapCommand(command).replace(/\s+2>\S*/g, "").trim());
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the
@@ -1708,7 +1707,7 @@ function main() {
   }
 
   const command = data.tool_input && data.tool_input.command;
-  const isDump = isFileDump(firstLine(command));
+  const isDump = isFileDump(command);
   const bounded = isBoundedPrint(command);
   const exitWrapped = isExitWrapped(data);
 
@@ -1816,7 +1815,6 @@ module.exports = {
   extractRelevanceTokens,
   pressureScale,
   compress,
-  firstLine,
   extractWrappedExit,
   claimSessionNote,
   hasHushNote,
