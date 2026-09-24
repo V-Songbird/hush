@@ -64,6 +64,11 @@ them.
 Subagents are now asked to mark what they could not confirm and say where
 they looked.
 
+The mid-turn reminder now comes at most once per turn, and never after the
+line Claude Code asks for when you have not heard from Claude in a while.
+Before, each such line drew a reminder to stay quiet, so a long turn could
+collect one per request. `HUSH_NUDGE=max` is unchanged.
+
 Styles: a crafted style's name can no longer contain a colon, and craft-style
 says so before activation does. Switching styles keeps a namespaced
 `outputStyle` setting such as `"hush:Hush"`. In a checkout you update with

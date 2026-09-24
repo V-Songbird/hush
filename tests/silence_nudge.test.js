@@ -40,6 +40,11 @@ const prompt = (text) => ({ type: 'user', message: { role: 'user', content: text
 const toolResult = () => ({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: 'ok' }] } });
 const leak = (text) => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
 const toolUse = () => ({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash' }] } });
+// Claude Code's request for a status line, as its transcript records it.
+const hostStatus = () => ({
+  type: 'attachment',
+  attachment: { type: 'silent_turn_reminder', text: "The user hasn't heard from you in a while — say in a few words what you're doing, then continue." },
+});
 
 // --- default: one reminder at the top of the turn, corrective mid-turn ------
 
@@ -71,13 +76,13 @@ test('a mid-turn text block draws the corrective, exactly once', () => {
   assert.strictEqual((second.stdout || '').trim(), '', 'same block answered twice');
 });
 
-test('a second text block re-arms the corrective', () => {
+test('a second text block in the same turn draws nothing more', () => {
   const session = freshSession();
   const tp1 = writeTranscript([prompt('go'), leak('first slip')]);
   hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp1 }));
   const tp2 = writeTranscript([prompt('go'), leak('first slip'), toolUse(), leak('second slip')]);
-  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp2 }));
-  assert.strictEqual(out.hookSpecificOutput.additionalContext, STEP);
+  const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp2 });
+  assert.strictEqual((r.stdout || '').trim(), '', 'corrective fired twice in one turn');
 });
 
 test('a new turn resets the corrective and its counter', () => {
@@ -90,6 +95,41 @@ test('a new turn resets the corrective and its counter', () => {
   const tp2 = writeTranscript([prompt('go'), leak('slip'), prompt('next task'), toolUse()]);
   const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp2 });
   assert.strictEqual((r.stdout || '').trim(), '');
+  // The cap is per turn: the new turn's own slip still draws one.
+  const tp3 = writeTranscript([prompt('go'), leak('slip'), prompt('next task'), toolUse(), leak('new slip')]);
+  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: session, transcript_path: tp3 }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, STEP);
+});
+
+test('the line the host asked for draws no corrective', () => {
+  const tp = writeTranscript([prompt('go'), toolUse(), toolResult(), hostStatus(), leak('Reading the hook next.'), toolUse()]);
+  const r = runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+  });
+  assert.strictEqual((r.stdout || '').trim(), '');
+});
+
+// A long turn can carry many host requests; none of the answers is a slip.
+test('repeated host requests, each answered, draw nothing', () => {
+  const entries = [prompt('go')];
+  for (let i = 0; i < 9; i++) entries.push(toolUse(), toolResult(), hostStatus(), leak(`status ${i}`));
+  assert.strictEqual(countMidTurnText(writeTranscript(entries)), 0);
+});
+
+test('the host request excuses one line only', () => {
+  // A second block before the tool call, and a block after it, are slips.
+  const tp = writeTranscript([prompt('go'), hostStatus(), leak('status'), leak('more'), toolUse(), toolResult(), leak('later')]);
+  assert.strictEqual(countMidTurnText(tp), 2);
+});
+
+test('a host request answered with a tool call excuses nothing later', () => {
+  const tp = writeTranscript([prompt('go'), hostStatus(), toolUse(), toolResult(), leak('slip')]);
+  assert.strictEqual(countMidTurnText(tp), 1);
+});
+
+test('a subagent\'s host request excuses nothing in the main turn', () => {
+  const tp = writeTranscript([prompt('go'), { ...hostStatus(), isSidechain: true }, leak('slip')]);
+  assert.strictEqual(countMidTurnText(tp), 1);
 });
 
 test('a tool result entry is not a turn boundary', () => {

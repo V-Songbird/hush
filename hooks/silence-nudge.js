@@ -9,9 +9,9 @@
 // Two levels, picked by HUSH_NUDGE:
 //
 //   (default)  One reminder at the top of the turn, plus a corrective one
-//              fired ONLY when the transcript shows a new mid-turn assistant
-//              text block this turn. A turn that stays silent gets nothing
-//              mid-turn at all.
+//              fired ONLY when the transcript shows a mid-turn assistant
+//              text block this turn, at most once per turn. A turn that
+//              stays silent gets nothing mid-turn at all.
 //   max        A reminder on every tool result (doubled), plus the one at
 //              the top of the turn.
 //
@@ -67,11 +67,11 @@ function styleKeepsQuiet(pluginRoot = path.join(__dirname, "..")) {
   }
 }
 
-// The default's corrective state: how many mid-turn text blocks have already
-// been answered with a reminder this turn. Lives beside the session's other
-// scratch, so Core's session-end cleanup clears it; with Core off nothing
-// reaps it and it is left for OS temp cleaning. Fail-open in the cheap
-// direction — an unreadable transcript or counter means no injection.
+// The default's corrective state: nonzero once this turn's corrective has
+// fired. Lives beside the session's other scratch, so Core's session-end
+// cleanup clears it; with Core off nothing reaps it and it is left for OS
+// temp cleaning. Fail-open in the cheap direction — an unreadable transcript
+// or counter means no injection.
 function reactFile(sessionId) {
   return path.join(sessionDir(sessionId), "react-count");
 }
@@ -81,10 +81,16 @@ function resetReact(sessionId) {
     fs.writeFileSync(reactFile(sessionId), "0");
   } catch { /* fail open */ }
 }
+// Claude Code's own request for a status line ("The user hasn't heard from
+// you in a while…"), recorded in the transcript as an attachment entry.
+const HOST_STATUS = "silent_turn_reminder";
+
 // Count assistant text blocks since the last real human prompt — mid-turn
 // text, because the turn's own final message cannot exist yet while a
-// PostToolUse hook is firing. Fail-SILENT on any trouble: no count means no
-// injection, which is the cheap direction.
+// PostToolUse hook is firing. The first text block after a host status
+// request, before any tool call, is the line the host asked for and does not
+// count. Fail-SILENT on any trouble: no count means no injection, which is
+// the cheap direction.
 function countMidTurnText(transcriptPath) {
   let lines;
   try {
@@ -92,7 +98,7 @@ function countMidTurnText(transcriptPath) {
   } catch {
     return 0;
   }
-  let count = 0;
+  const turn = [];
   for (let i = lines.length - 1; i >= 0; i--) {
     let e;
     try {
@@ -101,17 +107,28 @@ function countMidTurnText(transcriptPath) {
       continue;
     }
     if (isRealUserPrompt(e)) break;
-    if (e.type !== "assistant" || e.isSidechain) continue;
+    turn.push(e);
+  }
+  let count = 0;
+  let hostAsked = false;
+  for (let i = turn.length - 1; i >= 0; i--) {
+    const e = turn[i];
+    if (e.isSidechain) continue;
+    if (e.type === "attachment" && e.attachment && e.attachment.type === HOST_STATUS) hostAsked = true;
+    if (e.type !== "assistant") continue;
     const c = e.message && e.message.content;
     if (!Array.isArray(c)) continue;
     for (const b of c) {
-      if (b.type === "text" && typeof b.text === "string" && b.text.trim()) count++;
+      if (b.type === "tool_use") hostAsked = false;
+      if (b.type !== "text" || typeof b.text !== "string" || !b.text.trim()) continue;
+      if (hostAsked) hostAsked = false;
+      else count++;
     }
   }
   return count;
 }
-// Fires at most once per NEW text block: the reminder lands right after the
-// block that earned it, then stays quiet until another appears.
+// Fires at most once per turn: the reminder lands right after the first
+// block that earned it, then stays quiet until the next prompt resets it.
 function reactShouldFire(sessionId, transcriptPath) {
   try {
     const n = countMidTurnText(transcriptPath);
@@ -123,7 +140,7 @@ function reactShouldFire(sessionId, transcriptPath) {
     } catch {
       seen = 0;
     }
-    if (n <= seen) return false;
+    if (seen > 0) return false;
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, String(n));
     return true;

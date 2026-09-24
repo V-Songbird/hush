@@ -120,8 +120,9 @@ grants. Under scoped allow rules such as `Bash(node*)`, Claude Code denies every
 A writing rule read once at the start of a session fades as the session gets long. So hush repeats
 itself, but only when it has to.
 
-By default it reminds Claude once at the start of each of your turns, and again only in the moments
-where chatter actually slipped through. A session that stays quiet pays nothing extra. `HUSH_NUDGE=max`
+By default it reminds Claude once at the start of each of your turns, and again once, the first time
+chatter slips through in that turn. A line Claude Code itself asked for when you had not heard from
+Claude in a while does not count. A session that stays quiet pays nothing extra. `HUSH_NUDGE=max`
 reminds on every single command result instead — quieter, and it costs the most.
 
 ## When the conversation is compacted
