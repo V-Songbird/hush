@@ -241,10 +241,10 @@ Read the direction.
 
 ## Naming the file
 
-| notes that name the file to open, with a line number | no plugin | hush |
+| notes that link the file to open, with a line number | no plugin | hush |
 | --- | --- | --- |
-| Claude Opus 5 | **0%** | 89% |
-| Claude Sonnet | **0%** | 58% |
+| Claude Opus 5 | 0% | **81%** |
+| Claude Sonnet | 0% | **44%** |
 
 Plain Claude Code did not produce a single clickable file link in any of the 54 sessions.
 
