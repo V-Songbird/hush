@@ -111,7 +111,7 @@ Nothing on this page was bought with a wrong answer.
 
 ## How quiet
 
-Some sessions still open with a line about what the assistant is about to do. These comparisons count both fully silent sessions and sessions with at most one update before the answer.
+Some sessions still open with a line about what the assistant is about to do. These comparisons count both fully silent sessions and sessions that spoke at most once before the answer.
 
 | Claude Opus 5, 36 sessions each | no plugin | hush |
 | --- | --- | --- |
