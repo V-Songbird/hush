@@ -14,6 +14,8 @@ Every table from [The earlier comparisons](#the-earlier-comparisons) onward pres
 
 The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. The README comparison's final prose words and the words column under Prose surface are medians; the job-by-job comparison uses job averages. Reading-ease and grade scores are heuristic averages, not a reader study.
 
+Every figure on this page was measured before same-shape folding got its 4,000-character floor (see [Unreleased](changelog.md#unreleased) in the changelog). The README comparison ran hush 1.11.1 and the August 30 comparisons ran the same compression code; both folded runs of same-shape lines at any size. To see what the floor changes, the no-plugin sessions' recorded tool output was replayed offline through the current compression and through the same code without the floor. With the floor, hush prints 1.2% more per session in the README comparison, 1.3% more in the August 30 Opus comparison and 0.2% more in the Sonnet one, averaged over the nine jobs. The largest changes are on Opus: the outage job, +9.8% and +6.6%, and the 57 KB log job in the August 30 run, +7.8%. The three quietest jobs of the README comparison do not change. The replay counts characters only: no price was re-measured, and it cannot show the re-runs the floor exists to prevent.
+
 ← [Back to the README](../../README.md)
 
 ---
