@@ -25,7 +25,7 @@ const { readInputOrNull: readInput, emitRaw } = require("./lib/harness");
 const fs = require("fs");
 const path = require("path");
 const { sessionDir } = require("./lib/sidecar-store");
-const { coreOff } = require("./lib/gate");
+const { coreOff, OFF_TOKEN } = require("./lib/gate");
 
 const SIDECAR_CAP = 20;
 
@@ -89,7 +89,7 @@ function buildSidecarBlock(sessionId) {
 function main() {
   try {
     if (coreOff()) return;
-    if (process.env.HUSH_COMPACT === "off") return;
+    if (OFF_TOKEN.test(process.env.HUSH_COMPACT || "")) return;
     const data = readInput();
     if (data === null) return; // malformed stdin
 

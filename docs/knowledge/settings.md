@@ -38,10 +38,10 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | `HUSH_WRAP=1` | Lets hush trim failing commands as well as passing ones. See below. |
 
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
-what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. `HUSH_CORE`, `HUSH_QUIET` and
-`HUSH_NUDGE` also take `0` or `false` for `off`; the other switches take exactly `off` or `1`, as
-shown. With `HUSH_CORE=off`, the reminder's small per-session counter stays in your temp folder
-until your system clears it.
+what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off`
+also takes `0` or `false`, in any letter case; the switches shown as `1` take exactly `1`. With
+`HUSH_CORE=off`, the reminder's small per-session counter stays in your temp folder until your
+system clears it.
 
 ## Why `HUSH_WRAP` exists
 

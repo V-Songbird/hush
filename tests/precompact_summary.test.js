@@ -207,12 +207,14 @@ describe('precompact-summary hook', () => {
     assert.doesNotMatch(r.stdout, /interrupted\.tmp/);
   });
 
-  test('HUSH_COMPACT=off -> empty stdout', () => {
+  test('HUSH_COMPACT=off, 0 or false -> empty stdout', () => {
     const sessionA = freshSessionId();
     writeSidecarFile(sessionA, 'off-test');
-    const r = runHook({ hook_event_name: 'PreCompact', session_id: sessionA }, { HUSH_COMPACT: 'off' });
-    assert.strictEqual(r.status, 0);
-    assert.strictEqual(r.stdout, '');
+    for (const v of ['off', '0', 'OFF', 'false']) {
+      const r = runHook({ hook_event_name: 'PreCompact', session_id: sessionA }, { HUSH_COMPACT: v });
+      assert.strictEqual(r.status, 0);
+      assert.strictEqual(r.stdout, '', v);
+    }
   });
 
   test('HUSH_DISABLE=1 -> empty stdout', () => {

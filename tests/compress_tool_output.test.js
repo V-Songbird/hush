@@ -20,6 +20,9 @@ function removeSessions(ids) {
 // semantics, so pin it off for the whole file (child hooks inherit it via
 // runHook's env spread). The sidecar suite below re-enables it explicitly.
 process.env.HUSH_SIDECAR = 'off';
+// Every per-hook off switch takes the values the surface switches take
+// (OFF_TOKEN in hooks/lib/gate.js); each switch's test runs all of them.
+const OFF_VALUES = ['off', '0', 'OFF', 'false'];
 const {
   stripAnsi,
   resolveCarriageReturns,
@@ -368,12 +371,14 @@ describe('unit: collapseTemplates', () => {
     assert.strictEqual(out[1], '[hush hook: 5 similar lines collapsed (same shape, varying values)]');
   });
 
-  test('HUSH_TEMPLATE=off passes lines through untouched', () => {
+  test('HUSH_TEMPLATE=off, 0 or false passes lines through untouched', () => {
     const prev = process.env.HUSH_TEMPLATE;
-    process.env.HUSH_TEMPLATE = 'off';
     try {
       const lines = Array.from({ length: 8 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`);
-      assert.deepStrictEqual(collapseTemplates(lines), lines);
+      for (const v of OFF_VALUES) {
+        process.env.HUSH_TEMPLATE = v;
+        assert.deepStrictEqual(collapseTemplates(lines), lines, v);
+      }
     } finally {
       if (prev === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prev;
     }
@@ -1111,12 +1116,14 @@ describe('hook: once-per-session telemetry note', () => {
     assert.strictEqual(out.additionalContext, undefined);
   });
 
-  test('HUSH_NOTE=off suppresses the note, never the rewrite', () => {
-    const out = hookOutput(runHook('compress-tool-output.js', {
-      tool_name: 'Bash', session_id: sid('gated'), tool_response: noisy,
-    }, { HUSH_NOTE: 'off' })).hookSpecificOutput;
-    assert.strictEqual(out.additionalContext, undefined);
-    assert.match(out.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
+  test('HUSH_NOTE=off, 0 or false suppresses the note, never the rewrite', () => {
+    for (const v of OFF_VALUES) {
+      const out = hookOutput(runHook('compress-tool-output.js', {
+        tool_name: 'Bash', session_id: sid('gated'), tool_response: noisy,
+      }, { HUSH_NOTE: v })).hookSpecificOutput;
+      assert.strictEqual(out.additionalContext, undefined, v);
+      assert.match(out.updatedToolOutput, /\[hush hook: \d+ lines omitted/);
+    }
   });
 
   // The note is the one omission statement every view shares, so it has to
@@ -1240,8 +1247,10 @@ describe('hook: subagent-brief', () => {
     assert.strictEqual(out.additionalContext, BRIEF);
   });
 
-  test('HUSH_SUBAGENT=off silences it; HUSH_DISABLE=1 too', () => {
-    assert.strictEqual(hookOutput(runHook('subagent-brief.js', { agent_type: 'claude' }, { HUSH_SUBAGENT: 'off' })), null);
+  test('HUSH_SUBAGENT=off, 0 or false silences it; HUSH_DISABLE=1 too', () => {
+    for (const v of OFF_VALUES) {
+      assert.strictEqual(hookOutput(runHook('subagent-brief.js', { agent_type: 'claude' }, { HUSH_SUBAGENT: v })), null, v);
+    }
     assert.strictEqual(hookOutput(runHook('subagent-brief.js', { agent_type: 'claude' }, { HUSH_DISABLE: '1' })), null);
   });
 
@@ -1287,6 +1296,24 @@ describe('unit: relevance preservation + pressure scaling', () => {
     assert.strictEqual(pressureScale(500 * 1024), 0.75);
     assert.strictEqual(pressureScale(2 * 1024 * 1024), 0.5);
     assert.strictEqual(pressureScale(NaN), 1);
+  });
+
+  test('HUSH_ADAPTIVE=off, 0 or false keeps the base cap in a large session', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-adaptive-'));
+    try {
+      const transcript = path.join(dir, 't.jsonl');
+      fs.writeFileSync(transcript, 'x'.repeat(2 * 1024 * 1024) + NL);
+      const output = Array.from({ length: 300 }, (_, i) => 'unique ' + i).join(NL);
+      const omitted = (input, env) => {
+        const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: 'node build.js' }, tool_response: output, ...input }, { HUSH_TEMPLATE: 'off', ...env });
+        return Number(/(\d+) lines omitted/.exec(hookOutput(r).hookSpecificOutput.updatedToolOutput)[1]);
+      };
+      const base = omitted({});
+      assert.ok(omitted({ transcript_path: transcript }) > base, 'a 2MB session tightens the cap');
+      for (const v of OFF_VALUES) assert.strictEqual(omitted({ transcript_path: transcript }, { HUSH_ADAPTIVE: v }), base, v);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   test('scale tightens caps but never below the floors; enumerate never scales', () => {
@@ -2484,23 +2511,27 @@ describe('grep match-list compression', () => {
   });
 
   test('context-flagged, small, and disabled Grep results pass through silently', () => {
-    const content = grepContent(['src/a.js'], 40);
+    // Long enough to collapse, so each exemption below is what keeps it whole.
+    const content = grepContent(['src/a.js', 'src/b.js'], 40);
     const base = {
       tool_name: 'Grep',
       tool_input: { pattern: 'value', output_mode: 'content', '-C': 2 },
-      tool_response: { mode: 'content', numFiles: 1, filenames: [], content, numLines: 40, totalLines: 40 },
+      tool_response: { mode: 'content', numFiles: 2, filenames: [], content, numLines: 80, totalLines: 80 },
     };
+    assert.ok(hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' } })), 'control: collapses');
     assert.strictEqual(hookOutput(runHook('compress-tool-output.js', base)), null, 'context flag');
     assert.strictEqual(
       hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' }, tool_response: { ...base.tool_response, content: 'a.js:1: tiny' } })),
       null,
       'small result'
     );
-    assert.strictEqual(
-      hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' } }, { HUSH_GREP: 'off' })),
-      null,
-      'HUSH_GREP=off'
-    );
+    for (const v of OFF_VALUES) {
+      assert.strictEqual(
+        hookOutput(runHook('compress-tool-output.js', { ...base, tool_input: { pattern: 'v' } }, { HUSH_GREP: v })),
+        null,
+        `HUSH_GREP=${v}`
+      );
+    }
   });
 });
 
@@ -2567,23 +2598,25 @@ describe('grep elision: the omitted matches are persisted', () => {
     assert.strictEqual(fs.readdirSync(sessionDir(id)).length, 1);
   });
 
-  test('with persistence off, the marker offers the re-run and claims no file', () => {
-    const id = newSession('off');
-    const content = matchList(['src/a.js', 'src/b.js'], 40);
-    const decision = {};
-    const prev = process.env.HUSH_SIDECAR;
-    process.env.HUSH_SIDECAR = 'off';
-    let out;
-    try {
-      out = H.compressGrep(content, [], 'src', decision, id);
-    } finally {
-      if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev;
+  test('with persistence off, 0 or false, the marker offers the re-run and claims no file', () => {
+    for (const v of OFF_VALUES) {
+      const id = newSession('off');
+      const content = matchList(['src/a.js', 'src/b.js'], 40);
+      const decision = {};
+      const prev = process.env.HUSH_SIDECAR;
+      process.env.HUSH_SIDECAR = v;
+      let out;
+      try {
+        out = H.compressGrep(content, [], 'src', decision, id);
+      } finally {
+        if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev;
+      }
+      assert.ok(out.includes('match lines omitted'), `the collapse still happens (${v})`);
+      assert.strictEqual(savedPath(out), null, 'no path is claimed');
+      assert.ok(out.includes('re-run with a narrower pattern'), 'the honest instruction takes its place');
+      assert.strictEqual(decision.recovery, undefined, 'and the record is left to name the re-run');
+      assert.strictEqual(fs.existsSync(sessionDir(id)), false, 'nothing was written');
     }
-    assert.ok(out.includes('match lines omitted'), 'the collapse still happens');
-    assert.strictEqual(savedPath(out), null, 'no path is claimed');
-    assert.ok(out.includes('re-run with a narrower pattern'), 'the honest instruction takes its place');
-    assert.strictEqual(decision.recovery, undefined, 'and the record is left to name the re-run');
-    assert.strictEqual(fs.existsSync(sessionDir(id)), false, 'nothing was written');
   });
 
   test('credential-shaped matches are never parked — the view falls back to the re-run', () => {

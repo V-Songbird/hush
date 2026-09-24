@@ -141,6 +141,11 @@ which turns off part of hush: `HUSH_CORE`, `HUSH_QUIET`, `HUSH_NUDGE=off`,
 `HUSH_SUBAGENT`. It also gives the values each one takes and which one wins
 when two are set.
 
+`HUSH_SIDECAR`, `HUSH_GREP`, `HUSH_TEMPLATE`, `HUSH_COMPACT` and
+`HUSH_SUBAGENT` now also turn off with `0` or `false`, in any letter case, as
+`HUSH_CORE`, `HUSH_QUIET` and `HUSH_NUDGE` already did. Before, only `off`
+worked, and `HUSH_SIDECAR=0` left parking on.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a
