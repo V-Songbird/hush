@@ -99,6 +99,12 @@ printed, is part of the output. Before, it called every `[hush` in any tool
 result hush's own. An escaped line or a printed exit marker no longer uses up
 that note either, so it still comes with the first real one.
 
+A line that opens like a note behind spaces or invisible characters, with
+invisible characters inside `[hush`, or with the fullwidth bracket `［` is now
+escaped too. A long search result that hush shortens escapes the lines it
+keeps, and the once-per-session note says so; a search result hush leaves
+whole is still delivered exactly as returned.
+
 hush's hooks now start node directly instead of through a shell, so hush needs
 Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so

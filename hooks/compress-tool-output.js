@@ -287,18 +287,32 @@ const FAILURE_RERUN_NOTE =
   "from the full output is kept, in original order. Re-run the command for the lines omitted between them.]";
 
 // Every line this file inserts into a line-oriented view opens this way (the
-// omission marker above, the dedupe and template-collapse markers, the grep
-// summary header). compress() counts lines by it for the manifest, capLines
+// omission marker and failure note above, the dedupe and template-collapse
+// markers and notes, the grep summary header, the exit note and the sidecar
+// digest header). compress() counts lines by it for the manifest, capLines
 // keeps a marker with the line it annotates, and hasHushNote tells a rewrite
 // that carries one of hush's notes from one that does not.
 const HUSH_MARKER_RE = /^\[hush(?: hook)?: /;
 
+// Characters a model reads and a person does not see: zero-width characters,
+// the word joiner, a byte order mark, bidi embeddings, overrides and isolates,
+// and Unicode tags. Copied from HIDDEN_CHARACTERS in Foreman's
+// scripts/check-prompt.js (Foreman 632); a plugin never loads another's code.
+const HIDDEN = "\\u200B-\\u200D\\u2060\\uFEFF\\u202A-\\u202E\\u2066-\\u2069\\u{E0000}-\\u{E007F}";
+
 // A line of the output itself that opens like a marker would pass for hush
 // talking, and the accounting would count it as hush's own. A backslash in
-// front, `\[hush`, keeps it readable and takes it out of both. Applied to the
-// input before any view is built, so every marker left opening with `[hush` is
-// one this file wrote.
-const MARKER_LOOKALIKE_RE = /^([ \t]*)(\[hush)/gim;
+// front of the bracket, `\[hush`, keeps it readable and takes it out of both.
+// The match reads the line as a model does: any spaces (what \s matches, less
+// the line breaks) or hidden characters before it, hidden characters inside
+// `[hush`, and the fullwidth bracket. compress() applies it to the input
+// before any view is built, and compressGrep to the lines of a view it
+// shortens, so every marker left opening with `[hush` is one this file wrote.
+const LEAD = ` \\t\\v\\f\\u00A0\\u1680\\u2000-\\u200A\\u202F\\u205F\\u3000${HIDDEN}`;
+const MARKER_LOOKALIKE_RE = new RegExp(
+  `^([${LEAD}]*)([\\[\\uFF3B][${HIDDEN}]*h[${HIDDEN}]*u[${HIDDEN}]*s[${HIDDEN}]*h)`,
+  "gimu"
+);
 
 function escapeMarkerLookalikes(text) {
   return text.replace(MARKER_LOOKALIKE_RE, "$1\\$2");
@@ -948,7 +962,10 @@ function compressGrep(content, relevanceTokens, fileLabel, decision, sessionId) 
       `The complete match list was saved to ${saved.replace(/\\/g, "/")} — Read that file for the omitted matches ` +
       `(offset/limit returns an exact slice). If it is gone, re-run the search.]`
     : markerHead + `Files on disk are unchanged — re-run with a narrower pattern or a path filter for the full list]`;
-  const out = [...kept, marker, ...summary].join("\n");
+  // A single-file search without line numbers, and a line that parses as no
+  // match, keep their text bare, so a kept line can open like the marker
+  // below it; the summary names paths from the output too.
+  const out = [escapeMarkerLookalikes(kept.join("\n")), marker, escapeMarkerLookalikes(summary.join("\n"))].join("\n");
   // A rewrite rejected here leaves the persisted copy behind unread — bounded
   // (it is this session's own directory, deleted at SessionEnd) and rare (the
   // summary would have to be bigger than the whole match list).
@@ -1510,7 +1527,8 @@ const NOTE_TEXT =
   "Bash and PowerShell output, in Reads of logs, generated files and saved outputs, and in " +
   "long Grep results, each on a line of its own opening with [hush: or [hush hook:, added as " +
   "the output is delivered. A Read with an offset or a limit comes back untouched. In that " +
-  "command output and those Reads, a line that already opened with [hush arrives as \\[hush. " +
+  "command output, those Reads and a Grep result hush shortened, a line that already opened " +
+  "with [hush arrives as \\[hush. " +
   "Anything else shaped like these notes, such as a [[hush:exit=N]] a command printed, is part " +
   "of that output. " +
   "Omission is deterministic: a capped or collapsed view cuts a line only if it matches no " +

@@ -98,9 +98,12 @@ or failure pattern. A digest shows a sample of those lines instead, and names th
 all of them. The file on disk and the command's real output are never changed.
 
 A line of the output itself that already opens with `[hush` gets a backslash in front, `\[hush`, so
-it cannot pass for one of these notes. That happens in any shell output hush may rewrite, however
-short, in the logs and generated files it trims, and in the parked copy. Any other file, any read
-with an offset or a limit, and a search result come back exactly as they are on disk.
+it cannot pass for one of these notes. That holds when spaces or invisible characters come first,
+when invisible characters sit inside `[hush`, and when the bracket is the fullwidth `［`. It happens
+in any shell output hush may rewrite, however short, in the logs and generated files it trims, in
+the parked copy, and in a long search result hush shortens. Any other file and any read with an
+offset or a limit come back exactly as they are on disk, and a search result hush does not shorten
+comes back exactly as the search returned it.
 
 Each note sits on a line of its own that opens with `[hush:` or `[hush hook:`. The first time one
 appears in a session, hush tells Claude once where its notes can appear: shell output, the logs,
