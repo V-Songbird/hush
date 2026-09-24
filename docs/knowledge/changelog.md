@@ -43,6 +43,12 @@ Output under 4,000 characters is no longer folded by shape. The rows of a
 short table all share one shape, so folding them hid the answer, and Claude
 ran the command again to see it. Exact repeats still fold.
 
+A directory listing or a print of a line range now comes back whole up to
+250 lines: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`,
+`head -n`, `tail -n`, and `Get-Content` with `-TotalCount` or `-Tail`, each
+run on its own. A listing or print of more than 60 lines could keep only its
+first and last stretch, so Claude read it a second time.
+
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,
 and folds that save less than that line are left unfolded.

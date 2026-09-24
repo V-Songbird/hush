@@ -727,6 +727,28 @@ function isFileDump(command) {
   return typeof command === "string" && FILE_DUMP_RE.test(command.trim());
 }
 
+// A directory listing, or a print of a line range the command bounds itself
+// (sed -n, head/tail -n, Get-Content -TotalCount/-Tail), has no warning or
+// error lines for the cap to keep, so a trim cuts arbitrary names or code
+// lines and sends the model back for a second read. compress() passes these
+// whole up to CAP_FAIL lines, as main() passes a ranged Read. One command
+// only, like FILE_DUMP_RE; a stderr redirect is dropped first since it leaves
+// stdout as printed, and preserve-exit-code's PowerShell wrapper is unwrapped.
+// find is a listing unless -exec/-ok prints another command's output.
+const BOUNDED_PRINT_RE = new RegExp(
+  "^(?=[^|;&<>]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
+    "|(?:head|tail)\\s+-(?:n\\s*)?\\+?\\d|(?:cat|type|gc|Get-Content)\\s.*\\s-(?:TotalCount|Head|First|Tail|Last)\\s+\\d)",
+  "i"
+);
+const PS_WRAP_RE = /^& \{ (.*) \} 2>&1 \| Out-String -Width 4096$/;
+
+function isBoundedPrint(command) {
+  if (typeof command !== "string") return false;
+  const line = command.trim();
+  const ps = PS_WRAP_RE.exec(line);
+  return BOUNDED_PRINT_RE.test((ps ? ps[1] : line).replace(/\s+2>\S*/g, "").trim());
+}
+
 // preserve-exit-code.js (a PreToolUse hook) wraps Bash/PowerShell commands so
 // a non-zero exit still reports success to Claude Code — otherwise the call
 // routes through PostToolUseFailure, which this hook never sees at all (see
@@ -1277,7 +1299,7 @@ const isSidecarPath = sidecarStore.isSidecarPath;
 // classifies what this call actually did (see HUSH_DEBUG below) — purely an
 // observation side-channel: the return value is identical whether or not a
 // decision object is supplied.
-function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision) {
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision, bounded) {
   const original = String(text);
   const unescaped = resolveCarriageReturns(stripAnsi(original));
   const cleaned = escapeMarkerLookalikes(unescaped);
@@ -1286,6 +1308,16 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
     decision.linesIn = linesIn;
     // deliver() ships an escaping view even when it is not smaller.
     if (cleaned !== unescaped) decision.escaped = true;
+  }
+  // A listing or ranged print (isBoundedPrint) keeps every line up to
+  // CAP_FAIL, unscaled, and skips the sidecar too; only the scrubs above,
+  // which remove no line, apply. A trailing newline is not a line.
+  if (bounded && linesIn - (cleaned.endsWith("\n") ? 1 : 0) <= CAP_FAIL) {
+    if (decision && !decision.action) {
+      decision.omitted = 0;
+      decision.action = cleaned === original ? "passthrough" : "scrub-only";
+    }
+    return cleaned;
   }
   // Classified once, up front: the same answer picks the cap below. maybeSidecar
   // parks every oversized output, passing or failing; past SIDECAR_SHELL_MAX a
@@ -1609,7 +1641,9 @@ function main() {
     return deliver(decision, updated, data);
   }
 
-  const isDump = isFileDump(firstLine(data.tool_input && data.tool_input.command));
+  const command = firstLine(data.tool_input && data.tool_input.command);
+  const isDump = isFileDump(command);
+  const bounded = isBoundedPrint(command);
 
   if (typeof response === "string") {
     const wrapped = extractWrappedExit(response);
@@ -1619,7 +1653,7 @@ function main() {
     // untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
     const decision = { bytesIn: response.length };
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
     if (wrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
     decision.bytesOut = out.length;
     if (!decision.recovery) decision.recovery = "rerun-command";
@@ -1647,7 +1681,7 @@ function main() {
         bytesIn += next[field].length;
         const fieldWrapped = extractWrappedExit(next[field]);
         const decision = {};
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
         if (fieldWrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;
@@ -1706,6 +1740,7 @@ module.exports = {
   isKeepLine,
   exitNote,
   isFileDump,
+  isBoundedPrint,
   isLogPath,
   isGeneratedPath,
   isSidecarPath,

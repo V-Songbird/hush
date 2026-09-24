@@ -49,6 +49,12 @@ conversation and gets re-sent on every turn after it. Parking it means Claude ca
 it, but only if it decides it needs to. A shell result of 28,000 characters or more may already have
 been cut short by Claude Code, so hush saves it as it received it and says so.
 
+A directory listing or a print of a line range comes back whole up to 250 lines, however long the
+session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail` with a line
+count, and `Get-Content` with `-TotalCount` or `-Tail`, each run on its own rather than piped or
+chained. Nothing in it is folded, cut or parked in a file. Such output has no warning or error lines
+for a trim to keep, so a trim only cut names or code lines Claude then had to fetch again.
+
 Two other tools get the same treatment:
 
 - **Read.** A log file, or a file nobody writes by hand — a lockfile, a minified bundle, anything

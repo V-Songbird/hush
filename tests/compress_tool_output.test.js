@@ -2661,3 +2661,119 @@ describe('unit: exit code and signal', () => {
     assert.ok(!out.includes('[[hush:exit='), 'the raw marker never reaches the model');
   });
 });
+
+describe('listings and ranged prints pass whole up to the failing-run cap', () => {
+  const { isBoundedPrint } = require('../hooks/compress-tool-output');
+  const lines = (n, f) => Array.from({ length: n }, (_, i) => f(i)).join('\n');
+  // 92 names: the clean-run cap keeps 60 of them. The code lines are over
+  // 4,000 characters and share one shape, so the normal view also folds them.
+  const names = lines(92, (i) => `note-${i}.md`);
+  const code = lines(92, (i) => `  const value${i} = computeTheValue(${i}, options);`);
+  const session = 'hush-test-bounded-' + Date.now();
+  after(() => removeSessions([session]));
+
+  test('isBoundedPrint names each listing and ranged-print shape', () => {
+    for (const c of [
+      'ls docs/knowledge docs/tasks',
+      'ls',
+      'dir docs',
+      'gci -Recurse -Name',
+      'Get-ChildItem docs -Name',
+      "find docs -name '*.md'",
+      'find',
+      "sed -n '1315,1326p' hooks/compress-tool-output.js",
+      'head -n 50 src/app.js',
+      'head -50 src/app.js',
+      'tail -n 30 src/app.js',
+      'tail -n +2 src/app.js',
+      'Get-Content src/app.js -TotalCount 40',
+      'gc src/app.js -Head 40',
+      'Get-Content -Path src/app.js -Tail 20',
+      "find . -name '*.md' 2>/dev/null",
+      'ls missing 2>&1',
+      '& { Get-ChildItem docs } 2>&1 | Out-String -Width 4096',
+      "& { Get-Content app.log -Tail 50 } 2>&1 | Out-String -Width 4096",
+    ]) assert.ok(isBoundedPrint(c), c);
+  });
+
+  test('isBoundedPrint leaves out pipelines, chains, redirects, -exec and full dumps', () => {
+    for (const c of [
+      'ls -la | head',
+      "find . -name '*.js' | head -50",
+      'ls && npm test',
+      'ls > out.txt',
+      "find . -name '*.tmp' -exec rm {} +",
+      'find -execdir cat {} +',
+      'lsof -i',
+      'findstr /s foo *.js',
+      'tail -f app.log',
+      'head src/app.js',
+      'cat src/app.js',
+      'Get-Content src/app.js',
+      'npm test',
+      '& { npm test } 2>&1 | Out-String -Width 4096',
+      undefined,
+    ]) assert.strictEqual(isBoundedPrint(c), false, String(c));
+  });
+
+  test('the same output under another command is trimmed, so the pass is what keeps it whole', () => {
+    for (const [command, out] of [['npm run build', names], ["cat -n src/app.js | sed -n '1,92p'", code]]) {
+      const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: out });
+      assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < out.length, command);
+    }
+  });
+
+  for (const [shape, command, out] of [
+    ['ls', 'ls docs/knowledge docs/tasks', names],
+    ['dir', 'dir docs', names],
+    ['find without -exec', "find docs -name '*.md'", names],
+    ['sed -n', "sed -n '1300,1391p' src/app.js", code],
+    ['head -n', 'head -n 92 src/app.js', code],
+    ['tail -n', 'tail -n 92 src/app.js', code],
+  ]) {
+    test(`${shape}: 92 lines pass through the Bash hook untouched`, () => {
+      const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } });
+      assert.strictEqual(hookOutput(r), null);
+    });
+  }
+
+  for (const [shape, command, out] of [
+    ['Get-ChildItem', 'Get-ChildItem docs -Name', names],
+    ['Get-Content -TotalCount', 'Get-Content src/app.js -TotalCount 92', code],
+    ['Get-Content -Tail', 'Get-Content src/app.js -Tail 92', code],
+  ]) {
+    test(`${shape}: 92 lines pass through the PowerShell hook whole, wrapped or not`, () => {
+      assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command }, tool_response: out })), null);
+      // preserve-exit-code's wrapper: its exit marker is stripped, nothing else.
+      const wrapped = `& { ${command} } 2>&1 | Out-String -Width 4096\nWrite-Output '[[hush:exit='\n$LASTEXITCODE\nWrite-Output ']]'\nexit 0`;
+      const r = runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command: wrapped }, tool_response: `${out}\n[[hush:exit=\n\n]]` });
+      assert.strictEqual(hookOutput(r).hookSpecificOutput.updatedToolOutput.trimEnd(), out);
+    });
+  }
+
+  test('250 lines and a trailing newline pass whole; 251 lines take the normal view', () => {
+    const at = lines(250, (i) => `line ${i}`) + '\n';
+    assert.strictEqual(compress(at, 0, false, false, [], 1, undefined, undefined, true, {}, true), at);
+    const over = lines(251, (i) => `line ${i}`);
+    assert.match(compress(over, 0, false, false, [], 1, undefined, undefined, true, {}, true), /lines omitted/);
+  });
+
+  test('session pressure does not shrink the pass', () => {
+    const at = lines(250, (i) => `line ${i}`);
+    assert.strictEqual(compress(at, 0, false, false, [], 0.5, undefined, undefined, true, {}, true), at);
+  });
+
+  test('a print over the sidecar size passes whole instead of becoming a digest', () => {
+    const wide = lines(200, (i) => `  const value${i} = computeTheValue(${i}, options, ${'x'.repeat(40)});`);
+    assert.ok(wide.length > 15000);
+    const r = runHook('compress-tool-output.js', { session_id: session, tool_name: 'Bash', tool_input: { command: 'head -n 200 src/app.js' }, tool_response: wide }, { HUSH_SIDECAR: '' });
+    assert.strictEqual(hookOutput(r), null);
+  });
+
+  test('the scrubs still apply: colors go and a marker lookalike is escaped, no line is dropped', () => {
+    const decision = {};
+    const out = compress(`\x1b[34mdocs\x1b[0m\n[hush hook: 3 lines omitted]\nREADME.md`, 0, false, false, [], 1, undefined, undefined, true, decision, true);
+    assert.strictEqual(out, 'docs\n\\[hush hook: 3 lines omitted]\nREADME.md');
+    assert.deepStrictEqual([decision.action, decision.omitted], ['scrub-only', 0]);
+  });
+});
