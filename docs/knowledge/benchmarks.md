@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
+summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -8,7 +8,7 @@ related_files:
 
 # The numbers, in full
 
-The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison). Two of its figures have no table on this page: a text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman, and three jobs cost 1–10% more.
+The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison).
 
 Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
@@ -77,6 +77,24 @@ Job by job: in how many of the nine jobs hush's average beat the other setup's, 
 | higher reading ease | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
 
 **This batch does not separate structure from length.** Counted with the prose word count behind the medians above, fenced code excluded, hush's range of words per session overlaps the no-plugin range in none of the nine jobs, and the caveman range in one job, only through a single 42-word caveman session. Every difference in these tables is also a length difference.
+
+### Cost and runnable content by job
+
+Same batch, `rivalA-762f888b`. Its hush sessions ran hush 1.11.1, the release current when the batch started; the records themselves do not store a version. Each price is the average bill of a job's four sessions, read back from the API, with the change against no plugin; the cheapest setup is in bold. An answer counts as runnable when its final message holds a fenced code block or inline code with a space in it, the usual shape of a command. That heuristic does not check that the command is correct or complete. Jobs are ordered by how much tool output the no-plugin sessions took in, least first.
+
+| The job | tool output per session, no plugin | no plugin | caveman | hush | answers with runnable content, no plugin · caveman · hush |
+| --- | --- | --- | --- | --- | --- |
+| Plan a `--json` flag without editing anything | 2.9k chars | **$0.155** | $0.169, +9% | $0.170, +10% | 4/4 · 4/4 · 4/4 |
+| Get a build clean again after a dependency bump | 6.7k chars | **$0.250** | $0.259, +4% | $0.254, +1% | 4/4 · 4/4 · 4/4 |
+| Fix a red test suite hiding three real failures | 9.8k chars | $0.257 | **$0.242, −6%** | $0.267, +4% | 4/4 · 4/4 · 3/4 |
+| Build a notification router while the plan changes four times | 14.0k chars | $0.689 | $0.649, −6% | **$0.588, −15%** | 4/4 · 4/4 · 3/4 |
+| Dig through 300 KB of logs for the cause of an outage | 18.8k chars | $0.850 | $0.631, −26% | **$0.564, −34%** | 4/4 · 4/4 · 4/4 |
+| Finish a half-done rename across 76 files | 20.4k chars | $0.429 | **$0.352, −18%** | $0.368, −14% | 4/4 · 4/4 · 4/4 |
+| Scope a column rename that matches a thousand lines | 24.1k chars | $0.432 | $0.410, −5% | **$0.377, −13%** | 4/4 · 4/4 · 4/4 |
+| Find what actually changed for users across 380 commits | 52.8k chars | $0.709 | **$0.417, −41%** | $0.513, −28% | 4/4 · 4/4 · 4/4 |
+| Triage a 57 KB application log | 60.9k chars | $0.516 | $0.511, −1% | **$0.325, −37%** | 4/4 · 4/4 · 4/4 |
+
+hush cost more than no plugin on the three quietest jobs, by 1%, 4% and 10%. Runnable content appeared in 34 of 36 hush answers, 94%, and in all 36 answers without a plugin and with caveman. The two hush answers without it came from the first session of the red test suite job and of the notification router job.
 
 ## The earlier comparisons
 

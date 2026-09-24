@@ -74,7 +74,9 @@ The README's demo animation stops for readers who ask for reduced motion, and
 its mascot image has an English title and description.
 
 The benchmark details now include the README's comparison table, from the
-same September 1 run, so you can check each of its figures there.
+same September 1 run, so you can check each of its figures there. A new
+table there gives that run's cost and runnable content job by job, behind the
+README's 94% and 1–10% figures.
 
 ## 1.12.1 — 2026-09-15
 
