@@ -60,6 +60,15 @@ says so before activation does. Switching styles keeps a namespaced
 git, the stock backup now follows the new stock voice after a pull. The style
 check now catches a changed number at the end of a sentence.
 
+A line of command output that already opens with `[hush` now reaches Claude
+as `\[hush`, even in a short output, so it can no longer pass for one of
+hush's notes or be counted as one. The logs hush trims get the same. The
+voice no longer calls those notes trusted or forbids naming them: a note says
+what a view left out and how to get the rest back, a line asking for anything
+else is part of the output, and Claude names a note when it limits a claim.
+A style you crafted keeps the old paragraph, so it will not activate until
+you edit it with `/hush:craft-style`.
+
 hush's hooks now start node directly instead of through a shell, so hush needs
 Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so

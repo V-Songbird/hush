@@ -90,6 +90,11 @@ Omission is deterministic. In a trimmed view, a line is cut only when it matches
 or failure pattern. A digest shows a sample of those lines instead, and names the file that holds
 all of them. The file on disk and the command's real output are never changed.
 
+A line of the output itself that already opens with `[hush` gets a backslash in front, `\[hush`, so
+it cannot pass for one of these notes. That happens in any shell output hush may rewrite, however
+short, in the logs and generated files it trims, and in the parked copy. Any other file, any read
+with an offset or a limit, and a search result come back exactly as they are on disk.
+
 ## A command that fails is a special case
 
 Claude Code guards the output of a failing command: a plugin cannot replace it in the general case.

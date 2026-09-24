@@ -8,7 +8,8 @@
 //
 //   1. A lossy transform without a retrievable full original is rejected.
 //   2. A structured transform preserves every field or does not run.
-//   3. A transform that is not smaller is rejected.
+//   3. A transform that is not smaller is rejected, unless it strips the
+//      exit-code wrapper or escapes a line that opened like a hush marker.
 //
 // All three are enforced in ONE place — deliver() in compress-tool-output.js —
 // and the fallback for all three is the same: drop the rewrite and ship the
@@ -23,7 +24,9 @@
 // The keep-line oracle compares against the CLEANED text (ANSI stripped,
 // carriage returns resolved), not the raw input: cleaning is documented to
 // collapse a `\r`-redrawn line to its final state, so a keep line overwritten
-// by a later redraw was never in the view hush was asked to preserve.
+// by a later redraw was never in the view hush was asked to preserve. A line
+// that opened like a hush marker is escaped as part of cleaning, so the keep
+// line to look for is its escaped form.
 
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
@@ -39,6 +42,7 @@ const {
   looksLikeFailure,
   stripAnsi,
   resolveCarriageReturns,
+  escapeMarkerLookalikes,
   compressGrep,
   claimSessionNote,
   FAILURE_RERUN_NOTE,
@@ -185,7 +189,7 @@ function deliverShellString(c) {
   return { out, decision, updated, data, ship: shipped(decision, updated, data) };
 }
 
-const cleanOf = (text) => resolveCarriageReturns(stripAnsi(String(text)));
+const cleanOf = (text) => escapeMarkerLookalikes(resolveCarriageReturns(stripAnsi(String(text))));
 const keepLinesOf = (text) => cleanOf(text).split('\n').filter(isKeepLine);
 
 // ---------------------------------------------------------------------------
@@ -247,9 +251,18 @@ describe('property: compress() over generated output', () => {
 describe('property: the product invariants hold on what is actually shipped', () => {
   test('invariant 3: a shipped rewrite is always smaller than what it replaced', () => {
     let rejected = 0;
+    let escaped = 0;
     for (let n = 0; n < CASES; n++) {
       const c = generate(BASE_SEED + n);
-      const { out, ship } = deliverShellString(c);
+      const { out, decision, ship } = deliverShellString(c);
+      // The escape is the one size exemption a generated shell string can
+      // reach: such a view ships whatever its size. The keep-line property
+      // below checks that the escaped lines are in it.
+      if (decision.escaped) {
+        escaped++;
+        assert.ok(ship !== undefined, `seed ${c.seed}: an escaping view was dropped, so the raw lookalike would ship`);
+        continue;
+      }
       if (ship === undefined) {
         if (out !== c.text) rejected++;
         continue;
@@ -262,6 +275,7 @@ describe('property: the product invariants hold on what is actually shipped', ()
     // Anti-vacuity: the generated space has to contain rewrites the guard must
     // actually reject, or the assertion above proves nothing about the guard.
     assert.ok(rejected > 0, 'no generated case was ever rejected — this corpus does not exercise the guard');
+    assert.ok(escaped > 0, 'no generated case carried a marker lookalike — this corpus does not exercise the exemption');
   });
 
   test('a shipped rewrite never loses a keep line on its way through the boundary', () => {

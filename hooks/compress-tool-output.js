@@ -286,6 +286,17 @@ const FAILURE_RERUN_NOTE =
 // summary header). Used only for manifest accounting — see compress().
 const HUSH_MARKER_RE = /^\[hush(?: hook)?: /;
 
+// A line of the output itself that opens like a marker would pass for hush
+// talking, and the accounting would count it as hush's own. A backslash in
+// front, `\[hush`, keeps it readable and takes it out of both. Applied to the
+// input before any view is built, so every marker left opening with `[hush` is
+// one this file wrote.
+const MARKER_LOOKALIKE_RE = /^([ \t]*)(\[hush)/gim;
+
+function escapeMarkerLookalikes(text) {
+  return text.replace(MARKER_LOOKALIKE_RE, "$1\\$2");
+}
+
 // Identifiers the user's own prompt names — backticked or quoted spans like
 // `ioredis` or "W1042" — are that turn's signal even when they match no
 // warning/error pattern. A capped view that happens to cut the one entry the
@@ -1263,9 +1274,14 @@ const isSidecarPath = sidecarStore.isSidecarPath;
 // decision object is supplied.
 function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision) {
   const original = String(text);
-  const cleaned = resolveCarriageReturns(stripAnsi(original));
+  const unescaped = resolveCarriageReturns(stripAnsi(original));
+  const cleaned = escapeMarkerLookalikes(unescaped);
   const linesIn = cleaned.split("\n").length;
-  if (decision) decision.linesIn = linesIn;
+  if (decision) {
+    decision.linesIn = linesIn;
+    // deliver() ships an escaping view even when it is not smaller.
+    if (cleaned !== unescaped) decision.escaped = true;
+  }
   // Classified once, up front: the same answer picks the cap below. maybeSidecar
   // parks every oversized output, passing or failing; past SIDECAR_SHELL_MAX a
   // shell copy is labelled as received rather than in full.
@@ -1318,25 +1334,26 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // threaded out of dedupe/collapse/cap separately: a line hush keeps is kept
   // verbatim and everything hush adds is a bracketed [hush marker, so the
   // non-marker output lines are exactly the input lines this view preserved.
-  // An input line that itself opens with a [hush marker (re-reading a digest)
-  // counts as one of hush's own — that overstates omission slightly, which can
-  // only make recovery metadata MORE required, never less.
+  // An input line that opened like a marker was escaped on the way in, so it
+  // counts as preserved input, not as one of hush's own.
   if (decision) decision.omitted = Math.max(0, linesIn - lines.filter((l) => !HUSH_MARKER_RE.test(l)).length);
   if (decision && !decision.action) {
     if (capped) decision.action = "cap";
     else if (collapsed) decision.action = "template-collapse";
     else if (enumerate) decision.action = "enumerate-passthrough";
     else if (out === original) decision.action = "passthrough";
-    else decision.action = "scrub-only"; // ansi/CR/dupe/exit-marker cleanup only
+    else decision.action = "scrub-only"; // ansi/CR/dupe/exit-marker cleanup or a marker escape only
   }
   return out;
 }
 
-// preserve-exit-code's wrapper marker is hush's own protocol text, and the one
-// rewrite that is not a compression bargain: stripping it is mandatory, so a
-// response carrying one is exempt from the size invariant below. Dropping back
+// preserve-exit-code's wrapper marker is hush's own protocol text, and one of
+// two rewrites that are not a compression bargain: stripping it is mandatory, so
+// a response carrying one is exempt from the size invariant below. Dropping back
 // to the original there would leak `[[hush:exit=N]]` into the model's context
-// raw, which is the single thing extractWrappedExit exists to prevent.
+// raw, which is the single thing extractWrappedExit exists to prevent. The other
+// is escapeMarkerLookalikes: a view that escaped a line (decision.escaped) ships
+// whatever its size, or the raw lookalike would reach the model.
 //
 // Keyed on the STRIPPABLE marker, not on the `[[hush:exit=` prefix: the host
 // truncates raw output around 29KB and can cut a real marker mid-text, and
@@ -1377,7 +1394,7 @@ function deliver(decision, updated, data) {
     const failure =
       fail("rejected-no-recovery", recoveryGap(record)) ||
       fail("rejected-field-loss", fieldGap(data.tool_response, out)) ||
-      (mustSanitize(data.tool_response) ? null : fail("rejected-not-smaller", sizeGap(record)));
+      (mustSanitize(data.tool_response) || decision.escaped ? null : fail("rejected-not-smaller", sizeGap(record)));
     if (failure) {
       record.action = failure.action;
       record.fallback = failure.reason;
@@ -1631,6 +1648,7 @@ function main() {
         // Carried on its own, not inside the branch above: a field can park a
         // copy without that park becoming the whole response's advised route.
         if (decision.sidecarPath) combined.sidecarPath = decision.sidecarPath;
+        if (decision.escaped) combined.escaped = true;
         if (out !== next[field]) {
           next[field] = out;
           changed = true;
@@ -1663,6 +1681,7 @@ module.exports = {
   stripAnsi,
   signalCensus,
   resolveCarriageReturns,
+  escapeMarkerLookalikes,
   dedupeConsecutive,
   collapseTemplates,
   capLines,
