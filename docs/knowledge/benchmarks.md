@@ -10,7 +10,7 @@ related_files:
 
 The README uses the September 1, 2026 comparison, `rivalA-762f888b`: nine fixture jobs, four repetitions per setup, with the recorded `opus` alias at medium effort (identified as Opus 5 by the published source). Median final prose was 367 words without a plugin and 69 with Hush; both passed 36/36 task checks. The readability check detected runnable content in 94% of Hush answers versus 100% without a plugin. Three jobs cost 1–10% more.
 
-The tables below preserve the earlier August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
+Its table is under [The README comparison](#the-readme-comparison); the other tables preserve the earlier August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
 The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. Readability word counts are medians; reading-ease and grade scores are heuristic averages, not a reader study.
 
@@ -33,6 +33,20 @@ Every job ends with a check. The code gets run, or the answer gets matched again
 checklist. **A short answer that breaks the job counts as a failure, not a win.**
 
 Every price is the real bill, read back from the API.
+
+## The README comparison
+
+Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the recorded `opus` alias (identified as Opus 5 by the published source) at medium effort. Hush used the shipped writing voice and `HUSH_WRAP=1`.
+
+| Claude Opus 5, 36 sessions each | jobs right | spoke at most once before the answer | median final prose words |
+| --- | --- | --- | --- |
+| no plugin | 36/36 | 14/36 | 367 |
+| caveman | 36/36 | 31/36 | 151 |
+| **hush** | **36/36** | **36/36** | **69** |
+
+The medians are 366.5, 150.5 and 68.5, rounded. Prose words exclude fenced code. The batch also ran two other setups, which the README does not compare.
+
+## The earlier comparisons
 
 Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the shipped writing voice.
 
