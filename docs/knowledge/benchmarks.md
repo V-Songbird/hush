@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, readability, answer usefulness and where hush loses; read before changing a published number."
+summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -8,9 +8,9 @@ related_files:
 
 # The numbers, in full
 
-The README uses the September 1, 2026 comparison, `rivalA-762f888b`: nine fixture jobs, four repetitions per setup, with the recorded `opus` alias at medium effort (identified as Opus 5 by the published source). Median final prose was 367 words without a plugin and 69 with Hush; both passed 36/36 task checks. The readability check detected runnable content in 94% of Hush answers versus 100% without a plugin. Three jobs cost 1–10% more.
+The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison). Two of its figures have no table on this page: a text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin, and three jobs cost 1–10% more.
 
-Its table is under [The README comparison](#the-readme-comparison); the other tables preserve the earlier August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
+Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
 The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. Readability word counts are medians; reading-ease and grade scores are heuristic averages, not a reader study.
 
