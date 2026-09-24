@@ -46,6 +46,38 @@ Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs a
 
 The medians are 366.5, 150.5 and 68.5, rounded. Prose words exclude fenced code. The batch also ran two other setups, which the README does not compare.
 
+### Reading it
+
+Short is not the same as easy to read. The same sessions were measured for how much of each final message sits in long sentences or in long unbroken blocks, beside whether the job came out right. These thresholds are not clinically validated, and none of these measures is a reader study.
+
+| Claude Opus 5, 36 sessions each | jobs right | sentences over 20 words | over 25 | over 30 | words in blocks over 40 words, mean | median |
+| --- | --- | --- | --- | --- | --- | --- |
+| no plugin | 36/36 | 19.2% | 9.8% | 3.9% | 67.8% | 69.3% |
+| caveman | 36/36 | 4.3% | 2.0% | 0.7% | 55.2% | 64.4% |
+| **hush** | **36/36** | **0.3%** | **0.0%** | **0.0%** | **5.8%** | **0.0%** |
+
+For sentences and blocks, fenced code is left out, and inline code, paths, file names, identifiers, flags, versions, hashes and URLs each count as one word. Sentence shares are pooled over every sentence a setup wrote. A block is the text between blank lines, table rows left out; the last two columns give the share of each message's words that sit in blocks over 40 words, as the mean and the median over the 36 sessions.
+
+Reading ease and grade level are prose surface: formulas over word and sentence length, not a measure of whether a reader understood the answer or could act on it. Same sessions, same counting:
+
+| Claude Opus 5, 36 sessions each | words per sentence | reading ease | grade level |
+| --- | --- | --- | --- |
+| no plugin | 12.9 | 70.9 | 6.6 |
+| caveman | 8.4 | 73.5 | 5.1 |
+| **hush** | **6.2** | **90.9** | **2.1** |
+
+Job by job: in how many of the nine jobs hush's average beat the other setup's, with the exact two-sided sign-flip p over the nine job differences. Nine of nine gives 0.004, the smallest p that nine jobs allow.
+
+| hush against | no plugin | caveman |
+| --- | --- | --- |
+| fewer prose words | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
+| smaller share of sentences over 20 words | 9 of 9, p 0.004 | 8 of 9, p 0.008, 1 tie |
+| smaller share of sentences over 30 words | 9 of 9, p 0.004 | 4 of 9, p 0.125, 5 ties |
+| less of the message in blocks over 40 words | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
+| higher reading ease | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
+
+**This batch does not separate structure from length.** Counted with the prose word count behind the medians above, fenced code excluded, hush's range of words per session overlaps the no-plugin range in none of the nine jobs, and the caveman range in one job, only through a single 42-word caveman session. Every difference in these tables is also a length difference.
+
 ## The earlier comparisons
 
 Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the shipped writing voice.
@@ -135,11 +167,12 @@ nothing — seven of the nine came out cheaper there.
 
 Any one row can swing between runs. Read the direction, not the decimal.
 
-## Reading it
+## Prose surface
 
-Saving money is half of it. The other half is whether you can read the answer. These measures have
-been around for decades — reading ease, US school grade level, sentence length, and how many long
-words a text uses.
+These comparisons were scored for prose surface only — reading ease, US school grade level,
+sentence length, and how many long words a text uses. The formulas look at word and sentence
+length, not at whether a reader understood the answer, and these batches were not measured for long
+sentences or blocks. For those, see [Reading it](#reading-it).
 
 **Claude Opus 5:**
 
