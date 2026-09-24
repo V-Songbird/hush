@@ -86,7 +86,8 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
   test('template-collapse — a run of same-shaped lines collapses but stays under the cap', () => {
     const id = sid('template');
     const lines = [
-      ...Array.from({ length: 20 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`),
+      // Over the 4,000-character floor below which nothing folds by shape.
+      ...Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`),
       'one-off line a', 'one-off line b',
     ];
     runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: lines.join('\n') }, { HUSH_DEBUG: '1' });

@@ -39,6 +39,10 @@ Long command output keeps more of what explains a failure:
   three per file. A search inside a folder such as `errors/` still shortens,
   since only the matched text is checked, not the path.
 
+Output under 4,000 characters is no longer folded by shape. The rows of a
+short table all share one shape, so folding them hid the answer, and Claude
+ran the command again to see it. Exact repeats still fold.
+
 Some lines no longer count as failures when nothing failed. A passing
 summary with zero counts, such as "Failures: 0", is no longer kept or counted
 as a failure line. A mid-line `×`, as in "320 × 240", no longer makes a

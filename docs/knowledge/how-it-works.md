@@ -39,7 +39,7 @@ Every time Claude runs something, hush looks at what came back and decides betwe
 
 | What came back | What hush does |
 | --- | --- |
-| Something short | Lets it through. Only exact repeats, and runs of five or more same-shape lines, fold into one line and a count. |
+| Something short | Lets it through. Exact repeats fold into one line and a count, and from 4,000 characters up, so do runs of five or more same-shape lines. |
 | A long clean run | Keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat. |
 | A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: the first stack frame after a Node, Java or Go error, every frame of a Python traceback, and the values and file:line lines a test runner prints for a failed check — go test, Jest, Vitest, pytest, cargo test and RSpec. |
 | Something very large — 15,000 characters or more | Writes the whole thing to a file on your machine, then hands Claude a digest that names that file: the first 20 and last 15 lines, the first and last 10 warning, error and failure lines with their line numbers, and a count of each kind. The file holds every line. |
@@ -80,7 +80,11 @@ is the count the status-line snippet in [Settings](settings.md) reads.
 
 When hush shortens something it leaves a short note in square brackets, like
 `[hush hook: 12 lines omitted from this view, none with warnings/errors/failures]`. That note is
-hush talking, not the command. It always says what was dropped and how to get it back.
+hush talking, not the command. It says what was dropped, but not always how to get it back. A
+digest names the file that holds everything, and a trimmed failing run says to re-run the command.
+A view with same-shape folds ends with one note on reading the dropped lines, left out when it
+would cost more than the folds saved. For any other note, re-run the command, or read the file
+with an offset and a limit.
 
 Omission is deterministic. In a trimmed view, a line is cut only when it matches no warning, error
 or failure pattern. A digest shows a sample of those lines instead, and names the file that holds

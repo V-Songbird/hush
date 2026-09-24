@@ -401,6 +401,12 @@ describe('unit: collapseTemplates', () => {
   });
 });
 
+// compress() folds same-shape lines only in output of 4,000 characters or
+// more. These 40 lines lift a fixture past that floor without folding
+// themselves: neighbours differ in token count, so no two share a shape.
+const overFloor = (lines) => Array.from({ length: 40 }, (_, i) =>
+  ['setup', String(i), ...Array(i % 5).fill('ok'), '.'.repeat(90)].join(' ')).concat(lines);
+
 // The collapse markers state what happened; the view still owed
 // the model a way to get the collapsed lines back.
 describe('template collapse: the view states its own recovery', () => {
@@ -409,7 +415,7 @@ describe('template collapse: the view states its own recovery', () => {
   const run = (text) => compress(text, 0, false, false, [], 1, null, true, false, {});
 
   test('a collapsed view carries the recovery footer exactly once, naming the ranged read', () => {
-    const out = run(Array.from({ length: 30 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n'));
+    const out = run(Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n'));
     assert.ok(out.includes('similar lines collapsed'), 'the fixture really collapses');
     assert.strictEqual(out.split(TEMPLATE_COLLAPSE_NOTE).length - 1, 1, 'stated once per view, not once per run');
     assert.match(TEMPLATE_COLLAPSE_NOTE, /offset\/limit/, 'the retrieval route is the one that returns source verbatim');
@@ -432,16 +438,34 @@ describe('template collapse: the view states its own recovery', () => {
   });
 
   test('a view with nothing collapsed makes no recovery claim', () => {
-    const out = run(Array.from({ length: 30 }, (_, i) => `line ${i}: ${'unique-'.repeat(i % 5 + 1)}payload`).join('\n'));
+    const out = run(Array.from({ length: 30 }, (_, i) => `line ${i}: ${'unique-'.repeat((i % 5 + 1) * 6)}payload`).join('\n'));
     assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE));
   });
 
   test('the footer is dropped when stating it would cost more than the collapse saved', () => {
-    const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
-    const out = run(tiny);
+    const log = overFloor(Array.from({ length: 8 }, (_, i) => `abc def ghi ${i} of the nightly batch`)).join('\n');
+    const out = run(log);
     assert.ok(out.includes('similar lines collapsed'), 'the collapse still happens');
-    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE), 'but a 6-line log is not worth a paragraph of guidance');
-    assert.ok(out.length < tiny.length, 'and the view never grows past what it was given');
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE), 'but an 8-line run is not worth a paragraph of guidance');
+    assert.ok(out.length < log.length, 'and the view never grows past what it was given');
+  });
+
+  test('a small output is never folded by shape; exact repeats still fold', () => {
+    const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
+    assert.strictEqual(run(tiny), tiny);
+    const repeats = ['abc def ghi', 'abc def ghi', 'abc def ghi', 'done'].join('\n');
+    assert.strictEqual(run(repeats), 'abc def ghi\n[hush: previous line repeated 2x]\ndone');
+  });
+
+  // A short table's rows share one shape, so folding them hid the answer
+  // itself; with no sidecar under 15,000 characters, the model re-ran the
+  // command to see the rows.
+  test('a five-row table of one shape passes whole', () => {
+    const table = [[1280, 0.0031], [1024, 0.0027], [768, 0.084], [414, 0], [360, 0]]
+      .map(([w, c]) => `"width": ${w}\t"cls": ${c}`).join('\n');
+    const decision = {};
+    assert.strictEqual(compress(table, 0, false, false, [], 1, null, true, false, decision), table);
+    assert.strictEqual(decision.action, 'passthrough');
   });
 });
 
@@ -1681,21 +1705,21 @@ describe('the keep vocabulary, pinned category by category', () => {
 
   test('in a failing run, a passing test\'s same-shape lines still fold', () => {
     const lines = goTable('TestCharges', 'PASS', 8, charged).concat(goFailed);
-    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    const out = comp3(overFloor(lines).join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
     assert.ok(out.includes(`${lines[1]}${NL}${collapsedMarker(7)}`), 'the passing test\'s lines did not fold');
     for (const line of goFailed.slice(1, 9)) assert.ok(out.includes(line), `folded: ${line.trim()}`);
   });
 
   test('the control: a passing go test with the same shape still folds', () => {
     const lines = goTable('TestTotals', 'PASS', 8, expected).concat('PASS', 'ok  \texample.com/orders\t0.005s');
-    const out = comp3(lines.join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
+    const out = comp3(overFloor(lines).join(NL), 0, false, false, [], 1, 'keepvocab', true, false);
     assert.ok(out.includes(`${lines[1]}${NL}${collapsedMarker(7)}`), 'the passing run did not fold');
     assert.ok(!out.includes(lines[2]), 'a passing run kept a folded line');
   });
 
   test('a failing go test keeps ten of its same-shape lines out of the fold, and the rest fold', () => {
     const lines = goTable('TestTotals', 'FAIL', 16, expected).concat('FAIL', 'FAIL\texample.com/orders\t0.005s');
-    const out = comp3(lines.join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
+    const out = comp3(overFloor(lines).join(NL), 1, false, false, [], 1, 'keepvocab', true, false);
     for (const line of lines.slice(1, 11)) assert.ok(out.includes(line), `folded: ${line.trim()}`);
     assert.ok(out.includes(`${lines[11]}${NL}${collapsedMarker(5)}`), 'the lines past the limit did not fold');
     assert.ok(!out.includes(lines[12]), 'a line past the limit stayed out of the fold');

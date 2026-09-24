@@ -30,7 +30,8 @@ const CAP_ENUMERATE = 2000;
 // Grep content-mode results below this size pass whole; above it, each
 // matched file keeps its first few match lines and the rest collapse to a
 // per-file count (compressGrep). A small result costs little to send whole,
-// and per-file counts keep the file map intact.
+// and per-file counts keep the file map intact. compress() uses the same floor
+// for same-shape collapse (collapseTemplates).
 const GREP_MIN_CHARS = 4000;
 const GREP_KEEP_PER_FILE = 3;
 
@@ -1292,9 +1293,13 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // Enumeration carve-out means "nothing is elided" — same reason it skips the
   // sidecar above; collapsing same-shape runs would remove the very items a
   // completeness request ("list every compiled module") asked to see.
+  // Below GREP_MIN_CHARS the output passes unfolded for Grep's reason: the rows
+  // of a short table all share one shape, so a collapse hides the answer itself
+  // and the model re-runs the command to get it back, which costs more than
+  // the few characters the collapse saved.
   let lines = dedupeConsecutive(cleaned.split("\n"));
   const dedupedLen = lines.length;
-  if (!enumerate) lines = collapseTemplates(lines, relevanceTokens, failed);
+  if (!enumerate && cleaned.length >= GREP_MIN_CHARS) lines = collapseTemplates(lines, relevanceTokens, failed);
   const beforeCapLen = lines.length;
   const collapsed = beforeCapLen < dedupedLen;
   const capped = beforeCapLen > cap; // capLines' own no-op guard is `length <= cap`
