@@ -2712,8 +2712,21 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'Get-Content src/app.js',
       'npm test',
       '& { npm test } 2>&1 | Out-String -Width 4096',
+      'ls\nnpm test',
+      'head -n 5 a\nnpm test',
+      'ls\r\nnpm test',
+      "ls\nnpm test\n__hush_exit=$?\necho '[[hush:exit='\necho $__hush_exit\necho ']]'\nexit 0",
       undefined,
-    ]) assert.strictEqual(isBoundedPrint(c), false, String(c));
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
+  });
+
+  test("preserve-exit-code's Bash wrapper around one command still counts as a bounded print", () => {
+    assert.ok(isBoundedPrint("ls docs\n__hush_exit=$?\necho '[[hush:exit='\necho $__hush_exit\necho ']]'\nexit 0"));
+  });
+
+  test('a newline-chained script that opens with ls is trimmed like any other output', () => {
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: 'ls\nnpm test' }, tool_response: names });
+    assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < names.length);
   });
 
   test('the same output under another command is trimmed, so the pass is what keeps it whole', () => {

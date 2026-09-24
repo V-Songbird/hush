@@ -732,19 +732,21 @@ function isFileDump(command) {
 // error lines for the cap to keep, so a trim cuts arbitrary names or code
 // lines and sends the model back for a second read. compress() passes these
 // whole up to CAP_FAIL lines, as main() passes a ranged Read. One command
-// only, like FILE_DUMP_RE; a stderr redirect is dropped first since it leaves
-// stdout as printed, and preserve-exit-code's PowerShell wrapper is unwrapped.
+// only, on one line: preserve-exit-code's wrapper is taken off first (the
+// lines it appends, and PowerShell's `& { }` around the command), then a
+// stderr redirect, since it leaves stdout as printed.
 // find is a listing unless -exec/-ok prints another command's output.
 const BOUNDED_PRINT_RE = new RegExp(
-  "^(?=[^|;&<>]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
+  "^(?=[^|;&<>\\r\\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
     "|(?:head|tail)\\s+-(?:n\\s*)?\\+?\\d|(?:cat|type|gc|Get-Content)\\s.*\\s-(?:TotalCount|Head|First|Tail|Last)\\s+\\d)",
   "i"
 );
 const PS_WRAP_RE = /^& \{ (.*) \} 2>&1 \| Out-String -Width 4096$/;
+const EXIT_WRAP_TAIL_RE = /\r?\n(?:__hush_exit=\$\?|Write-Output '\[\[hush:exit=')[\s\S]*$/;
 
 function isBoundedPrint(command) {
   if (typeof command !== "string") return false;
-  const line = command.trim();
+  const line = command.replace(EXIT_WRAP_TAIL_RE, "").trim();
   const ps = PS_WRAP_RE.exec(line);
   return BOUNDED_PRINT_RE.test((ps ? ps[1] : line).replace(/\s+2>\S*/g, "").trim());
 }
@@ -1641,8 +1643,8 @@ function main() {
     return deliver(decision, updated, data);
   }
 
-  const command = firstLine(data.tool_input && data.tool_input.command);
-  const isDump = isFileDump(command);
+  const command = data.tool_input && data.tool_input.command;
+  const isDump = isFileDump(firstLine(command));
   const bounded = isBoundedPrint(command);
 
   if (typeof response === "string") {
