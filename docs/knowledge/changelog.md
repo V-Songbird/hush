@@ -73,6 +73,9 @@ line now says it has two other cases, which it always listed.
 The README's demo animation stops for readers who ask for reduced motion, and
 its mascot image has an English title and description.
 
+The benchmark details now include the README's comparison table, from the
+same September 1 run, so you can check each of its figures there.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a
