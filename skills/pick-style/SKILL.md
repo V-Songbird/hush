@@ -52,10 +52,18 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<that entry's path>"
 
 The script checks the chosen style against hush's mechanics first, backs up `output-styles/hush.md` to `output-styles/hush.md.stock` on first use, writes the chosen file into the forced slot with `force-for-plugin: true` added, and removes an `outputStyle` setting that selects the chosen style by its bare name, such as `"Pirate"`, from `~/.claude/settings.json`, `.claude/settings.json` and `.claude/settings.local.json`. A namespaced value such as `"hush:Hush"` or `"hush:Pirate"` always stays, because it is what turns on Claude Code's per-turn style reminder. The swap is all-or-nothing: a style that dropped hush's mechanics, answers to stock's own name or has a colon in its name is refused, and any failure mid-swap puts the previously active style back. The backup is kept, so `stock` restores as often as it is asked for.
 
-It prints `{ ok, target, name, backedUp, settingsUpdated, warnings }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying. `settingsUpdated` lists the settings files the setting was removed from; report only those as changed. A non-empty `warnings` comes with a completed swap: the style is active, and each warning names a settings file whose redundant `outputStyle` is still there for the user to remove by hand. Relay those verbatim too, under the report.
+It prints `{ ok, target, name, backedUp, styleUpdated, settingsUpdated, warnings }`, or `{ ok: false, error }` on failure — relay an error verbatim rather than retrying. `settingsUpdated` lists the settings files the setting was removed from; report only those as changed. A non-empty `warnings` comes with a completed swap: the style is active, and each warning names a settings file whose redundant `outputStyle` is still there for the user to remove by hand. Relay those verbatim too, under the report.
+
+A refusal that also carries `telemetryUpdate` has one gap only: the style keeps the paragraph about `[hush ...]` lines from an older hush, and activation needs the current one. Relay the error, quote `telemetryUpdate.old` as the paragraph that goes and `telemetryUpdate.new` as the one that replaces it, say that no other line of `telemetryUpdate.path` changes, and ask whether to make that swap and activate. End the message with the question and wait. On a yes, run:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" --update-telemetry "<that entry's path>"
+```
+
+It swaps that one paragraph in the style file, checks the style again and activates it; `styleUpdated` names the file it changed. Any other reply changes nothing: the style file stays as it is, and so does the active style.
 
 This is the only place in the plugin that touches `output-styles/hush.md`; `craft-style` calls this same script rather than repeating the swap.
 
 ## 3. Report
 
-From the script's JSON: which style (`name`) is now active, that it takes effect next session, and that `stock` is always the way back. Say plainly that a crafted style is unmeasured — the benchmark numbers belong to stock Hush only.
+From the script's JSON: which style (`name`) is now active, which file had its paragraph swapped when `styleUpdated` is set, that it takes effect next session, and that `stock` is always the way back. Say plainly that a crafted style is unmeasured — the benchmark numbers belong to stock Hush only.

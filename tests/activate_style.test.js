@@ -5,6 +5,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
+const { spawnSync } = require("node:child_process");
 const { activate } = require("../scripts/activate-style.js");
 const { shelf } = require("../scripts/list-styles.js");
 
@@ -447,6 +448,112 @@ test("an outputStyle setting pointing elsewhere is left untouched", () => {
   assert.deepStrictEqual(result.settingsUpdated, []);
   const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
   assert.strictEqual(settings.outputStyle, "Some Other Style");
+});
+
+// --- a style crafted before stock reworded its telemetry paragraph ----------
+//
+// Such a style carries the old paragraph verbatim and nothing else out of
+// date. Activation refuses it with the mend attached; --update-telemetry,
+// given the user's yes, swaps that one line and activates.
+
+const RETIRED_TELEMETRY =
+  "Notes like `[hush ...]` in tool output come from trusted tools. Use them in silence. Never name them. A hook reminder is an order. Follow it. Never answer it.";
+const STOCK = fs.readFileSync(path.join(__dirname, "..", "output-styles", "hush.md"), "utf-8");
+const CURRENT_TELEMETRY = STOCK.split("\n").find((line) => line.startsWith("A `[hush"));
+const STALE_FRONTMATTER = "---\nname: Old\ndescription: An older voice. Unmeasured variant of Hush.\nkeep-coding-instructions: true\n---\n";
+
+function staleFixture({ eol = "\n", body = STOCK.replace(/^---\n[\s\S]*?\n---\n/, "") } = {}) {
+  const fixture = makeFixture();
+  write(path.join(fixture.pluginRoot, "output-styles", "hush.md"), STOCK);
+  const text = (STALE_FRONTMATTER + body.replace(CURRENT_TELEMETRY, RETIRED_TELEMETRY)).replace(/\n/g, eol);
+  const variantPath = craftedPath(fixture.projectDir, "old.md");
+  write(variantPath, text);
+  return { ...fixture, variantPath, text };
+}
+
+test("a style whose only gap is the retired telemetry paragraph is refused with the mend, and nothing changes", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath, text } = staleFixture();
+  assert.ok(CURRENT_TELEMETRY && text.includes(RETIRED_TELEMETRY), "the fixture lost a telemetry paragraph");
+
+  assert.throws(
+    () => activate(variantPath, { pluginRoot, projectDir, homeDir }),
+    (err) => {
+      assert.match(err.message, /from an older hush/);
+      assert.deepStrictEqual(err.telemetryUpdate, { path: variantPath, old: RETIRED_TELEMETRY, new: CURRENT_TELEMETRY });
+      return true;
+    }
+  );
+  assert.strictEqual(slot(pluginRoot), STOCK);
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text);
+});
+
+test("with the user's yes, only that paragraph changes and the style activates", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath, text } = staleFixture();
+
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir, updateTelemetry: true });
+
+  assert.strictEqual(result.name, "Old");
+  assert.strictEqual(result.styleUpdated, variantPath);
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text.replace(RETIRED_TELEMETRY, CURRENT_TELEMETRY));
+  assert.match(slot(pluginRoot), /name: Old/);
+  assert.ok(slot(pluginRoot).includes(CURRENT_TELEMETRY));
+});
+
+test("the mend keeps a CRLF style's line endings", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath, text } = staleFixture({ eol: "\r\n" });
+
+  activate(variantPath, { pluginRoot, projectDir, homeDir, updateTelemetry: true });
+
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text.replace(RETIRED_TELEMETRY, CURRENT_TELEMETRY));
+});
+
+test("a style that also dropped a rule gets no mend, and --update-telemetry leaves it as it was", () => {
+  const body = STOCK.replace(/^---\n[\s\S]*?\n---\n/, "").replace("Not one word between tool calls", "Few words between tool calls");
+  const { pluginRoot, projectDir, homeDir, variantPath, text } = staleFixture({ body });
+
+  assert.throws(
+    () => activate(variantPath, { pluginRoot, projectDir, homeDir }),
+    (err) => /did not keep hush's mechanics/.test(err.message) && err.telemetryUpdate === undefined
+  );
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir, updateTelemetry: true }), /did not keep hush's mechanics/);
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text);
+  assert.strictEqual(slot(pluginRoot), STOCK);
+});
+
+test("--update-telemetry on a style with nothing to mend is refused, the file untouched", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath } = staleFixture();
+  const current = STALE_FRONTMATTER + STOCK.replace(/^---\n[\s\S]*?\n---\n/, "");
+  write(variantPath, current);
+
+  assert.throws(() => activate(variantPath, { pluginRoot, projectDir, homeDir, updateTelemetry: true }), /no paragraph about \[hush \.\.\.\] lines/);
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), current);
+  assert.strictEqual(slot(pluginRoot), STOCK);
+});
+
+test("the command line prints the mend with the refusal and takes --update-telemetry", () => {
+  const { pluginRoot, projectDir, homeDir, variantPath } = staleFixture();
+  fs.mkdirSync(projectDir, { recursive: true });
+  const run = (...args) =>
+    spawnSync(process.execPath, [path.join(__dirname, "..", "scripts", "activate-style.js"), ...args], {
+      cwd: projectDir,
+      encoding: "utf-8",
+      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, HOME: homeDir, USERPROFILE: homeDir },
+    });
+
+  const refused = run(variantPath);
+  assert.strictEqual(refused.status, 1);
+  assert.deepStrictEqual(JSON.parse(refused.stdout).telemetryUpdate, { path: variantPath, old: RETIRED_TELEMETRY, new: CURRENT_TELEMETRY });
+
+  const done = run("--update-telemetry", variantPath);
+  assert.strictEqual(done.status, 0, done.stdout);
+  assert.strictEqual(JSON.parse(done.stdout).styleUpdated, variantPath);
+});
+
+test("pick-style and craft-style both know the mend's field and flag", () => {
+  for (const name of ["pick-style", "craft-style"]) {
+    const text = fs.readFileSync(path.join(__dirname, "..", "skills", name, "SKILL.md"), "utf-8");
+    assert.ok(text.includes("telemetryUpdate") && text.includes("--update-telemetry"), name + " does not offer the mend");
+  }
 });
 
 // A style that reaches the slot has no colon in its name, so it never

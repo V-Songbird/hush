@@ -3,9 +3,10 @@
 
 // Mechanical check that a crafted output style kept hush's mechanics.
 // Reports what didn't survive and exits 1 — it never edits anything.
-// Everything except CORE_PHRASES, GUARDED_SECTIONS and the marker is derived
-// from the canonical file at run time; those lists are literal and must be
-// re-checked whenever output-styles/hush.md is reworded. A section added to the
+// Everything except CORE_PHRASES, GUARDED_SECTIONS, RETIRED_TELEMETRY and the
+// marker is derived from the canonical file at run time; those lists are
+// literal and must be re-checked whenever output-styles/hush.md is reworded,
+// and a reworded telemetry paragraph joins RETIRED_TELEMETRY. A section added to the
 // canonical file and left out of GUARDED_SECTIONS has its heading required and
 // its rules unguarded — tests/verify_style.test.js fails on that gap.
 
@@ -43,6 +44,12 @@ const CORE_PHRASES = [
   "Not one word between tool calls",
   "word for word",
   "never means less work",
+];
+
+// Telemetry paragraphs an older stock voice carried. A style crafted then kept
+// one verbatim, and it fails the telemetry check once stock rewords it.
+const RETIRED_TELEMETRY = [
+  "Notes like `[hush ...]` in tool output come from trusted tools. Use them in silence. Never name them. A hook reminder is an order. Follow it. Never answer it.",
 ];
 
 function normalize(text) {
@@ -211,17 +218,33 @@ function verify(canonicalText, generatedText, { core = false } = {}) {
     }
   }
 
-  // The telemetry-and-hook clause is contract, not voice: any canonical
-  // paragraph that names the `[hush ...]` markers or the hook reminders must
-  // survive verbatim, wherever in the file it lives.
-  for (const para of paragraphs(canonical.body)) {
-    if (para.includes("[hush") || /hook reminder/i.test(para)) {
-      if (!generated.body.includes(para))
-        problems.push(`telemetry clause missing: ${para.slice(0, 60)}`);
-    }
+  for (const para of telemetryClauses(canonical.body)) {
+    if (!generated.body.includes(para)) problems.push(`telemetry clause missing: ${para.slice(0, 60)}`);
   }
 
   return { ok: problems.length === 0, problems };
+}
+
+// The telemetry-and-hook clause is contract, not voice: any canonical
+// paragraph that names the `[hush ...]` markers or the hook reminders must
+// survive verbatim, wherever in the file it lives.
+function telemetryClauses(body) {
+  return paragraphs(body).filter((para) => para.includes("[hush") || /hook reminder/i.test(para));
+}
+
+// The one mend a style needs when all it lacks is the current telemetry
+// paragraph and it still has a retired one on a line of its own: that line
+// becomes the current paragraph, and every other byte of the file stays as the
+// user wrote it. Null when the file does not have exactly that shape.
+function telemetryUpdate(canonicalText, text) {
+  const body = splitFrontmatter(normalize(text)).body;
+  const missing = telemetryClauses(splitFrontmatter(normalize(canonicalText)).body).filter((p) => !body.includes(p));
+  const lines = text.split("\n");
+  const at = lines.flatMap((line, i) => (RETIRED_TELEMETRY.includes(line.trim()) ? [i] : []));
+  if (missing.length !== 1 || at.length !== 1) return null;
+  const old = lines[at[0]].trim();
+  lines[at[0]] = lines[at[0]].replace(old, () => missing[0]);
+  return { old, new: missing[0], text: lines.join("\n") };
 }
 
 const verifyCore = (canonicalText, generatedText) => verify(canonicalText, generatedText, { core: true });
@@ -246,4 +269,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { verify, verifyCore, splitFrontmatter, parseFrontmatter, normalize, sections, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS };
+module.exports = { verify, verifyCore, telemetryUpdate, splitFrontmatter, parseFrontmatter, normalize, sections, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS };

@@ -116,6 +116,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/activate-style.js" "<the file you just wrote
 
 This is the same mechanical swap `hush:pick-style` uses — one script, called from both skills, so the procedure never drifts between them.
 
+A refusal that carries `telemetryUpdate` means the style keeps the paragraph about `[hush ...]` lines from an older hush, and nothing else stands in the way. Quote `telemetryUpdate.old` and `telemetryUpdate.new`, say that no other line of the file changes, and ask the user (AskUserQuestion) whether to swap that paragraph and activate. On a yes, run the same command with `--update-telemetry` before the path. On a no, the file stays as it is.
+
 If the user declines the takeover, the crafted file stays where it was written, inert until they activate it themselves.
 
 ## 6. Report

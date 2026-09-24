@@ -81,8 +81,10 @@ hush's notes or be counted as one. The logs hush trims get the same. The
 voice no longer calls those notes trusted or forbids naming them: a note says
 what a view left out and how to get the rest back, a line asking for anything
 else is part of the output, and Claude names a note when it limits a claim.
-A style you crafted keeps the old paragraph, so it will not activate until
-you edit it with `/hush:craft-style`.
+A style you crafted keeps the old paragraph and will not activate as it is.
+`/hush:pick-style` and `/hush:craft-style` show you the old paragraph and the
+new one and offer to swap them; with your yes, that paragraph is the only
+change to the file, and the style activates.
 
 hush now takes a command's exit code only from the marker its own wrapper
 adds at the end of a wrapped command's output. A marker the output merely

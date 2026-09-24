@@ -172,7 +172,9 @@ Claude Code keeps one active output style. hush ships its own and claims that sl
 `/hush:pick-style` swaps which voice sits in it, and `/hush:craft-style` writes you a new one. Both
 back up the shipped voice before they touch anything, and both put it back on request. A crafted
 voice is checked against the shipped one after it is written: if the rewrite dropped a rule, it
-never reaches your session.
+never reaches your session. When a voice's only gap is the paragraph about `[hush ...]` lines from an
+older hush, both commands offer to swap in the current one, and with your yes it is the only line of
+the file that changes.
 
 Updating the plugin puts the shipped voice back. Pick again after an update.
 
