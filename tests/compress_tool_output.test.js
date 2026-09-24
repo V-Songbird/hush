@@ -3158,3 +3158,57 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     assert.deepStrictEqual([decision.action, decision.omitted], ['scrub-only', 0]);
   });
 });
+
+// Printed source code and diffs carry error and fail words as text. With no
+// exit code such a command passed: unwrapped, a non-zero exit never reaches the
+// hook. Its trimmed view keeps the dump cap and never says the run failed.
+describe('a print or a diff is never read as a failed run', () => {
+  const code = Array.from({ length: 300 }, (_, i) =>
+    i % 10 === 5 ? `  if (!ok) throw new Error('step ${i} failed');` : `  const v${i} = f(${i}, opts);`
+  ).join('\n');
+  const diff = ['diff --git a/src/app.js b/src/app.js', '--- a/src/app.js', '+++ b/src/app.js', '@@ -1,300 +1,300 @@',
+    ...code.split('\n').map((l, i) => (i % 7 === 0 ? `+${l}` : ` ${l}`))].join('\n');
+  const view = (tool, command, stdout) => hookOutput(runHook('compress-tool-output.js',
+    { tool_name: tool, tool_input: { command }, tool_response: { stdout, stderr: '', interrupted: false } },
+    { HUSH_TEMPLATE: 'off' })).hookSpecificOutput.updatedToolOutput.stdout;
+
+  test('isFileDump names a lone git diff or git show, wrapped or not', () => {
+    for (const c of ['git diff', 'git diff --cached src/app.js', 'git show HEAD', 'git show 5c004c0 -- src/app.js',
+      wrapBash('git diff'), wrapPowerShell('git show HEAD')]) assert.ok(isFileDump(c), c);
+  });
+
+  test('isFileDump leaves out a piped, redirected or chained diff and other git commands', () => {
+    for (const c of ['git diff | head -50', 'git diff > out.patch', 'git diff && npm test', 'git diff\nnpm test',
+      'git difftool', 'git show-ref', 'git log -p', 'git status']) assert.strictEqual(isFileDump(c), false, c);
+  });
+
+  for (const [tool, command, out] of [
+    ['Bash', 'cat src/app.js', code],
+    ['PowerShell', 'Get-Content src/app.js', code],
+    ['Bash', "sed -n '1,300p' src/app.js", code],
+    ['Bash', 'git diff', diff],
+    ['Bash', 'git show HEAD -- src/app.js', diff],
+  ]) {
+    test(`${command} with no exit code keeps the dump cap and no failure note`, () => {
+      const v = view(tool, command, out);
+      assert.ok(!v.includes(FAILURE_RERUN_NOTE), 'read as failed');
+      assert.match(v, /lines omitted/);
+      assert.ok(v.split('\n').length > 200, `kept ${v.split('\n').length} lines`);
+    });
+  }
+
+  test('a wrapped git diff that exits 0 keeps the dump cap, not the clean-run cap', () => {
+    const v = view('Bash', wrapBash('git diff'), `${diff}\n[[hush:exit=\n0\n]]`);
+    assert.match(v, /\[hush: exit 0\]$/);
+    assert.ok(v.split('\n').length > 200, `kept ${v.split('\n').length} lines`);
+  });
+
+  test('a known non-zero exit still reads as failed', () => {
+    const v = view('Bash', wrapBash('git diff --exit-code'), `${diff}\n[[hush:exit=\n1\n]]`);
+    assert.ok(v.includes(FAILURE_RERUN_NOTE));
+  });
+
+  test('the same text from any other command with no exit code still reads as failed', () => {
+    assert.ok(view('Bash', 'npm test', code).includes(FAILURE_RERUN_NOTE));
+  });
+});

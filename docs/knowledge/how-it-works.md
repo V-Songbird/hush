@@ -57,6 +57,11 @@ and last stretch, and still folds nothing; from 15,000 characters it is parked l
 Such output has no warning or error lines for a trim to keep, so a trim only cut names or code lines
 Claude then had to fetch again.
 
+A whole-file print, `cat`, `type` or `Get-Content`, and a `git diff` or `git show`, each run on its
+own, keep up to 250 lines like a failing run: a trim there cuts file text, not noise. Without an
+exit code, neither these nor a listing or a line-range print counts as a failing run: the words
+error or failed in them are the file's text, so a trimmed view of them never says the run failed.
+
 Two other tools get the same treatment:
 
 - **Read.** A log file, or a file nobody writes by hand — a lockfile, a minified bundle, anything

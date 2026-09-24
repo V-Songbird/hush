@@ -59,6 +59,13 @@ run. A script of several lines that opens with such a print is now trimmed
 like any other output, where it kept up to 250. Folding and the save to a
 file from 15,000 characters work as before.
 
+A `git diff` or `git show` run on its own now keeps up to 250 lines, as a
+whole-file print does. It was cut to 60 like a clean run when hush knew it
+exited 0 or its text never said error or failed. When hush has no exit code,
+a whole-file print, a line-range print past 250 lines and such a diff no
+longer end with the note that the run failed just because the printed text
+says error or failed.
+
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,
 and folds that save less than that line are left unfolded. When a long

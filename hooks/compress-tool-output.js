@@ -757,8 +757,9 @@ function looksLikeFailure(text, exitCode) {
 // WARN/ERROR markers for capLines' signal-preservation to anchor on, so the
 // head+tail cap would cut arbitrary lines out of the middle of the file
 // instead of out of actual log noise. Treat these like failures: keep more.
+// A git diff or git show prints file text the same way, so it counts too.
 // One command on one line, read through unwrapCommand below.
-const FILE_DUMP_RE = /^(?=[^|;&<>\r\n]*$)(?:cat|type|gc|Get-Content)\s+\S/i;
+const FILE_DUMP_RE = /^(?=[^|;&<>\r\n]*$)(?:(?:cat|type|gc|Get-Content)\s+\S|git\s+(?:diff|show)(?:\s|$))/i;
 
 function isFileDump(command) {
   return typeof command === "string" && FILE_DUMP_RE.test(unwrapCommand(command));
@@ -1710,16 +1711,20 @@ function main() {
   const isDump = isFileDump(command);
   const bounded = isBoundedPrint(command);
   const exitWrapped = isExitWrapped(data);
+  // A print or a diff with no exit code passed: unwrapped, a non-zero exit
+  // never reaches this hook, and one command has no pipe to hide one. Its
+  // error and fail words are the printed text, not a failed run.
+  const noCode = isDump || bounded ? 0 : undefined;
 
   if (typeof response === "string") {
     const wrapped = exitWrapped ? extractWrappedExit(response) : null;
     // null exitCode = a marker was found but malformed (no native exe ran,
     // so $LASTEXITCODE was never set) — still strip it, but compress() gets
-    // undefined so looksLikeFailure falls back to sniffing cleanText, and no
-    // untrustworthy "[hush: exit N]" note gets appended.
+    // noCode so looksLikeFailure falls back to sniffing cleanText unless it is
+    // a print, and no untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
     const decision = { bytesIn: response.length };
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
+    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
     if (wrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
     decision.bytesOut = out.length;
     if (!decision.recovery) decision.recovery = "rerun-command";
@@ -1748,7 +1753,7 @@ function main() {
         bytesIn += next[field].length;
         const fieldWrapped = exitWrapped ? extractWrappedExit(next[field]) : null;
         const decision = {};
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? undefined, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
+        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
         if (fieldWrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;
