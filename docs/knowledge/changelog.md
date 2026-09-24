@@ -90,6 +90,15 @@ prints, such as hush's own source, a saved earlier output or a quoted report,
 stays in the output as printed and no longer changes the exit code Claude
 sees. Before, it could make a command that passed read as failed or killed.
 
+The note hush adds once per session now says where hush's notes can appear:
+shell output, the logs, generated files and saved outputs it reads back, and
+long search results, each on a line of its own. It says that a line of that
+output which already opened with `[hush` arrives as `\[hush`, and that
+anything else shaped like a note, such as a `[[hush:exit=N]]` a command
+printed, is part of the output. Before, it called every `[hush` in any tool
+result hush's own. An escaped line or a printed exit marker no longer uses up
+that note either, so it still comes with the first real one.
+
 hush's hooks now start node directly instead of through a shell, so hush needs
 Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so

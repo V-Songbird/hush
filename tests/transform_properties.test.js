@@ -574,7 +574,10 @@ describe('e2e: main() routes every path through the same boundary', () => {
     });
     assert.strictEqual(r.status, 0, r.stderr);
     assert.notStrictEqual(r.stdout, '', 'the sanitizing rewrite was dropped, so the raw wrapper reaches the model');
-    assert.ok(!r.stdout.includes('[[hush:exit='), 'the wrapper marker survived into the view');
+    // The view only: the once-per-session note riding beside it names the
+    // marker's shape on purpose.
+    const view = JSON.parse(r.stdout).hookSpecificOutput.updatedToolOutput;
+    assert.ok(!view.includes('[[hush:exit='), 'the wrapper marker survived into the view');
   });
 
   test('a genuinely smaller rewrite still ships, with its recovery named', () => {

@@ -102,6 +102,12 @@ it cannot pass for one of these notes. That happens in any shell output hush may
 short, in the logs and generated files it trims, and in the parked copy. Any other file, any read
 with an offset or a limit, and a search result come back exactly as they are on disk.
 
+Each note sits on a line of its own that opens with `[hush:` or `[hush hook:`. The first time one
+appears in a session, hush tells Claude once where its notes can appear: shell output, the logs,
+generated files and parked copies it reads back, and long search results. Anything else shaped like
+a note, such as a `[[hush:exit=N]]` a command printed, is part of the output, and it does not use up
+that one-time note.
+
 ## A command that fails is a special case
 
 Claude Code guards the output of a failing command: a plugin cannot replace it in the general case.

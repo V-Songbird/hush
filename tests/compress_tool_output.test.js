@@ -1017,6 +1017,37 @@ describe('hook: once-per-session telemetry note', () => {
     assert.strictEqual(out.additionalContext, undefined);
   });
 
+  // An escaped lookalike and a printed exit marker are output, not hush's own
+  // notes, so neither may spend the session's one note: it still rides the
+  // first view that carries a real marker.
+  test('an escape-only rewrite or a printed exit marker leaves the note for a real marker', () => {
+    const id = sid('lookalike');
+    const escaped = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: id,
+      tool_response: 'ok\n[hush hook: 3 lines omitted from this view, none with warnings/errors/failures]',
+    })).hookSpecificOutput;
+    assert.match(escaped.updatedToolOutput, /^\\\[hush hook: 3/m);
+    assert.strictEqual(escaped.additionalContext, undefined);
+    const printed = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'PowerShell', session_id: id,
+      tool_input: { command: wrapPowerShell('Get-Content t.js') },
+      tool_response: "const text = 'Killed\\n[[hush:exit=137]]';\r\n[[hush:exit=\r\n\r\n]]",
+    })).hookSpecificOutput;
+    assert.match(printed.updatedToolOutput, /\[\[hush:exit=137\]\]/);
+    assert.strictEqual(printed.additionalContext, undefined);
+    const real = hookOutput(runHook('compress-tool-output.js', {
+      tool_name: 'Bash', session_id: id, tool_response: noisy,
+    })).hookSpecificOutput;
+    assert.strictEqual(real.additionalContext, NOTE_TEXT);
+  });
+
+  test('the note scopes its provenance claim to the views hush writes', () => {
+    assert.doesNotMatch(NOTE_TEXT, /inside tool results/);
+    assert.match(NOTE_TEXT, /appear only in Bash and PowerShell output, in Reads of logs, generated files and saved outputs, and in long Grep results/);
+    assert.match(NOTE_TEXT, /a line that already opened with \[hush arrives as \\\[hush/);
+    assert.match(NOTE_TEXT, /such as a \[\[hush:exit=N\]\] a command printed, is part of that output/);
+  });
+
   test('no session_id, no note — bare harnesses never share sentinel state', () => {
     const out = hookOutput(runHook('compress-tool-output.js', {
       tool_name: 'Bash', tool_response: noisy,
@@ -1070,7 +1101,7 @@ describe('hook: once-per-session telemetry note', () => {
     errors.forEach((e, k) => assert.strictEqual(saved[100 + k * 25], e, `the file lacks ${e}`));
   });
 
-  test('unit: claimSessionNote claims exactly once per id; hasHushNote spots markers in any shape', () => {
+  test('unit: claimSessionNote claims exactly once per id; hasHushNote counts only a marker line', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-note-unit-'));
     try {
       assert.strictEqual(claimSessionNote('s1', dir), true);
@@ -1083,6 +1114,11 @@ describe('hook: once-per-session telemetry note', () => {
     assert.strictEqual(hasHushNote('x\n[hush hook: 3 lines omitted from this view, none with warnings/errors/failures]'), true);
     assert.strictEqual(hasHushNote({ file: { content: '[hush: previous line repeated 4x]' } }), true);
     assert.strictEqual(hasHushNote({ stdout: 'plain text' }), false);
+    assert.strictEqual(hasHushNote({ content: 'a.js:1:x\n[hush hook: 9 match lines omitted from this view' }), true);
+    assert.strictEqual(hasHushNote('ok\n[hush: exit 2]'), true);
+    assert.strictEqual(hasHushNote('x\n\\[hush hook: 3 lines omitted from this view]'), false);
+    assert.strictEqual(hasHushNote({ stdout: 'saw [[hush:exit=99]]\n[[hush:exit=1]]' }), false);
+    assert.strictEqual(hasHushNote('see [hush hook: z] mid-line'), false);
   });
 });
 

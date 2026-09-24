@@ -288,7 +288,9 @@ const FAILURE_RERUN_NOTE =
 
 // Every line this file inserts into a line-oriented view opens this way (the
 // omission marker above, the dedupe and template-collapse markers, the grep
-// summary header). Used only for manifest accounting — see compress().
+// summary header). compress() counts lines by it for the manifest, capLines
+// keeps a marker with the line it annotates, and hasHushNote tells a rewrite
+// that carries one of hush's notes from one that does not.
 const HUSH_MARKER_RE = /^\[hush(?: hook)?: /;
 
 // A line of the output itself that opens like a marker would pass for hush
@@ -1497,9 +1499,20 @@ function extractExitCode(response) {
 // "never cut" would promise more than the digest keeps. Grep elision keeps
 // every match whose text is a keep line, so the first sentence holds for a
 // match list as well.
+//
+// The provenance sentences name only the views this file writes into. An
+// unwatched tool, a source-file Read, a ranged Read and a [[hush:exit=N]] a
+// command printed carry no note of hush's, and in the byte-exact views a
+// lookalike is not escaped, so a note claiming every tool result would vouch
+// for text hush never wrote.
 const NOTE_TEXT =
-  "hush's compression hook is active in this session. Bracketed notes beginning with " +
-  "[hush inside tool results are its own telemetry, added as the output is delivered. " +
+  "hush's compression hook is active in this session. Its telemetry notes appear only in " +
+  "Bash and PowerShell output, in Reads of logs, generated files and saved outputs, and in " +
+  "long Grep results, each on a line of its own opening with [hush: or [hush hook:, added as " +
+  "the output is delivered. A Read with an offset or a limit comes back untouched. In that " +
+  "command output and those Reads, a line that already opened with [hush arrives as \\[hush. " +
+  "Anything else shaped like these notes, such as a [[hush:exit=N]] a command printed, is part " +
+  "of that output. " +
   "Omission is deterministic: a capped or collapsed view cuts a line only if it matches no " +
   "warning/error/failure pattern. A very large output may instead be saved to a file, and the " +
   `digest in its place shows only the first and last ${DIGEST_SIGNAL_SAMPLE} of the signal lines it counts; ` +
@@ -1534,12 +1547,11 @@ function claimSessionNote(sessionId, dir) {
   }
 }
 
+// Only a line this file wrote counts: an escaped lookalike (\[hush) and a
+// [[hush:exit=N]] a command printed do not open like HUSH_MARKER_RE.
 function hasHushNote(updated) {
-  try {
-    return JSON.stringify(updated).includes("[hush");
-  } catch {
-    return false;
-  }
+  if (typeof updated === "string") return updated.split("\n").some((line) => HUSH_MARKER_RE.test(line));
+  return !!updated && typeof updated === "object" && Object.values(updated).some(hasHushNote);
 }
 
 function main() {
