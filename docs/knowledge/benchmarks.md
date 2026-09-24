@@ -12,7 +12,7 @@ The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup a
 
 Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
-The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code and are medians; reading-ease and grade scores are heuristic averages, not a reader study.
+The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. The README comparison's final prose words and the words column under Prose surface are medians; the job-by-job comparison uses job averages. Reading-ease and grade scores are heuristic averages, not a reader study.
 
 ← [Back to the README](../../README.md)
 
