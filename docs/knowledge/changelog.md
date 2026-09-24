@@ -61,6 +61,11 @@ Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so
 a slow start on Windows no longer cancels it.
 
+That reminder now gives the voice's own rule for a turn's first line: it
+opens with a tool call, and a line that comes first says what Claude will do,
+what it does not know yet and how it will find out. The voice's speak-early
+line now says it has two other cases, which it always listed.
+
 The README's demo animation stops for readers who ask for reduced motion, and
 its mascot image has an English title and description.
 

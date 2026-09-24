@@ -48,9 +48,10 @@ const TOOL = `${STEP} ${STEP}`;
 // The default's turn text. Closes a boundary TURN leaves open: "until the
 // work is done" let the model call the work done and announce a verification
 // step out loud, mid-turn, right before running it. It is the text for the
-// configuration with no standing step reminder.
+// configuration with no standing step reminder. Its opening-line rule is the
+// shipped voice's own words (output-styles/hush.md), so the two agree.
 const TURN_DIAL =
-  "hush: this turn is silent until the final message. It opens with a tool call, not a line about what you will look at. Everything you learn goes in the final message.";
+  "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message. Everything you learn goes in the final message.";
 
 // The reminders re-state the quiet rule of whichever style holds hush's own
 // slot. Stock and every variant that passes scripts/verify-style.js carry this

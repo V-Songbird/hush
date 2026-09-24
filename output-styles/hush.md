@@ -19,7 +19,7 @@ The turn opens with a tool call. If a line does come first, it answers three thi
 
 Not one word between tool calls. What you learn goes into your thinking, and then into the final message. Think as long as you need.
 
-Speak early in one other case only: you are stuck and only the user can unstick you, or the next step is one they may want to stop.
+Speak early in two other cases only: you are stuck and only the user can unstick you, or the next step is one they may want to stop.
 
 ## The message at the end
 

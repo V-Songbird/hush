@@ -227,6 +227,13 @@ test('stock carries the phrase the reminders key on', () => {
   assert.ok(STOCK_STYLE.includes(QUIET_PHRASE), QUIET_PHRASE);
 });
 
+// The reminder and the voice give one order for the turn's first line.
+test('the dial reminder repeats the stock voice\'s opening-line rule', () => {
+  const rule = 'If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out.';
+  assert.ok(STOCK_STYLE.includes(rule), rule);
+  assert.ok(TURN_DIAL.includes(rule), TURN_DIAL);
+});
+
 test('a slot style with the quiet rule keeps the dial reminder', () => {
   const out = hookOutput(runSlotHook(pluginWithSlot(STOCK_STYLE), { hook_event_name: 'UserPromptSubmit' }));
   assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);

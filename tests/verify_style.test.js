@@ -155,7 +155,7 @@ test("gutting a guarded section to a stub is flagged", () => {
 });
 
 test("dropping the speak-early paragraph is flagged", () => {
-  const body = canonicalBody.replace(/Speak early in one other case only[^\n]*\n/, "");
+  const body = canonicalBody.replace(/Speak early in two other cases only[^\n]*\n/, "");
   const result = verify(canonical, variant(body));
   assert.ok(result.problems.some((p) => p.includes('"Quiet while you work"')));
 });
