@@ -250,11 +250,19 @@ Plain Claude Code did not produce a single clickable file link in any of the 54 
 
 ## Where hush loses
 
-Three places, all of them above.
+Four places, all of them above.
 
 **A quiet job can cost more.** hush's writing rules ride along on every round trip. On a job that
-prints little there is nothing to trim against them — the router job on Sonnet cost 31% more, and
-four other Sonnet jobs cost 7-8% more. On Opus the effect is smaller: two jobs, at +1% and +4%.
+prints little there is nothing to trim against them. In the README comparison, hush cost more than
+no plugin on the three quietest jobs: the dependency bump by 1%, the red test suite by 4% and the
+`--json` flag plan by 10% (see [Cost and runnable content by job](#cost-and-runnable-content-by-job)).
+In the earlier comparisons the router job on Sonnet cost 31% more, and four other Sonnet jobs cost
+7-8% more; on Opus the effect was smaller, two jobs at +1% and +4%.
+
+**Fewer answers held runnable content.** In the README comparison, 34 of 36 hush answers, 94%, held
+runnable content, against all 36 without a plugin and with caveman. The two without it came from the
+red test suite job and the notification router job. The heuristic looks for the shape of a command
+and does not check that the command is correct or complete.
 
 **On Opus the answer test is a tie, not a win.** One hush reply in 36 did not say plainly enough
 what had happened.
