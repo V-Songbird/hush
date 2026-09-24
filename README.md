@@ -86,7 +86,7 @@ In this recorded comparison, Hush’s median final prose was 69 words against 36
 
 A text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman. Three quiet jobs cost 1–10% more. The heuristic does not check that the suggested action is correct or complete. See [cost and runnable content by job](docs/knowledge/benchmarks.md#cost-and-runnable-content-by-job).
 
-Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the shipped voice and `HUSH_WRAP=1`. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
+Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the voice hush shipped then and `HUSH_WRAP=1`; they predate the current voice and output trimming. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
 Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
 
