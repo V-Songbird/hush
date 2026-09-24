@@ -70,7 +70,7 @@ Run this once after cloning:
 git config core.hooksPath scripts/git-hooks
 ```
 
-This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blocks the commit on failure. It no-ops if this plugin has no `tests/` directory. It also blocks a commit that stages a `README.md` whose navigation links no longer resolve.
+This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blocks the commit on failure. It no-ops if this plugin has no `tests/` directory. It also blocks a commit that stages a Markdown file while the root `README.md` lacks its navigation line, or while a link to a heading anchor in any tracked Markdown file no longer resolves.
 
 hush, razor and foreman keep byte-identical copies of `pre-commit`. A change to one goes into all three.
 

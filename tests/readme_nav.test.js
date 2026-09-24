@@ -21,7 +21,8 @@ const SPAWN_TIMEOUT_MS = (() => {
     return 30000;
   }
 })();
-const { slug, headingSlugs, anchorsIn, navRegion, checkMarkdown, main } = require(CHECK);
+const PRE_COMMIT = path.join(__dirname, "..", "scripts", "git-hooks", "pre-commit");
+const { slug, headingSlugs, anchorsIn, linkedAnchorsIn, navRegion, checkMarkdown, main } = require(CHECK);
 
 const NAV = [
   '<p align="center">',
@@ -34,6 +35,13 @@ const NAV = [
   "## The numbers",
   "## License",
 ].join("\n");
+
+// A docs page and the README that links into it. The page needs no nav, but
+// its own anchor, its link back to the README and the README's link into it
+// must all resolve. DOCS_BROKEN renames the heading two of those links name.
+const README = NAV + "\n\nSee [the setting](docs/knowledge/settings.md#the-setting).\n";
+const DOCS = "# Settings\n\n[Jump to it](#the-setting), or back to [install](../../README.md#install-it).\n\n## The setting\n";
+const DOCS_BROKEN = DOCS.replace("## The setting", "## A setting");
 
 describe("slug", () => {
   // github-slugger's own test cases, under the license in
@@ -100,6 +108,17 @@ describe("anchorsIn", () => {
   });
 });
 
+describe("linkedAnchorsIn", () => {
+  test("finds html and markdown links to another page's anchor", () => {
+    assert.deepEqual(linkedAnchorsIn('[a](settings.md#x "title") <a href="../README.md#y">b</a>'),
+      [["settings.md", "x"], ["../README.md", "y"]]);
+  });
+
+  test("ignores in-page anchors, URLs, root-relative paths and links with no anchor", () => {
+    assert.deepEqual(linkedAnchorsIn("[a](#x) [b](https://x.org/a.md#y) [c](/a.md#z) [d](other.md)"), []);
+  });
+});
+
 describe("navRegion", () => {
   test("stops at the first section", () => {
     const region = navRegion("[a](#a)\n\n## First\n\n[b](#b)\n");
@@ -157,6 +176,22 @@ describe("checkMarkdown", () => {
     assert.equal(problems.length, 1);
     assert.match(problems[0], /#license/);
   });
+
+  test("asks no nav of a page that is not a front page", () => {
+    assert.deepEqual(checkMarkdown("## One\n\n[a](#one)\n", "guide.md", { nav: false }), []);
+  });
+
+  test("resolves a link to another page's anchor against that page's headings", () => {
+    const pages = { "../../README.md": README };
+    const readLinked = (page) => pages[page] ?? null;
+    assert.deepEqual(checkMarkdown(DOCS, "settings.md", { nav: false, readLinked }), []);
+    const renamed = checkMarkdown(DOCS.replace("#install-it", "#installing"), "settings.md", { nav: false, readLinked });
+    assert.equal(renamed.length, 1);
+    assert.match(renamed[0], /"\.\.\/\.\.\/README\.md#installing" matches no heading/);
+    const missing = checkMarkdown(DOCS.replace("../../README.md", "gone.md"), "settings.md", { nav: false, readLinked });
+    assert.equal(missing.length, 1);
+    assert.match(missing[0], /"gone\.md#install-it" points at a page that does not exist/);
+  });
 });
 
 describe("main", () => {
@@ -184,6 +219,51 @@ describe("main", () => {
       fs.unlinkSync(file);
       git(["add", "README.md"]);
       assert.equal(run().status, 0);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a broken anchor in any tracked page fails the staged check and pre-commit", () => {
+    const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "staged-pages-"));
+    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+    const git = (args) => cp.execFileSync("git", args, { cwd: root, env, stdio: "pipe" });
+    const docs = path.join(root, "docs", "knowledge", "settings.md");
+    const run = (...args) => {
+      const result = cp.spawnSync(process.execPath, args, { cwd: root, env, encoding: "utf8", timeout: SPAWN_TIMEOUT_MS });
+      if (result.error && result.error.code === "ETIMEDOUT") throw new Error(`${args.join(" ")} timed out after ${SPAWN_TIMEOUT_MS} ms`);
+      return result;
+    };
+    try {
+      git(["init", "-q"]);
+      fs.mkdirSync(path.dirname(docs), { recursive: true });
+      fs.writeFileSync(path.join(root, "README.md"), README);
+      fs.writeFileSync(docs, DOCS);
+      git(["add", "README.md", "docs"]);
+      assert.equal(run(CHECK, "staged").status, 0);
+      assert.equal(run(PRE_COMMIT).status, 0);
+      // A fixture commit, so the README is no longer staged. It sets its own
+      // identity and runs no hooks or signing from the machine it runs on.
+      git(["-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false",
+        "commit", "-q", "--no-verify", "-m", "pages"]);
+
+      // Only the docs page is staged; the README's link into it breaks too.
+      fs.writeFileSync(docs, DOCS_BROKEN);
+      git(["add", "docs"]);
+      const bad = run(CHECK, "staged");
+      assert.equal(bad.status, 1);
+      assert.match(bad.stderr, /docs\/knowledge\/settings\.md \(staged\): "#the-setting" matches no heading/);
+      assert.match(bad.stderr, /README\.md \(staged\): "docs\/knowledge\/settings\.md#the-setting" matches no heading/);
+      assert.equal(run(PRE_COMMIT).status, 1);
+
+      // Fixed in the index, broken in the working tree: staged reads the
+      // index, the no-argument form reads the working tree.
+      fs.writeFileSync(docs, DOCS);
+      git(["add", "docs"]);
+      fs.writeFileSync(docs, DOCS_BROKEN);
+      assert.equal(run(CHECK, "staged").status, 0);
+      assert.equal(run(PRE_COMMIT).status, 0);
+      assert.equal(run(CHECK).status, 1);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
