@@ -481,6 +481,19 @@ describe('template collapse: the view states its own recovery', () => {
     assert.match(out, /lines omitted from this view/);
   });
 
+  // The cap runs after the fold and can cut a collapse marker with its run's
+  // first line; a note about collapses the view no longer shows points nowhere.
+  test('a collapse the cap cut entirely is undone, with no recovery note', () => {
+    const runLines = Array.from({ length: 20 }, (_, i) => `abc def ghi ${i}`);
+    const lines = overFloor(runLines).concat(overFloor([]));
+    const out = run(lines.join('\n'));
+    assert.ok(!out.includes('similar lines collapsed'), 'the cap cut the marker');
+    assert.ok(!out.includes(TEMPLATE_COLLAPSE_NOTE) && !out.includes(TEMPLATE_RECOVERY_NOTE), 'so no note points at it');
+    // 4 setup lines, the 20-line run and 16 setup lines: folded, the run
+    // counted as 2 and the marker said 22.
+    assert.match(out, /^\[hush hook: 40 lines omitted from this view/m, 'the omission counts every source line cut');
+  });
+
   test('a small output is never folded by shape; exact repeats still fold', () => {
     const tiny = Array.from({ length: 6 }, (_, i) => `abc def ghi ${i}`).join('\n');
     assert.strictEqual(run(tiny), tiny);

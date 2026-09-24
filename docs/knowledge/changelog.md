@@ -54,7 +54,10 @@ file.
 
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,
-and folds that save less than that line are left unfolded.
+and folds that save less than that line are left unfolded. When a long
+output's line cut removes every fold, the output is cut unfolded instead, so
+the view carries no note about folds it no longer shows, and its count of
+omitted lines counts each line of the output.
 
 Some lines no longer count as failures when nothing failed. A passing
 summary with zero counts, such as "Failures: 0", is no longer kept or counted

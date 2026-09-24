@@ -1397,9 +1397,12 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // never enters the line accounting below: the full note when the collapse
   // pays for it, else the short one. A collapse that cannot pay even for the
   // short one is undone, so no view hides lines without naming a way back and
-  // none grows to state it.
+  // none grows to state it. So is a fold whose every marker the cap cut: the
+  // note would point at nothing, and the omission count would count a run as
+  // its two remaining lines.
   if (collapsed) {
-    const note = [TEMPLATE_COLLAPSE_NOTE, TEMPLATE_RECOVERY_NOTE].find((n) => out.length + n.length + 1 < cleaned.length);
+    const note = lines.some((l) => /^\[hush hook: \d+ similar lines collapsed /.test(l)) &&
+      [TEMPLATE_COLLAPSE_NOTE, TEMPLATE_RECOVERY_NOTE].find((n) => out.length + n.length + 1 < cleaned.length);
     if (note) out += `\n${note}`;
     else {
       collapsed = false;
