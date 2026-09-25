@@ -47,7 +47,7 @@ function cleanRoots() {
 }
 
 // A payload hush handles is mostly bulk, and bulk does not belong inline in a
-// fixture. These six tokens are the only substitutions; everything else
+// fixture. These seven tokens are the only substitutions; everything else
 // in a fixture file is literal.
 //
 //   {{SESSION}}      the scenario's session id
@@ -56,6 +56,7 @@ function cleanRoots() {
 //   {{REPEAT:n}}     n lines of one shape with a varying number — collapsible
 //   {{FAILING:n}}    n lines with error and warning lines seeded through them
 //   {{GREP:n}}       n `file:line:text` match lines across twenty files
+//   {{TRANSCRIPT}}   the scenario's transcript path, filled by runScenario
 function expand(text, { session, root }) {
   return text
     .replace(/\{\{SESSION\}\}/g, session)
