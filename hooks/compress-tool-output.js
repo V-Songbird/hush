@@ -1381,7 +1381,8 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // A listing or ranged print (isBoundedPrint) keeps every line up to
   // CAP_FAIL, unscaled, and skips the sidecar too; only the scrubs above,
   // which remove no line, apply. A trailing newline is not a line. Past
-  // CAP_FAIL it is parked like any output, or keeps CAP_FAIL lines unfolded.
+  // CAP_FAIL it is parked like any output, or keeps CAP_FAIL lines with only
+  // exact repeats folded.
   if (bounded && linesIn - (cleaned.endsWith("\n") ? 1 : 0) <= CAP_FAIL) {
     if (decision && !decision.action) {
       decision.omitted = 0;
@@ -1407,11 +1408,12 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
       return side.text;
     }
   }
-  // Below GREP_MIN_CHARS the output passes unfolded and uncut for Grep's
-  // reason: the rows of a short table all share one shape, and a short file
-  // print is all code lines, so a collapse or a cap hides the answer itself
-  // and the model re-runs the command to get it back, which costs more than
-  // the few characters the trim saved.
+  // Below GREP_MIN_CHARS the output passes uncut, and only exact consecutive
+  // repeats fold (dedupeConsecutive), for Grep's reason: the rows of a short
+  // table all share one shape, and a short file print is all code lines, so a
+  // template collapse or a cap hides the answer itself and the model re-runs
+  // the command to get it back, which costs more than the few characters the
+  // trim saved.
   const short = cleaned.length < GREP_MIN_CHARS;
   const s = typeof scale === "number" ? scale : 1;
   const cap = short
@@ -1423,12 +1425,13 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
         : isDump || failed
           ? Math.max(FLOOR_FAIL, Math.round(CAP_FAIL * s))
           : Math.max(FLOOR_PASS, Math.round(CAP_PASS * s));
-  // Enumeration carve-out means "nothing is elided" — same reason it skips the
-  // sidecar above; collapsing same-shape runs would remove the very items a
-  // completeness request ("list every compiled module") asked to see. A
-  // listing or ranged print past CAP_FAIL keeps CAP_FAIL lines unfolded, for
-  // the reason it passes whole below that: its rows are the names or code
-  // lines asked for, all of one shape.
+  // Enumeration carve-out means "nothing is elided" beyond exact consecutive
+  // repeats, which fold into a count — same reason it skips the sidecar above;
+  // collapsing same-shape runs would remove the very items a completeness
+  // request ("list every compiled module") asked to see. A listing or ranged
+  // print past CAP_FAIL keeps CAP_FAIL lines with no template collapse, only
+  // exact repeats folded, for the reason it passes whole below that: its rows
+  // are the names or code lines asked for, all of one shape.
   const deduped = dedupeConsecutive(cleaned.split("\n"));
   // A dump's exit code says whether the file printed, not whether the text it
   // printed reports a failure, so its fold reads the text.
