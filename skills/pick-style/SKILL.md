@@ -1,6 +1,6 @@
 ---
 name: pick-style
-description: Lists every output style available to this plugin — stock Hush and anything craft-style has built — and switches the active one. Activation swaps the chosen style into the plugin's own slot so it binds like stock, and hands back to stock on request. This skill owns the swap procedure; craft-style calls into it. Only stock Hush is benchmarked — a crafted style is unmeasured.
+description: Lists every output style available to this plugin — stock Hush and anything craft-style has built — and switches the active one. Activation swaps the chosen style into the plugin's own slot so it binds like stock, and hands back to stock on request. This skill owns the swap procedure; craft-style calls into it. A crafted style is unmeasured — the benchmark numbers belong to the stock voice hush shipped when each batch ran.
 when_to_use: Trigger when the user wants to browse, compare, switch, or turn off hush's output styles, says "hush styles", "list the styles", "switch style", "use my own style", "go back to stock hush", or invokes /hush:pick-style.
 argument-hint: "[style name]"
 allowed-tools: Bash, PowerShell
@@ -30,7 +30,7 @@ Render it as exactly this table, one row per entry in `styles`, in index order:
 | 1 | <name> | <description> | <source> | ✓ (only on the active row) |
 ```
 
-`source` is `stock` for the benchmarked default and `crafted` for the user's own variants. Print it as it comes — it is what tells two same-named entries apart.
+`source` is `stock` for the voice hush ships and `crafted` for the user's own variants. Print it as it comes — it is what tells two same-named entries apart.
 
 If `restoredOverTakeover` is `true`, add one line above the table: "A plugin update restored stock Hush over a prior takeover." Otherwise add nothing.
 
@@ -66,4 +66,4 @@ This is the only place in the plugin that touches `output-styles/hush.md`; `craf
 
 ## 3. Report
 
-From the script's JSON: which style (`name`) is now active, which file had its paragraph swapped when `styleUpdated` is set, that it takes effect next session, and that `stock` is always the way back. Say plainly that a crafted style is unmeasured — the benchmark numbers belong to stock Hush only.
+From the script's JSON: which style (`name`) is now active, which file had its paragraph swapped when `styleUpdated` is set, that it takes effect next session, and that `stock` is always the way back. Say plainly that a crafted style is unmeasured — the benchmark numbers belong to the stock voice hush shipped when each batch ran.

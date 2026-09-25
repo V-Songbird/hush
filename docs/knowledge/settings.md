@@ -119,4 +119,4 @@ names anything the new voice dropped, and a voice that lost a rule never reaches
 Both commands ask before they swap, and both take effect at your next session. Updating the plugin
 puts the shipped voice back, so pick again after an update.
 
-Only the shipped voice was measured. Every published number belongs to it.
+Every published number belongs to the voice hush shipped when its batch ran. A voice you craft is unmeasured.

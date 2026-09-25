@@ -1,6 +1,6 @@
 ---
 name: craft-style
-description: Builds a personal output style on hush's frame — the user's voice on the surface, hush's silence-and-structure mechanics copied verbatim underneath. Manages its own creations: lists them alongside stock Hush and edits them. A mechanical verifier confirms every invariant survived. Activation is hush:pick-style's job — it owns the swap that makes a style bind. Only the stock Hush style is benchmarked — crafted styles are unmeasured.
+description: Builds a personal output style on hush's frame — the user's voice on the surface, hush's silence-and-structure mechanics copied verbatim underneath. Manages its own creations: lists them alongside stock Hush and edits them. A mechanical verifier confirms every invariant survived. Activation is hush:pick-style's job — it owns the swap that makes a style bind. Crafted styles are unmeasured — the benchmark numbers belong to the stock voice hush shipped when each batch ran.
 when_to_use: Trigger when the user wants a personal or custom output style built on hush, wants to edit a crafted style, says "make me a hush style", "hush but robotic", "craft a style", "custom output style", or invokes /hush:craft-style.
 argument-hint: "[voice description]"
 allowed-tools: Read, Write, Edit, Glob, Bash, PowerShell, AskUserQuestion
@@ -19,7 +19,7 @@ Also read the frontmatter of `${CLAUDE_PLUGIN_ROOT}/output-styles/hush.md` and n
 Then route:
 
 - **No crafted styles found** → go to step 2 and create one.
-- **Crafted styles found** → ask the user (AskUserQuestion) what to do, listing every crafted style by name and destination alongside `Hush (stock, benchmarked)`: create a new style, or edit one of the listed. A request to switch goes to `hush:pick-style`, which owns the whole shelf.
+- **Crafted styles found** → ask the user (AskUserQuestion) what to do, listing every crafted style by name and destination alongside `Hush (stock)`: create a new style, or edit one of the listed. A request to switch goes to `hush:pick-style`, which owns the whole shelf.
 - **That same JSON reports `restoredOverTakeover: true`** → a plugin update wrote over the style that was active. Say so and offer step 5 before anything else.
 
 ## 2. Gather three inputs
@@ -122,4 +122,4 @@ If the user declines the takeover, the crafted file stays where it was written, 
 
 ## 6. Report
 
-Where the file landed, what was or wasn't activated, when it takes effect, and that the crafted style is unmeasured — the benchmark numbers belong to stock Hush only.
+Where the file landed, what was or wasn't activated, when it takes effect, and that the crafted style is unmeasured — the benchmark numbers belong to the stock voice hush shipped when each batch ran.
