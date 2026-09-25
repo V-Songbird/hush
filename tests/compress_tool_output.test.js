@@ -1636,9 +1636,12 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     const session = 'hush-test-knob-shell-' + Date.now();
     try {
       // About 20KB: over the sidecar threshold, under the 28000-character default.
-      const full = (env) => /saved in full to/.test(view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: unique(1800) }, { HUSH_SIDECAR: '', ...env }));
+      const out = (env) => view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: unique(1800) }, { HUSH_SIDECAR: '', ...env });
+      const full = (env) => /saved in full to/.test(out(env));
       assert.strictEqual(full({}), true, 'default bound');
-      assert.strictEqual(full({ HUSH_SIDECAR_SHELL_MAX: '18000' }), false, 'a lower bound drops the full claim');
+      const lowered = out({ HUSH_SIDECAR_SHELL_MAX: '18000' });
+      assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the full claim');
+      assert.match(lowered, /as hush received it/, 'and still writes the copy');
       for (const v of INVALID) assert.strictEqual(full({ HUSH_SIDECAR_SHELL_MAX: v }), true, v);
     } finally {
       removeSessions([session]);
