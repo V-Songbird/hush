@@ -283,6 +283,8 @@ function omittedMarker(n) {
 
 // Closing line on a capped view of a FAILING run — the same recovery advice
 // the sidecar header gives its own path, for the failures that stay inline.
+// Never on a Read: it ran nothing, and its omission markers already say no
+// failure line was cut.
 // capLines keeps every keep line by construction — and the keep vocabulary is
 // the union of signal and failure evidence, so the first causal error and the
 // failing summary are all above this line, with stack frames as well:
@@ -1362,8 +1364,9 @@ const isSidecarPath = sidecarStore.isSidecarPath;
 // `decision`, when passed, is mutated with the single action token that
 // classifies what this call actually did (see HUSH_DEBUG below) — purely an
 // observation side-channel: the return value is identical whether or not a
-// decision object is supplied.
-function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision, bounded) {
+// decision object is supplied. `fileRead` marks a Read's file content: its
+// failure words still guard the fold, but no failure note follows the cap.
+function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, sessionId, noSidecar, hostMayTruncate, decision, bounded, fileRead) {
   const original = String(text);
   const unescaped = resolveCarriageReturns(stripAnsi(original));
   const cleaned = escapeMarkerLookalikes(unescaped);
@@ -1431,7 +1434,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   const build = (from) => {
     capped = from.length > cap; // capLines' own no-op guard is `length <= cap`
     lines = capLines(from, cap, relevanceTokens);
-    if (failed && capped) lines.push(FAILURE_RERUN_NOTE);
+    if (failed && capped && !fileRead) lines.push(FAILURE_RERUN_NOTE);
     out = lines.join("\n");
   };
   build(folded);
@@ -1667,7 +1670,7 @@ function main() {
     if (file && typeof file.content === "string") {
       const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, retrieval: sideRead };
       if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead)) {
-        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision);
+        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision, undefined, true);
         decision.bytesOut = out.length;
         // Whatever this view left out is still on disk, at the path Read was
         // given — the sidecar path (set by compress) wins when there is one.

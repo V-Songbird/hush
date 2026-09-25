@@ -66,6 +66,11 @@ a whole-file print, a line-range print past 250 lines and such a diff no
 longer end with the note that the run failed just because the printed text
 says error or failed.
 
+A log, a generated file or a file hush saved, read whole and cut to fit, no
+longer ends with the note that the run failed and should be run again when
+its text says error or failed. A read runs no command, and the notes inside
+the view already say that no warning, error or failure line was cut.
+
 A whole-file print or a `git diff` that redirects only its errors, such as
 `cat f 2>/dev/null`, `cat f 2>&1` or `Get-Content f 2>$null`, now keeps up to
 250 lines like the same print without the redirect, as a listing or a

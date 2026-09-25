@@ -794,6 +794,22 @@ describe('hook: end to end', () => {
     assert.strictEqual(updated.file.numLines, updated.file.content.split('\n').length, 'numLines matches new content');
   });
 
+  // A Read is not a run: a capped log that says ERROR gets no note telling
+  // the model the run failed and to re-run a command it never ran.
+  test('a capped Read of a log that says ERROR gets no failure note', () => {
+    const lines = Array.from({ length: 900 }, (_, i) => `10:0${i % 10} info request handled in ${i}ms`);
+    lines[500] = '10:05 ERROR redis ECONNREFUSED 127.0.0.1:6379';
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Read',
+      tool_input: { file_path: 'C:\\repo\\logs\\app.log' },
+      tool_response: { type: 'text', file: { filePath: 'C:\\repo\\logs\\app.log', content: lines.join('\n'), numLines: 900, startLine: 1, totalLines: 900 } },
+    }, { HUSH_TEMPLATE: 'off' });
+    const view = hookOutput(r).hookSpecificOutput.updatedToolOutput.file.content;
+    assert.match(view, /lines omitted from this view/, 'the view is capped');
+    assert.ok(view.includes('ECONNREFUSED'), 'the error line survives the cap');
+    assert.ok(!view.includes(FAILURE_RERUN_NOTE), 'read as a failed run');
+  });
+
   test('Read of a small .log file stays silent — nothing to shrink', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'Read',
