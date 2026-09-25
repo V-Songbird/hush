@@ -154,9 +154,11 @@ There is no suite-wide cost percentage on this page, and there never will be. Th
 has read anywhere from −15% to +4% across runs of this harness, and a single job flipping direction
 moves it double digits. Per job is the honest unit.
 
+Printed per call is what a no-plugin session's commands print, averaged over each call to the model.
+
 **Claude Opus 5**, ordered by how much each job's commands print:
 
-| The job | printed per step | no plugin | hush | change |
+| The job | printed per call | no plugin | hush | change |
 | --- | --- | --- | --- | --- |
 | Build a notification router while the plan changes four times | 0.6k | $0.813 | **$0.715** | −12% |
 | Plan a `--json` flag without editing anything | 0.7k | **$0.163** | $0.165 | +1% |
@@ -170,7 +172,7 @@ moves it double digits. Per job is the honest unit.
 
 **Claude Sonnet:**
 
-| The job | printed per step | no plugin | hush | change |
+| The job | printed per call | no plugin | hush | change |
 | --- | --- | --- | --- | --- |
 | Plan a `--json` flag without editing anything | 0.5k | **$0.067** | $0.072 | +7% |
 | Build a notification router while the plan changes four times | 1.0k | **$0.285** | $0.373 | **+31%** |
@@ -183,7 +185,7 @@ moves it double digits. Per job is the honest unit.
 | Triage a 57 KB application log | 17.6k | $0.250 | **$0.148** | **−41%** |
 
 **The louder the job, the bigger the win**, and the pattern is clearest on Sonnet: every job that
-prints more than about 8k characters a step saves a third or more, and the quiet end costs a little.
+prints more than about 8k characters a call saves a third or more, and the quiet end costs a little.
 On Opus, where Claude's own replies are longer, the second cut carries jobs that print almost
 nothing — seven of the nine came out cheaper there.
 
@@ -216,7 +218,9 @@ Higher reading ease and lower grade level indicate simpler text in these formula
 
 Short is cheap; useful is the point. So a fresh session gets only the original request and the one
 final message — no transcript, no files — and answers three plain questions. What happened. What do
-I open or run. What should I do next. A message that carries no answer counts as a miss.
+I open or run. What should I do next. A message that carries no answer counts as a miss. The fresh
+session is Claude Sonnet in both tables. Only the percentages below are kept, not its answers for
+each session.
 
 | Claude Opus 5 | no plugin | hush |
 | --- | --- | --- |
