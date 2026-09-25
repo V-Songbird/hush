@@ -319,12 +319,55 @@ describe('unit: transforms', () => {
     ]) assert.strictEqual(isFileDump(c), false, JSON.stringify(c));
   });
 
+  // A stderr redirect, 2>&1 included, leaves stdout as printed; a stdout
+  // redirect sends the file elsewhere, so that command prints no file.
+  test('isFileDump reads a whole-file print past a stderr redirect on either shell, wrapped or not', () => {
+    for (const c of [
+      'cat src/Foo.kt 2>/dev/null',
+      'cat src/Foo.kt 2> /dev/null',
+      'cat src/Foo.kt 2>&1',
+      'git diff 2>/dev/null',
+      'Get-Content ./Foo.ps1 2>$null',
+      'gc ./Foo.ps1 2>&1',
+      wrapBash('cat src/Foo.kt 2>/dev/null'),
+      wrapPowerShell('Get-Content src/Foo.kt 2>$null'),
+      wrapPowerShell('Get-Content src/Foo.kt 2>&1'),
+    ]) assert.ok(isFileDump(c), JSON.stringify(c));
+  });
+
+  test('isFileDump still refuses a stdout redirect, with or without a stderr one', () => {
+    for (const c of [
+      'cat src/Foo.kt 1> out.txt',
+      'cat src/Foo.kt >> out.txt',
+      'cat src/Foo.kt &> out.txt',
+      'cat src/Foo.kt2>out.txt',
+      'cat src/Foo.kt 2>/dev/null > out.txt',
+      'cat src/Foo.kt 2>&1 > out.txt',
+      'Get-Content ./Foo.ps1 *> out.txt',
+      wrapPowerShell('Get-Content src/Foo.kt 2>$null > out.txt'),
+    ]) assert.strictEqual(isFileDump(c), false, JSON.stringify(c));
+  });
+
+  test('isFileDump and isBoundedPrint read a redirect the same way', () => {
+    const { isBoundedPrint } = require('../hooks/compress-tool-output');
+    for (const r of [' 2>/dev/null', ' 2>&1', ' 2>$null', ' > out.txt', ' 1> out.txt', ' &> out.txt', ' 2>&1 > out.txt'])
+      assert.strictEqual(isFileDump(`cat f${r}`), isBoundedPrint(`head -n 5 f${r}`), r);
+  });
+
   // 100 distinct code lines over 4,000 characters: the clean-run cap keeps 60,
   // the dump cap all of them. Folding is off so the cap alone decides.
   const source = Array.from({ length: 100 }, (_, i) => `  val value${i} = computeTheValue(${i}, options)`).join('\n');
   for (const [shell, command] of [['PowerShell', wrapPowerShell('Get-Content src/App.kt')], ['Bash', wrapBash('cat src/App.kt')]]) {
     test(`a wrapped ${shell} file dump keeps the dump cap`, () => {
       const r = runHook('compress-tool-output.js', { tool_name: shell, tool_input: { command }, tool_response: `${source}\n[[hush:exit=\n\n]]` }, { HUSH_TEMPLATE: 'off' });
+      assert.strictEqual(hookOutput(r).hookSpecificOutput.updatedToolOutput.trimEnd(), source);
+    });
+  }
+
+  for (const [shell, command, wrap] of [['Bash', 'cat src/App.kt 2>/dev/null', wrapBash], ['PowerShell', 'Get-Content src/App.kt 2>$null', wrapPowerShell]]) {
+    test(`${shell}: a file dump with a stderr redirect keeps the dump cap, wrapped or not`, () => {
+      assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: shell, tool_input: { command }, tool_response: source }, { HUSH_TEMPLATE: 'off' })), null);
+      const r = runHook('compress-tool-output.js', { tool_name: shell, tool_input: { command: wrap(command) }, tool_response: `${source}\n[[hush:exit=\n\n]]` }, { HUSH_TEMPLATE: 'off' });
       assert.strictEqual(hookOutput(r).hookSpecificOutput.updatedToolOutput.trimEnd(), source);
     });
   }

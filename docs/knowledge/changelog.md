@@ -66,6 +66,13 @@ a whole-file print, a line-range print past 250 lines and such a diff no
 longer end with the note that the run failed just because the printed text
 says error or failed.
 
+A whole-file print or a `git diff` that redirects only its errors, such as
+`cat f 2>/dev/null`, `cat f 2>&1` or `Get-Content f 2>$null`, now keeps up to
+250 lines like the same print without the redirect, as a listing or a
+line-range print already did; it was cut to 60 like a clean run. A print that
+sends its own output to a file with `>`, `>>` or `&>` is still trimmed like
+any other output.
+
 A view that folds same-shape lines now always says how to see them. When the
 folds save less than the usual note costs, a one-line note takes its place,
 and folds that save less than that line are left unfolded. When a long

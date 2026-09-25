@@ -775,11 +775,12 @@ function looksLikeFailure(text, exitCode) {
 }
 
 // A command that just dumps a whole file's contents (cat/type/Get-Content,
-// no pipe/chain/redirect) exits 0 without meaning "safe to trim like a build
-// log" — a clean exit there just means the file was read. Source text has no
-// WARN/ERROR markers for capLines' signal-preservation to anchor on, so the
-// head+tail cap would cut arbitrary lines out of the middle of the file
-// instead of out of actual log noise. Treat these like failures: keep more.
+// no pipe, chain or stdout redirect) exits 0 without meaning "safe to trim
+// like a build log" — a clean exit there just means the file was read. Source
+// text has no WARN/ERROR markers for capLines' signal-preservation to anchor
+// on, so the head+tail cap would cut arbitrary lines out of the middle of the
+// file instead of out of actual log noise. Treat these like failures: keep
+// more.
 // A git diff or git show prints file text the same way, so it counts too.
 // One command on one line, read through unwrapCommand below.
 const FILE_DUMP_RE = /^(?=[^|;&<>\r\n]*$)(?:(?:cat|type|gc|Get-Content)\s+\S|git\s+(?:diff|show)(?:\s|$))/i;
@@ -794,9 +795,7 @@ function isFileDump(command) {
 // lines and sends the model back for a second read. compress() passes these
 // whole up to CAP_FAIL lines, as main() passes a ranged Read, and past that
 // keeps CAP_FAIL of them without folding any. One command
-// only, on one line: preserve-exit-code's wrapper is taken off first (the
-// lines it appends, and PowerShell's `& { }` around the command), then a
-// stderr redirect, since it leaves stdout as printed.
+// only, on one line, read through unwrapCommand below as isFileDump reads it.
 // find is a listing unless -exec/-ok prints another command's output.
 const BOUNDED_PRINT_RE = new RegExp(
   "^(?=[^|;&<>\\r\\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
@@ -811,16 +810,17 @@ const EXIT_WRAP_TAIL_RE = /\r?\n(?:__hush_exit=\$\?|Write-Output '\[\[hush:exit=
 // Claude Code — otherwise the call routes through PostToolUseFailure, which
 // this hook never sees at all (see that file's header). PostToolUse receives
 // the wrapped command, so the lines the wrapper appends and PowerShell's
-// `& { }` come off here; a multi-line script keeps its newlines.
+// `& { }` come off here; a multi-line script keeps its newlines. A stderr
+// redirect, 2>&1 included, comes off after them, since it leaves stdout as
+// printed; a stdout redirect stays, so neither print check matches it.
 function unwrapCommand(command) {
   const line = command.replace(EXIT_WRAP_TAIL_RE, "").trim();
   const ps = PS_WRAP_RE.exec(line);
-  return (ps ? ps[1] : line).trim();
+  return (ps ? ps[1] : line).replace(/\s+2>\S*/g, "").trim();
 }
 
 function isBoundedPrint(command) {
-  if (typeof command !== "string") return false;
-  return BOUNDED_PRINT_RE.test(unwrapCommand(command).replace(/\s+2>\S*/g, "").trim());
+  return typeof command === "string" && BOUNDED_PRINT_RE.test(unwrapCommand(command));
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the
