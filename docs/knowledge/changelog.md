@@ -213,6 +213,11 @@ when two are set.
 `HUSH_CORE`, `HUSH_QUIET` and `HUSH_NUDGE` already did. Before, only `off`
 worked, and `HUSH_SIDECAR=0` left parking on.
 
+On Windows, a state or style file that another process has open for a moment,
+such as a second hook writing the same file or an antivirus scan, no longer
+drops hush's write. The write now retries for up to 155 ms. Before, it was
+skipped without a word.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a

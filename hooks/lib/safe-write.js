@@ -78,15 +78,25 @@ function safeWriteFileSync(target, content) {
   } finally {
     fs.closeSync(fd);
   }
-  try {
-    fs.renameSync(tmpPath, realTarget);
-  } catch (e) {
+  for (let attempt = 0; ; attempt++) {
     try {
-      fs.unlinkSync(tmpPath);
-    } catch {
-      /* best-effort cleanup */
+      fs.renameSync(tmpPath, realTarget);
+      return;
+    } catch (e) {
+      // win32 refuses a rename onto a file another process holds open (a
+      // racing writer, an antivirus or indexer scan) for a moment; retry that
+      // briefly, as graceful-fs does, waiting 5 to 80 ms, 155 ms at most.
+      if (process.platform === 'win32' && attempt < 5 && ['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5 * 2 ** attempt);
+        continue;
+      }
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {
+        /* best-effort cleanup */
+      }
+      throw e;
     }
-    throw e;
   }
 }
 
