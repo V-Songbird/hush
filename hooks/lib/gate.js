@@ -17,15 +17,19 @@
 // below turn one off. isOff reads the surface switches and every per-hook off
 // flag (HUSH_NUDGE, HUSH_SUBAGENT, HUSH_COMPACT, HUSH_TEMPLATE, HUSH_SIDECAR,
 // HUSH_ADAPTIVE, HUSH_GREP, HUSH_NOTE) the same way: surrounding whitespace is
-// ignored, so " off" turns a switch off.
+// ignored, so " off" turns a switch off. isOn reads the switches set to 1
+// (HUSH_DISABLE, HUSH_WRAP, HUSH_DEBUG) the same way: " 1" is 1, and nothing else is.
 
 const OFF_TOKEN = /^(0|off|false)$/i;
 
 /** True when the named variable holds an off token. */
 const isOff = (name) => OFF_TOKEN.test(String(process.env[name] || "").trim());
 
+/** True when the named variable holds 1. */
+const isOn = (name) => String(process.env[name] || "").trim() === "1";
+
 function surfaceOff(surface) {
-  if (process.env.HUSH_DISABLE === "1") return true;
+  if (isOn("HUSH_DISABLE")) return true;
   return isOff(`HUSH_${surface}`);
 }
 
@@ -35,4 +39,4 @@ const coreOff = () => surfaceOff("CORE");
 /** True when the Quiet surface must do nothing at all this run. */
 const quietOff = () => surfaceOff("QUIET");
 
-module.exports = { coreOff, quietOff, isOff };
+module.exports = { coreOff, quietOff, isOff, isOn };

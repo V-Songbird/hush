@@ -28,7 +28,7 @@
 // wrapper, so the trailer must stay the last thing the wrapped command prints.
 
 const { readInput, emitUpdatedInput } = require("./lib/harness");
-const { coreOff } = require("./lib/gate");
+const { coreOff, isOn } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell"]);
 const MARKER_PREFIX = "[[hush:exit=";
@@ -104,7 +104,7 @@ function wrapBash(command) {
 // whose rules are blanket per-tool grants (plain `Bash` / `PowerShell`,
 // no command pattern) — those match the wrapped command as a whole.
 function permissionsAllowWrapping(data) {
-  if (process.env.HUSH_WRAP === "1") return true;
+  if (isOn("HUSH_WRAP")) return true;
   return data.permission_mode === "bypassPermissions";
 }
 

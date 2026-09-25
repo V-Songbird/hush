@@ -56,6 +56,14 @@ describe('HUSH_DEBUG manifest: gate', () => {
     assert.strictEqual(fs.existsSync(debugManifestPath(id)), false);
   });
 
+  test('HUSH_DEBUG ignores spaces around the 1', () => {
+    for (const value of [' 1', '1 ']) {
+      const id = sid('gate-padded');
+      runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: uniqueLines(300) }, { HUSH_DEBUG: value });
+      assert.strictEqual(readManifest(id).length, 1, `HUSH_DEBUG="${value}"`);
+    }
+  });
+
   test('unwatched, unhandled tools never get a line, even with the gate on', () => {
     const id = sid('gate-unhandled');
     runHook('compress-tool-output.js', { tool_name: 'Glob', session_id: id, tool_response: 'x'.repeat(500) }, { HUSH_DEBUG: '1' });

@@ -174,6 +174,18 @@ describe('unit: shouldSkip', () => {
       delete process.env.HUSH_WRAP;
     }
   });
+
+  test('HUSH_WRAP ignores spaces around the 1', () => {
+    for (const value of [' 1', '1 ']) {
+      process.env.HUSH_WRAP = value;
+      try {
+        const data = { permission_mode: 'acceptEdits', tool_input: { command: 'node build.js' } };
+        assert.strictEqual(shouldSkip(data, 'node build.js'), false, `HUSH_WRAP="${value}"`);
+      } finally {
+        delete process.env.HUSH_WRAP;
+      }
+    }
+  });
 });
 
 describe('hook: end to end', () => {

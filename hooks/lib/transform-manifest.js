@@ -21,6 +21,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { isOn } = require('./gate');
 
 // The action taxonomy. `lossy` means the view this action produces can leave
 // input lines out of itself, which is exactly the set recoveryGap polices;
@@ -172,7 +173,7 @@ function debugManifestPath(sessionId) {
 // harness measuring hush — this makes every decision, including the do-nothing
 // ones, observable without changing what any path produces.
 function appendRecord(record) {
-  if (process.env.HUSH_DEBUG !== '1') return;
+  if (!isOn('HUSH_DEBUG')) return;
   try {
     const file = debugManifestPath(record.session);
     // Same residual defense as claimSessionNote: refuse a pre-planted symlink

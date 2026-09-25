@@ -40,8 +40,8 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
 what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off`
 also takes `0` or `false`, in any letter case, and ignores spaces around the value; the switches
-shown as `1` take exactly `1`. With `HUSH_CORE=off`, the reminder's small per-session counter
-stays in your temp folder until your system clears it.
+shown as `1` take only `1`, and ignore spaces around it too. With `HUSH_CORE=off`, the reminder's
+small per-session counter stays in your temp folder until your system clears it.
 
 ## Why `HUSH_WRAP` exists
 

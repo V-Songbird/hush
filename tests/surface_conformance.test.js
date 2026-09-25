@@ -260,6 +260,14 @@ describe('HUSH_DISABLE=1 beats every Core/Quiet combination', () => {
       assertInert(quiet, { ...overlay.env, HUSH_DISABLE: '1' });
     });
   }
+
+  // cmd.exe's `set HUSH_DISABLE=1 ` keeps the trailing space.
+  for (const token of [' 1', '1 ']) {
+    test(`"${token}" is 1: nothing runs`, () => {
+      assertInert(core, { HUSH_DISABLE: token });
+      assertInert(quiet, { HUSH_DISABLE: token });
+    });
+  }
 });
 
 describe('a surface switch outranks the per-hook flags inside it', () => {

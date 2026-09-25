@@ -122,7 +122,9 @@ collect one per request. `HUSH_NUDGE=max` is unchanged.
 
 Every switch that takes `off`, `0` or `false` now ignores spaces around the
 value, as `HUSH_NUDGE` already did: `HUSH_CORE=" off"` turns Core off, where
-it used to leave it on.
+it used to leave it on. `HUSH_DISABLE`, `HUSH_WRAP` and `HUSH_DEBUG` ignore
+spaces around their `1` too, so `set HUSH_DISABLE=1 ` in cmd.exe, which
+keeps the trailing space, now turns hush off.
 
 Styles: a crafted style's name can no longer contain a colon, and craft-style
 says so before activation does. Switching styles keeps a namespaced
