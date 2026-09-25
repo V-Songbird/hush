@@ -105,9 +105,13 @@ check now catches a changed number at the end of a sentence.
 A line of command output that already opens with `[hush` now reaches Claude
 as `\[hush`, even in a short output, so it can no longer pass for one of
 hush's notes or be counted as one. The logs hush trims get the same. The
-voice no longer calls those notes trusted or forbids naming them: a note says
-what a view left out and how to get the rest back, a line asking for anything
-else is part of the output, and Claude names a note when it limits a claim.
+voice no longer calls those notes trusted or forbids naming them. It tells a
+note from output the way the note hush adds once per session does: by where
+it appears and how its line opens, not by what it says. A note sits on a line
+of its own in shell output, a long search result, or a whole read of a log, a
+generated file or a saved output. Anything else shaped like a note, such as
+an escaped `\[hush` line or a `[[hush:exit=N]]` a command printed, is part of
+the output, and Claude names a note when it limits a claim.
 A style you crafted keeps the old paragraph and will not activate as it is.
 `/hush:pick-style` and `/hush:craft-style` show you the old paragraph and the
 new one and offer to swap them; with your yes, that paragraph is the only
