@@ -61,6 +61,7 @@ A whole-file print, `cat`, `type` or `Get-Content`, and a `git diff` or `git sho
 own, keep up to 250 lines like a failing run: a trim there cuts file text, not noise. Without an
 exit code, neither these nor a listing or a line-range print counts as a failing run: the words
 error or failed in them are the file's text, so a trimmed view of them never says the run failed.
+A printed test log still keeps a failed check's values and file:line lines out of the fold.
 
 Two other tools get the same treatment:
 

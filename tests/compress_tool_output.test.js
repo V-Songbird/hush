@@ -3357,4 +3357,27 @@ describe('a print or a diff is never read as a failed run', () => {
   test('the same text from any other command with no exit code still reads as failed', () => {
     assert.ok(view('Bash', 'npm test', code).includes(FAILURE_RERUN_NOTE));
   });
+
+  // A printed test log is no failed run, but a failed check in it still keeps
+  // its value lines out of the same-shape fold, as in the run that wrote it.
+  const checks = Array.from({ length: 8 }, (_, k) => `    orders_test.go:${40 + k}: order ${101 + k}: expected total ${250 + k}, got ${2500 + k}`);
+  const testLog = (result, end) => overFloor(['=== RUN   TestTotals', ...checks, `--- ${result}: TestTotals (0.00s)`, ...end]).join('\n');
+  const printed = (command, stdout) => {
+    const out = hookOutput(runHook('compress-tool-output.js',
+      { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout, stderr: '', interrupted: false } }));
+    return out ? out.hookSpecificOutput.updatedToolOutput.stdout : stdout;
+  };
+
+  test('a printed failing go test log keeps its failed checks out of the fold, wrapped or not', () => {
+    const log = testLog('FAIL', ['FAIL', 'FAIL\texample.com/orders\t0.005s']);
+    for (const v of [printed('cat test.log', log), printed(wrapBash('cat test.log'), `${log}\n[[hush:exit=\n0\n]]`)]) {
+      for (const line of checks) assert.ok(v.includes(line), `folded: ${line.trim()}`);
+      assert.ok(!v.includes(FAILURE_RERUN_NOTE), 'read as failed');
+    }
+  });
+
+  test('the control: a printed passing go test log still folds', () => {
+    const v = printed('cat test.log', testLog('PASS', ['PASS', 'ok  \texample.com/orders\t0.005s']));
+    assert.ok(v.includes(`${checks[0]}\n[hush hook: 7 similar lines collapsed`), 'the passing log did not fold');
+  });
 });

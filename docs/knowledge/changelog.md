@@ -71,6 +71,11 @@ longer ends with the note that the run failed and should be run again when
 its text says error or failed. A read runs no command, and the notes inside
 the view already say that no warning, error or failure line was cut.
 
+A whole-file print of a failing test log, such as `cat test.log`, now keeps
+each failed check's values and file:line lines out of the folding of
+same-shape lines, as the failing run itself does. They were folded because
+the print exited 0 or had no exit code.
+
 A failing run past the line cap whose every line is a warning, error or
 failure line, so the cap cuts none, no longer ends with the note that the
 view is capped and the command should be run again.

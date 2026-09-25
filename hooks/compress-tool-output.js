@@ -132,9 +132,10 @@ function shareTemplate(aTokens, bTokens) {
 //   4. A line that names a failing go test (`=== RUN` and the like, see
 //      goFailureIdx) is never collapsed, so capLines can still tell which
 //      test the lines after it belong to.
-//   5. In a failing run, a line kept for where it sits next to a failure
-//      (contextIdx: a first frame, a failed check's values and file:line) is
-//      never collapsed, so capLines can keep what the fold would have hidden.
+//   5. In a failing run, or a file dump whose text reads as one, a line kept
+//      for where it sits next to a failure (contextIdx: a first frame, a
+//      failed check's values and file:line) is never collapsed, so capLines
+//      can keep what the fold would have hidden.
 //      That set holds at most REPORT_LINES_MAX go test lines per failed
 //      test, so the rest of a long test may fold.
 //   6. Fewer than TEMPLATE_MIN_RUN same-shape lines collapse to nothing at all;
@@ -1428,7 +1429,10 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // the reason it passes whole below that: its rows are the names or code
   // lines asked for, all of one shape.
   const deduped = dedupeConsecutive(cleaned.split("\n"));
-  const folded = !enumerate && !bounded && !short ? collapseTemplates(deduped, relevanceTokens, failed) : deduped;
+  // A dump's exit code says whether the file printed, not whether the text it
+  // printed reports a failure, so its fold reads the text.
+  const foldFailed = failed || (isDump && looksLikeFailure(cleaned));
+  const folded = !enumerate && !bounded && !short ? collapseTemplates(deduped, relevanceTokens, foldFailed) : deduped;
   let collapsed = folded.length < deduped.length;
   let capped, lines, out;
   const build = (from) => {
