@@ -9,7 +9,7 @@ later; there is no install or build step. This repository is Foundry's hush subm
 
 - Before changing a hook or the shipped voice, read [how hush works](docs/knowledge/how-it-works.md).
 - Before changing a switch or the style slot, read [settings](docs/knowledge/settings.md).
-- Before touching a README number, read [the benchmark details](docs/knowledge/benchmarks.md); every published number belongs to the shipped voice with `HUSH_WRAP=1`.
+- Before touching a README number, read [the benchmark details](docs/knowledge/benchmarks.md); every published number belongs to the voice shipped when its batch ran, with `HUSH_WRAP=1`.
 - Before a release, read [the changelog](docs/knowledge/changelog.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Rules that outrank everything

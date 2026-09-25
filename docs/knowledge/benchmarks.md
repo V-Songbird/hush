@@ -40,7 +40,7 @@ Every price is the real bill, read back from the API.
 
 ## The README comparison
 
-Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the recorded `opus` alias (identified as Opus 5 by the published source) at medium effort. Hush used the shipped writing voice and `HUSH_WRAP=1`.
+Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the recorded `opus` alias (identified as Opus 5 by the published source) at medium effort. Hush ran with `HUSH_WRAP=1` and the writing voice shipped when the batch started.
 
 | Claude Opus 5, 36 sessions each | jobs right | spoke at most once before the answer | median final prose words |
 | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ hush cost more than no plugin on the three quietest jobs, by 1%, 4% and 10%. Run
 
 ## The earlier comparisons
 
-Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the shipped writing voice.
+Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the writing voice shipped when each batch started.
 
 ## Does it still work?
 
