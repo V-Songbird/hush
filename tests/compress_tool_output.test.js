@@ -3159,6 +3159,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
   // view also folds them.
   const names = lines(92, (i) => `docs/knowledge/archive/2026/meeting-note-${i}-summary.md`);
   const code = lines(92, (i) => `  const value${i} = computeTheValue(${i}, options);`);
+  const patch = ['diff --git a/src/app.js b/src/app.js', '--- a/src/app.js', '+++ b/src/app.js', '@@ -1,88 +1,88 @@',
+    ...code.split('\n').slice(0, 88).map((l) => `+${l}`)].join('\n');
   const session = 'hush-test-bounded-' + Date.now();
   after(() => removeSessions([session]));
 
@@ -3183,6 +3185,10 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'ls missing 2>&1',
       '& { Get-ChildItem docs } 2>&1 | Out-String -Width 4096',
       "& { Get-Content app.log -Tail 50 } 2>&1 | Out-String -Width 4096",
+      'git diff',
+      'git diff --cached src/app.js',
+      'git show HEAD -- src/app.js',
+      wrapPowerShell('git show HEAD'),
     ]) assert.ok(isBoundedPrint(c), c);
   });
 
@@ -3200,6 +3206,12 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'head src/app.js',
       'cat src/app.js',
       'Get-Content src/app.js',
+      'git diff | head -50',
+      'git diff > out.patch',
+      'git diff && npm test',
+      'git difftool',
+      'git show-ref',
+      'git log -p',
       'npm test',
       '& { npm test } 2>&1 | Out-String -Width 4096',
       'ls\nnpm test',
@@ -3233,6 +3245,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['sed -n', "sed -n '1300,1391p' src/app.js", code],
     ['head -n', 'head -n 92 src/app.js', code],
     ['tail -n', 'tail -n 92 src/app.js', code],
+    ['git diff', 'git diff', patch],
+    ['git show', 'git show HEAD -- src/app.js', patch],
   ]) {
     test(`${shape}: 92 lines pass through the Bash hook untouched`, () => {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } });

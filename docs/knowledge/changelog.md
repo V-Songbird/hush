@@ -60,12 +60,14 @@ run. A script of several lines that opens with such a print is now trimmed
 like any other output, where it kept up to 250. Folding and the save to a
 file from 15,000 characters work as before.
 
-A `git diff` or `git show` run on its own now keeps up to 250 lines, as a
-whole-file print does. It was cut to 60 like a clean run when hush knew it
-exited 0 or its text never said error or failed. When hush has no exit code,
-a whole-file print, a line-range print past 250 lines and such a diff no
-longer end with the note that the run failed just because the printed text
-says error or failed.
+A `git diff` or `git show` run on its own now comes back whole up to 250
+lines, however long the session, as a listing or a line-range print does:
+nothing in it is folded, cut or saved to a file. It was cut to 60 like a
+clean run when hush knew it exited 0 or its text never said error or failed,
+and its runs of same-shape lines were folded. When hush has no exit code, a
+whole-file print, a line-range print past 250 lines and such a diff no longer
+end with the note that the run failed just because the printed text says
+error or failed.
 
 A log, a generated file or a file hush saved, read whole and cut to fit, no
 longer ends with the note that the run failed and should be run again when

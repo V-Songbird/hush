@@ -49,19 +49,19 @@ conversation and gets re-sent on every turn after it. Parking it means Claude ca
 it, but only if it decides it needs to. A shell result of 28,000 characters or more may already have
 been cut short by Claude Code, so hush saves it as it received it and says so.
 
-A directory listing or a print of a line range comes back whole up to 250 lines, however long the
-session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail` with a line
-count, and `Get-Content` with `-TotalCount` or `-Tail`, each run on its own rather than piped or
-chained. Nothing in it is folded, cut or parked in a file. Past 250 lines only exact repeats fold, into
-one line and a count: under 4,000 characters it still comes back whole, from 4,000 it keeps 250,
-the first and last stretch, and from 15,000 characters it is parked like any other output.
-Such output has no warning or error lines for a trim to keep, so a trim only cut names or code lines
-Claude then had to fetch again.
+A directory listing, a print of a line range or a diff comes back whole up to 250 lines, however
+long the session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail`
+with a line count, `Get-Content` with `-TotalCount` or `-Tail`, and `git diff` or `git show`, each run
+on its own rather than piped or chained. Nothing in it is folded, cut or parked in a file. Past 250
+lines only exact repeats fold, into one line and a count: under 4,000 characters it still comes
+back whole, from 4,000 it keeps 250, the first and last stretch, and from 15,000 characters it is
+parked like any other output. Such output has no warning or error lines for a trim to keep, so a
+trim only cut names, code or diff lines Claude then had to fetch again.
 
-A whole-file print, `cat`, `type` or `Get-Content`, and a `git diff` or `git show`, each run on its
-own, keep up to 250 lines like a failing run: a trim there cuts file text, not noise. Without an
-exit code, neither these nor a listing or a line-range print counts as a failing run: the words
-error or failed in them are the file's text, so a trimmed view of them never says the run failed.
+A whole-file print, `cat`, `type` or `Get-Content` run on its own, keeps up to 250 lines like a
+failing run: a trim there cuts file text, not noise. Without an exit code, neither it nor a listing,
+a line-range print or a diff counts as a failing run: the words error or failed in them are the
+file's text, so a trimmed view of them never says the run failed.
 A printed test log still keeps a failed check's values and file:line lines out of the fold.
 
 Two other tools get the same treatment:
@@ -75,7 +75,7 @@ Two other tools get the same treatment:
 
 The caps on a clean or failing run tighten as a session grows. Past 400 KB of conversation each is
 three quarters of its size, and past 1 MB it is half, never below 30 lines for a clean run or 125
-for a failing one. The 250-line cap on a listing or a line-range print stays 250. When
+for a failing one. The 250-line cap on a listing, a line-range print or a diff stays 250. When
 you ask for every item — "list every warning" — the cap rises to 2,000 lines, and nothing is folded
 by shape or parked in a file.
 

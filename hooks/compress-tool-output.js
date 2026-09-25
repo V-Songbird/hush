@@ -792,17 +792,18 @@ function isFileDump(command) {
   return typeof command === "string" && FILE_DUMP_RE.test(unwrapCommand(command));
 }
 
-// A directory listing, or a print of a line range the command bounds itself
-// (sed -n, head/tail -n, Get-Content -TotalCount/-Tail), has no warning or
-// error lines for the cap to keep, so a trim cuts arbitrary names or code
-// lines and sends the model back for a second read. compress() passes these
+// A directory listing, a print of a line range the command bounds itself
+// (sed -n, head/tail -n, Get-Content -TotalCount/-Tail), or a git diff or git
+// show has no warning or error lines for the cap to keep, so a trim cuts
+// arbitrary names, code or diff lines and sends the model back for a second
+// read; a re-run gets the same cut. compress() passes these
 // whole up to CAP_FAIL lines, as main() passes a ranged Read, and past that
 // keeps CAP_FAIL of them without folding any. One command
 // only, on one line, read through unwrapCommand below as isFileDump reads it.
 // find is a listing unless -exec/-ok prints another command's output.
 const BOUNDED_PRINT_RE = new RegExp(
   "^(?=[^|;&<>\\r\\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
-    "|(?:head|tail)\\s+-(?:n\\s*)?\\+?\\d|(?:cat|type|gc|Get-Content)\\s.*\\s-(?:TotalCount|Head|First|Tail|Last)\\s+\\d)",
+    "|(?:head|tail)\\s+-(?:n\\s*)?\\+?\\d|(?:cat|type|gc|Get-Content)\\s.*\\s-(?:TotalCount|Head|First|Tail|Last)\\s+\\d|git\\s+(?:diff|show)(?:\\s|$))",
   "i"
 );
 const PS_WRAP_RE = /^& \{ (.*) \} 2>&1 \| Out-String -Width 4096$/;
