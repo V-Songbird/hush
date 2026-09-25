@@ -131,22 +131,43 @@ const LINE_KINDS = {
 const COUNTS = [0, 1, 2, 4, 5, 6, 59, 60, 61, 62, 249, 250, 251, 300];
 const KINDS = Object.keys(LINE_KINDS);
 
+// Cleaned sizes sit ON the 4,000-character floor (GREP_MIN_CHARS) below which
+// compress() neither folds nor caps, and one either side of it. Line counts
+// alone land almost no case near that floor, so about a quarter of the cases
+// grow or trim their lines to one of these sizes. A case split by bare `\r`
+// cleans down to its last line and cannot be sized, so it keeps its count.
+const FLOOR_CHARS = 4000;
+const SIZES = [FLOOR_CHARS - 1, FLOOR_CHARS, FLOOR_CHARS + 1];
+
 function generate(seed) {
   const r = prng(seed);
   const mix = Array.from({ length: int(r, 1, 4) }, () => pick(r, KINDS));
   const count = pick(r, COUNTS);
   const lines = Array.from({ length: count }, (_, i) => LINE_KINDS[pick(r, mix)](r, i));
   const eol = pick(r, ['\n', '\n', '\n', '\r\n', '\r']);
-  return {
+  const c = {
     seed,
     mix,
-    count,
-    text: lines.join(eol),
     exitCode: pick(r, [undefined, undefined, 0, 1, 137]),
     isDump: r() < 0.15,
     enumerate: r() < 0.15,
     relevance: r() < 0.2 ? ['worker-1'] : [],
   };
+  // Drawn last, so an unsized case is the same case it was before sizes existed.
+  if (r() < 0.25 && eol !== '\r') {
+    // Cleaning works line by line, so the cleaned size is each line's cleaned
+    // length plus one per line break; a plain pad line makes up the rest.
+    const target = pick(r, SIZES);
+    const joined = (l, i) => cleanOf(l).length + (i > 0 ? 1 : 0);
+    let size = lines.reduce((n, l, i) => n + joined(l, i), 0);
+    while (size < target) {
+      lines.push(LINE_KINDS[pick(r, mix)](r, lines.length));
+      size += joined(lines[lines.length - 1], lines.length - 1);
+    }
+    while (size > target) size -= joined(lines.pop(), lines.length);
+    if (size < target) lines.push('.'.repeat(target - size - (lines.length ? 1 : 0)));
+  }
+  return { ...c, count: lines.length, text: lines.join(eol) };
 }
 
 const BASE_SEED = 0x48555348; // "HUSH"
@@ -198,6 +219,13 @@ const keepLinesOf = (text) => cleanOf(text).split('\n').filter(isKeepLine);
 // ---------------------------------------------------------------------------
 
 describe('property: compress() over generated output', () => {
+  // Anti-vacuity for SIZES: the properties below only cover both sides of the
+  // floor if the corpus actually reaches each size.
+  test('the corpus holds a case at, and one either side of, the 4,000-character floor', () => {
+    const sizes = new Set(Array.from({ length: CASES }, (_, n) => cleanOf(generate(BASE_SEED + n).text).length));
+    for (const size of SIZES) assert.ok(sizes.has(size), `no generated case cleans to ${size} characters`);
+  });
+
   test('every warning, error, failure and traceback frame survives', () => {
     for (let n = 0; n < CASES; n++) {
       const c = generate(BASE_SEED + n);
