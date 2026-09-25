@@ -47,7 +47,7 @@ function cleanRoots() {
 }
 
 // A payload hush handles is mostly bulk, and bulk does not belong inline in a
-// fixture. These four generators are the only substitutions; everything else
+// fixture. These six tokens are the only substitutions; everything else
 // in a fixture file is literal.
 //
 //   {{SESSION}}      the scenario's session id
