@@ -144,6 +144,13 @@ prints, such as hush's own source, a saved earlier output or a quoted report,
 stays in the output as printed and no longer changes the exit code Claude
 sees. Before, it could make a command that passed read as failed or killed.
 
+A Bash command whose `exec` sends the shell's own output elsewhere, such as
+`exec >build.log` or `exec &>/dev/null`, is no longer wrapped to read its exit
+code. The marker hush adds went along with the output, so a failing command
+reached Claude as a success. It now fails as it does without hush, and its
+output comes through untrimmed. `exec 1>&2` and `exec > >(tee log)` leave the
+marker where hush reads it and are still wrapped.
+
 The note hush adds once per session now says where hush's notes can appear:
 shell output, the logs, generated files and saved outputs it reads back, and
 long search results, each on a line of its own. It says that a line of that

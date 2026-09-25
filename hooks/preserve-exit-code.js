@@ -119,10 +119,22 @@ function permissionsAllowWrapping(data) {
 // command, a miss costs the output.
 const SELF_EXIT_RE = /(^|[;&|(){}\n])\s*exit\b/;
 
+// The bash trailer is echoed to the shell's own stdout, so an `exec` that
+// points stdout elsewhere (`exec >log`, `exec &>/dev/null`, `exec 1>&-`) takes
+// the trailer with it, and the wrapper's `exit 0` then reports a failing
+// command as a success with no code to correct it. Left unwrapped, the command
+// keeps its own status. Two targets keep the trailer readable and stay
+// wrapped: fd 2 (`exec 1>&2` lands it in stderr, which compress-tool-output.js
+// reads when stdout has none) and a process substitution (`exec > >(tee log)`
+// passes it on). Loose like SELF_EXIT_RE, and it also looks after `then`,
+// `else` and `do`, since a miss here misreports a failure.
+const STDOUT_EXEC_RE = /(^|[;&|(){}\n]|\b(?:then|else|do))\s*exec\b[^;|\n]*?(?<=\s|exec)(1<?|&)?>>?(?!\s*>\(|\(|&\s*2\b)/;
+
 function shouldSkip(data, command) {
   if (typeof command !== "string" || !command.trim()) return true;
   if (alreadyWrapped(command)) return true;
   if (SELF_EXIT_RE.test(command)) return true;
+  if (STDOUT_EXEC_RE.test(command)) return true;
   // A backgrounded launch (dev server, watch mode) never reaches its own
   // exit during this tool call — wrapping would just delay the trailer
   // forever behind a process that's still running. Best-effort: a

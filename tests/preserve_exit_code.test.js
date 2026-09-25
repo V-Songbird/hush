@@ -99,6 +99,48 @@ describe('unit: shouldSkip', () => {
     }
   });
 
+  // The trailer is echoed to stdout, so an exec that points the shell's own
+  // stdout elsewhere takes it along, and the wrapper's `exit 0` reports a
+  // failing command as a success (see the shell conformance block below).
+  test("skips a command whose exec points the shell's stdout elsewhere", () => {
+    const data = { permission_mode: BYPASS, tool_input: {} };
+    for (const command of [
+      'exec >out.log\nnpm test',
+      'exec > out.log; npm test',
+      'exec>out.log; npm test',
+      'exec 1>>out.log; npm test',
+      'exec &>/dev/null; npm test',
+      'exec >&out.log; npm test',
+      'exec >/dev/null 2>&1; npm test',
+      'exec 2>&1 >out.log; npm test',
+      'exec 3>&1 1>out.log; npm test',
+      'exec >|out.log; npm test',
+      'exec 1<>out.log; npm test',
+      'exec 1>&3; npm test',
+      'exec >&-; npm test',
+      '{ exec >out.log; npm test; }',
+      'if [ -n "$CI" ]; then exec >ci.log; fi; npm test',
+    ]) {
+      assert.strictEqual(shouldSkip(data, command), true, command);
+    }
+  });
+
+  test('an exec that leaves the trailer where it is read is still wrapped', () => {
+    const data = { permission_mode: BYPASS, tool_input: {} };
+    for (const command of [
+      'exec 1>&2; npm test',
+      'exec >&2; npm test',
+      'exec 2>err.log; npm test',
+      'exec 2>&1; npm test',
+      'exec 3>&1; npm test',
+      'exec </dev/null; npm test',
+      'exec > >(tee run.log) 2>&1; npm test',
+      'find . -name "*.log" -exec cat {} + > all.txt',
+    ]) {
+      assert.strictEqual(shouldSkip(data, command), false, command);
+    }
+  });
+
   test('a command that merely contains the letters exit is still wrapped', () => {
     const data = { permission_mode: BYPASS, tool_input: {} };
     assert.strictEqual(shouldSkip(data, 'npm run exit-check'), false);
@@ -328,5 +370,27 @@ describe('shell conformance: what the wrapper actually records', { skip: BASH ? 
 
   test('set -e ends the shell before the trailer — no marker, non-zero status', () => {
     assert.deepStrictEqual(recordedExit('set -e\necho hi\nfalse\necho unreached'), { marker: null, toolExit: 1 });
+  });
+
+  // The command as the hook leaves it, run, with the trailer read from stdout
+  // and then stderr as compress-tool-output.js reads it.
+  function hostResult(command) {
+    const run = shouldSkip({ permission_mode: BYPASS, tool_input: {} }, command) ? command : wrapBash(command);
+    const r = spawnSync(BASH, ['-c', run], { encoding: 'utf-8' });
+    return { marker: markerOf(r.stdout) ?? markerOf(r.stderr), toolExit: r.status };
+  }
+
+  test('a failing command behind an exec stdout redirect still reaches the host as a failure', () => {
+    // Wrapped, the trailer follows stdout into /dev/null and `exit 0` wins.
+    assert.deepStrictEqual(recordedExit('exec >/dev/null\nfalse'), { marker: null, toolExit: 0 });
+    for (const command of ['exec >/dev/null\nfalse', 'exec &>/dev/null; false', 'exec 1>&-; false', 'if true; then exec >/dev/null; fi; false']) {
+      assert.deepStrictEqual(hostResult(command), { marker: null, toolExit: 1 }, command);
+    }
+  });
+
+  test('exec 1>&2 and exec > >(tee) keep the trailer readable and stay wrapped', () => {
+    for (const command of ['exec 1>&2\nfalse', 'exec > >(tee /dev/null)\nfalse']) {
+      assert.deepStrictEqual(hostResult(command), { marker: 1, toolExit: 0 }, command);
+    }
   });
 });
