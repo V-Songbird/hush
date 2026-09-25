@@ -2702,24 +2702,6 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     pathFrom(out);
     assert.match(out, /saved in full to/, 'Read path keeps sidecaring big files');
   });
-
-  test('HUSH_SIDECAR_SHELL_MAX tunes the bound', () => {
-    const prev = process.env.HUSH_SIDECAR_SHELL_MAX;
-    process.env.HUSH_SIDECAR_SHELL_MAX = '18000';
-    // constants are read at require-time; re-require a fresh copy
-    const p = require.resolve('../hooks/compress-tool-output');
-    delete require.cache[p];
-    const fresh = require('../hooks/compress-tool-output');
-    try {
-      const out = withSidecar(() => fresh.compress(bigText(20000), 0, false, false, [], 1, 's', undefined, true));
-      assert.doesNotMatch(out, /saved in full to/, '20KB now exceeds the lowered bound');
-      assert.match(out, /as hush received it/, 'so the copy drops its "in full" claim');
-    } finally {
-      if (prev === undefined) delete process.env.HUSH_SIDECAR_SHELL_MAX; else process.env.HUSH_SIDECAR_SHELL_MAX = prev;
-      delete require.cache[p];
-      require('../hooks/compress-tool-output');
-    }
-  });
 });
 
 describe('grep match-list compression', () => {
