@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "{{SESSION}}",
+  "transcript_path": "{{TRANSCRIPT}}",
+  "tool_name": "Bash",
+  "tool_input": { "command": "node --test" }
+}

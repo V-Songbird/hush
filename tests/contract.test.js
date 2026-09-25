@@ -199,6 +199,15 @@ const SCENARIOS = [
     silent: true,
   },
   {
+    // The line Claude Code asked for is not chatter. Claude Code does not
+    // document the attachment type that marks it, so a rename there shows up
+    // here as a corrective where this golden holds nothing.
+    name: 'posttooluse-nudge-host-status',
+    hook: 'silence-nudge.js',
+    transcript: 'hostStatus',
+    silent: true,
+  },
+  {
     // Claude Code builds compaction instructions from raw stdout here, not
     // from hookSpecificOutput — losing that channel is the drift this pins.
     name: 'precompact-summary',
@@ -224,8 +233,9 @@ const SCENARIOS = [
 ];
 
 // A transcript fixture only matters to silence-nudge, which counts assistant
-// text blocks since the last human prompt. Two shapes: one that leaked, one
-// that stayed quiet.
+// text blocks since the last human prompt. Three shapes: one that leaked, one
+// that stayed quiet, and one whose only text is the status line Claude Code
+// asked for, recorded as Claude Code 2.1.280 writes the request.
 const TRANSCRIPTS = {
   leaky: [
     { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
@@ -234,6 +244,12 @@ const TRANSCRIPTS = {
   ],
   quiet: [
     { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
+    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: {} }] } },
+  ],
+  hostStatus: [
+    { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
+    { type: 'attachment', attachment: { type: 'silent_turn_reminder', text: 'Give a short status line, then continue.' } },
+    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Running the suite.' }] } },
     { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: {} }] } },
   ],
 };

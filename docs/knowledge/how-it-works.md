@@ -143,8 +143,10 @@ itself, but only when it has to.
 
 By default it reminds Claude once at the start of each of your turns, and again once, the first time
 chatter slips through in that turn. A line Claude Code itself asked for when you had not heard from
-Claude in a while does not count. A session that stays quiet pays nothing extra. `HUSH_NUDGE=max`
-reminds on every single command result instead — quieter, and it costs the most.
+Claude in a while does not count. hush spots that line by the `silent_turn_reminder` entry Claude
+Code writes before it, a name Claude Code does not document; if Claude Code renames it, the line
+counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
+`HUSH_NUDGE=max` reminds on every single command result instead — quieter, and it costs the most.
 
 ## When the conversation is compacted
 
