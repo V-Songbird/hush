@@ -52,8 +52,9 @@ been cut short by Claude Code, so hush saves it as it received it and says so.
 A directory listing or a print of a line range comes back whole up to 250 lines, however long the
 session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail` with a line
 count, and `Get-Content` with `-TotalCount` or `-Tail`, each run on its own rather than piped or
-chained. Nothing in it is folded, cut or parked in a file. Past 250 lines it keeps 250, the first
-and last stretch, and still folds nothing; from 15,000 characters it is parked like any other output.
+chained. Nothing in it is folded, cut or parked in a file. Past 250 lines only exact repeats fold, into
+one line and a count: under 4,000 characters it still comes back whole, from 4,000 it keeps 250,
+the first and last stretch, and from 15,000 characters it is parked like any other output.
 Such output has no warning or error lines for a trim to keep, so a trim only cut names or code lines
 Claude then had to fetch again.
 
@@ -72,8 +73,9 @@ Two other tools get the same treatment:
   every match that reads like a warning or an error. It counts the rest per file and saves the full
   list to a file.
 
-The caps tighten as a session grows. Past 400 KB of conversation every cap is three quarters of its
-size, and past 1 MB it is half, never below 30 lines for a clean run or 125 for a failing one. When
+The caps on a clean or failing run tighten as a session grows. Past 400 KB of conversation each is
+three quarters of its size, and past 1 MB it is half, never below 30 lines for a clean run or 125
+for a failing one. The 250-line cap on a listing or a line-range print stays 250. When
 you ask for every item — "list every warning" — the cap rises to 2,000 lines, and nothing is folded
 by shape or parked in a file.
 
@@ -117,7 +119,7 @@ comes back exactly as the search returned it.
 
 Each note sits on a line of its own that opens with `[hush:` or `[hush hook:`. The first time one
 appears in a session, hush tells Claude once where its notes can appear: shell output, the logs,
-generated files and parked copies it reads back, and long search results. Anything else shaped like
+generated files and parked copies Claude reads back, and long search results. Anything else shaped like
 a note, such as a `[[hush:exit=N]]` a command printed, is part of the output, and it does not use up
 that one-time note.
 

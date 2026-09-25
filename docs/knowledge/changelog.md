@@ -48,8 +48,9 @@ A directory listing or a print of a line range now comes back whole up to
 250 lines: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`,
 `head -n`, `tail -n`, and `Get-Content` with `-TotalCount` or `-Tail`, each
 run on its own. A listing or print of more than 60 lines could keep only its
-first and last stretch, so Claude read it a second time. Past 250 lines it
-now keeps 250 and folds none; from 15,000 characters it is still saved to a
+first and last stretch, so Claude read it a second time. Past 250 lines one
+under 4,000 characters still comes back whole and one from 4,000 keeps 250;
+only exact repeats fold, and from 15,000 characters it is still saved to a
 file.
 
 A whole-file print in PowerShell, `Get-Content`, `gc`, `type` or `cat` with
@@ -152,7 +153,7 @@ output comes through untrimmed. `exec 1>&2` and `exec > >(tee log)` leave the
 marker where hush reads it and are still wrapped.
 
 The note hush adds once per session now says where hush's notes can appear:
-shell output, the logs, generated files and saved outputs it reads back, and
+shell output, the logs, generated files and saved outputs Claude reads back, and
 long search results, each on a line of its own. It says that a line of that
 output which already opened with `[hush` arrives as `\[hush`, and that
 anything else shaped like a note, such as a `[[hush:exit=N]]` a command
