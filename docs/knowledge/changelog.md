@@ -71,6 +71,10 @@ longer ends with the note that the run failed and should be run again when
 its text says error or failed. A read runs no command, and the notes inside
 the view already say that no warning, error or failure line was cut.
 
+A failing run past the line cap whose every line is a warning, error or
+failure line, so the cap cuts none, no longer ends with the note that the
+view is capped and the command should be run again.
+
 A whole-file print or a `git diff` that redirects only its errors, such as
 `cat f 2>/dev/null`, `cat f 2>&1` or `Get-Content f 2>$null`, now keeps up to
 250 lines like the same print without the redirect, as a listing or a

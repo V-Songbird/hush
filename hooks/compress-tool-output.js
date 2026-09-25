@@ -1432,8 +1432,10 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   let collapsed = folded.length < deduped.length;
   let capped, lines, out;
   const build = (from) => {
-    capped = from.length > cap; // capLines' own no-op guard is `length <= cap`
     lines = capLines(from, cap, relevanceTokens);
+    // Past the cap, a view whose every line is a keep line still loses none,
+    // and a cut always leaves an omission marker where the first lost line was.
+    capped = lines.some((l, i) => l !== from[i]);
     if (failed && capped && !fileRead) lines.push(FAILURE_RERUN_NOTE);
     out = lines.join("\n");
   };

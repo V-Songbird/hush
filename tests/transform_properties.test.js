@@ -611,7 +611,7 @@ describe('e2e: main() routes every path through the same boundary', () => {
     });
     assert.strictEqual(r.status, 0, r.stderr);
     assert.strictEqual(r.stdout, '', 'a view that elided nothing and grew a footer was shipped');
-    assert.strictEqual(records(dir)[0].action, 'rejected-not-smaller');
+    assert.strictEqual(records(dir)[0].action, 'passthrough');
   });
 
   test('a range read comes back verbatim, however adversarial the slice', () => {
@@ -636,14 +636,14 @@ describe('e2e: main() routes every path through the same boundary', () => {
 // ---------------------------------------------------------------------------
 
 describe('pinned: narrow edges of the current transforms', () => {
-  test('an all-kept failing run still reaches deliver() with a rerun footer and nothing omitted', () => {
+  test('an all-kept failing run past the cap is not a cap and gets no rerun footer', () => {
     const d = {};
     const text = Array.from({ length: 300 }, (_, i) => `ERROR ${i}: connection refused`).join('\n');
     const out = compress(text, 1, false, false, [], 1, null, true, false, d);
     assert.strictEqual(d.omitted, 0, 'nothing was elided');
-    assert.ok(out.includes(FAILURE_RERUN_NOTE), 'the footer rides on a view that cut nothing');
-    // Which is exactly why deliver() drops it: here the footer is pure growth.
-    assert.ok(out.length > text.length);
+    assert.ok(!out.includes(FAILURE_RERUN_NOTE), 'the footer rides on a view that cut nothing');
+    assert.strictEqual(d.action, 'passthrough');
+    assert.strictEqual(out, text);
   });
 
   test('identical failure lines are never folded into a repeat count', () => {

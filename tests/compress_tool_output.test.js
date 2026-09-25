@@ -810,6 +810,22 @@ describe('hook: end to end', () => {
     assert.ok(!view.includes(FAILURE_RERUN_NOTE), 'read as a failed run');
   });
 
+  // Every line of this run is a keep line, so the cap cuts none of them even
+  // though there are more than 250. Stripping the colour codes still makes the
+  // view smaller, so it ships, and no note may call it capped.
+  test('a failing run the cap cut nothing from gets no failure note', () => {
+    const lines = Array.from({ length: 300 }, (_, i) => `\x1b[31mERROR ${i}: connection refused\x1b[0m`);
+    const r = runHook('compress-tool-output.js', {
+      tool_name: 'Bash',
+      tool_input: { command: 'node build.js' },
+      tool_response: lines.join('\n'),
+    });
+    const view = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.ok(!view.includes('\x1b['), 'the colour codes are stripped');
+    assert.doesNotMatch(view, /lines omitted from this view/, 'nothing was cut');
+    assert.ok(!view.includes(FAILURE_RERUN_NOTE), 'a view that cut nothing is called capped');
+  });
+
   test('Read of a small .log file stays silent — nothing to shrink', () => {
     const r = runHook('compress-tool-output.js', {
       tool_name: 'Read',
