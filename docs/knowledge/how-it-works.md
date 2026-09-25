@@ -192,11 +192,11 @@ the file that changes.
 
 Updating the plugin puts the shipped voice back. Pick again after an update.
 
-## What hush never does
+## What hush leaves alone
 
 It edits your files only when you ask: `/hush:craft-style` writes the voice you describe, and
 picking a voice can remove an `outputStyle` setting the swap makes redundant and, with your yes,
 swap in the current `[hush ...]` paragraph. It never sends anything off your machine. It never cuts
-a warning, an error or a failure line from a trimmed view, and when a digest samples them, the file it names holds
-every one. And it never claims it can regenerate output that
-was lost — if the parked file is gone, it tells you to run the command again.
+a warning, an error or a failure line from a trimmed view, and when a digest samples them, the file
+it names holds every one. And it never claims it can regenerate output that was lost — if the
+parked file is gone, it tells you to run the command again.
