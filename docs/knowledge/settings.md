@@ -115,6 +115,8 @@ process.stdin.on('data', (d) => (stdin += d)).on('end', () => {
 Describe the voice you want and `/hush:craft-style` writes it — robotic, dry, loud, whatever you
 ask for. The words change; the machinery underneath does not. A check runs after the rewrite and
 names anything the new voice dropped, and a voice that lost a rule never reaches your session.
+When the only gap is the paragraph about `[hush ...]` lines from an older hush, both commands offer
+to swap in the current one, and with your yes it is the only line of the file that changes.
 
 Both commands ask before they swap, and both take effect at your next session. Updating the plugin
 puts the shipped voice back, so pick again after an update.
