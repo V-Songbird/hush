@@ -14,7 +14,7 @@ const { readInput, emitToolOutput, decodeResponse, SHELL_FIELDS, lastUserPromptT
 const { safeWriteFileSync } = require("./lib/safe-write");
 const { combineActions, buildRecord, recoveryGap, sizeGap, fieldGap, debugManifestPath, appendRecord } = require("./lib/transform-manifest");
 const sidecarStore = require("./lib/sidecar-store");
-const { coreOff, OFF_TOKEN } = require("./lib/gate");
+const { coreOff, isOff } = require("./lib/gate");
 
 const WATCHED_TOOLS = new Set(["Bash", "PowerShell", "Read", "Grep"]);
 
@@ -144,7 +144,7 @@ function shareTemplate(aTokens, bTokens) {
 // Anything outside 2-6 is fair game, and the dropped lines are NOT recoverable
 // from the view — only from the source, which is what the footer names.
 function collapseTemplates(lines, relevanceTokens, failed) {
-  if (OFF_TOKEN.test(process.env.HUSH_TEMPLATE || "")) return lines;
+  if (isOff("HUSH_TEMPLATE")) return lines;
   const named = relevanceMatcher(lines, relevanceTokens);
   const goNames = new Set(goFailureIdx(lines, true));
   const context = new Set(failed ? contextIdx(lines) : []);
@@ -1275,7 +1275,7 @@ function containsSecret(text) {
 // persisted at all — the secret screen runs here, strictly before any caller
 // can be handed a path to write to.
 function sidecarTarget(content, sessionId) {
-  if (OFF_TOKEN.test(process.env.HUSH_SIDECAR || "")) return null;
+  if (isOff("HUSH_SIDECAR")) return null;
   try {
     if (containsSecret(content)) return null;
     return path.join(sidecarStore.sessionDir(sessionId), `${cheapHash(content)}.txt`);
@@ -1654,7 +1654,7 @@ function main() {
   const enumerate = requestsEnumeration(promptText);
   const relevance = extractRelevanceTokens(promptText);
   let scale = 1;
-  if (!OFF_TOKEN.test(process.env.HUSH_ADAPTIVE || "")) {
+  if (!isOff("HUSH_ADAPTIVE")) {
     try {
       scale = pressureScale(fs.statSync(data.transcript_path).size);
     } catch {
@@ -1720,7 +1720,7 @@ function main() {
       ti["-A"] !== undefined || ti["-B"] !== undefined || ti["-C"] !== undefined || ti.context !== undefined || ti.multiline === true;
     let out = content;
     const decision = { tool: "Grep", bytesIn: content.length, linesIn: content.split("\n").length };
-    if (!OFF_TOKEN.test(process.env.HUSH_GREP || "") && !enumerate && !contextual && content.length >= GREP_MIN_CHARS) {
+    if (!isOff("HUSH_GREP") && !enumerate && !contextual && content.length >= GREP_MIN_CHARS) {
       const label =
         (typeof ti.path === "string" && ti.path) ||
         (response.filenames && response.filenames[0]) ||
@@ -1826,7 +1826,7 @@ function main() {
 function emit(updated, sessionId) {
   if (updated === undefined) return; // nothing shrank — stay silent
   const noteRides =
-    !OFF_TOKEN.test(process.env.HUSH_NOTE || "") && hasHushNote(updated) && claimSessionNote(sessionId);
+    !isOff("HUSH_NOTE") && hasHushNote(updated) && claimSessionNote(sessionId);
   emitToolOutput(updated, noteRides ? { additionalContext: NOTE_TEXT } : null);
 }
 

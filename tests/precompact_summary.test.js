@@ -210,7 +210,7 @@ describe('precompact-summary hook', () => {
   test('HUSH_COMPACT=off, 0 or false -> empty stdout', () => {
     const sessionA = freshSessionId();
     writeSidecarFile(sessionA, 'off-test');
-    for (const v of ['off', '0', 'OFF', 'false']) {
+    for (const v of ['off', '0', 'OFF', 'false', ' off', 'false ']) {
       const r = runHook({ hook_event_name: 'PreCompact', session_id: sessionA }, { HUSH_COMPACT: v });
       assert.strictEqual(r.status, 0);
       assert.strictEqual(r.stdout, '', v);

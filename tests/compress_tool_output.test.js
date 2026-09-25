@@ -21,8 +21,9 @@ function removeSessions(ids) {
 // runHook's env spread). The sidecar suite below re-enables it explicitly.
 process.env.HUSH_SIDECAR = 'off';
 // Every per-hook off switch takes the values the surface switches take
-// (OFF_TOKEN in hooks/lib/gate.js); each switch's test runs all of them.
-const OFF_VALUES = ['off', '0', 'OFF', 'false'];
+// (isOff in hooks/lib/gate.js), surrounding whitespace included; each
+// switch's test runs all of them.
+const OFF_VALUES = ['off', '0', 'OFF', 'false', ' off', 'false '];
 const {
   stripAnsi,
   resolveCarriageReturns,

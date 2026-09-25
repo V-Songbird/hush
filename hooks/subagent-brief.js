@@ -14,7 +14,7 @@
 // what a read-only agent produces, so the discipline applies most.
 
 const { readInput, emitContext } = require("./lib/harness");
-const { quietOff, OFF_TOKEN } = require("./lib/gate");
+const { quietOff, isOff } = require("./lib/gate");
 
 const BRIEF =
   "Your final message is consumed by the calling agent as a tool result, not read as chat: " +
@@ -26,7 +26,7 @@ const BRIEF =
 
 function main() {
   if (quietOff()) return;
-  if (OFF_TOKEN.test(process.env.HUSH_SUBAGENT || "")) return;
+  if (isOff("HUSH_SUBAGENT")) return;
   readInput(); // consume stdin per hook contract; no per-agent gating needed
   emitContext("SubagentStart", BRIEF);
 }

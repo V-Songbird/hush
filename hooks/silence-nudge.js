@@ -28,12 +28,12 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { quietOff, OFF_TOKEN } = require("./lib/gate");
+const { quietOff, isOff } = require("./lib/gate");
 const { sessionDir } = require("./lib/sidecar-store");
 const { readInputAsync, emitContext, readTailLines, isRealUserPrompt } = require("./lib/harness");
 
 const nudgeEnv = String(process.env.HUSH_NUDGE || "").trim();
-const OFF = OFF_TOKEN.test(nudgeEnv);
+const OFF = isOff("HUSH_NUDGE");
 const MAX_MODE = /^max$/i.test(nudgeEnv);
 
 // max's own wording. With a step reminder beside it, "until the work is done"

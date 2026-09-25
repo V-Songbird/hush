@@ -239,7 +239,7 @@ describe('Core and Quiet are independent capability switches', () => {
     assertActive(quiet, { HUSH_QUIET: 'on' });
   });
 
-  for (const token of ['0', 'off', 'OFF', 'false']) {
+  for (const token of ['0', 'off', 'OFF', 'false', ' off', 'false ']) {
     test(`"${token}" turns a surface off`, () => {
       assertInert(ALL.find((c) => c.name === 'compress-tool-output.js'), { HUSH_CORE: token });
       assertInert(ALL.find((c) => c.name === 'subagent-brief.js'), { HUSH_QUIET: token });
