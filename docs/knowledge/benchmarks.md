@@ -266,8 +266,8 @@ runnable content, against all 36 without a plugin and with caveman. The two with
 red test suite job and the notification router job. The heuristic looks for the shape of a command
 and does not check that the command is correct or complete.
 
-**On Opus the answer test is a tie, not a win.** One hush reply in 36 did not say plainly enough
-what had happened.
+**On Opus the answer test is a tie, not a win.** In the earlier comparisons, one hush reply in 36
+did not say plainly enough what had happened.
 
 **The zero-word silence count drops as sessions get longer.** It is a real number and it is on this
 page, but it is not a promise. The at-most-one-message count also describes these runs, not a guarantee.
