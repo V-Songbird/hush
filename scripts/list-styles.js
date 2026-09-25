@@ -35,7 +35,7 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
   const entries = [];
 
   const hushPath = path.join(pluginRoot, "output-styles", "hush.md");
-  entries.push({ name: "Hush (stock)", description: "The benchmarked default — no takeover.", source: "stock", path: "stock" });
+  entries.push({ name: "Hush (stock)", description: "The voice hush ships — no takeover.", source: "stock", path: "stock" });
 
   const craftedDirs = [path.join(homeDir, ".claude", "output-styles"), path.join(projectDir, ".claude", "output-styles")];
   const seen = new Set();
