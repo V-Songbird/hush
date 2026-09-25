@@ -134,6 +134,11 @@ escaped too. A long search result that hush shortens escapes the lines it
 keeps, and the once-per-session note says so; a search result hush leaves
 whole is still delivered exactly as returned.
 
+The same escape now catches `[hush` spelled in fullwidth letters such as
+`［ｈｕｓｈ`, in other compatibility forms such as mathematical bold, or with the
+Cyrillic and Greek letters drawn like h, u and s (Н, Һ, һ, Η, υ, Ѕ, ѕ). Any
+other line, in any script, is left as it is.
+
 hush's hooks now start node directly instead of through a shell, so hush needs
 Claude Code 2.1.139 or later. hush's
 reminder when you send a prompt now has 10 seconds to start instead of 5, so

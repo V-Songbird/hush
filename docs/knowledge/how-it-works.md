@@ -106,7 +106,9 @@ all of them. The file on disk and the command's real output are never changed.
 
 A line of the output itself that already opens with `[hush` gets a backslash in front, `\[hush`, so
 it cannot pass for one of these notes. That holds when spaces or invisible characters come first,
-when invisible characters sit inside `[hush`, and when the bracket is the fullwidth `［`. It happens
+when invisible characters sit inside `[hush`, when the bracket is the fullwidth `［`, and when the
+letters are fullwidth, another compatibility form such as mathematical bold, or the Cyrillic and
+Greek letters drawn like h, u and s (Н, Һ, һ, Η, υ, Ѕ, ѕ). It happens
 in any shell output hush may rewrite, however short, in the logs and generated files it trims, in
 the parked copy, and in a long search result hush shortens. Any other file and any read with an
 offset or a limit come back exactly as they are on disk, and a search result hush does not shorten

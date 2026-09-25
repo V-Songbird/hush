@@ -315,17 +315,40 @@ const HIDDEN = "\\u200B-\\u200D\\u2060\\uFEFF\\u202A-\\u202E\\u2066-\\u2069\\u{E
 // front of the bracket, `\[hush`, keeps it readable and takes it out of both.
 // The match reads the line as a model does: any spaces (what \s matches, less
 // the line breaks) or hidden characters before it, hidden characters inside
-// `[hush`, and the fullwidth bracket. compress() applies it to the input
+// `[hush`, and letters that read as `[hush` in any case. Every visible
+// character folds on its own under NFKC, which turns fullwidth, mathematical,
+// circled and modifier letters and the fullwidth and vertical brackets into
+// the plain ones; one at a time, so a combining mark cannot merge with the
+// last h and hide the rest. HOMOGLYPHS then maps the Cyrillic and Greek
+// letters drawn like H, h, u, S and s, which NFKC leaves alone. Only a
+// bracket followed by h, H or a non-ASCII character reaches the fold, so a
+// `[INFO]` line costs one regex step. compress() applies it to the input
 // before any view is built, and compressGrep to the lines of a view it
 // shortens, so every marker left opening with `[hush` is one this file wrote.
 const LEAD = ` \\t\\v\\f\\u00A0\\u1680\\u2000-\\u200A\\u202F\\u205F\\u3000${HIDDEN}`;
-const MARKER_LOOKALIKE_RE = new RegExp(
-  `^([${LEAD}]*)([\\[\\uFF3B][${HIDDEN}]*h[${HIDDEN}]*u[${HIDDEN}]*s[${HIDDEN}]*h)`,
-  "gimu"
-);
+const MARKER_LOOKALIKE_RE = new RegExp(`^([${LEAD}]*)([\\[\\uFE47\\uFF3B](?=[hH]|[^\\x00-\\x7F]).*)`, "gmu");
+const HIDDEN_RE = new RegExp(`[${HIDDEN}]`, "u");
+// Cyrillic Н (en), Һ and һ (shha) and Greek Η (eta) for h; Greek υ (upsilon)
+// for u; Cyrillic Ѕ and ѕ (dze) for s. Each is drawn the same as the Latin
+// letter. The set is short on purpose: look-alikes from other scripts, such
+// as Armenian, are not matched.
+const HOMOGLYPHS = {
+  "\u041D": "h", "\u04BA": "h", "\u04BB": "h", "\u0397": "h",
+  "\u03C5": "u",
+  "\u0405": "s", "\u0455": "s",
+};
+
+function opensLikeHush(rest) {
+  let folded = "";
+  for (const ch of rest) {
+    if (folded.length >= 5) break;
+    if (!HIDDEN_RE.test(ch)) folded += (HOMOGLYPHS[ch] ?? ch.normalize("NFKC")).toLowerCase();
+  }
+  return folded.startsWith("[hush");
+}
 
 function escapeMarkerLookalikes(text) {
-  return text.replace(MARKER_LOOKALIKE_RE, "$1\\$2");
+  return text.replace(MARKER_LOOKALIKE_RE, (line, lead, rest) => (opensLikeHush(rest) ? `${lead}\\${rest}` : line));
 }
 
 // Identifiers the user's own prompt names — backticked or quoted spans like
