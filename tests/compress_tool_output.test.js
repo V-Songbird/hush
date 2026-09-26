@@ -988,6 +988,47 @@ describe('hook: end to end', () => {
       }));
       assert.strictEqual(out.stdout, `${printed}\nnot ok 1 - x\n[hush: exit 1]`);
     });
+
+    // stdout carries the bash trailer; stderr is read only when stdout has no
+    // marker at all.
+    test('a stdout trailer wins over a stderr that ends in a printed marker', () => {
+      for (const [real, fake] of [[0, 1], [1, 0]]) {
+        const out = view(runHook('compress-tool-output.js', {
+          tool_name: 'Bash',
+          tool_input: { command: wrapBash('npm test') },
+          tool_response: { stdout: `done\n[[hush:exit=\n${real}\n]]`, stderr: `quoted: [[hush:exit=${fake}]]`, interrupted: false },
+        }));
+        assert.strictEqual(out.stdout, `done\n[hush: exit ${real}]`);
+        assert.doesNotMatch(JSON.stringify(out), new RegExp(`exit ${fake}\\]`));
+      }
+    });
+
+    test('with no marker in stdout, the stderr trailer is read (exec 1>&2)', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('exec 1>&2; npm test') },
+        tool_response: { stdout: '', stderr: 'not ok 1 - x\n[[hush:exit=\n1\n]]', interrupted: false },
+      }));
+      assert.strictEqual(out.stderr, 'not ok 1 - x\n[hush: exit 1]');
+    });
+
+    test('a stdout marker the host cut off keeps a stderr marker from supplying the code', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: { stdout: 'not ok 1 - x\n[[hush:exit=', stderr: 'quoted: [[hush:exit=0]]', interrupted: false },
+      }));
+      assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /);
+    });
+
+    test('a string response reads its own trailer', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: 'not ok 1 - x\n[[hush:exit=\n2\n]]',
+      }));
+      assert.strictEqual(out, 'not ok 1 - x\n[hush: exit 2]');
+    });
   });
 
   test('a plain file dump keeps more lines than a same-size build log', () => {

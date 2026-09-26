@@ -1767,9 +1767,17 @@ function main() {
     if (out !== response) updated = out;
     return deliver(decision, updated, data);
   } else if (response && typeof response === "object") {
+    // The bash wrapper echoes its trailer to stdout, so stdout decides. stderr
+    // is read only when stdout carries no marker at all: that is `exec 1>&2`,
+    // which moves the real trailer there. A stdout with a marker the host cut
+    // off keeps stderr from being read, so a stderr that ends in a printed
+    // marker never supplies the code.
+    const stdoutMarked = typeof response.stdout === "string" && response.stdout.includes(EXIT_MARKER_PREFIX);
     const wrapped =
       exitWrapped &&
-      (extractWrappedExit(response.stdout) || extractWrappedExit(response.stderr) || extractWrappedExit(response.output));
+      (extractWrappedExit(response.stdout) ||
+        (!stdoutMarked && extractWrappedExit(response.stderr)) ||
+        extractWrappedExit(response.output));
     const exitCode = wrapped ? wrapped.exitCode : extractExitCode(response);
     const next = { ...response };
     let changed = false;
@@ -1790,7 +1798,9 @@ function main() {
         const fieldWrapped = exitWrapped ? extractWrappedExit(next[field]) : null;
         const decision = {};
         let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
-        if (fieldWrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
+        // A field's own trailer is stripped even when it did not supply the
+        // code; with no code known from anywhere, no note is added.
+        if (fieldWrapped && exitCode != null) out += `\n${exitNote(exitCode)}`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;
         linesIn += decision.linesIn || 0;

@@ -152,6 +152,9 @@ adds at the end of a wrapped command's output. A marker the output merely
 prints, such as hush's own source, a saved earlier output or a quoted report,
 stays in the output as printed and no longer changes the exit code Claude
 sees. Before, it could make a command that passed read as failed or killed.
+hush reads that marker from a command's error output only when its normal
+output carries none, so a marker the error output prints cannot stand in for
+one the normal output lost.
 
 A Bash command whose `exec` sends the shell's own output elsewhere, such as
 `exec >build.log` or `exec &>/dev/null`, is no longer wrapped to read its exit
