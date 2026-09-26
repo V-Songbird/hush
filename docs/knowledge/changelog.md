@@ -291,6 +291,11 @@ summary when the tests pass, and the summary with the failing tests when one
 fails. It still blocks the commit on a failure. Before, it printed the whole
 suite's output.
 
+For contributors: the test suite now keeps its temporary files in its own
+folder for each test process, not in the system temp folder. The folder is
+removed when the process exits. If a run is killed first, the next run removes
+what it left.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a

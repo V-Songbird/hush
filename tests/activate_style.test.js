@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const { spawnSync } = require("node:child_process");
+require("./helpers");
 const { activate } = require("../scripts/activate-style.js");
 const { shelf } = require("../scripts/list-styles.js");
 

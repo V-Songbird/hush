@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+require('./helpers');
 const { safeWriteFileSync } = require('../hooks/lib/safe-write');
 
 const SAFE_WRITE_PATH = path.join(__dirname, '..', 'hooks', 'lib', 'safe-write.js');

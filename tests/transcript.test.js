@@ -5,6 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+require('./helpers');
 const { isRealUserPrompt, lastUserPromptText } = require('../hooks/lib/transcript');
 
 const dirs = [];

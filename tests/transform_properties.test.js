@@ -35,6 +35,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
+const { HOOKS_DIR } = require('./helpers');
 const {
   compress,
   deliver,
@@ -50,7 +51,6 @@ const {
 const { wrapBash } = require('../hooks/preserve-exit-code');
 const { buildRecord, recoveryGap, sizeGap, fieldGap } = require('../hooks/lib/transform-manifest');
 const sidecarStore = require('../hooks/lib/sidecar-store');
-const { HOOKS_DIR } = require('./helpers');
 
 const ESC = '\u001b';
 

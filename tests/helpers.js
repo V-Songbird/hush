@@ -1,7 +1,49 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+
+// One private temp directory per test process, removed when the process
+// exits. TEMP, TMP and TMPDIR point at it, so os.tmpdir() in every test file
+// that loads this module before a hook, and in every hook a test spawns, lands
+// inside it: fixture directories, the sidecar store and debug manifests never
+// reach the system temp directory, even when a test fails or Windows holds a
+// file open.
+//
+// A process killed before it exits never runs that handler. The directories
+// sit under one parent and start with their process id, so each new process
+// removes those whose process is gone, and a killed run's temp lasts only
+// until the next run.
+const TEST_TEMP_PARENT = path.join(os.tmpdir(), 'hush-tests');
+fs.mkdirSync(TEST_TEMP_PARENT, { recursive: true });
+for (const name of fs.readdirSync(TEST_TEMP_PARENT)) {
+  const pid = Number.parseInt(name, 10);
+  if (!(pid > 0) || processAlive(pid)) continue;
+  try {
+    fs.rmSync(path.join(TEST_TEMP_PARENT, name), { recursive: true, force: true });
+  } catch {
+    // still held open; the next run tries again
+  }
+}
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === 'EPERM';
+  }
+}
+const TEST_TEMP = fs.mkdtempSync(path.join(TEST_TEMP_PARENT, `${process.pid}-`));
+for (const key of ['TEMP', 'TMP', 'TMPDIR']) process.env[key] = TEST_TEMP;
+process.on('exit', () => {
+  try {
+    fs.rmSync(TEST_TEMP, { recursive: true, force: true });
+  } catch {
+    // a file still held open keeps the directory; the run's result stands
+  }
+});
 
 const HOOKS_DIR = path.join(__dirname, '..', 'hooks');
 

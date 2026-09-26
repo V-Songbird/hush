@@ -9,6 +9,7 @@ const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+require('./helpers');
 const { compress } = require('../hooks/compress-tool-output');
 const { sessionDir } = require('../hooks/lib/sidecar-store');
 

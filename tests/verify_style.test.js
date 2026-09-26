@@ -5,6 +5,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+require("./helpers");
 const { verify, verifyCore, telemetryUpdate, sections, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS } = require("../scripts/verify-style.js");
 const { activate } = require("../scripts/activate-style.js");
 const { NOTE_TEXT } = require("../hooks/compress-tool-output.js");
