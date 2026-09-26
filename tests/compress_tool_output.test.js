@@ -3377,6 +3377,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       "cd src && sed -n '1,80p' a.js",
       wrapBash('cd hush && cat hooks/a.js'),
       wrapPowerShell('Set-Location src; Get-Content a.ps1'),
+      'cd "C:/Program Files (x86)/x" && cat a.js',
+      'cat "src/My (old) File.kt"',
     ]) assert.ok(isBoundedPrint(c), c);
   });
 
@@ -3397,6 +3399,10 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'cat $(find . -name "*.js")',
       'cat `ls`',
       'Write-Output (npm test)',
+      '(npm test)',
+      'cat "build output/logs/run 1.txt"',
+      "cat 'build output/app.log'",
+      'Get-Content "C:/my app/logs/run 1.out"',
       'cd hush',
       'cd hush && echo done',
     ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
