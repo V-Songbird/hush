@@ -32,6 +32,7 @@ test("prints the summary, and the failing tests only when one fails", () => {
   const run = () => {
     const result = cp.spawnSync(process.execPath, [PRE_COMMIT], { cwd: root, env, encoding: "utf8", timeout: SPAWN_TIMEOUT_MS });
     if (result.error && result.error.code === "ETIMEDOUT") throw new Error(`pre-commit timed out after ${SPAWN_TIMEOUT_MS} ms`);
+    if (result.error) throw result.error;
     return { ...result, stdout: result.stdout.replace(/\x1b\[[\d;]*m/g, "") };
   };
   try {
