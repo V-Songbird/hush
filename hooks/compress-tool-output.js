@@ -867,16 +867,23 @@ function extractWrappedExit(text) {
 // The field of a structured response whose trailer supplies the exit code, or
 // null. The bash wrapper echoes its trailer to stdout, so stdout decides.
 // stderr is read only when stdout does not end in a marker: that is
-// `exec 1>&2`, which moves the real trailer there. A stdout ending in a
-// trailer the host cut off (the prefix, then at most the code and one `]`)
-// keeps stderr from being read, so a stderr that ends in a printed marker
-// never supplies the code. A marker earlier in stdout is text the command
-// printed and does not count. Only this field is stripped and annotated; a
-// marker ending any other field is text and stays as printed.
-const CUT_TRAILER_RE = /\[\[hush:exit=[\s\d-]*\]?$/;
+// `exec 1>&2`, which moves the real trailer there. The host hands the hook a
+// plain prefix of a long output, with nothing appended after the cut, so a
+// stdout ending in a trailer the host cut off (at least `[[h` of the prefix,
+// or the whole prefix and then at most the code and one `]`) keeps stderr and
+// output from being read: a marker either of them prints never supplies the
+// code. A marker earlier in stdout is text the command printed and does not
+// count. Only this field is stripped and annotated; a marker ending any other
+// field is text and stays as printed.
+function endsInCutTrailer(text) {
+  const start = text.lastIndexOf(EXIT_MARKER_PREFIX.slice(0, 3));
+  const tail = text.slice(start);
+  return start !== -1 && (EXIT_MARKER_PREFIX.startsWith(tail) ||
+    (tail.startsWith(EXIT_MARKER_PREFIX) && /^[\s\d-]*\]?$/.test(tail.slice(EXIT_MARKER_PREFIX.length))));
+}
 function exitField(response) {
-  const stdoutMarked = typeof response.stdout === "string" && CUT_TRAILER_RE.test(response.stdout);
-  return ["stdout", !stdoutMarked && "stderr", "output"].find((f) => f && extractWrappedExit(response[f])) || null;
+  const open = !(typeof response.stdout === "string" && endsInCutTrailer(response.stdout));
+  return ["stdout", open && "stderr", open && "output"].find((f) => f && extractWrappedExit(response[f])) || null;
 }
 
 // True when preserve-exit-code.js wrapped this call's command. PostToolUse

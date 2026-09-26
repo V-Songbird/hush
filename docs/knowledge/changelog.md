@@ -156,7 +156,11 @@ hush reads that marker from a command's error output only when its normal
 output does not end in one, so a marker the error output prints cannot stand in
 for one the normal output lost. A marker printed earlier in the normal output,
 such as hush's own source printed before `exec 1>&2`, no longer stops hush from
-reading the real marker in the error output. hush removes the marker only from the output it
+reading the real marker in the error output. Normal output that Claude Code cut
+short inside the marker's opening text, from `[[h` on, now counts as ending in
+a marker, so the error output's marker cannot supply the code there either.
+The same cut normal output also stops a marker at the end of a response's
+combined `output` field from supplying the code. hush removes the marker only from the output it
 read the exit code from, so a marker the error output prints stays there as
 printed, without a second exit note.
 
