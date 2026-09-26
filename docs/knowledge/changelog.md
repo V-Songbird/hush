@@ -67,6 +67,12 @@ reads follow a `cd` or sit between `echo` separators, such as
 `cd src && cat a.js; echo ---; cat b.js`. Such a read could lose lines from
 the middle of the file, so Claude read the file a second time. A print of a
 log or a generated file, and test or build output, are trimmed as before.
+A whole-file read piped into one line-range print, such as
+`cat -n a.js | sed -n '1,80p'` or `Get-Content a.js | Select-Object -First 80`,
+now counts as a line-range print; it was cut to 60 lines like a clean run. A
+read with a wildcard run on its own, such as `cat src/*.js`, still keeps up to 250 lines and
+shrinks as the session grows, and a following read, `tail -f` or
+`Get-Content -Wait`, is never passed whole.
 
 A `git diff` or `git show` run on its own now comes back whole up to 250
 lines, however long the session, as a listing or a line-range print does:

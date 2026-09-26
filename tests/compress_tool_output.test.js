@@ -3379,7 +3379,39 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       wrapPowerShell('Set-Location src; Get-Content a.ps1'),
       'cd "C:/Program Files (x86)/x" && cat a.js',
       'cat "src/My (old) File.kt"',
+      "cat -n src/app.js | sed -n '1,80p'",
+      'cat src/app.js | head -n 80',
+      'Get-Content src/app.js | Select-Object -First 80',
+      'gc a.ps1 | select -Last 20',
+      "cat -n src/*.js | sed -n '1,80p'",
+      "cd src && cat -n a.js | sed -n '1,80p'",
+      wrapPowerShell('Get-Content a.ps1 | Select-Object -First 80'),
+      'tail -n 20 src/app-f.js',
     ]) assert.ok(isBoundedPrint(c), c);
+  });
+
+  test('a glob read, a following read, or a whole read piped into anything but one line range is not a bounded print', () => {
+    for (const c of [
+      'cat src/*.js',
+      'cat src/**/*.js',
+      'Get-Content *.ps1',
+      "cd src && cat a.js; cat lib/*.js",
+      'Get-Content -Wait src/a.js',
+      'gc src/a.js -Wait',
+      'Get-Content src/a.js -Tail 20 -Wait',
+      'tail -n 20 -f src/a.js',
+      'tail -fn 20 src/a.js',
+      'tail -F -n 5 src/a.js',
+      'tail --follow=name -n 5 src/a.js',
+      'Get-Content -Wait a.js | Select-Object -First 5',
+      "cat a.js | sed -n '1,80p' | grep x",
+      "cat a.js | sed 's/x/y/'",
+      'cat a.js | head',
+      'cat a.js | head -n 5 > out.txt',
+      'cat app.log | head -n 50',
+      'npm test | head -n 50',
+      'Get-Content a.ps1 | Select-Object -Skip 5',
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
   });
 
   test('a whole read of a log or generated file, or a chain with any other step, is not a bounded print', () => {
@@ -3446,7 +3478,7 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
   });
 
   test('the same output under another command is trimmed, so the pass is what keeps it whole', () => {
-    for (const [command, out] of [['npm run build', names], ["cat -n src/app.js | sed -n '1,92p'", code],
+    for (const [command, out] of [['npm run build', names], ['cat src/*.js', code], ['tail -n 92 -f src/app.js', code],
       ['cat build/app.log', code], ['cd build && cat logs/run.txt', code], ['cd hush && npm test', code]]) {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: out });
       assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < out.length, command);
@@ -3464,6 +3496,7 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['git show', 'git show HEAD -- src/app.js', patch],
     ['cat', 'cat src/app.js', code],
     ['cd and a chained cat of two files', "cd src && cat app.js; echo '---'; cat lib.js", code],
+    ['cat -n piped into sed -n', "cat -n src/app.js | sed -n '1,92p'", code],
   ]) {
     test(`${shape}: 92 lines pass through the Bash hook untouched`, () => {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } });
@@ -3476,6 +3509,7 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['Get-Content -TotalCount', 'Get-Content src/app.js -TotalCount 92', code],
     ['Get-Content -Tail', 'Get-Content src/app.js -Tail 92', code],
     ['Get-Content of two files', 'Set-Location src; Get-Content app.ps1, lib.ps1', code],
+    ['Get-Content piped into Select-Object -First', 'Get-Content src/app.js | Select-Object -First 92', code],
   ]) {
     test(`${shape}: 92 lines pass through the PowerShell hook whole, wrapped or not`, () => {
       assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command }, tool_response: out })), null);

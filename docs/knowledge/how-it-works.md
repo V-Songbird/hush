@@ -68,11 +68,16 @@ back whole up to 250 lines the same way. So does a command made only of these re
 above, a change of folder (`cd`, `pushd`, `Set-Location`) and separators printed with `echo`,
 `printf` or `Write-Output`, joined by `&&`, `;` or new lines, such as
 `cd src && cat a.js; echo ---; cat b.js`. Source code has no warning lines to keep, so a trim there
-only cut code Claude had asked to see.
+only cut code Claude had asked to see. A whole-file read piped into one line-range print counts as
+a line-range print too: `sed -n`, `head` or `tail` with a line count, or `Select-Object` with
+`-First` or `-Last`, such as `cat -n a.js | sed -n '1,80p'`.
 
 A whole-file print of a log or a generated file keeps up to 250 lines like a failing run, and
 shrinks as the session grows. A log is a `.log` file, or a `.txt` or `.out` file in a `log` or
-`logs` folder. A generated file is one of the files the Read tool trims below. Any other command
+`logs` folder. A generated file is one of the files the Read tool trims below. A read with a
+wildcard (`*` or `?`) run on its own, such as `cat src/*.js`, is trimmed the same way, because Claude did not name
+the files it prints. A read that keeps following a file, `tail -f` or `Get-Content -Wait`, prints a
+live log and never counts as a line-range print. Any other command
 in the chain, such as `cd src && npm test`, is trimmed like any other output, so test and build
 output still shrinks. Without an exit code, neither a whole-file print nor a listing,
 a line-range print or a diff counts as a failing run: the words error or failed in them are the
