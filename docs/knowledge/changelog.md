@@ -72,7 +72,11 @@ A whole-file read piped into one line-range print, such as
 now counts as a line-range print; it was cut to 60 lines like a clean run. A
 read with a wildcard run on its own, such as `cat src/*.js`, still keeps up to 250 lines and
 shrinks as the session grows, and a following read, `tail -f` or
-`Get-Content -Wait`, is never passed whole.
+`Get-Content -Wait`, is never passed whole. A listing or a `git diff` or
+`git show` piped into one line-range print, such as `git diff | head -n 50`,
+now counts as a line-range print too; it was trimmed like any other
+output. A read of a Windows long path, such as `cat \\?\C:\src\a.js`, no longer
+counts as a read with a wildcard.
 
 A `git diff` or `git show` run on its own now comes back whole up to 250
 lines, however long the session, as a listing or a line-range print does:

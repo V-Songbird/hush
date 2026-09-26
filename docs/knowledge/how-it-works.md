@@ -57,7 +57,7 @@ settings or a `--settings` flag.
 A directory listing, a print of a line range or a diff comes back whole up to 250 lines, however
 long the session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail`
 with a line count, `Get-Content` with `-TotalCount` or `-Tail`, and `git diff` or `git show`, each run
-without a pipe. Nothing in it is folded, cut or parked in a file. Past 250
+without a pipe or piped into one line-range print as shown below. Nothing in it is folded, cut or parked in a file. Past 250
 lines only exact repeats fold, into one line and a count: under 4,000 characters it still comes
 back whole, from 4,000 it keeps 250, the first and last stretch, and from 15,000 characters it is
 parked like any other output. Such output has no warning or error lines for a trim to keep, so a
@@ -68,15 +68,16 @@ back whole up to 250 lines the same way. So does a command made only of these re
 above, a change of folder (`cd`, `pushd`, `Set-Location`) and separators printed with `echo`,
 `printf` or `Write-Output`, joined by `&&`, `;` or new lines, such as
 `cd src && cat a.js; echo ---; cat b.js`. Source code has no warning lines to keep, so a trim there
-only cut code Claude had asked to see. A whole-file read piped into one line-range print counts as
-a line-range print too: `sed -n`, `head` or `tail` with a line count, or `Select-Object` with
-`-First` or `-Last`, such as `cat -n a.js | sed -n '1,80p'`.
+only cut code Claude had asked to see. A whole-file read, a listing or a diff piped into one
+line-range print counts as a line-range print too: `sed -n`, `head` or `tail` with a line count, or
+`Select-Object` with `-First` or `-Last`, such as `cat -n a.js | sed -n '1,80p'`,
+`find . -name '*.md' | head -n 50` or `git diff | head -n 50`.
 
 A whole-file print of a log or a generated file keeps up to 250 lines like a failing run, and
 shrinks as the session grows. A log is a `.log` file, or a `.txt` or `.out` file in a `log` or
 `logs` folder. A generated file is one of the files the Read tool trims below. A read with a
 wildcard (`*` or `?`) run on its own, such as `cat src/*.js`, is trimmed the same way, because Claude did not name
-the files it prints. A read that keeps following a file, `tail -f` or `Get-Content -Wait`, prints a
+the files it prints. The `?` of a Windows long path, such as `cat \\?\C:\src\a.js`, is not a wildcard. A read that keeps following a file, `tail -f` or `Get-Content -Wait`, prints a
 live log and never counts as a line-range print. Any other command
 in the chain, such as `cd src && npm test`, is trimmed like any other output, so test and build
 output still shrinks. Without an exit code, neither a whole-file print nor a listing,

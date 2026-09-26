@@ -832,10 +832,12 @@ function unwrapCommand(command) {
 // unquoted argument opening with a parenthesis) runs something else; a
 // parenthesis inside a quoted path does not.
 // A glob (* or ?) reads files nobody named, so it stays a dump and its cap
-// still shrinks as the session grows. A whole read piped into one line-range
-// print (sed -n, head/tail with a count, Select-Object -First/-Last) is a
-// ranged print. A following read (tail -f, Get-Content -Wait) is a live log,
-// never a bounded print.
+// still shrinks as the session grows; the ? of a Windows long-path prefix
+// (\\?\C:\...) is no glob. A whole read, a listing or a diff piped into one
+// line-range print (sed -n, head/tail with a count, Select-Object -First/-Last)
+// is a ranged print: names and diff lines hold no warning lines to keep
+// either. A following read (tail -f, Get-Content -Wait) is a live log, never a
+// bounded print.
 const WHOLE_READ_RE = /^(?:cat|type|gc|Get-Content)\s+\S/i;
 const NEUTRAL_STEP_RE = /^(?:cd|Set-Location|sl|pushd|echo|printf|Write-Output|Write-Host)(?:\s|$)/i;
 const ARG_RE = /"[^"]*"|'[^']*'|\S+/g;
@@ -853,7 +855,7 @@ function isNeutralStep(step) {
 // ranged: a line range bounds a glob read, so only an unpiped glob stays a dump.
 function isSourceRead(step, ranged) {
   // The slash lets a relative logs/x.txt match as the absolute paths Read gets do.
-  const paths = step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, ""));
+  const paths = step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, "").replace(/^\\\\\?\\/, ""));
   return WHOLE_READ_RE.test(step) && isPlainStep(step) &&
     !paths.some((p) => (!ranged && /[*?]/.test(p)) || isLogPath(p) || isGeneratedPath(p));
 }
@@ -861,9 +863,9 @@ function isSourceRead(step, ranged) {
 function isBoundedStep(step) {
   if (step.split("|").some((part) => FOLLOW_RE.test(part.trim()))) return false;
   const pipe = /^([^|]+)\|([^|]+)$/.exec(step);
-  return pipe
-    ? isSourceRead(pipe[1].trim(), true) && PIPED_RANGE_RE.test(pipe[2].trim()) && isPlainStep(pipe[2])
-    : BOUNDED_PRINT_RE.test(step) || isSourceRead(step);
+  if (!pipe) return BOUNDED_PRINT_RE.test(step) || isSourceRead(step);
+  const [from, range] = [pipe[1].trim(), pipe[2].trim()];
+  return (BOUNDED_PRINT_RE.test(from) || isSourceRead(from, true)) && PIPED_RANGE_RE.test(range) && isPlainStep(range);
 }
 
 function isBoundedPrint(command) {
@@ -1863,8 +1865,8 @@ function main() {
   const bounded = isBoundedPrint(command);
   const exitWrapped = isExitWrapped(data);
   // A print or a diff with no exit code passed: unwrapped, a non-zero exit
-  // never reaches this hook, and one command has no pipe to hide one. A read
-  // piped into a line range can hide a missing file's exit, but that prints
+  // never reaches this hook, and one command has no pipe to hide one. A read,
+  // a listing or a diff piped into a line range can hide its exit, but that prints
   // one short error line, which passes whole. Its error and fail words are the
   // printed text, not a failed run.
   const noCode = isDump || bounded ? 0 : undefined;

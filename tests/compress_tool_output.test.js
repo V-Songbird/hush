@@ -3387,6 +3387,14 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       "cd src && cat -n a.js | sed -n '1,80p'",
       wrapPowerShell('Get-Content a.ps1 | Select-Object -First 80'),
       'tail -n 20 src/app-f.js',
+      String.raw`cat \\?\C:\src\app.js`,
+      String.raw`Get-Content -LiteralPath "\\?\C:\My App\a.ps1"`,
+      "find . -name '*.js' | head -50",
+      'ls -R src | head -n 100',
+      'Get-ChildItem -Recurse -Name | Select-Object -First 50',
+      'git diff | head -50',
+      "git show HEAD:src/app.js | sed -n '1,80p'",
+      wrapPowerShell('git diff --stat | Select-Object -Last 5'),
     ]) assert.ok(isBoundedPrint(c), c);
   });
 
@@ -3411,6 +3419,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'cat app.log | head -n 50',
       'npm test | head -n 50',
       'Get-Content a.ps1 | Select-Object -Skip 5',
+      String.raw`cat \\?\C:\src\*.js`,
+      String.raw`Get-Content \\?\C:\build\app.log`,
     ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
   });
 
@@ -3443,8 +3453,11 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
   test('isBoundedPrint leaves out pipelines, chains, redirects, -exec and full dumps', () => {
     for (const c of [
       'ls -la | head',
-      "find . -name '*.js' | head -50",
       'ls && npm test',
+      'git diff | grep foo',
+      'git log -p | head -n 50',
+      "find . -name '*.js' -exec cat {} + | head -n 50",
+      'ls | head -n 5 | sort',
       'ls > out.txt',
       "find . -name '*.tmp' -exec rm {} +",
       'find -execdir cat {} +',
@@ -3452,7 +3465,6 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'findstr /s foo *.js',
       'tail -f app.log',
       'head src/app.js',
-      'git diff | head -50',
       'git diff > out.patch',
       'git diff && npm test',
       'git difftool',
@@ -3497,6 +3509,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['cat', 'cat src/app.js', code],
     ['cd and a chained cat of two files', "cd src && cat app.js; echo '---'; cat lib.js", code],
     ['cat -n piped into sed -n', "cat -n src/app.js | sed -n '1,92p'", code],
+    ['find piped into head -n', "find docs -name '*.md' | head -n 92", names],
+    ['git diff piped into head -n', 'git diff | head -n 100', patch],
   ]) {
     test(`${shape}: 92 lines pass through the Bash hook untouched`, () => {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } });
