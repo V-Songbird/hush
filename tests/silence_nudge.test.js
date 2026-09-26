@@ -49,7 +49,7 @@ const hostStatus = () => ({
 // --- default: one reminder at the top of the turn, corrective mid-turn ------
 
 test('the default gets the dial reminder at the top of the turn', () => {
-  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }));
+  const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: freshSession() }));
   assert.strictEqual(out.hookSpecificOutput.hookEventName, 'UserPromptSubmit');
   assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
 });
@@ -187,7 +187,7 @@ test('HUSH_NUDGE=off silences the hook', () => {
 // least as quiet and at least as cheap as what they opted into.
 for (const synonym of ['turn', 'lean', 'react']) {
   test(`HUSH_NUDGE=${synonym} is a synonym for the default`, () => {
-    const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit' }, { HUSH_NUDGE: synonym }));
+    const out = hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: freshSession() }, { HUSH_NUDGE: synonym }));
     assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
     const step = runHook('silence-nudge.js', {
       hook_event_name: 'PostToolUse', session_id: freshSession(),
@@ -275,7 +275,7 @@ test('the dial reminder repeats the stock voice\'s opening-line rule', () => {
 });
 
 test('a slot style with the quiet rule keeps the dial reminder', () => {
-  const out = hookOutput(runSlotHook(pluginWithSlot(STOCK_STYLE), { hook_event_name: 'UserPromptSubmit' }));
+  const out = hookOutput(runSlotHook(pluginWithSlot(STOCK_STYLE), { hook_event_name: 'UserPromptSubmit', session_id: freshSession() }));
   assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
 });
 
