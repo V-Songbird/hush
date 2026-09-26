@@ -3573,6 +3573,65 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
   });
 });
 
+describe("a clean run's JSON stdout passes whole like a bounded print", () => {
+  const records = Array.from({ length: 60 }, (_, i) => ({ id: i, tool: 'Bash', verdict: 'retried', path: `docs/tasks/note-${i}.md` }));
+  const doc = `{\n  "session": "abc",\n  "records": [\n${records.map((r) => `    ${JSON.stringify(r)}`).join(',\n')}\n  ]\n}`;
+  const jsonl = records.map((r) => JSON.stringify(r)).join('\n') + '\n';
+  const command = 'node scripts/session-evidence.js abc';
+  const session = 'hush-test-json-' + Date.now();
+  after(() => removeSessions([session]));
+  const run = (tool_response, cmd = command, tool = 'Bash', env) =>
+    hookOutput(runHook('compress-tool-output.js', { session_id: session, tool_name: tool, tool_input: { command: cmd }, tool_response }, env));
+
+  test('a JSON document and JSON Lines over 4,000 characters pass untouched', () => {
+    for (const out of [doc, jsonl]) {
+      assert.ok(out.length > 4000 && out.length < 15000);
+      assert.strictEqual(run({ stdout: out, stderr: 'warning: slow disk', interrupted: false }), null);
+      assert.strictEqual(run(out, command, 'PowerShell'), null);
+    }
+  });
+
+  // 300 JSON Lines under 15,000 characters; every tenth carries the word error.
+  const long = Array.from({ length: 300 }, (_, i) => JSON.stringify({ i, level: i % 10 ? 'info' : 'error', msg: 'lost' })).join('\n');
+  const kept = (v) => v.split('\n').filter((l) => l.startsWith('{')).length;
+
+  test('a wrapped run that exits 0 passes whole; one that fails keeps the failing-run path', () => {
+    assert.strictEqual(run(`${doc}\n[[hush:exit=\n0\n]]`, wrapBash(command)).hookSpecificOutput.updatedToolOutput, `${doc}\n[hush: exit 0]`);
+    assert.ok(run(`${long}\n[[hush:exit=\n1\n]]`, wrapBash(command)).hookSpecificOutput.updatedToolOutput.includes(FAILURE_RERUN_NOTE));
+  });
+
+  test('stderr, non-JSON and scalar lines keep their current paths', () => {
+    assert.ok(run({ stdout: '', stderr: doc, interrupted: false }).hookSpecificOutput.updatedToolOutput.stderr.length < doc.length);
+    const numbers = Array.from({ length: 900 }, (_, i) => String(1000 + i)).join('\n');
+    for (const out of [`${doc}\ndone`, `${jsonl}${jsonl}not json`, numbers]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.length < out.length);
+  });
+
+  test('a whole-file print of a JSON Lines log keeps the dump cap, which shrinks as the session grows', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-json-'));
+    try {
+      const transcript = path.join(dir, 't.jsonl');
+      fs.writeFileSync(transcript, 'x'.repeat(2 * 1024 * 1024) + '\n');
+      const info = long.replace(/"error"/g, '"info"');
+      const view = (cmd) => hookOutput(runHook('compress-tool-output.js',
+        { transcript_path: transcript, tool_name: 'Bash', tool_input: { command: cmd }, tool_response: info }, { HUSH_TEMPLATE: 'off' })).hookSpecificOutput.updatedToolOutput;
+      assert.strictEqual(kept(view(command)), 250);
+      assert.strictEqual(kept(view('cat logs/app.log')), 125);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('past 250 lines it keeps what a line-range print keeps, with no failure note; from 15,000 characters it is parked', () => {
+    assert.ok(long.length > 4000 && long.length < 15000);
+    const v = run(long).hookSpecificOutput.updatedToolOutput;
+    assert.ok(!v.includes(FAILURE_RERUN_NOTE));
+    assert.strictEqual(v, run(long, 'head -n 300 out.jsonl').hookSpecificOutput.updatedToolOutput, 'the view a line-range print gets');
+    const big = `[\n${[...records, ...records, ...records, ...records].map((r) => JSON.stringify(r)).join(',\n')}\n]`;
+    assert.ok(big.length >= 15000 && big.split('\n').length <= 250, 'a print this size would pass whole');
+    assert.match(run(big, command, 'Bash', { HUSH_SIDECAR: '' }).hookSpecificOutput.updatedToolOutput, /saved in full to/);
+  });
+});
+
 // Printed source code and diffs carry error and fail words as text. With no
 // exit code such a command passed: unwrapped, a non-zero exit never reaches the
 // hook. Its trimmed view keeps the dump cap and never says the run failed.

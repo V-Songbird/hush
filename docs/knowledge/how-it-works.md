@@ -73,6 +73,15 @@ line-range print counts as a line-range print too: `sed -n`, `head` or `tail` wi
 `Select-Object` with `-First` or `-Last`, such as `cat -n a.js | sed -n '1,80p'`,
 `find . -name '*.md' | head -n 50` or `git diff | head -n 50`.
 
+JSON a command prints comes back whole up to 250 lines too, when the run did not fail. This applies
+when the command's regular output, not its error output, is one JSON object or array, or JSON
+Lines: one object or array per line. A script's JSON report has no warning lines for a trim to
+keep, so a trim only cut the data Claude asked for. Past 250 lines it is handled like such a print.
+Unlike a print, JSON of 15,000 characters or more is parked in a file like any other output,
+because a few lines of compact JSON can hold any amount of data.
+A failing run, error output, output that is not all JSON, and a whole-file print of a log or a
+generated file are trimmed as before.
+
 A whole-file print of a log or a generated file keeps up to 250 lines like a failing run, and
 shrinks as the session grows. A log is a `.log` file, or a `.txt` or `.out` file in a `log` or
 `logs` folder. A generated file is one of the files the Read tool trims below. A read with a

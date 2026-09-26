@@ -78,6 +78,12 @@ now counts as a line-range print too; it was trimmed like any other
 output. A read of a Windows long path, such as `cat \\?\C:\src\a.js`, no longer
 counts as a read with a wildcard.
 
+A command's JSON output now comes back whole up to 250 lines when the run did
+not fail and its regular output is one JSON object or array, or JSON Lines. A
+trim could keep only the first and last stretch of the data, so Claude had to
+fetch the data a second time. JSON of 15,000 characters or more is
+still saved to a file, and error output is trimmed as before.
+
 A `git diff` or `git show` run on its own now comes back whole up to 250
 lines, however long the session, as a listing or a line-range print does:
 nothing in it is folded, cut or saved to a file. It was cut to 60 like a
