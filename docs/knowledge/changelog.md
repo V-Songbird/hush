@@ -262,6 +262,11 @@ such as a second hook writing the same file or an antivirus scan, no longer
 drops hush's write. The write now retries for up to 155 ms. Before, it was
 skipped without a word.
 
+For contributors: the pre-commit hook now prints only the test suite's
+summary when the tests pass, and the summary with the failing tests when one
+fails. It still blocks the commit on a failure. Before, it printed the whole
+suite's output.
+
 ## 1.12.1 — 2026-09-15
 
 hush no longer leaves a marker file in the system temporary folder when a
