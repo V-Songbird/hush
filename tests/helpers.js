@@ -61,12 +61,16 @@ for (const key of Object.keys(process.env)) {
 delete process.env.BASH_MAX_OUTPUT_LENGTH;
 process.env.CLAUDE_CONFIG_DIR = process.env.CLAUDE_PROJECT_DIR = path.join(__dirname, 'no-claude-settings');
 
+// Every child the suite spawns gets 90 s, so a machine running several suites
+// at once still passes while a hung child fails.
+const SPAWN_TIMEOUT_MS = 90000;
+
 /** Run a hook script from hooks/ with JSON stdin; returns spawnSync result. */
 function runHook(name, stdinData, env) {
   return spawnSync('node', [path.join(HOOKS_DIR, name)], {
     input: stdinData === undefined ? undefined : JSON.stringify(stdinData),
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, ...(env || {}) },
   });
 }
@@ -77,4 +81,4 @@ function hookOutput(result) {
   return out ? JSON.parse(out) : null;
 }
 
-module.exports = { runHook, hookOutput, HOOKS_DIR };
+module.exports = { runHook, hookOutput, HOOKS_DIR, SPAWN_TIMEOUT_MS };

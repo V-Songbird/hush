@@ -17,7 +17,7 @@
 // then read the diff. A golden that moved without a reason you can name is
 // the bug, not the test.
 
-require('./helpers');
+const { SPAWN_TIMEOUT_MS } = require('./helpers');
 const { test, describe, after } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -282,7 +282,7 @@ function runScenario(scenario) {
     const result = spawnSync('node', [path.join(HOOKS_DIR, scenario.hook)], {
       input: payload,
       encoding: 'utf-8',
-      timeout: 30000,
+      timeout: SPAWN_TIMEOUT_MS,
       env,
     });
     if (result.error) throw result.error;

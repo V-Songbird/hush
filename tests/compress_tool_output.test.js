@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { runHook, hookOutput } = require('./helpers');
+const { runHook, hookOutput, SPAWN_TIMEOUT_MS } = require('./helpers');
 const sidecarStore = require('../hooks/lib/sidecar-store');
 
 // A test that writes a sidecar also creates its session's directory under the
@@ -1645,7 +1645,7 @@ describe('hook: subagent-brief', () => {
   test('malformed stdin exits cleanly and still injects', () => {
     const { spawnSync } = require('child_process');
     const path = require('path');
-    const r = spawnSync('node', [path.join(__dirname, '..', 'hooks', 'subagent-brief.js')], { input: 'not json', encoding: 'utf-8', timeout: 30000 });
+    const r = spawnSync('node', [path.join(__dirname, '..', 'hooks', 'subagent-brief.js')], { input: 'not json', encoding: 'utf-8', timeout: SPAWN_TIMEOUT_MS });
     assert.strictEqual(r.status, 0);
     assert.ok(r.stdout.includes('SubagentStart'));
   });

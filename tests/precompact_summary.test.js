@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawnSync } = require('child_process');
-const { HOOKS_DIR } = require('./helpers');
+const { HOOKS_DIR, SPAWN_TIMEOUT_MS } = require('./helpers');
 const { STATIC_BLOCK, buildSidecarBlock, liveSidecarFiles, SIDECAR_CAP, sessionDir } = require('../hooks/precompact-summary');
 
 /** Run precompact-summary.js with raw stdin (not necessarily JSON); returns spawnSync result. */
@@ -14,7 +14,7 @@ function runRaw(stdinData, env) {
   return spawnSync('node', [path.join(HOOKS_DIR, 'precompact-summary.js')], {
     input: stdinData,
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, ...(env || {}) },
   });
 }

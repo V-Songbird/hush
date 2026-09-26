@@ -27,7 +27,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
-const { HOOKS_DIR } = require('./helpers');
+const { HOOKS_DIR, SPAWN_TIMEOUT_MS } = require('./helpers');
 
 const SCRATCH_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-surface-'));
 const FIXTURES = path.join(SCRATCH_ROOT, 'fixtures');
@@ -93,7 +93,7 @@ function runHook(name, tempDir, stdinData, env) {
   return spawnSync('node', [path.join(HOOKS_DIR, name)], {
     input: JSON.stringify(stdinData),
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, ...BASE, ...(env || {}), TEMP: tempDir, TMP: tempDir, TMPDIR: tempDir },
   });
 }
@@ -306,7 +306,7 @@ test('requiring the test helpers clears hush flags inherited from the shell', ()
     cwd: path.join(__dirname, '..'),
     env: { ...process.env, HUSH_DISABLE: '1' },
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
   });
   assert.strictEqual(r.stdout, 'undefined');
 });

@@ -16,7 +16,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
-const { HOOKS_DIR } = require('./helpers');
+const { HOOKS_DIR, SPAWN_TIMEOUT_MS } = require('./helpers');
 const { compress } = require('../hooks/compress-tool-output');
 const { buildSidecarBlock } = require('../hooks/precompact-summary');
 const { sessionDir, isSidecarPath, SIDECAR_ROOT, savedPath, addSaved } = require('../hooks/lib/sidecar-store');
@@ -85,7 +85,7 @@ function runCleanup(temp, input) {
   return spawnSync('node', [path.join(HOOKS_DIR, 'session-end-cleanup.js')], {
     input: input === undefined ? undefined : JSON.stringify(input),
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, HUSH_DISABLE: '0', TEMP: temp, TMP: temp, TMPDIR: temp },
   });
 }
@@ -238,7 +238,7 @@ describe('sidecar cleanup: session end', () => {
       spawnSync('node', [path.join(HOOKS_DIR, 'session-end-cleanup.js')], {
         input: 'not json at all {{{',
         encoding: 'utf-8',
-        timeout: 30000,
+        timeout: SPAWN_TIMEOUT_MS,
         env: { ...process.env, TEMP: temp, TMP: temp, TMPDIR: temp },
       }),
     ]) {
@@ -292,7 +292,7 @@ describe('sidecar lifetime: compaction keeps every path valid', () => {
     const r = spawnSync('node', [path.join(HOOKS_DIR, 'postcompact-rearm.js')], {
       input: JSON.stringify({ hook_event_name: 'PostCompact', session_id: id }),
       encoding: 'utf-8',
-      timeout: 30000,
+      timeout: SPAWN_TIMEOUT_MS,
       env: { ...process.env, HUSH_DISABLE: '0' },
     });
     assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
@@ -319,7 +319,7 @@ describe('savings total: a running count a statusline can read', () => {
     return spawnSync('node', [path.join(HOOKS_DIR, 'compress-tool-output.js')], {
       input: JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: toolName, tool_response: response, session_id: sessionId }),
       encoding: 'utf-8',
-      timeout: 30000,
+      timeout: SPAWN_TIMEOUT_MS,
       env: { ...process.env, HUSH_DISABLE: '0', TEMP: temp, TMP: temp, TMPDIR: temp },
     });
   }

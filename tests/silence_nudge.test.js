@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { runHook, hookOutput } = require('./helpers.js');
+const { runHook, hookOutput, SPAWN_TIMEOUT_MS } = require('./helpers.js');
 const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText, styleKeepsQuiet, QUIET_PHRASE } = require('../hooks/silence-nudge.js');
 const { sessionDir } = require('../hooks/lib/sidecar-store.js');
 
@@ -261,7 +261,7 @@ function runSlotHook(root, stdinData, env) {
   return spawnSync('node', [path.join(root, 'hooks', 'silence-nudge.js')], {
     input: JSON.stringify(stdinData),
     encoding: 'utf-8',
-    timeout: 30000,
+    timeout: SPAWN_TIMEOUT_MS,
     env: { ...process.env, ...(env || {}) },
   });
 }
