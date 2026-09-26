@@ -59,9 +59,9 @@ threshold produces an empty golden and pins nothing. The thresholds, from
 
 A shell output that arrives within 100 chars of the host's cut (`hostCutAt`:
 `bashOutputMaxChars`, else `BASH_MAX_OUTPUT_LENGTH`, else 30,000), or from
-`HUSH_SIDECAR_SHELL_MAX` chars when that is set, is still parked, passing or
-failing, but the host has already cut it, so its digest says the copy was saved
-as hush received it rather than in full. The sidecar check runs before
+`HUSH_SIDECAR_SHELL_MAX` chars when that is set, still gets the digest, passing
+or failing, but no sidecar file: the host has already cut it and keeps the
+complete output in its own file, so the digest points there. The sidecar check runs before
 template collapse, so same-shape lines park like any other content.
 
 ## Porting

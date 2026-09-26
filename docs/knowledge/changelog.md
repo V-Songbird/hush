@@ -168,14 +168,17 @@ printed, without a second exit note.
 hush now knows where Claude Code cuts a long shell output: at the
 `bashOutputMaxChars` setting when your user, project or local settings file
 sets it, else at `BASH_MAX_OUTPUT_LENGTH`, else at 30,000 characters. A very
-large output that arrived at that cut is saved to a file "as hush received it"
-instead of "in full". Before, hush assumed a cut from about 28,000 characters
-on, so under a lower setting it called a cut output complete, and under a
-higher one it called a complete output cut. hush measures the output as it
-arrived, before colour codes come off. It cannot see managed settings or a
-`--settings` flag. Under a setting below 15,000 characters, no output reaches
-the size hush saves to a file, and Claude Code keeps the full output in its
-own file.
+large output that arrived at that cut no longer gets a file from hush. Claude
+Code already saves the complete output and names that file above the preview
+it shows Claude, so hush's copy held only the part it received. hush now sends
+only the digest, and the digest tells Claude to read Claude Code's file for
+totals, counts and any line the digest leaves out. Before, hush assumed a cut
+from about 28,000 characters on, so under a lower setting it called a cut
+output complete, and under a higher one it called a complete output cut. hush
+measures the output as it arrived, before colour codes come off. It cannot see
+managed settings or a `--settings` flag. Under a setting below 15,000
+characters, no output reaches the size hush digests, and Claude Code keeps the
+full output in its own file.
 
 A Bash command whose `exec` sends the shell's own output elsewhere, such as
 `exec >build.log` or `exec &>/dev/null`, is no longer wrapped to read its exit

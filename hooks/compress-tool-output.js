@@ -1120,16 +1120,15 @@ function pressureScale(transcriptBytes) {
 // re-fire) inside a directory this session owns, and are deleted when the
 // session ends (see lib/sidecar-store.js).
 const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
-// For SHELL outputs only: the size past which a sidecar stops claiming to hold
-// the output in full, when HUSH_SIDECAR_SHELL_MAX sets it. Otherwise it is the
-// host's own cut (see hostCutAt): a shell output that arrives at the cut was
-// cut, and its tail — where a build's error or a run's final result usually
-// lives — never reached this hook. maybeSidecar still writes it and hands back
-// the digest, but the header says the file holds the output "as hush received
-// it" instead of "in full", so it never claims to hold lines the host already
-// cut. Read results are exempt: Read returns the file's full content to the
-// hook (its own limits are far larger), so a big lockfile/log Read is complete
-// and its sidecar is full.
+// For SHELL outputs only: the size from which an output counts as cut by the
+// host, when HUSH_SIDECAR_SHELL_MAX sets it. Otherwise it is the host's own cut
+// (see hostCutAt): a shell output that arrives at the cut was cut, and its tail
+// — where a build's error or a run's final result usually lives — never reached
+// this hook. Claude Code keeps that complete output in its own file, so
+// maybeSidecar hands back the digest with no hush copy and points the model at
+// the host's file. Read results are exempt: Read returns the file's full
+// content to the hook (its own limits are far larger), so a big lockfile/log
+// Read is complete and its sidecar is full.
 const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 0);
 
 // Claude Code hands this hook a plain prefix of a long Bash/PowerShell output:
@@ -1362,17 +1361,14 @@ function persistGrepMatches(content, sessionId) {
 function maybeSidecar(cleaned, relevanceTokens, sessionId, received, failed) {
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
   // A shell output that arrived at the host's cut (see SIDECAR_SHELL_MAX) was
-  // cut by Claude Code, so the copy hush writes cannot claim to be the whole
-  // thing — the header says "as hush received it" instead of "in full". The
-  // received text is measured, not the cleaned one: cleaning (colour codes,
-  // redrawn progress lines) can take a cut output well under the cut.
-  //
-  // It still gets written. The same size is where the host parks a result and
-  // hands the model a 2KB preview; an inline cap that stays over that size gets
-  // parked anyway, and the model reads the parked file straight back into
-  // context. The digest gets the view under the host's threshold, so the host
-  // parks nothing and no second pointer competes with hush's own.
-  const partial = typeof received === "string" && received.length >= (SIDECAR_SHELL_MAX || hostCutAt() - HOST_CUT_SLACK);
+  // cut by Claude Code, which keeps the complete output in its own file and
+  // shows the model its pointer and a 2KB preview of whatever this hook
+  // returns, however small. A copy here would hold only the received prefix,
+  // so none is written: the digest leads that preview and sends every
+  // follow-up Read to the host's file. The received text is measured, not the
+  // cleaned one: cleaning (colour codes, redrawn progress lines) can take a cut
+  // output well under the cut.
+  const cut = typeof received === "string" && received.length >= (SIDECAR_SHELL_MAX || hostCutAt() - HOST_CUT_SLACK);
   try {
     // sidecarTarget scans for secrets before ever handing back a path, so a
     // credential-shaped payload falls through to the ordinary inline cap
@@ -1380,16 +1376,20 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, received, failed) {
     const file = sidecarTarget(cleaned, sessionId);
     if (!file) return null;
     const d = buildSidecarDigest(cleaned, relevanceTokens);
-    const p = file.replace(/\\/g, "/");
-    const saved = partial ? `was saved to ${p} as hush received it` : `was saved in full to ${p}`;
-    const header =
-      `[hush hook: this output is ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}) ` +
-      `and ${saved}; the digest below keeps the head, tail, ` +
-      `every prompt-named line, and a sample of the signal lines, each with its L<n> line number. ` +
-      `For anything else — including any total or count you report — Read that file with ` +
-      `offset/limit around the L<n> numbers you need. ` +
-      `If that file no longer exists, re-run the command — a second run is not guaranteed ` +
-      `to reproduce this output.]`;
+    const keeps =
+      `the digest below keeps the head, tail, every prompt-named line, and a sample of the ` +
+      `signal lines, each with its L<n> line number. For anything else — including any total or ` +
+      `count you report — Read`;
+    const header = cut
+      ? `[hush hook: Claude Code cut this output and saved all of it to the file named above; ` +
+        `hush received the first ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}), and ${keeps} ` +
+        `Claude Code's file with offset/limit around the L<n> numbers you need. ` +
+        `If no file is named above, re-run the command.]`
+      : `[hush hook: this output is ${d.nonBlank} non-empty lines (${d.census || "0 signal lines"}) ` +
+        `and was saved in full to ${file.replace(/\\/g, "/")}; ${keeps} that file with ` +
+        `offset/limit around the L<n> numbers you need. ` +
+        `If that file no longer exists, re-run the command — a second run is not guaranteed ` +
+        `to reproduce this output.]`;
     const out = `${header}\n${d.body}`;
     // A near-line-free payload (e.g. one giant minified-JSON line) leaves
     // buildSidecarDigest's head/tail trim nothing to cut — the digest would
@@ -1397,10 +1397,12 @@ function maybeSidecar(cleaned, relevanceTokens, sessionId, received, failed) {
     // Bail before ever touching disk and let compress() fall through to the
     // ordinary inline cap, which is a no-op here too but at least isn't larger.
     if (out.length >= cleaned.length) return null;
+    const omitted = Math.max(0, d.total - d.shown);
+    if (cut) return { text: out, file: null, linesIn: d.total, omitted };
     if (!writeSidecar(file, cleaned)) return null;
     // The written file IS the recovery location for everything the digest
     // left out — the manifest record carries it (see deliver).
-    return { text: out, file, linesIn: d.total, omitted: Math.max(0, d.total - d.shown) };
+    return { text: out, file, linesIn: d.total, omitted };
   } catch {
     return null; // fall back to the normal capped view
   }
@@ -1443,8 +1445,8 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
     return cleaned;
   }
   // Classified once, up front: the same answer picks the cap below. maybeSidecar
-  // parks every oversized output, passing or failing; past SIDECAR_SHELL_MAX a
-  // shell copy is labelled as received rather than in full.
+  // digests every oversized output, passing or failing; a shell output at the
+  // host's cut gets no hush copy, since the host keeps the complete one.
   const failed = looksLikeFailure(cleaned, exitCode);
   if (!enumerate && !noSidecar) {
     const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate && original, failed);
@@ -1452,10 +1454,12 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
       if (decision) {
         decision.action = "sidecar";
         decision.omitted = side.omitted;
-        decision.recovery = "sidecar";
-        decision.recoveryPath = side.file;
-        decision.sidecarPath = side.file;
-        decision.retention = "session";
+        if (side.file) {
+          decision.recovery = "sidecar";
+          decision.recoveryPath = side.file;
+          decision.sidecarPath = side.file;
+          decision.retention = "session";
+        }
       }
       return side.text;
     }

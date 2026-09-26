@@ -1749,7 +1749,7 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     }
   });
 
-  test('HUSH_SIDECAR_SHELL_MAX sets the size past which a shell sidecar stops claiming to be full', () => {
+  test('HUSH_SIDECAR_SHELL_MAX sets the size from which a shell output counts as cut by the host', () => {
     const session = 'hush-test-knob-shell-' + Date.now();
     try {
       // About 20KB: over the sidecar threshold, under the 28000-character default.
@@ -1757,8 +1757,8 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
       const full = (env) => /saved in full to/.test(out(env));
       assert.strictEqual(full({}), true, 'default bound');
       const lowered = out({ HUSH_SIDECAR_SHELL_MAX: '18000' });
-      assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the full claim');
-      assert.match(lowered, /as hush received it/, 'and still writes the copy');
+      assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the hush copy');
+      assert.match(lowered, /Claude Code cut this output and saved all of it to the file named above/, 'and points at the host file');
       for (const v of INVALID) assert.strictEqual(full({ HUSH_SIDECAR_SHELL_MAX: v }), true, v);
     } finally {
       removeSessions([session]);
@@ -1768,7 +1768,7 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
   // Claude Code cuts a long shell output to a plain prefix of N characters
   // (N - 1 when it trims a newline at the cut): the bashOutputMaxChars setting,
   // clamped to 4000-128000, else BASH_MAX_OUTPUT_LENGTH, else 30000.
-  test('a shell sidecar stops claiming to be full at the host cut the settings set', () => {
+  test('a shell output at the host cut the settings set gets no hush copy', () => {
     const session = 'hush-test-host-cut-' + Date.now();
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-host-cut-'));
     const settings = (name, file, value) => {
@@ -1785,20 +1785,20 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     const sized = (n) => unique(Math.ceil(n / 6)).slice(0, n);
     const header = (chars, env) => {
       const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: sized(chars) }, { HUSH_SIDECAR: '', ...env });
-      return /saved in full to/.test(out) ? 'full' : /as hush received it/.test(out) ? 'received' : 'inline';
+      return /saved in full to/.test(out) ? 'full' : /Claude Code cut this output and saved all of it to the file named above/.test(out) ? 'cut' : 'inline';
     };
     try {
-      assert.strictEqual(header(29999, {}), 'received', 'default cut');
+      assert.strictEqual(header(29999, {}), 'cut', 'default cut');
       assert.strictEqual(header(28500, {}), 'full', 'under the default cut');
-      assert.strictEqual(header(20000, USER), 'received', 'user setting');
-      assert.strictEqual(header(19999, USER), 'received', 'a cut after a newline arrives one short');
+      assert.strictEqual(header(20000, USER), 'cut', 'user setting');
+      assert.strictEqual(header(19999, USER), 'cut', 'a cut after a newline arrives one short');
       assert.strictEqual(header(19000, USER), 'full', 'under the user setting');
       assert.strictEqual(header(40000, { ...USER, CLAUDE_PROJECT_DIR: path.join(root, 'project') }), 'full', 'the project file wins over the user file');
       assert.strictEqual(header(8000, { ...USER, CLAUDE_PROJECT_DIR: path.join(root, 'local') }), 'inline', 'the local file wins; at 8000 the host keeps the output, hush parks nothing');
-      assert.strictEqual(header(20000, { BASH_MAX_OUTPUT_LENGTH: '20000' }), 'received', 'the variable without a setting');
-      assert.strictEqual(header(20000, { ...USER, BASH_MAX_OUTPUT_LENGTH: '128000' }), 'received', 'the setting wins over the variable');
-      assert.strictEqual(header(4000, { CLAUDE_PROJECT_DIR: path.join(root, 'clamped'), HUSH_SIDECAR_MIN: '3000' }), 'received', 'a setting under 4000 is clamped to it');
-      assert.strictEqual(header(20000, { CLAUDE_PROJECT_DIR: path.join(root, 'project'), HUSH_SIDECAR_SHELL_MAX: '18000' }), 'received', 'HUSH_SIDECAR_SHELL_MAX overrides the cut');
+      assert.strictEqual(header(20000, { BASH_MAX_OUTPUT_LENGTH: '20000' }), 'cut', 'the variable without a setting');
+      assert.strictEqual(header(20000, { ...USER, BASH_MAX_OUTPUT_LENGTH: '128000' }), 'cut', 'the setting wins over the variable');
+      assert.strictEqual(header(4000, { CLAUDE_PROJECT_DIR: path.join(root, 'clamped'), HUSH_SIDECAR_MIN: '3000' }), 'cut', 'a setting under 4000 is clamped to it');
+      assert.strictEqual(header(20000, { CLAUDE_PROJECT_DIR: path.join(root, 'project'), HUSH_SIDECAR_SHELL_MAX: '18000' }), 'cut', 'HUSH_SIDECAR_SHELL_MAX overrides the cut');
     } finally {
       removeSessions([session]);
       fs.rmSync(root, { recursive: true, force: true });
@@ -1810,7 +1810,10 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     try {
       const coloured = Array.from({ length: 1600 }, (_, i) => `\x1b[32munique ${i}\x1b[0m`).join(NL).slice(0, 30000);
       const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: coloured }, { HUSH_SIDECAR: '' });
-      assert.match(out, /as hush received it/);
+      assert.match(out, /Claude Code cut this output and saved all of it to the file named above/);
+      const dir = sidecarStore.sessionDir(session);
+      const parked = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^[0-9a-f]+\.txt$/.test(f)) : [];
+      assert.deepStrictEqual(parked, [], 'hush writes no copy of a cut output');
     } finally {
       removeSessions([session]);
     }
@@ -2850,7 +2853,7 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     assert.match(out, /saved in full to/, 'sidecar active in the sweet spot');
   });
 
-  test('a shell output at/above the host-truncation size sidecars, without claiming to be full', () => {
+  test('a shell output at/above the host-truncation size gets the digest, with no hush copy', () => {
     // bigText's fixed "info line N padding..." shape template-collapses on its
     // own; pin the new rung off so this test isolates the sidecar decision.
     const prevTemplate = process.env.HUSH_TEMPLATE;
@@ -2861,10 +2864,8 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     } finally {
       if (prevTemplate === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prevTemplate;
     }
-    const m = String(out).match(/was saved to ([^;]+) as hush received it/);
-    assert.ok(m, 'the recovery copy is written past the host-truncation size');
-    created.push(m[1].trim());
-    assert.doesNotMatch(out, /saved in full to/, 'and it never claims to be the whole output');
+    assert.match(out, /Claude Code cut this output and saved all of it to the file named above/, 'the digest points at the host file');
+    assert.doesNotMatch(out, /saved in full to|hush-sidecar/, 'and names no hush copy');
     assert.ok(out.length < 32000 / 2, 'the digest is what reaches the model, not the output');
   });
 

@@ -168,26 +168,28 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
     assert.ok(entry.bytesOut < entry.bytesIn);
   });
 
-  // Past the host-truncation size the host parks the result itself and shows a
-  // 2KB preview, so stepping aside here left the model reading the parked file
-  // back into context. The recovery copy goes out instead, and only the header
-  // changes: "as hush received it" rather than "in full".
-  test('sidecar — a shell output past the host-truncation size still gets a recovery copy', () => {
+  // At the host's cut Claude Code keeps the complete output in its own file and
+  // shows the model its pointer plus a 2KB preview of this hook's text, so hush
+  // hands back the digest and writes no copy of the prefix it received.
+  test('sidecar — a shell output at the host cut gets the digest and no hush copy', () => {
     const id = sid('guard');
     const body = uniqueLines(900); // ~31KB: past the default host cut, 30000
     assert.ok(body.length >= 29900, 'fixture must reach the default host cut for this test to mean anything');
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
     const [entry] = readManifest(id);
     assert.strictEqual(entry.action, 'sidecar');
-    assert.ok(entry.sidecarPath, 'the parked file is recorded');
+    assert.strictEqual(entry.sidecarPath, null, 'hush parks nothing');
+    assert.strictEqual(entry.retention, 'none');
+    assert.strictEqual(entry.recovery, 'rerun-command');
     assert.ok(entry.bytesOut < entry.bytesIn / 2, 'and the digest is what reaches the model');
-    assert.match(hookOutput(r).hookSpecificOutput.updatedToolOutput, /as hush received it/);
+    const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(out, /Claude Code cut this output and saved all of it to the file named above/);
+    assert.doesNotMatch(out, /saved in full|as hush received it/);
   });
 
-  // A failing run is the one output whose detail is evidence, so it takes the
-  // recovery copy even past the host-truncation size the guard above steps
-  // aside at — otherwise the inline cap is the only surviving record of it.
-  test('sidecar — a FAILING shell output past the host-truncation size still gets a recovery copy', () => {
+  // A failing run is the one output whose detail is evidence: at the cut its
+  // error still leads the digest, and the host's file is the record of the rest.
+  test('sidecar — a FAILING shell output at the host cut leads with the error, no hush copy', () => {
     const id = sid('fail-sidecar');
     const lines = Array.from({ length: 900 }, (_, i) => `line ${i} of the fixture, unique content`);
     lines[400] = "src/boot.ts(41,7): error TS2304: Cannot find name 'configure'.";
@@ -198,19 +200,13 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
     const [entry] = readManifest(id);
     assert.strictEqual(entry.action, 'sidecar');
-    assert.strictEqual(entry.recovery, 'sidecar');
-    assert.strictEqual(entry.retention, 'session');
-    assert.strictEqual(entry.retrieval, false);
-    assert.ok(entry.recoveryPath, 'the record names where the full failure output went');
+    assert.strictEqual(entry.sidecarPath, null);
+    assert.strictEqual(entry.recoveryPath, null);
     assert.ok(entry.omitted > 0);
     assert.strictEqual(entry.preserved + entry.omitted, entry.linesIn);
-    assert.strictEqual(fs.readFileSync(entry.recoveryPath, 'utf-8'), body, 'the complete failure output is on disk');
-
-    // The header claims only what it can: at this size the host may have cut
-    // the tail before hush ever saw it, so "in full" is not on offer.
     const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
-    assert.match(out, /was saved to \S+ as hush received it/);
-    assert.doesNotMatch(out, /saved in full/);
+    assert.ok(out.indexOf('L401: src/boot.ts(41,7): error TS2304') < 2048, 'the error sits inside the host preview');
+    assert.match(out, /Read Claude Code's file with offset\/limit/);
   });
 
   test('object response (stdout/stderr) still emits exactly one combined line', () => {
