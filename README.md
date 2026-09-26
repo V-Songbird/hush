@@ -79,12 +79,11 @@ The comparison asks whether jobs were completed correctly, how often the assista
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words |
 | --- | --- | --- | --- | --- |
 | Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
-| Claude Opus 5 | caveman | 36/36 | 31/36 | 151 |
 | Claude Opus 5 | hush | 36/36 | 36/36 | 69 |
 
 In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush spoke at most once before the answer in every session.
 
-A text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin and with caveman. Three quiet jobs cost 1–10% more. The heuristic does not check that the suggested action is correct or complete. See [cost and runnable content by job](docs/knowledge/benchmarks.md#cost-and-runnable-content-by-job).
+A text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin. Three quiet jobs cost 1–10% more. The heuristic does not check that the suggested action is correct or complete. See [cost and runnable content by job](docs/knowledge/benchmarks.md#cost-and-runnable-content-by-job).
 
 Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the voice hush shipped then and `HUSH_WRAP=1`; they predate the current voice and output trimming. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 

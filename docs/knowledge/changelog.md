@@ -239,6 +239,12 @@ understood the answer. The README's quiet column now reads "Spoke at most
 once before the answer", as the benchmark details do, because an opening line
 counts too.
 
+The README and the benchmark details no longer compare hush with caveman.
+The caveman sessions in the September 1 run also used Claude Code's Concise
+output style, so they did not measure caveman alone; the comparison returns
+after a correctly configured re-run. The benchmark details also note that a
+per-job cost difference under about 15% in that one run is within its noise.
+
 The settings page now documents eight switches it left out before, each of
 which turns off part of hush: `HUSH_CORE`, `HUSH_QUIET`, `HUSH_NUDGE=off`,
 `HUSH_SIDECAR`, `HUSH_GREP`, `HUSH_TEMPLATE`, `HUSH_COMPACT` and

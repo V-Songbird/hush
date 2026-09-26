@@ -45,10 +45,11 @@ Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs a
 | Claude Opus 5, 36 sessions each | jobs right | spoke at most once before the answer | median final prose words |
 | --- | --- | --- | --- |
 | no plugin | 36/36 | 14/36 | 367 |
-| caveman | 36/36 | 31/36 | 151 |
 | **hush** | **36/36** | **36/36** | **69** |
 
-The medians are 366.5, 150.5 and 68.5, rounded. Prose words exclude fenced code. The batch also ran two other setups, which the README does not compare.
+The medians are 366.5 and 68.5, rounded. Prose words exclude fenced code. The batch also ran other setups, which this page does not compare.
+
+This page no longer compares hush with caveman. The caveman sessions in this batch also ran with Claude Code's Concise output style, so their figures did not measure caveman alone. The comparison returns only after a correctly configured re-run.
 
 ### Reading it
 
@@ -57,7 +58,6 @@ Short is not the same as easy to read. The same sessions were measured for how m
 | Claude Opus 5, 36 sessions each | jobs right | sentences over 20 words | over 25 | over 30 | words in blocks over 40 words, mean | median |
 | --- | --- | --- | --- | --- | --- | --- |
 | no plugin | 36/36 | 19.2% | 9.8% | 3.9% | 67.8% | 69.3% |
-| caveman | 36/36 | 4.3% | 2.0% | 0.7% | 55.2% | 64.4% |
 | **hush** | **36/36** | **0.3%** | **0.0%** | **0.0%** | **5.8%** | **0.0%** |
 
 For sentences and blocks, fenced code is left out, and inline code, paths, file names, identifiers, flags, versions, hashes and URLs each count as one word. Sentence shares are pooled over every sentence a setup wrote. A block is the text between blank lines, table rows left out; the last two columns give the share of each message's words that sit in blocks over 40 words, as the mean and the median over the 36 sessions.
@@ -67,38 +67,39 @@ Reading ease and grade level are prose surface: formulas over word and sentence 
 | Claude Opus 5, 36 sessions each | words per sentence | reading ease | grade level |
 | --- | --- | --- | --- |
 | no plugin | 12.9 | 70.9 | 6.6 |
-| caveman | 8.4 | 73.5 | 5.1 |
 | **hush** | **6.2** | **90.9** | **2.1** |
 
-Job by job: in how many of the nine jobs hush's average beat the other setup's, with the exact two-sided sign-flip p over the nine job differences. Nine of nine gives 0.004, the smallest p that nine jobs allow.
+Job by job: in how many of the nine jobs hush's average beat the no-plugin average, with the exact two-sided sign-flip p over the nine job differences. Nine of nine gives 0.004, the smallest p that nine jobs allow.
 
-| hush against | no plugin | caveman |
-| --- | --- | --- |
-| fewer prose words | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
-| smaller share of sentences over 20 words | 9 of 9, p 0.004 | 8 of 9, p 0.008, 1 tie |
-| smaller share of sentences over 30 words | 9 of 9, p 0.004 | 4 of 9, p 0.125, 5 ties |
-| less of the message in blocks over 40 words | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
-| higher reading ease | 9 of 9, p 0.004 | 9 of 9, p 0.004 |
+| hush against | no plugin |
+| --- | --- |
+| fewer prose words | 9 of 9, p 0.004 |
+| smaller share of sentences over 20 words | 9 of 9, p 0.004 |
+| smaller share of sentences over 30 words | 9 of 9, p 0.004 |
+| less of the message in blocks over 40 words | 9 of 9, p 0.004 |
+| higher reading ease | 9 of 9, p 0.004 |
 
-**This batch does not separate structure from length.** Counted with the prose word count behind the medians above, fenced code excluded, hush's range of words per session overlaps the no-plugin range in none of the nine jobs, and the caveman range in one job, only through a single 42-word caveman session. Every difference in these tables is also a length difference.
+**This batch does not separate structure from length.** Counted with the prose word count behind the medians above, fenced code excluded, hush's range of words per session overlaps the no-plugin range in none of the nine jobs. Every difference in these tables is also a length difference.
 
 ### Cost and runnable content by job
 
 Same batch, `rivalA-762f888b`. Its hush sessions ran hush 1.11.1, the release current when the batch started; the records themselves do not store a version. Each price is the average bill of a job's four sessions, read back from the API, with the change against no plugin; the cheapest setup is in bold. An answer counts as runnable when its final message holds a fenced code block or inline code with a space in it, the usual shape of a command. That heuristic does not check that the command is correct or complete. Jobs are ordered by how much tool output the no-plugin sessions took in, least first.
 
-| The job | tool output per session, no plugin | no plugin | caveman | hush | answers with runnable content, no plugin · caveman · hush |
-| --- | --- | --- | --- | --- | --- |
-| Plan a `--json` flag without editing anything | 2.9k chars | **$0.155** | $0.169, +9% | $0.170, +10% | 4/4 · 4/4 · 4/4 |
-| Get a build clean again after a dependency bump | 6.7k chars | **$0.250** | $0.259, +4% | $0.254, +1% | 4/4 · 4/4 · 4/4 |
-| Fix a red test suite hiding three real failures | 9.8k chars | $0.257 | **$0.242, −6%** | $0.267, +4% | 4/4 · 4/4 · 3/4 |
-| Build a notification router while the plan changes four times | 14.0k chars | $0.689 | $0.649, −6% | **$0.588, −15%** | 4/4 · 4/4 · 3/4 |
-| Dig through 300 KB of logs for the cause of an outage | 18.8k chars | $0.850 | $0.631, −26% | **$0.564, −34%** | 4/4 · 4/4 · 4/4 |
-| Finish a half-done rename across 76 files | 20.4k chars | $0.429 | **$0.352, −18%** | $0.368, −14% | 4/4 · 4/4 · 4/4 |
-| Scope a column rename that matches a thousand lines | 24.1k chars | $0.432 | $0.410, −5% | **$0.377, −13%** | 4/4 · 4/4 · 4/4 |
-| Find what actually changed for users across 380 commits | 52.8k chars | $0.709 | **$0.417, −41%** | $0.513, −28% | 4/4 · 4/4 · 4/4 |
-| Triage a 57 KB application log | 60.9k chars | $0.516 | $0.511, −1% | **$0.325, −37%** | 4/4 · 4/4 · 4/4 |
+| The job | tool output per session, no plugin | no plugin | hush | answers with runnable content, no plugin · hush |
+| --- | --- | --- | --- | --- |
+| Plan a `--json` flag without editing anything | 2.9k chars | **$0.155** | $0.170, +10% | 4/4 · 4/4 |
+| Get a build clean again after a dependency bump | 6.7k chars | **$0.250** | $0.254, +1% | 4/4 · 4/4 |
+| Fix a red test suite hiding three real failures | 9.8k chars | **$0.257** | $0.267, +4% | 4/4 · 3/4 |
+| Build a notification router while the plan changes four times | 14.0k chars | $0.689 | **$0.588, −15%** | 4/4 · 3/4 |
+| Dig through 300 KB of logs for the cause of an outage | 18.8k chars | $0.850 | **$0.564, −34%** | 4/4 · 4/4 |
+| Finish a half-done rename across 76 files | 20.4k chars | $0.429 | **$0.368, −14%** | 4/4 · 4/4 |
+| Scope a column rename that matches a thousand lines | 24.1k chars | $0.432 | **$0.377, −13%** | 4/4 · 4/4 |
+| Find what actually changed for users across 380 commits | 52.8k chars | $0.709 | **$0.513, −28%** | 4/4 · 4/4 |
+| Triage a 57 KB application log | 60.9k chars | $0.516 | **$0.325, −37%** | 4/4 · 4/4 |
 
-hush cost more than no plugin on the three quietest jobs, by 1%, 4% and 10%. Runnable content appeared in 34 of 36 hush answers, 94%, and in all 36 answers without a plugin and with caveman. The two hush answers without it came from the first session of the red test suite job and of the notification router job.
+hush cost more than no plugin on the three quietest jobs, by 1%, 4% and 10%. Runnable content appeared in 34 of 36 hush answers, 94%, and in all 36 answers without a plugin. The two hush answers without it came from the first session of the red test suite job and of the notification router job.
+
+Treat a per-job cost difference under about 15% in this one batch as noise. The no-plugin setup and another setup in the batch ran the same configuration, yet their average cost per session differed by 14%: $0.4765 against $0.4112, 36 sessions each.
 
 ## The earlier comparisons
 
@@ -261,12 +262,13 @@ Four places, all of them above.
 **A quiet job can cost more.** hush's writing rules ride along on every round trip. On a job that
 prints little there is nothing to trim against them. In the README comparison, hush cost more than
 no plugin on the three quietest jobs: the dependency bump by 1%, the red test suite by 4% and the
-`--json` flag plan by 10% (see [Cost and runnable content by job](#cost-and-runnable-content-by-job)).
+`--json` flag plan by 10%, all within that batch's noise of about 15% (see
+[Cost and runnable content by job](#cost-and-runnable-content-by-job)).
 In the earlier comparisons the router job on Sonnet cost 31% more, and four other Sonnet jobs cost
 7-8% more; on Opus the effect was smaller, two jobs at +1% and +4%.
 
 **Fewer answers held runnable content.** In the README comparison, 34 of 36 hush answers, 94%, held
-runnable content, against all 36 without a plugin and with caveman. The two without it came from the
+runnable content, against all 36 without a plugin. The two without it came from the
 red test suite job and the notification router job. The heuristic looks for the shape of a command
 and does not check that the command is correct or complete.
 
