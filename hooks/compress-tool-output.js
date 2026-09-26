@@ -874,6 +874,27 @@ function isBoundedPrint(command) {
   return steps.some((s) => !isNeutralStep(s)) && steps.every((s) => isNeutralStep(s) || isBoundedStep(s));
 }
 
+// A clean run's stdout that parses whole as one JSON object or array, or as
+// JSON Lines of them, is data a script was asked to print: it has no warning
+// lines for the cap to keep, so a cut drops structure the model then fetches
+// again. main() passes it as a bounded print. Unlike a print, it stays parked
+// from SIDECAR_MIN_CHARS: minified JSON packs any size into a few lines, so
+// the line count alone would not bound it.
+function isJsonOutput(text) {
+  if (text.length >= SIDECAR_MIN_CHARS) return false;
+  const t = text.trim();
+  if (!/^[[{]/.test(t)) return false;
+  try {
+    JSON.parse(t);
+    return true;
+  } catch {}
+  try {
+    return t.split("\n").every((l) => !l.trim() || (/^\s*[[{]/.test(l) && (JSON.parse(l), true)));
+  } catch {
+    return false;
+  }
+}
+
 // Reads the trailer preserve-exit-code.js appends. Real output splits the
 // prefix, the number, and the suffix across three separate lines (its
 // wrapper never puts a variable inside a quoted string or parens — see that
@@ -1870,6 +1891,9 @@ function main() {
   // one short error line, which passes whole. Its error and fail words are the
   // printed text, not a failed run.
   const noCode = isDump || bounded ? 0 : undefined;
+  // A failure, stderr and a file print (a log keeps its dump cap) keep their
+  // paths; a clean run's JSON stdout is a bounded print (isJsonOutput).
+  const json = (text, exitCode) => !exitCode && !isDump && isJsonOutput(text);
 
   if (typeof response === "string") {
     const wrapped = exitWrapped ? extractWrappedExit(response) : null;
@@ -1879,7 +1903,9 @@ function main() {
     // a print, and no untrustworthy "[hush: exit N]" note gets appended.
     const exitCode = wrapped ? wrapped.exitCode : undefined;
     const decision = { bytesIn: response.length };
-    let out = compress(wrapped ? wrapped.cleanText : response, exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
+    const text = wrapped ? wrapped.cleanText : response;
+    const isJson = json(text, exitCode);
+    let out = compress(text, isJson ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || isJson);
     if (wrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
     decision.bytesOut = out.length;
     if (!decision.recovery) decision.recovery = "rerun-command";
@@ -1907,7 +1933,9 @@ function main() {
         bytesIn += next[field].length;
         const fieldWrapped = field === source ? wrapped : null;
         const decision = {};
-        let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
+        const text = fieldWrapped ? fieldWrapped.cleanText : next[field];
+        const isJson = field === "stdout" && json(text, exitCode);
+        let out = compress(text, isJson ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || isJson);
         // Only the field that supplied the code is stripped and annotated; a
         // malformed trailer there is stripped with no note.
         if (fieldWrapped && exitCode != null) out += `\n${exitNote(exitCode)}`;
