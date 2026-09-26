@@ -9,10 +9,10 @@
 
 <p align="center"><strong>Available on</strong></p>
 <p align="center">
-  <img src="assets/edition-codex.svg" alt="Codex" width="80" height="80" />&emsp;&emsp;<a href="#claude-code"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
+  <img src="assets/edition-codex.svg" alt="Codex (not available)" width="80" height="80" />&emsp;&emsp;<a href="#claude-code"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
   <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#claude-code">Claude</a>
 </p>
-<p align="center"><small>Codex is not currently installable.</small></p>
+<p align="center"><small>Hush has no Codex package.</small></p>
 
 <p align="center"><a href="#install"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#the-numbers">Evidence</a></p>
 
