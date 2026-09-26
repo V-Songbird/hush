@@ -89,8 +89,9 @@ const HOST_STATUS = "silent_turn_reminder";
 // text, because the turn's own final message cannot exist yet while a
 // PostToolUse hook is firing. The first text block after a host status
 // request, before any tool call, is the line the host asked for and does not
-// count. Fail-SILENT on any trouble: no count means no injection, which is
-// the cheap direction.
+// count if it is one line; a longer block is more than the host asked for.
+// Fail-SILENT on any trouble: no count means no injection, which is the cheap
+// direction.
 function countMidTurnText(transcriptPath) {
   let lines;
   try {
@@ -121,8 +122,8 @@ function countMidTurnText(transcriptPath) {
     for (const b of c) {
       if (b.type === "tool_use") hostAsked = false;
       if (b.type !== "text" || typeof b.text !== "string" || !b.text.trim()) continue;
-      if (hostAsked) hostAsked = false;
-      else count++;
+      if (!hostAsked || b.text.trim().includes("\n")) count++;
+      hostAsked = false;
     }
   }
   return count;

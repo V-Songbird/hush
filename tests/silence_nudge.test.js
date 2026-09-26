@@ -122,6 +122,11 @@ test('the host request excuses one line only', () => {
   assert.strictEqual(countMidTurnText(tp), 2);
 });
 
+test('the host request excuses a one-line answer, not a longer block', () => {
+  const tp = writeTranscript([prompt('go'), hostStatus(), leak('Reading the hook.\nThen the tests.'), toolUse()]);
+  assert.strictEqual(countMidTurnText(tp), 1);
+});
+
 test('a host request answered with a tool call excuses nothing later', () => {
   const tp = writeTranscript([prompt('go'), hostStatus(), toolUse(), toolResult(), leak('slip')]);
   assert.strictEqual(countMidTurnText(tp), 1);

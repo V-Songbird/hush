@@ -118,7 +118,8 @@ they looked.
 The mid-turn reminder now comes at most once per turn, and never after the
 line Claude Code asks for when you have not heard from Claude in a while.
 Before, each such line drew a reminder to stay quiet, so a long turn could
-collect one per request. `HUSH_NUDGE=max` is unchanged.
+collect one per request. The update is excused only when it is one line;
+a longer update still draws the reminder. `HUSH_NUDGE=max` is unchanged.
 
 Every switch that takes `off`, `0` or `false` now ignores spaces around the
 value, as `HUSH_NUDGE` already did: `HUSH_CORE=" off"` turns Core off, where
