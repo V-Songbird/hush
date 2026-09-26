@@ -1,10 +1,11 @@
 "use strict";
 
 // The pre-commit hook prints only the suite's summary, and after it the
-// failing tests when one fails, instead of the whole spec output. It runs
-// here against a fixture repository with its own tests/, so the result does
-// not depend on this plugin's suite. Every path is taken from the plugin
-// root, so this file passes unchanged in each plugin that carries the same
+// failing tests when one fails, instead of the whole spec output, and all of
+// it when the run dies before the summary. It runs here against a fixture
+// repository with its own tests/, so the result does not depend on this
+// plugin's suite. Every path is taken from the plugin root, so this file
+// passes unchanged in each plugin that carries the same
 // scripts/git-hooks/pre-commit.
 
 const { test } = require("node:test");
@@ -25,7 +26,14 @@ const SPAWN_TIMEOUT_MS = (() => {
 })();
 const PRE_COMMIT = path.join(__dirname, "..", "scripts", "git-hooks", "pre-commit");
 
-test("prints the summary, and the failing tests only when one fails", () => {
+// Only a fixture run sets this, so the crash fixture never kills another runner.
+const CRASH_MARKER = "PRE_COMMIT_TEST_KILL_RUNNER";
+// The reporter must print the first fixture test's line before the runner dies.
+const CRASH_DELAY_MS = 2000;
+
+// A temporary Git repository with an empty tests/, and a function that runs
+// the hook there.
+function fixture() {
   const root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "pre-commit-"));
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
   const tests = path.join(root, "tests");
@@ -38,6 +46,16 @@ test("prints the summary, and the failing tests only when one fails", () => {
   try {
     cp.execFileSync("git", ["init", "-q"], { cwd: root, env, stdio: "pipe" });
     fs.mkdirSync(tests);
+  } catch (error) {
+    fs.rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
+  return { root, env, tests, run };
+}
+
+test("prints the summary, and the failing tests only when one fails", () => {
+  const { root, tests, run } = fixture();
+  try {
     fs.writeFileSync(path.join(tests, "pass.test.js"), 'require("node:test")("fixture passes", () => {});\n');
     fs.writeFileSync(
       path.join(tests, "fail.test.js"),
@@ -58,5 +76,37 @@ test("prints the summary, and the failing tests only when one fails", () => {
     assert.deepEqual(good.stdout.split("\n").filter((line) => line && !line.startsWith("ℹ ")), []);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prints all of the output when the run dies before its summary", () => {
+  const { root, env, tests, run } = fixture();
+  try {
+    env[CRASH_MARKER] = "1";
+    fs.writeFileSync(
+      path.join(tests, "crash.test.js"),
+      [
+        'const { test } = require("node:test");',
+        'test("fixture passes before the crash", () => {});',
+        'test("fixture kills the runner", async () => {',
+        `  await new Promise((resolve) => setTimeout(resolve, ${CRASH_DELAY_MS}));`,
+        `  if (process.env.${CRASH_MARKER} === "1") { process.kill(process.ppid, "SIGKILL"); process.exit(1); }`,
+        "});",
+        "",
+      ].join("\n")
+    );
+
+    const crashed = run();
+    assert.notEqual(crashed.status, 0);
+    assert.match(crashed.stdout, /fixture passes before the crash/);
+    assert.doesNotMatch(crashed.stdout, /ℹ tests/);
+  } finally {
+    // Windows can keep the killed runner's directory locked for seconds after
+    // it exits; a leftover temp directory is not what this test checks.
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 5 });
+    } catch (error) {
+      if (error.code !== "EBUSY" && error.code !== "EPERM") throw error;
+    }
   }
 });
