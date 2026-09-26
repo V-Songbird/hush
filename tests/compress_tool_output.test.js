@@ -1829,7 +1829,7 @@ describe('unit + e2e: sidecar digests for very large outputs', () => {
   function withSidecarOn(fn) {
     const prev = process.env.HUSH_SIDECAR;
     delete process.env.HUSH_SIDECAR;
-    try { return fn(); } finally { process.env.HUSH_SIDECAR = prev; }
+    try { return fn(); } finally { if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev; }
   }
   const e2eSession = 'hush-test-side-' + Date.now();
   after(() => {
@@ -1909,7 +1909,7 @@ describe('secrets guard: credential-shaped content is never persisted to a sidec
   function withSidecarOn(fn) {
     const prev = process.env.HUSH_SIDECAR;
     delete process.env.HUSH_SIDECAR;
-    try { return fn(); } finally { process.env.HUSH_SIDECAR = prev; }
+    try { return fn(); } finally { if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev; }
   }
   // Every line here shares one shape (only the counter/duration vary), so
   // collapseTemplates alone would shrink 2000 lines under the cap and hide
@@ -2035,7 +2035,7 @@ describe('signal-first digest + compound-error signal matching', () => {
     removeSessions(['sigfirst', 'nosig']);
   });
   function pathFrom(d) { const m = d.match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
-  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { if (p === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = p; } }
 
   test('capLines keeps a bare ReferenceError line the old regex would miss', () => {
     const lines = Array.from({ length: 300 }, (_, i) => 'compile mod_' + i + ' ok');
@@ -2088,7 +2088,7 @@ describe('census-grade sidecar digests', () => {
     removeSessions(['fewsignals', 'manysignals', 'budget2KB']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
-  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { if (p === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = p; } }
 
   test('signalCensus counts each category on a mixed-signal fixture', () => {
     const lines = [
@@ -2172,7 +2172,7 @@ describe('the keep vocabulary, pinned category by category', () => {
     removeSessions(['keepvocab', 'censusvocab', 'tracebackdigest', 'stackdigest', 'zerocount', 'godigest', 'jestdigest', 'runnerdigest']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
-  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { if (p === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = p; } }
 
   // Varying token counts, so no two neighbours share a template and the cap —
   // not the collapse — is what decides which lines survive.
@@ -2841,7 +2841,7 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     removeSessions(['s']);
   });
   function pathFrom(d) { const m = String(d).match(/saved in full to ([^;]+);/); if (m) created.push(m[1].trim()); return m ? m[1].trim() : null; }
-  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { process.env.HUSH_SIDECAR = p; } }
+  function withSidecar(fn) { const p = process.env.HUSH_SIDECAR; delete process.env.HUSH_SIDECAR; try { return fn(); } finally { if (p === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = p; } }
   function bigText(chars) { const a = []; let n = 0; while (a.join(NL).length < chars) { a.push('info line ' + n + ' padding padding padding padding ' + n); n++; } return a.join(NL); }
 
   test('a shell output in the 15-28KB window still sidecars', () => {

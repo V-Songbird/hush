@@ -38,7 +38,7 @@ describe('a long test log follows through to the sidecar', () => {
       try {
         digest = compress(content, undefined, true, false, [], 1, SESSION);
       } finally {
-        process.env.HUSH_SIDECAR = prev;
+        if (prev === undefined) delete process.env.HUSH_SIDECAR; else process.env.HUSH_SIDECAR = prev;
       }
       const m = digest.match(/saved in full to ([^;]+);/);
 
