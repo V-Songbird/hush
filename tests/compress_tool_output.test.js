@@ -3368,7 +3368,38 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'git diff --cached src/app.js',
       'git show HEAD -- src/app.js',
       wrapPowerShell('git show HEAD'),
+      'cat src/app.js',
+      'Get-Content src/app.js',
+      'cd hush && cat hooks/a.js hooks/b.js',
+      "cat a.js; echo '---'; cat b.js",
+      'cat a.js\necho\ncat b.js',
+      'Set-Location src; Get-Content a.ps1, "b c.ps1"',
+      "cd src && sed -n '1,80p' a.js",
+      wrapBash('cd hush && cat hooks/a.js'),
+      wrapPowerShell('Set-Location src; Get-Content a.ps1'),
     ]) assert.ok(isBoundedPrint(c), c);
+  });
+
+  test('a whole read of a log or generated file, or a chain with any other step, is not a bounded print', () => {
+    for (const c of [
+      'cat test.log',
+      'cd build && cat logs/run.txt',
+      'Get-Content app.log.1',
+      'cat src/a.js app.log',
+      'cat package-lock.json',
+      'cat node_modules/x/index.js',
+      'cd hush && npm test',
+      'cat a.js && npm test',
+      'cat a.js | grep foo',
+      'cat a.js || true',
+      'cat a.js & npm test',
+      'echo "$(npm test)"',
+      'cat $(find . -name "*.js")',
+      'cat `ls`',
+      'Write-Output (npm test)',
+      'cd hush',
+      'cd hush && echo done',
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
   });
 
   test('isBoundedPrint leaves out pipelines, chains, redirects, -exec and full dumps', () => {
@@ -3383,8 +3414,6 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'findstr /s foo *.js',
       'tail -f app.log',
       'head src/app.js',
-      'cat src/app.js',
-      'Get-Content src/app.js',
       'git diff | head -50',
       'git diff > out.patch',
       'git diff && npm test',
@@ -3411,7 +3440,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
   });
 
   test('the same output under another command is trimmed, so the pass is what keeps it whole', () => {
-    for (const [command, out] of [['npm run build', names], ["cat -n src/app.js | sed -n '1,92p'", code]]) {
+    for (const [command, out] of [['npm run build', names], ["cat -n src/app.js | sed -n '1,92p'", code],
+      ['cat build/app.log', code], ['cd build && cat logs/run.txt', code], ['cd hush && npm test', code]]) {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: out });
       assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < out.length, command);
     }
@@ -3426,6 +3456,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['tail -n', 'tail -n 92 src/app.js', code],
     ['git diff', 'git diff', patch],
     ['git show', 'git show HEAD -- src/app.js', patch],
+    ['cat', 'cat src/app.js', code],
+    ['cd and a chained cat of two files', "cd src && cat app.js; echo '---'; cat lib.js", code],
   ]) {
     test(`${shape}: 92 lines pass through the Bash hook untouched`, () => {
       const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } });
@@ -3437,6 +3469,7 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['Get-ChildItem', 'Get-ChildItem docs -Name', names],
     ['Get-Content -TotalCount', 'Get-Content src/app.js -TotalCount 92', code],
     ['Get-Content -Tail', 'Get-Content src/app.js -Tail 92', code],
+    ['Get-Content of two files', 'Set-Location src; Get-Content app.ps1, lib.ps1', code],
   ]) {
     test(`${shape}: 92 lines pass through the PowerShell hook whole, wrapped or not`, () => {
       assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command }, tool_response: out })), null);

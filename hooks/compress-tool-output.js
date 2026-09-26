@@ -823,8 +823,26 @@ function unwrapCommand(command) {
   return (ps ? ps[1] : line).replace(/\s+2>\S*/g, "").trim();
 }
 
+// An explicit read of a whole file is a bounded print too, unless the file is
+// a log or generated (isLogPath, isGeneratedPath), which stays a dump: source
+// has no warning lines to keep, so a cut sends the model back for a re-read.
+// A read can come after a cd and between echo separators, chained with &&, ;
+// or a newline, as long as every step is one of these. A step with a pipe, a
+// redirect, a background & or a command substitution runs something else.
+const WHOLE_READ_RE = /^(?=[^|<>&`()]*$)(?:cat|type|gc|Get-Content)\s+\S/i;
+const NEUTRAL_STEP_RE = /^(?=[^|<>&`()]*$)(?:cd|Set-Location|sl|pushd|echo|printf|Write-Output|Write-Host)(?:\s|$)/i;
+
+function isSourceRead(step) {
+  // The slash lets a relative logs/x.txt match as the absolute paths Read gets do.
+  const paths = step.split(/\s+/).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, ""));
+  return WHOLE_READ_RE.test(step) && !paths.some((p) => isLogPath(p) || isGeneratedPath(p));
+}
+
 function isBoundedPrint(command) {
-  return typeof command === "string" && BOUNDED_PRINT_RE.test(unwrapCommand(command));
+  if (typeof command !== "string") return false;
+  const steps = unwrapCommand(command).split(/&&|;|\r?\n/).map((s) => s.trim()).filter(Boolean);
+  return steps.some((s) => !NEUTRAL_STEP_RE.test(s)) &&
+    steps.every((s) => NEUTRAL_STEP_RE.test(s) || BOUNDED_PRINT_RE.test(s) || isSourceRead(s));
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the

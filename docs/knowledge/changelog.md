@@ -56,9 +56,17 @@ file.
 A whole-file print in PowerShell, `Get-Content`, `gc`, `type` or `cat` with
 nothing else, now keeps up to 250 lines when hush wraps it to read its exit
 code, as it already did unwrapped and in Bash; it was cut to 60 like a clean
-run. A script of several lines that opens with such a print is now trimmed
+run. A script of several lines that opens with such a print and then runs
+other commands is now trimmed
 like any other output, where it kept up to 250. Folding and the save to a
 file from 15,000 characters work as before.
+
+A read of whole source files with `cat`, `type`, `gc` or `Get-Content` now
+comes back whole up to 250 lines, like a line-range print. This holds when the
+reads follow a `cd` or sit between `echo` separators, such as
+`cd src && cat a.js; echo ---; cat b.js`. Such a read could lose lines from
+the middle of the file, so Claude read the file a second time. A print of a
+log or a generated file, and test or build output, are trimmed as before.
 
 A `git diff` or `git show` run on its own now comes back whole up to 250
 lines, however long the session, as a listing or a line-range print does:

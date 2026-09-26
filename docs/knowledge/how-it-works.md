@@ -57,14 +57,24 @@ settings or a `--settings` flag.
 A directory listing, a print of a line range or a diff comes back whole up to 250 lines, however
 long the session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail`
 with a line count, `Get-Content` with `-TotalCount` or `-Tail`, and `git diff` or `git show`, each run
-on its own rather than piped or chained. Nothing in it is folded, cut or parked in a file. Past 250
+without a pipe. Nothing in it is folded, cut or parked in a file. Past 250
 lines only exact repeats fold, into one line and a count: under 4,000 characters it still comes
 back whole, from 4,000 it keeps 250, the first and last stretch, and from 15,000 characters it is
 parked like any other output. Such output has no warning or error lines for a trim to keep, so a
 trim only cut names, code or diff lines Claude then had to fetch again.
 
-A whole-file print, `cat`, `type` or `Get-Content` run on its own, keeps up to 250 lines like a
-failing run: a trim there cuts file text, not noise. Without an exit code, neither it nor a listing,
+A read of whole files with `cat`, `type`, `gc` or `Get-Content` counts as such a print and comes
+back whole up to 250 lines the same way. So does a command made only of these reads, the prints
+above, a change of folder (`cd`, `pushd`, `Set-Location`) and separators printed with `echo`,
+`printf` or `Write-Output`, joined by `&&`, `;` or new lines, such as
+`cd src && cat a.js; echo ---; cat b.js`. Source code has no warning lines to keep, so a trim there
+only cut code Claude had asked to see.
+
+A whole-file print of a log or a generated file keeps up to 250 lines like a failing run, and
+shrinks as the session grows. A log is a `.log` file, or a `.txt` or `.out` file in a `log` or
+`logs` folder. A generated file is one of the files the Read tool trims below. Any other command
+in the chain, such as `cd src && npm test`, is trimmed like any other output, so test and build
+output still shrinks. Without an exit code, neither a whole-file print nor a listing,
 a line-range print or a diff counts as a failing run: the words error or failed in them are the
 file's text, so a trimmed view of them never says the run failed.
 A printed test log still keeps a failed check's values and file:line lines out of the fold.
