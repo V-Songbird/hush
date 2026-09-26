@@ -154,7 +154,9 @@ stays in the output as printed and no longer changes the exit code Claude
 sees. Before, it could make a command that passed read as failed or killed.
 hush reads that marker from a command's error output only when its normal
 output carries none, so a marker the error output prints cannot stand in for
-one the normal output lost.
+one the normal output lost. hush removes the marker only from the output it
+read the exit code from, so a marker the error output prints stays there as
+printed, without a second exit note.
 
 A Bash command whose `exec` sends the shell's own output elsewhere, such as
 `exec >build.log` or `exec &>/dev/null`, is no longer wrapped to read its exit

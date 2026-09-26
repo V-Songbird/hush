@@ -864,6 +864,18 @@ function extractWrappedExit(text) {
   return { exitCode: code ? parseInt(code[1], 10) : null, cleanText: text.slice(0, start).replace(/\s+$/, "") };
 }
 
+// The field of a structured response whose trailer supplies the exit code, or
+// null. The bash wrapper echoes its trailer to stdout, so stdout decides.
+// stderr is read only when stdout carries no marker at all: that is
+// `exec 1>&2`, which moves the real trailer there. A stdout with a marker the
+// host cut off keeps stderr from being read, so a stderr that ends in a
+// printed marker never supplies the code. Only this field is stripped and
+// annotated; a marker ending any other field is text and stays as printed.
+function exitField(response) {
+  const stdoutMarked = typeof response.stdout === "string" && response.stdout.includes(EXIT_MARKER_PREFIX);
+  return ["stdout", !stdoutMarked && "stderr", "output"].find((f) => f && extractWrappedExit(response[f])) || null;
+}
+
 // True when preserve-exit-code.js wrapped this call's command. PostToolUse
 // receives the command as the PreToolUse hook rewrote it.
 function isExitWrapped(data) {
@@ -1498,12 +1510,8 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
 function mustSanitize(data) {
   if (!isExitWrapped(data)) return false;
   const response = data.tool_response;
-  const strippable = (v) => extractWrappedExit(v) !== null;
-  if (typeof response === "string") return strippable(response);
-  if (response && typeof response === "object") {
-    return SHELL_FIELDS.some((field) => strippable(response[field]));
-  }
-  return false;
+  if (typeof response === "string") return extractWrappedExit(response) !== null;
+  return !!response && typeof response === "object" && exitField(response) !== null;
 }
 
 // Every handled tool output leaves through here: the transform's decision
@@ -1767,17 +1775,8 @@ function main() {
     if (out !== response) updated = out;
     return deliver(decision, updated, data);
   } else if (response && typeof response === "object") {
-    // The bash wrapper echoes its trailer to stdout, so stdout decides. stderr
-    // is read only when stdout carries no marker at all: that is `exec 1>&2`,
-    // which moves the real trailer there. A stdout with a marker the host cut
-    // off keeps stderr from being read, so a stderr that ends in a printed
-    // marker never supplies the code.
-    const stdoutMarked = typeof response.stdout === "string" && response.stdout.includes(EXIT_MARKER_PREFIX);
-    const wrapped =
-      exitWrapped &&
-      (extractWrappedExit(response.stdout) ||
-        (!stdoutMarked && extractWrappedExit(response.stderr)) ||
-        extractWrappedExit(response.output));
+    const source = exitWrapped ? exitField(response) : null;
+    const wrapped = source && extractWrappedExit(response[source]);
     const exitCode = wrapped ? wrapped.exitCode : extractExitCode(response);
     const next = { ...response };
     let changed = false;
@@ -1795,11 +1794,11 @@ function main() {
     for (const field of SHELL_FIELDS) {
       if (typeof next[field] === "string") {
         bytesIn += next[field].length;
-        const fieldWrapped = exitWrapped ? extractWrappedExit(next[field]) : null;
+        const fieldWrapped = field === source ? wrapped : null;
         const decision = {};
         let out = compress(fieldWrapped ? fieldWrapped.cleanText : next[field], exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded);
-        // A field's own trailer is stripped even when it did not supply the
-        // code; with no code known from anywhere, no note is added.
+        // Only the field that supplied the code is stripped and annotated; a
+        // malformed trailer there is stripped with no note.
         if (fieldWrapped && exitCode != null) out += `\n${exitNote(exitCode)}`;
         actions.push(decision.action || "passthrough");
         bytesOut += out.length;

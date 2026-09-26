@@ -1003,6 +1003,17 @@ describe('hook: end to end', () => {
       }
     });
 
+    test('only the field that supplied the code is stripped: a stderr printed marker stays as printed', () => {
+      const stderr = 'quoted: [[hush:exit=1]]';
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: { stdout: 'done\n[[hush:exit=\n0\n]]', stderr, interrupted: false },
+      }));
+      assert.strictEqual(out.stdout, 'done\n[hush: exit 0]');
+      assert.strictEqual(out.stderr, stderr);
+    });
+
     test('with no marker in stdout, the stderr trailer is read (exec 1>&2)', () => {
       const out = view(runHook('compress-tool-output.js', {
         tool_name: 'Bash',

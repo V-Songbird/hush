@@ -125,7 +125,7 @@ const SELF_EXIT_RE = /(^|[;&|(){}\n])\s*exit\b/;
 // command as a success with no code to correct it. Left unwrapped, the command
 // keeps its own status. Two targets keep the trailer readable and stay
 // wrapped: fd 2 (`exec 1>&2` lands it in stderr, which compress-tool-output.js
-// reads when stdout has none) and a process substitution (`exec > >(tee log)`
+// reads when stdout carries no marker) and a process substitution (`exec > >(tee log)`
 // passes it on). Loose like SELF_EXIT_RE, and it also looks after `then`,
 // `else` and `do`, since a miss here misreports a failure.
 const STDOUT_EXEC_RE = /(^|[;&|(){}\n]|\b(?:then|else|do))\s*exec\b[^;|\n]*?(?<=\s|exec)(1<?|&)?>>?(?!\s*>\(|\(|&\s*2\b)/;
