@@ -169,27 +169,30 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
   });
 
   // At the host's cut Claude Code keeps the complete output in its own file and
-  // shows the model its pointer plus a 2KB preview of this hook's text, so hush
-  // hands back the digest and writes no copy of the prefix it received.
-  test('sidecar — a shell output at the host cut gets the digest and no hush copy', () => {
+  // names it above a 2KB preview of this hook's text. The digest points there
+  // first; hush's copy of the received part stays the fallback, since an output
+  // that ends just under the cut was not cut and has no host file.
+  test('sidecar — a shell output at the host cut points to the host file and keeps a copy', () => {
     const id = sid('guard');
     const body = uniqueLines(900); // ~31KB: past the default host cut, 30000
     assert.ok(body.length >= 29900, 'fixture must reach the default host cut for this test to mean anything');
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
     const [entry] = readManifest(id);
     assert.strictEqual(entry.action, 'sidecar');
-    assert.strictEqual(entry.sidecarPath, null, 'hush parks nothing');
-    assert.strictEqual(entry.retention, 'none');
-    assert.strictEqual(entry.recovery, 'rerun-command');
+    assert.strictEqual(entry.recovery, 'sidecar');
+    assert.strictEqual(entry.retention, 'session');
+    assert.strictEqual(fs.readFileSync(entry.sidecarPath, 'utf-8'), body, 'the copy holds what hush received');
     assert.ok(entry.bytesOut < entry.bytesIn / 2, 'and the digest is what reaches the model');
     const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
-    assert.match(out, /Claude Code cut this output and saved all of it to the file named above/);
-    assert.doesNotMatch(out, /saved in full|as hush received it/);
+    assert.match(out, /this output reached Claude Code's cut\. If Claude Code named a file above, that file holds all of it/);
+    assert.match(out, /add the blank lines the output began with/, 'the L<n> offset against the host file is named');
+    assert.match(out, /Structure \(head \+ the tail of what hush received;/, 'the tail is not called the end');
+    assert.doesNotMatch(out, /saved in full/);
   });
 
   // A failing run is the one output whose detail is evidence: at the cut its
-  // error still leads the digest, and the host's file is the record of the rest.
-  test('sidecar — a FAILING shell output at the host cut leads with the error, no hush copy', () => {
+  // error still leads the digest, inside the host's 2KB preview.
+  test('sidecar — a FAILING shell output at the host cut leads with the error', () => {
     const id = sid('fail-sidecar');
     const lines = Array.from({ length: 900 }, (_, i) => `line ${i} of the fixture, unique content`);
     lines[400] = "src/boot.ts(41,7): error TS2304: Cannot find name 'configure'.";
@@ -200,13 +203,37 @@ describe('HUSH_DEBUG manifest: one honest line per decision path', () => {
     const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: body }, { HUSH_DEBUG: '1' });
     const [entry] = readManifest(id);
     assert.strictEqual(entry.action, 'sidecar');
-    assert.strictEqual(entry.sidecarPath, null);
-    assert.strictEqual(entry.recoveryPath, null);
+    assert.strictEqual(entry.recovery, 'sidecar');
     assert.ok(entry.omitted > 0);
     assert.strictEqual(entry.preserved + entry.omitted, entry.linesIn);
+    assert.strictEqual(fs.readFileSync(entry.recoveryPath, 'utf-8'), body);
     const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
     assert.ok(out.indexOf('L401: src/boot.ts(41,7): error TS2304') < 2048, 'the error sits inside the host preview');
-    assert.match(out, /Read Claude Code's file with offset\/limit/);
+    assert.match(out, /Read Claude Code's file, or hush's copy when no file is named above/);
+  });
+
+  // The secret screen guards the write, not the digest: at a cut an inline cap
+  // could push the signal lines past the host's 2KB preview. HUSH_SIDECAR=off
+  // keeps its documented trimmed view.
+  test('sidecar — at the host cut, a secret keeps the digest with no copy; HUSH_SIDECAR=off keeps the trimmed view', () => {
+    const lines = Array.from({ length: 900 }, (_, i) => `line ${i} of the fixture, unique content`);
+    lines[600] = "src/boot.ts(41,7): error TS2304: Cannot find name 'configure'.";
+    const plain = lines.join('\n');
+    lines[5] = 'token sk-' + 'a'.repeat(24);
+    const secret = lines.join('\n');
+    const id = sid('cut-nofile-secret');
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: id, tool_response: secret }, { HUSH_DEBUG: '1' });
+    const [entry] = readManifest(id);
+    assert.strictEqual(entry.action, 'sidecar');
+    assert.strictEqual(entry.sidecarPath, null, 'nothing is written');
+    assert.strictEqual(entry.recovery, 'rerun-command');
+    const out = hookOutput(r).hookSpecificOutput.updatedToolOutput;
+    assert.match(out, /hush received \d+ non-empty lines .* and kept no copy/);
+    assert.ok(out.indexOf('L601: src/boot.ts(41,7)') < 2048, 'the error sits inside the host preview');
+
+    const offId = sid('cut-nofile-off');
+    runHook('compress-tool-output.js', { tool_name: 'Bash', session_id: offId, tool_response: plain }, { HUSH_DEBUG: '1', HUSH_SIDECAR: 'off' });
+    assert.notStrictEqual(readManifest(offId)[0].action, 'sidecar', 'HUSH_SIDECAR=off gets no digest');
   });
 
   test('object response (stdout/stderr) still emits exactly one combined line', () => {

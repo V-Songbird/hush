@@ -168,11 +168,15 @@ printed, without a second exit note.
 hush now knows where Claude Code cuts a long shell output: at the
 `bashOutputMaxChars` setting when your user, project or local settings file
 sets it, else at `BASH_MAX_OUTPUT_LENGTH`, else at 30,000 characters. A very
-large output that arrived at that cut no longer gets a file from hush. Claude
-Code already saves the complete output and names that file above the preview
-it shows Claude, so hush's copy held only the part it received. hush now sends
-only the digest, and the digest tells Claude to read Claude Code's file for
-totals, counts and any line the digest leaves out. Before, hush assumed a cut
+large output that arrived at that cut gets a digest that sends Claude to
+Claude Code's own file first. Claude Code saves the complete output and names
+that file above the preview it shows Claude. hush still saves the part it
+received, as the fallback when Claude Code names no file, which happens when
+the output ended just short of the cut. The digest's line numbers count lines
+in hush's copy; in Claude Code's file, add any blank lines the output began
+with. Its last lines are labelled as the end of what hush received, not the
+end of the output. When hush screens out a copy because the output looks like
+it holds a credential, the digest still goes out, without a copy. Before, hush assumed a cut
 from about 28,000 characters on, so under a lower setting it called a cut
 output complete, and under a higher one it called a complete output cut. hush
 measures the output as it arrived, before colour codes come off. It cannot see

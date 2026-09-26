@@ -59,10 +59,11 @@ threshold produces an empty golden and pins nothing. The thresholds, from
 
 A shell output that arrives within 100 chars of the host's cut (`hostCutAt`:
 `bashOutputMaxChars`, else `BASH_MAX_OUTPUT_LENGTH`, else 30,000), or from
-`HUSH_SIDECAR_SHELL_MAX` chars when that is set, still gets the digest, passing
-or failing, but no sidecar file: the host has already cut it and keeps the
-complete output in its own file, so the digest points there. The sidecar check runs before
-template collapse, so same-shape lines park like any other content.
+`HUSH_SIDECAR_SHELL_MAX` chars when that is set, is still parked, passing or
+failing, but its digest points first to the host's file, which holds the
+complete output, and names hush's copy of the received part as the fallback.
+The sidecar check runs before template collapse, so same-shape lines park like
+any other content.
 
 ## Porting
 

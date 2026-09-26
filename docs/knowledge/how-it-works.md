@@ -49,8 +49,8 @@ conversation and gets re-sent on every turn after it. Parking it means Claude ca
 it, but only if it decides it needs to. Claude Code cuts a long shell result at the
 `bashOutputMaxChars` setting, else at `BASH_MAX_OUTPUT_LENGTH`, else at 30,000 characters. A shell
 result that arrives at that cut was cut short. Claude Code saves that complete result in its own
-file and names it for Claude, so hush writes no file of its own: the digest covers the part hush
-received and tells Claude to read Claude Code's file for the rest.
+file and names it for Claude, so the digest sends Claude there first. hush still saves the part it
+received, as the fallback when Claude Code names no file.
 hush reads the setting from your user, project and local settings files; it cannot see managed
 settings or a `--settings` flag.
 

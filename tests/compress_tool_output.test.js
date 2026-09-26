@@ -1757,8 +1757,8 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
       const full = (env) => /saved in full to/.test(out(env));
       assert.strictEqual(full({}), true, 'default bound');
       const lowered = out({ HUSH_SIDECAR_SHELL_MAX: '18000' });
-      assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the hush copy');
-      assert.match(lowered, /Claude Code cut this output and saved all of it to the file named above/, 'and points at the host file');
+      assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the full claim');
+      assert.match(lowered, /this output reached Claude Code's cut\. If Claude Code named a file above, that file holds all of it/, 'and points at the host file first');
       for (const v of INVALID) assert.strictEqual(full({ HUSH_SIDECAR_SHELL_MAX: v }), true, v);
     } finally {
       removeSessions([session]);
@@ -1768,7 +1768,7 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
   // Claude Code cuts a long shell output to a plain prefix of N characters
   // (N - 1 when it trims a newline at the cut): the bashOutputMaxChars setting,
   // clamped to 4000-128000, else BASH_MAX_OUTPUT_LENGTH, else 30000.
-  test('a shell output at the host cut the settings set gets no hush copy', () => {
+  test('a shell output at the host cut the settings set points to the host file', () => {
     const session = 'hush-test-host-cut-' + Date.now();
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-host-cut-'));
     const settings = (name, file, value) => {
@@ -1785,7 +1785,7 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     const sized = (n) => unique(Math.ceil(n / 6)).slice(0, n);
     const header = (chars, env) => {
       const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: sized(chars) }, { HUSH_SIDECAR: '', ...env });
-      return /saved in full to/.test(out) ? 'full' : /Claude Code cut this output and saved all of it to the file named above/.test(out) ? 'cut' : 'inline';
+      return /saved in full to/.test(out) ? 'full' : /this output reached Claude Code's cut\. If Claude Code named a file above, that file holds all of it/.test(out) ? 'cut' : 'inline';
     };
     try {
       assert.strictEqual(header(29999, {}), 'cut', 'default cut');
@@ -1810,10 +1810,7 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
     try {
       const coloured = Array.from({ length: 1600 }, (_, i) => `\x1b[32munique ${i}\x1b[0m`).join(NL).slice(0, 30000);
       const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: coloured }, { HUSH_SIDECAR: '' });
-      assert.match(out, /Claude Code cut this output and saved all of it to the file named above/);
-      const dir = sidecarStore.sessionDir(session);
-      const parked = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /^[0-9a-f]+\.txt$/.test(f)) : [];
-      assert.deepStrictEqual(parked, [], 'hush writes no copy of a cut output');
+      assert.match(out, /this output reached Claude Code's cut\. If Claude Code named a file above, that file holds all of it/);
     } finally {
       removeSessions([session]);
     }
@@ -2853,7 +2850,7 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     assert.match(out, /saved in full to/, 'sidecar active in the sweet spot');
   });
 
-  test('a shell output at/above the host-truncation size gets the digest, with no hush copy', () => {
+  test('a shell output at/above the host-truncation size keeps a copy of what hush received', () => {
     // bigText's fixed "info line N padding..." shape template-collapses on its
     // own; pin the new rung off so this test isolates the sidecar decision.
     const prevTemplate = process.env.HUSH_TEMPLATE;
@@ -2864,8 +2861,23 @@ describe('shell-scoped sidecar upper bound (host-truncation guard)', () => {
     } finally {
       if (prevTemplate === undefined) delete process.env.HUSH_TEMPLATE; else process.env.HUSH_TEMPLATE = prevTemplate;
     }
-    assert.match(out, /Claude Code cut this output and saved all of it to the file named above/, 'the digest points at the host file');
-    assert.doesNotMatch(out, /saved in full to|hush-sidecar/, 'and names no hush copy');
+    assert.match(out, /this output reached Claude Code's cut\. If Claude Code named a file above, that file holds all of it/, 'the digest points at the host file');
+    const m = String(out).match(/it received to ([^,]+), and/);
+    assert.ok(m, 'the copy is named as the fallback');
+    created.push(m[1].trim());
+    assert.ok(fs.readFileSync(m[1].trim(), 'utf8').length >= 32000, 'and holds every received line');
+    assert.doesNotMatch(out, /saved in full to/, 'it never claims to be the whole output');
+  });
+
+  // The cut band starts HOST_CUT_SLACK under the cut, and a complete output can
+  // end there: the host names no file for it, so hush's copy is the record.
+  test('a complete shell output just under the host cut keeps a readable copy', () => {
+    const text = bigText(29950).slice(0, 29950);
+    const out = withSidecar(() => compress(text, 0, false, false, [], 1, 's', undefined, true));
+    const m = String(out).match(/it received to ([^,]+), and/);
+    assert.ok(m, 'the copy is named');
+    created.push(m[1].trim());
+    assert.strictEqual(fs.readFileSync(m[1].trim(), 'utf8'), text, 'every line is on disk');
     assert.ok(out.length < 32000 / 2, 'the digest is what reaches the model, not the output');
   });
 
