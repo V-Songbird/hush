@@ -37,7 +37,7 @@ function freshSessionId(tag) {
 }
 
 // ~18KB of one repeated-but-unique shape: over SIDECAR_MIN_CHARS, under
-// SIDECAR_SHELL_MAX, and line-rich enough for the digest to be smaller.
+// the default host cut, and line-rich enough for the digest to be smaller.
 const BIG = Array.from({ length: 500 }, (_, i) => `2026-07-28 10:00:00 worker step ${i} finished, artifact ${i} written`).join('\n');
 
 function sidecarOn(fn) {

@@ -13,6 +13,11 @@ const HOOKS_DIR = path.join(__dirname, '..', 'hooks');
 for (const key of Object.keys(process.env)) {
   if (key.startsWith('HUSH_')) delete process.env[key];
 }
+// The same goes for the host's Bash cut, which hush reads from Claude Code's
+// settings files and BASH_MAX_OUTPUT_LENGTH: pointing both settings folders at
+// a path that does not exist leaves the host default, 30000.
+delete process.env.BASH_MAX_OUTPUT_LENGTH;
+process.env.CLAUDE_CONFIG_DIR = process.env.CLAUDE_PROJECT_DIR = path.join(__dirname, 'no-claude-settings');
 
 /** Run a hook script from hooks/ with JSON stdin; returns spawnSync result. */
 function runHook(name, stdinData, env) {

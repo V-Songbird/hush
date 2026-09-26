@@ -1023,14 +1023,21 @@ describe('hook: end to end', () => {
       assert.strictEqual(out.stderr, 'not ok 1 - x\n[hush: exit 1]');
     });
 
+    // The host cuts a long stdout to a plain prefix of N characters, N - 1 when
+    // it trims a newline at the cut. BASH_MAX_OUTPUT_LENGTH sets N here.
+    const CUT = { BASH_MAX_OUTPUT_LENGTH: '4000' };
+    const cutAt = (n, tail) => 'not ok 1 - x\n'.padEnd(n - tail.length, 'x') + tail;
+
     test('a stdout marker the host cut off keeps a stderr marker from supplying the code', () => {
-      for (const cut of ['[[h', '[[hush:ex', '[[hush:exit=', '[[hush:exit=\n0', '[[hush:exit=\r\n-1\r\n]']) {
-        const out = view(runHook('compress-tool-output.js', {
-          tool_name: 'Bash',
-          tool_input: { command: wrapBash('npm test') },
-          tool_response: { stdout: `not ok 1 - x\n${cut}`, stderr: 'quoted: [[hush:exit=0]]', interrupted: false },
-        }));
-        assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /, `read stderr after ${JSON.stringify(cut)}`);
+      for (const cut of ['[', '[[', '[[h', '[[hush:ex', '[[hush:exit=', '[[hush:exit=\n0', '[[hush:exit=\r\n-1\r\n]']) {
+        for (const n of [4000, 3999]) {
+          const out = view(runHook('compress-tool-output.js', {
+            tool_name: 'Bash',
+            tool_input: { command: wrapBash('npm test') },
+            tool_response: { stdout: cutAt(n, cut), stderr: 'quoted: [[hush:exit=0]]', interrupted: false },
+          }, CUT));
+          assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /, `read stderr after ${JSON.stringify(cut)} at ${n}`);
+        }
       }
     });
 
@@ -1038,18 +1045,22 @@ describe('hook: end to end', () => {
       const out = view(runHook('compress-tool-output.js', {
         tool_name: 'Bash',
         tool_input: { command: wrapBash('npm test') },
-        tool_response: { stdout: 'not ok 1 - x\n[[hush:exit=', stderr: '', output: 'quoted: [[hush:exit=0]]', interrupted: false },
-      }));
+        tool_response: { stdout: cutAt(4000, '[[hush:exit='), stderr: '', output: 'quoted: [[hush:exit=0]]', interrupted: false },
+      }, CUT));
       assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /);
     });
 
-    test('a stdout ending in [[ is not a cut marker: the stderr trailer is read (exec 1>&2)', () => {
-      const out = view(runHook('compress-tool-output.js', {
-        tool_name: 'Bash',
-        tool_input: { command: wrapBash('echo [[; exec 1>&2; npm test') },
-        tool_response: { stdout: '[[', stderr: 'not ok 1 - x\n[[hush:exit=\n1\n]]', interrupted: false },
-      }));
-      assert.strictEqual(out.stderr, 'not ok 1 - x\n[hush: exit 1]');
+    test('a stdout short of the cut that ends in part of the marker was printed: the stderr trailer is read (exec 1>&2)', () => {
+      for (const printed of ['[', '[[', '[[h', '[[hush:exit=']) {
+        for (const stdout of [printed, cutAt(3800, printed)]) {
+          const out = view(runHook('compress-tool-output.js', {
+            tool_name: 'Bash',
+            tool_input: { command: wrapBash(`printf '${printed}'; exec 1>&2; npm test`) },
+            tool_response: { stdout, stderr: 'not ok 1 - x\n[[hush:exit=\n1\n]]', interrupted: false },
+          }, CUT));
+          assert.strictEqual(out.stderr, 'not ok 1 - x\n[hush: exit 1]', `${JSON.stringify(printed)} in ${stdout.length} chars`);
+        }
+      }
     });
 
     test('a marker printed earlier in stdout still lets the stderr trailer be read (exec 1>&2)', () => {
@@ -1749,6 +1760,57 @@ describe('internal tuning knobs: a valid value binds, an invalid one keeps the d
       assert.doesNotMatch(lowered, /saved in full to/, 'a lower bound drops the full claim');
       assert.match(lowered, /as hush received it/, 'and still writes the copy');
       for (const v of INVALID) assert.strictEqual(full({ HUSH_SIDECAR_SHELL_MAX: v }), true, v);
+    } finally {
+      removeSessions([session]);
+    }
+  });
+
+  // Claude Code cuts a long shell output to a plain prefix of N characters
+  // (N - 1 when it trims a newline at the cut): the bashOutputMaxChars setting,
+  // clamped to 4000-128000, else BASH_MAX_OUTPUT_LENGTH, else 30000.
+  test('a shell sidecar stops claiming to be full at the host cut the settings set', () => {
+    const session = 'hush-test-host-cut-' + Date.now();
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-host-cut-'));
+    const settings = (name, file, value) => {
+      const dir = path.join(root, name, ...(name === 'user' ? [] : ['.claude']));
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, file), JSON.stringify({ bashOutputMaxChars: value }));
+    };
+    settings('user', 'settings.json', 20000);
+    settings('project', 'settings.json', 128000);
+    settings('local', 'settings.local.json', 8000);
+    settings('local', 'settings.json', 128000);
+    settings('clamped', 'settings.json', 1000);
+    const USER = { CLAUDE_CONFIG_DIR: path.join(root, 'user') };
+    const sized = (n) => unique(Math.ceil(n / 6)).slice(0, n);
+    const header = (chars, env) => {
+      const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: sized(chars) }, { HUSH_SIDECAR: '', ...env });
+      return /saved in full to/.test(out) ? 'full' : /as hush received it/.test(out) ? 'received' : 'inline';
+    };
+    try {
+      assert.strictEqual(header(29999, {}), 'received', 'default cut');
+      assert.strictEqual(header(28500, {}), 'full', 'under the default cut');
+      assert.strictEqual(header(20000, USER), 'received', 'user setting');
+      assert.strictEqual(header(19999, USER), 'received', 'a cut after a newline arrives one short');
+      assert.strictEqual(header(19000, USER), 'full', 'under the user setting');
+      assert.strictEqual(header(40000, { ...USER, CLAUDE_PROJECT_DIR: path.join(root, 'project') }), 'full', 'the project file wins over the user file');
+      assert.strictEqual(header(8000, { ...USER, CLAUDE_PROJECT_DIR: path.join(root, 'local') }), 'inline', 'the local file wins; at 8000 the host keeps the output, hush parks nothing');
+      assert.strictEqual(header(20000, { BASH_MAX_OUTPUT_LENGTH: '20000' }), 'received', 'the variable without a setting');
+      assert.strictEqual(header(20000, { ...USER, BASH_MAX_OUTPUT_LENGTH: '128000' }), 'received', 'the setting wins over the variable');
+      assert.strictEqual(header(4000, { CLAUDE_PROJECT_DIR: path.join(root, 'clamped'), HUSH_SIDECAR_MIN: '3000' }), 'received', 'a setting under 4000 is clamped to it');
+      assert.strictEqual(header(20000, { CLAUDE_PROJECT_DIR: path.join(root, 'project'), HUSH_SIDECAR_SHELL_MAX: '18000' }), 'received', 'HUSH_SIDECAR_SHELL_MAX overrides the cut');
+    } finally {
+      removeSessions([session]);
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a shell output cut at the host limit is measured as received, before colour codes come off', () => {
+    const session = 'hush-test-host-cut-ansi-' + Date.now();
+    try {
+      const coloured = Array.from({ length: 1600 }, (_, i) => `\x1b[32munique ${i}\x1b[0m`).join(NL).slice(0, 30000);
+      const out = view({ session_id: session, tool_input: { command: 'node build.js' }, tool_response: coloured }, { HUSH_SIDECAR: '' });
+      assert.match(out, /as hush received it/);
     } finally {
       removeSessions([session]);
     }

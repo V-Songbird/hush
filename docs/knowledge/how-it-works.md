@@ -46,8 +46,11 @@ Every time Claude runs something, hush looks at what came back and decides betwe
 
 That last one is the important one. Without it, a 300 KB log is not read once. It sits in the
 conversation and gets re-sent on every turn after it. Parking it means Claude can still go and read
-it, but only if it decides it needs to. A shell result of 28,000 characters or more may already have
-been cut short by Claude Code, so hush saves it as it received it and says so.
+it, but only if it decides it needs to. Claude Code cuts a long shell result at the
+`bashOutputMaxChars` setting, else at `BASH_MAX_OUTPUT_LENGTH`, else at 30,000 characters. A shell
+result that arrives at that cut was cut short, so hush saves it as it received it and says so.
+hush reads the setting from your user, project and local settings files; it cannot see managed
+settings or a `--settings` flag.
 
 A directory listing, a print of a line range or a diff comes back whole up to 250 lines, however
 long the session: `ls`, `dir`, `Get-ChildItem`, `find` without `-exec`, `sed -n`, `head` or `tail`

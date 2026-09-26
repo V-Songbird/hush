@@ -847,6 +847,7 @@ function isBoundedPrint(command) {
 // `Get-Content`) leaves it null/stale and the wrapper emits
 // `[[hush:exit=\n\n]]` with nothing inside.
 const EXIT_MARKER_PREFIX = "[[hush:exit=";
+const EXIT_MARKER_PARTS = Array.from(EXIT_MARKER_PREFIX.slice(1), (_, i) => EXIT_MARKER_PREFIX.slice(0, i + 1));
 const EXIT_TRAILER_RE = /^\[\[hush:exit=([^[\]]*)\]\]\s*$/;
 
 // Returns null when the text does not end in a marker (nothing to strip,
@@ -868,18 +869,20 @@ function extractWrappedExit(text) {
 // null. The bash wrapper echoes its trailer to stdout, so stdout decides.
 // stderr is read only when stdout does not end in a marker: that is
 // `exec 1>&2`, which moves the real trailer there. The host hands the hook a
-// plain prefix of a long output, with nothing appended after the cut, so a
-// stdout ending in a trailer the host cut off (at least `[[h` of the prefix,
-// or the whole prefix and then at most the code and one `]`) keeps stderr and
-// output from being read: a marker either of them prints never supplies the
-// code. A marker earlier in stdout is text the command printed and does not
-// count. Only this field is stripped and annotated; a marker ending any other
-// field is text and stays as printed.
+// plain prefix of a long output, with nothing appended after the cut (see
+// hostCutAt), so a stdout that arrives at the cut and ends in part of a
+// trailer (from its first `[`, or the whole prefix and then at most the code
+// and one `]`) keeps stderr and output from being read: a marker either of
+// them prints never supplies the code. A shorter stdout was not cut, so a
+// part of the marker at its end is text the command printed, as is a marker
+// earlier in stdout. Only this field is stripped and annotated; a marker
+// ending any other field is text and stays as printed.
 function endsInCutTrailer(text) {
-  const start = text.lastIndexOf(EXIT_MARKER_PREFIX.slice(0, 3));
-  const tail = text.slice(start);
-  return start !== -1 && (EXIT_MARKER_PREFIX.startsWith(tail) ||
-    (tail.startsWith(EXIT_MARKER_PREFIX) && /^[\s\d-]*\]?$/.test(tail.slice(EXIT_MARKER_PREFIX.length))));
+  const start = text.lastIndexOf(EXIT_MARKER_PREFIX);
+  const cutTail =
+    (start !== -1 && /^[\s\d-]*\]?$/.test(text.slice(start + EXIT_MARKER_PREFIX.length))) ||
+    EXIT_MARKER_PARTS.some((part) => text.endsWith(part));
+  return cutTail && text.length >= hostCutAt() - HOST_CUT_SLACK;
 }
 function exitField(response) {
   const open = !(typeof response.stdout === "string" && endsInCutTrailer(response.stdout));
@@ -1117,18 +1120,43 @@ function pressureScale(transcriptBytes) {
 // re-fire) inside a directory this session owns, and are deleted when the
 // session ends (see lib/sidecar-store.js).
 const SIDECAR_MIN_CHARS = intEnv("HUSH_SIDECAR_MIN", 15000);
-// Upper bound for SHELL outputs only. Claude Code truncates a Bash/PowerShell
-// result to ~29KB for the hook (and the model) once it trips its own
-// large-output persistence, keeping the full text in a native file it points
-// at. So a shell output arriving at ~28KB+ was likely already truncated: its
-// tail — where a build's error or a run's final result usually lives — may be
-// gone before this hook sees it. At or above this bound maybeSidecar still
-// writes the output and hands back the digest, but the header says the file
-// holds the output "as hush received it" instead of "in full", so it never
-// claims to hold lines the host already cut. Read results are exempt: Read
-// returns the file's full content to the hook (its own limits are far
-// larger), so a big lockfile/log Read is complete and its sidecar is full.
-const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 28000);
+// For SHELL outputs only: the size past which a sidecar stops claiming to hold
+// the output in full, when HUSH_SIDECAR_SHELL_MAX sets it. Otherwise it is the
+// host's own cut (see hostCutAt): a shell output that arrives at the cut was
+// cut, and its tail — where a build's error or a run's final result usually
+// lives — never reached this hook. maybeSidecar still writes it and hands back
+// the digest, but the header says the file holds the output "as hush received
+// it" instead of "in full", so it never claims to hold lines the host already
+// cut. Read results are exempt: Read returns the file's full content to the
+// hook (its own limits are far larger), so a big lockfile/log Read is complete
+// and its sidecar is full.
+const SIDECAR_SHELL_MAX = intEnv("HUSH_SIDECAR_SHELL_MAX", 0);
+
+// Claude Code hands this hook a plain prefix of a long Bash/PowerShell output:
+// the cut lands at N characters, then the host trims blank lines at the edges,
+// so a cut output arrives as N or a little short of it (N - 1 when the cut
+// lands just after a newline). N is the bashOutputMaxChars setting, clamped to
+// 4000-128000, else BASH_MAX_OUTPUT_LENGTH, else 30000. hush reads the setting
+// from the user, project and local settings files, a later file winning;
+// managed settings and a --settings flag are out of its sight. Read once per
+// process, and only when an output is big enough or ends like a cut trailer.
+const HOST_CUT_SLACK = 100;
+let hostCut;
+function hostCutAt() {
+  if (hostCut !== undefined) return hostCut;
+  const home = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  const project = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  let setting;
+  for (const file of [path.join(home, "settings.json"), path.join(project, ".claude", "settings.json"), path.join(project, ".claude", "settings.local.json")]) {
+    try {
+      const v = JSON.parse(fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "")).bashOutputMaxChars;
+      if (typeof v === "number" && Number.isFinite(v)) setting = Math.min(128000, Math.max(4000, Math.floor(v)));
+    } catch {
+      /* missing or unreadable: the other files decide */
+    }
+  }
+  return (hostCut = setting ?? intEnv("BASH_MAX_OUTPUT_LENGTH", 30000));
+}
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
@@ -1331,18 +1359,20 @@ function persistGrepMatches(content, sessionId) {
   return writeSidecar(file, content) ? file : null;
 }
 
-function maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed) {
+function maybeSidecar(cleaned, relevanceTokens, sessionId, received, failed) {
   if (typeof cleaned !== "string" || cleaned.length < SIDECAR_MIN_CHARS) return null;
-  // A shell output at/above this size may already have been cut by Claude Code
-  // (see SIDECAR_SHELL_MAX), so the copy hush writes cannot claim to be the
-  // whole thing — the header says "as hush received it" instead of "in full".
+  // A shell output that arrived at the host's cut (see SIDECAR_SHELL_MAX) was
+  // cut by Claude Code, so the copy hush writes cannot claim to be the whole
+  // thing — the header says "as hush received it" instead of "in full". The
+  // received text is measured, not the cleaned one: cleaning (colour codes,
+  // redrawn progress lines) can take a cut output well under the cut.
   //
   // It still gets written. The same size is where the host parks a result and
   // hands the model a 2KB preview; an inline cap that stays over that size gets
   // parked anyway, and the model reads the parked file straight back into
   // context. The digest gets the view under the host's threshold, so the host
   // parks nothing and no second pointer competes with hush's own.
-  const partial = !!(hostMayTruncate && cleaned.length >= SIDECAR_SHELL_MAX);
+  const partial = typeof received === "string" && received.length >= (SIDECAR_SHELL_MAX || hostCutAt() - HOST_CUT_SLACK);
   try {
     // sidecarTarget scans for secrets before ever handing back a path, so a
     // credential-shaped payload falls through to the ordinary inline cap
@@ -1417,7 +1447,7 @@ function compress(text, exitCode, isDump, enumerate, relevanceTokens, scale, ses
   // shell copy is labelled as received rather than in full.
   const failed = looksLikeFailure(cleaned, exitCode);
   if (!enumerate && !noSidecar) {
-    const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate, failed);
+    const side = maybeSidecar(cleaned, relevanceTokens, sessionId, hostMayTruncate && original, failed);
     if (side !== null) {
       if (decision) {
         decision.action = "sidecar";

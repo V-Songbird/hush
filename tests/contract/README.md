@@ -57,9 +57,11 @@ threshold produces an empty golden and pins nothing. The thresholds, from
 | Failing shell cap | more than `CAP_FAIL` (250) lines — a 120-line failure is not cut |
 | Shell sidecar | at least `SIDECAR_MIN_CHARS` (15,000) chars |
 
-From `SIDECAR_SHELL_MAX` (28,000) chars a shell output is still parked, passing or
-failing, but the host may already have truncated it, so its digest says the copy
-was saved as hush received it rather than in full. The sidecar check runs before
+A shell output that arrives within 100 chars of the host's cut (`hostCutAt`:
+`bashOutputMaxChars`, else `BASH_MAX_OUTPUT_LENGTH`, else 30,000), or from
+`HUSH_SIDECAR_SHELL_MAX` chars when that is set, is still parked, passing or
+failing, but the host has already cut it, so its digest says the copy was saved
+as hush received it rather than in full. The sidecar check runs before
 template collapse, so same-shape lines park like any other content.
 
 ## Porting

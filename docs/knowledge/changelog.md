@@ -157,12 +157,25 @@ output does not end in one, so a marker the error output prints cannot stand in
 for one the normal output lost. A marker printed earlier in the normal output,
 such as hush's own source printed before `exec 1>&2`, no longer stops hush from
 reading the real marker in the error output. Normal output that Claude Code cut
-short inside the marker's opening text, from `[[h` on, now counts as ending in
-a marker, so the error output's marker cannot supply the code there either.
-The same cut normal output also stops a marker at the end of a response's
-combined `output` field from supplying the code. hush removes the marker only from the output it
+short inside the marker, from its first `[` on, now counts as ending in a
+marker, so the error output's marker cannot supply the code there either.
+Normal output shorter than Claude Code's cut that ends in part of the marker,
+such as a printed `[[h`, is text the command printed, so hush still reads the
+marker in the error output. hush removes the marker only from the output it
 read the exit code from, so a marker the error output prints stays there as
 printed, without a second exit note.
+
+hush now knows where Claude Code cuts a long shell output: at the
+`bashOutputMaxChars` setting when your user, project or local settings file
+sets it, else at `BASH_MAX_OUTPUT_LENGTH`, else at 30,000 characters. A very
+large output that arrived at that cut is saved to a file "as hush received it"
+instead of "in full". Before, hush assumed a cut from about 28,000 characters
+on, so under a lower setting it called a cut output complete, and under a
+higher one it called a complete output cut. hush measures the output as it
+arrived, before colour codes come off. It cannot see managed settings or a
+`--settings` flag. Under a setting below 15,000 characters, no output reaches
+the size hush saves to a file, and Claude Code keeps the full output in its
+own file.
 
 A Bash command whose `exec` sends the shell's own output elsewhere, such as
 `exec >build.log` or `exec &>/dev/null`, is no longer wrapped to read its exit
