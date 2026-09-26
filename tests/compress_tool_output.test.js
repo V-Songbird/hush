@@ -3389,6 +3389,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'tail -n 20 src/app-f.js',
       String.raw`cat \\?\C:\src\app.js`,
       String.raw`Get-Content -LiteralPath "\\?\C:\My App\a.ps1"`,
+      'cat //?/C:/src/app.js',
+      'Get-Content -LiteralPath "//?/C:/My App/a.ps1"',
       "find . -name '*.js' | head -50",
       'ls -R src | head -n 100',
       'Get-ChildItem -Recurse -Name | Select-Object -First 50',
@@ -3421,6 +3423,7 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'Get-Content a.ps1 | Select-Object -Skip 5',
       String.raw`cat \\?\C:\src\*.js`,
       String.raw`Get-Content \\?\C:\build\app.log`,
+      'cat //?/C:/src/*.js',
     ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
   });
 

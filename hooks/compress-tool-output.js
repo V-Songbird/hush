@@ -801,9 +801,11 @@ function isFileDump(command) {
 // keeps CAP_FAIL of them without folding any. One command
 // only, on one line, read through unwrapCommand below as isFileDump reads it.
 // find is a listing unless -exec/-ok prints another command's output.
+// LINE_RANGE_SRC is the sed -n and head/tail range both print checks share.
+const LINE_RANGE_SRC = String.raw`sed\s+-n\s|(?:head|tail)\s+-(?:n\s*)?\+?\d`;
 const BOUNDED_PRINT_RE = new RegExp(
-  "^(?=[^|;&<>\\r\\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\\s|$)|find(?!.*\\s-(?:exec|ok)(?:dir)?(?:\\s|$))(?:\\s|$)|sed\\s+-n\\s" +
-    "|(?:head|tail)\\s+-(?:n\\s*)?\\+?\\d|(?:cat|type|gc|Get-Content)\\s.*\\s-(?:TotalCount|Head|First|Tail|Last)\\s+\\d|git\\s+(?:diff|show)(?:\\s|$))",
+  String.raw`^(?=[^|;&<>\r\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\s|$)|find(?!.*\s-(?:exec|ok)(?:dir)?(?:\s|$))(?:\s|$)|${LINE_RANGE_SRC}` +
+    String.raw`|(?:cat|type|gc|Get-Content)\s.*\s-(?:TotalCount|Head|First|Tail|Last)\s+\d|git\s+(?:diff|show)(?:\s|$))`,
   "i"
 );
 const PS_WRAP_RE = /^& \{ (.*) \} 2>&1 \| Out-String -Width 4096$/;
@@ -833,7 +835,7 @@ function unwrapCommand(command) {
 // parenthesis inside a quoted path does not.
 // A glob (* or ?) reads files nobody named, so it stays a dump and its cap
 // still shrinks as the session grows; the ? of a Windows long-path prefix
-// (\\?\C:\...) is no glob. A whole read, a listing or a diff piped into one
+// (\\?\C:\... or //?/C:/...) is no glob. A whole read, a listing or a diff piped into one
 // line-range print (sed -n, head/tail with a count, Select-Object -First/-Last)
 // is a ranged print: names and diff lines hold no warning lines to keep
 // either. A following read (tail -f, Get-Content -Wait) is a live log, never a
@@ -841,7 +843,7 @@ function unwrapCommand(command) {
 const WHOLE_READ_RE = /^(?:cat|type|gc|Get-Content)\s+\S/i;
 const NEUTRAL_STEP_RE = /^(?:cd|Set-Location|sl|pushd|echo|printf|Write-Output|Write-Host)(?:\s|$)/i;
 const ARG_RE = /"[^"]*"|'[^']*'|\S+/g;
-const PIPED_RANGE_RE = /^(?:sed\s+-n\s|(?:head|tail)\s+-(?:n\s*)?\+?\d|(?:Select-Object|select)\s(?:.*\s)?-(?:First|Last)\s+\d)/i;
+const PIPED_RANGE_RE = new RegExp(String.raw`^(?:${LINE_RANGE_SRC}|(?:Select-Object|select)\s(?:.*\s)?-(?:First|Last)\s+\d)`, "i");
 const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|gc|Get-Content)\s(?:.*\s)?-Wait)(?:\s|$)/i;
 
 function isPlainStep(step) {
@@ -855,7 +857,7 @@ function isNeutralStep(step) {
 // ranged: a line range bounds a glob read, so only an unpiped glob stays a dump.
 function isSourceRead(step, ranged) {
   // The slash lets a relative logs/x.txt match as the absolute paths Read gets do.
-  const paths = step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, "").replace(/^\\\\\?\\/, ""));
+  const paths = step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, "").replace(/^(?:\\\\|\/\/)\?[\\/]/, ""));
   return WHOLE_READ_RE.test(step) && isPlainStep(step) &&
     !paths.some((p) => (!ranged && /[*?]/.test(p)) || isLogPath(p) || isGeneratedPath(p));
 }
