@@ -1024,12 +1024,25 @@ describe('hook: end to end', () => {
     });
 
     test('a stdout marker the host cut off keeps a stderr marker from supplying the code', () => {
+      for (const cut of ['[[hush:exit=', '[[hush:exit=\n0', '[[hush:exit=\r\n-1\r\n]']) {
+        const out = view(runHook('compress-tool-output.js', {
+          tool_name: 'Bash',
+          tool_input: { command: wrapBash('npm test') },
+          tool_response: { stdout: `not ok 1 - x\n${cut}`, stderr: 'quoted: [[hush:exit=0]]', interrupted: false },
+        }));
+        assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /, `read stderr after ${JSON.stringify(cut)}`);
+      }
+    });
+
+    test('a marker printed earlier in stdout still lets the stderr trailer be read (exec 1>&2)', () => {
+      const stdout = "const EXIT_MARKER_PREFIX = \"[[hush:exit=\";\nconst EXIT_TRAILER_RE = /^x$/;\n";
       const out = view(runHook('compress-tool-output.js', {
         tool_name: 'Bash',
-        tool_input: { command: wrapBash('npm test') },
-        tool_response: { stdout: 'not ok 1 - x\n[[hush:exit=', stderr: 'quoted: [[hush:exit=0]]', interrupted: false },
+        tool_input: { command: wrapBash('cat hooks/compress-tool-output.js; exec 1>&2; npm test') },
+        tool_response: { stdout, stderr: 'not ok 1 - x\n[[hush:exit=\n1\n]]', interrupted: false },
       }));
-      assert.doesNotMatch(JSON.stringify(out), /\[hush: exit /);
+      assert.strictEqual(out.stderr, 'not ok 1 - x\n[hush: exit 1]');
+      assert.strictEqual(out.stdout, stdout);
     });
 
     test('a string response reads its own trailer', () => {

@@ -153,8 +153,10 @@ prints, such as hush's own source, a saved earlier output or a quoted report,
 stays in the output as printed and no longer changes the exit code Claude
 sees. Before, it could make a command that passed read as failed or killed.
 hush reads that marker from a command's error output only when its normal
-output carries none, so a marker the error output prints cannot stand in for
-one the normal output lost. hush removes the marker only from the output it
+output does not end in one, so a marker the error output prints cannot stand in
+for one the normal output lost. A marker printed earlier in the normal output,
+such as hush's own source printed before `exec 1>&2`, no longer stops hush from
+reading the real marker in the error output. hush removes the marker only from the output it
 read the exit code from, so a marker the error output prints stays there as
 printed, without a second exit note.
 

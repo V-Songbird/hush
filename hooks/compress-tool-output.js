@@ -866,13 +866,16 @@ function extractWrappedExit(text) {
 
 // The field of a structured response whose trailer supplies the exit code, or
 // null. The bash wrapper echoes its trailer to stdout, so stdout decides.
-// stderr is read only when stdout carries no marker at all: that is
-// `exec 1>&2`, which moves the real trailer there. A stdout with a marker the
-// host cut off keeps stderr from being read, so a stderr that ends in a
-// printed marker never supplies the code. Only this field is stripped and
-// annotated; a marker ending any other field is text and stays as printed.
+// stderr is read only when stdout does not end in a marker: that is
+// `exec 1>&2`, which moves the real trailer there. A stdout ending in a
+// trailer the host cut off (the prefix, then at most the code and one `]`)
+// keeps stderr from being read, so a stderr that ends in a printed marker
+// never supplies the code. A marker earlier in stdout is text the command
+// printed and does not count. Only this field is stripped and annotated; a
+// marker ending any other field is text and stays as printed.
+const CUT_TRAILER_RE = /\[\[hush:exit=[\s\d-]*\]?$/;
 function exitField(response) {
-  const stdoutMarked = typeof response.stdout === "string" && response.stdout.includes(EXIT_MARKER_PREFIX);
+  const stdoutMarked = typeof response.stdout === "string" && CUT_TRAILER_RE.test(response.stdout);
   return ["stdout", !stdoutMarked && "stderr", "output"].find((f) => f && extractWrappedExit(response[f])) || null;
 }
 
