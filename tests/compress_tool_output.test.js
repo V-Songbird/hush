@@ -1053,6 +1053,28 @@ describe('hook: end to end', () => {
       }));
       assert.strictEqual(out, 'not ok 1 - x\n[hush: exit 2]');
     });
+
+    // No recorded Bash or PowerShell response carries an output field, so it
+    // is read last, only when neither stdout nor stderr supplies the code.
+    test('with no marker in stdout or stderr, the output trailer is read', () => {
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: { stdout: '', stderr: '', output: 'not ok 1 - x\n[[hush:exit=\n1\n]]', interrupted: false },
+      }));
+      assert.strictEqual(out.output, 'not ok 1 - x\n[hush: exit 1]');
+    });
+
+    test('an output that ends in a printed marker stays as printed when stdout supplied the code', () => {
+      const output = 'quoted: [[hush:exit=1]]';
+      const out = view(runHook('compress-tool-output.js', {
+        tool_name: 'Bash',
+        tool_input: { command: wrapBash('npm test') },
+        tool_response: { stdout: 'done\n[[hush:exit=\n0\n]]', stderr: '', output, interrupted: false },
+      }));
+      assert.strictEqual(out.stdout, 'done\n[hush: exit 0]');
+      assert.strictEqual(out.output, output);
+    });
   });
 
   test('a plain file dump keeps more lines than a same-size build log', () => {
