@@ -8,10 +8,12 @@
 </div>
 
 <p align="center"><strong>Available on</strong></p>
-<p align="center">
-  <img src="assets/edition-codex.svg" alt="Codex (not available)" width="80" height="80" />&emsp;&emsp;<a href="#claude-code"><img src="assets/edition-claude.svg" alt="Claude" width="80" height="80" /></a><br />
-  <del>Codex</del>&emsp;&emsp;&emsp;&emsp;<a href="#claude-code">Claude</a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><img src="assets/edition-codex.svg" alt="Codex (not available)" width="80" height="80" /><br /><del>Codex</del></td>
+    <td align="center"><a href="#claude-code"><img src="assets/edition-claude.svg" alt="" width="80" height="80" /><br />Claude Code</a></td>
+  </tr>
+</table>
 <p align="center"><small>Hush has no Codex package.</small></p>
 
 <p align="center"><a href="#install"><strong>Get started</strong></a> · <a href="#what-is-this">What is this?</a> · <a href="#how-it-works">How it works</a> · <a href="#what-you-can-do">What you can do</a> · <a href="#the-numbers">Evidence</a></p>
