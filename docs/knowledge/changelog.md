@@ -13,6 +13,12 @@ All notable changes to hush are documented here. The version number lives in
 
 ## Unreleased
 
+The final message now keeps each block to 40 words. A block is the text
+between two blank lines, so a whole list counts as one. A longer block
+becomes two blocks, or a table. On Claude Opus 5.5, this cut the share of
+words in long blocks from 59.1% to 45.3%, and every job still passed. See
+[Capping blocks at 40 words](benchmarks.md#capping-blocks-at-40-words).
+
 A clean run's data comes back whole in more cases:
 
 - A pretty-printed JSON document with up to two text lines before or after

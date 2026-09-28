@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "The full Claude Code benchmark tables: the current voice on Opus 5.5 behind the README, then the earlier voices; correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
+summary: "The full Claude Code benchmark tables: the 1.13.0 voice on Opus 5.5 behind the README and the 40-word block cap tested against it, then the earlier voices; correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -8,7 +8,7 @@ related_files:
 
 # The numbers, in full
 
-The newest comparison is the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the current voice, and the README shows its figures.
+The newest comparison is the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the 1.13.0 voice, and the README shows its figures. A second batch the same day tested the limit of 40 words per block that the voice now carries; its results are under [Capping blocks at 40 words](#capping-blocks-at-40-words).
 
 The other comparisons on this page measured earlier voices. The README showed the September 1, 2026 comparison, `rivalA-762f888b`, until release 1.13.0, so this page still calls it the README comparison; its setup, tables and images are under [The README comparison](#the-readme-comparison).
 
@@ -156,6 +156,39 @@ The voice ends its quiet section with "Think as long as you need." This test che
 Without the sentence, sessions did not finish sooner, and no measure improved. Each difference is small and within this batch's noise. The sentence stays in the voice.
 
 The "all three" row uses the test under [Acting on the Opus 5.5 answers](#acting-on-the-opus-55-answers). The two misses without the sentence came from the `--json` plan and the column rename.
+
+### Capping blocks at 40 words
+
+A block is the text between two blank lines, so a whole list counts as one block. In the batch above, most of hush's long blocks were lists of several sentences each, and the rest were paragraphs of five to eight short sentences. The voice capped sentences at 12 words but set no limit on blocks.
+
+This test adds one rule to the voice: 40 words per block, tops. The check before sending gains one line: find the longest block and split it if it is over 40 words.
+
+Batch `o55-888-1bec0539`, started September 28, 2026 at 07:19 UTC: the same nine jobs, four repetitions per setup, with the `opus` alias and no effort set. Every session recorded the model id `claude-opus-5-5`. Both setups ran with `HUSH_WRAP=1`. The first ran hush from `main` at commit `fee6912`, release 1.13.0. The second ran the same build with the block rule added. This batch had no setup without a plugin.
+
+| Claude Opus 5.5, 36 sessions each | hush 1.13.0 | hush with the block rule |
+| --- | --- | --- |
+| jobs right | 36/36 | 36/36 |
+| spoke at most once before the answer | 36/36 | 36/36 |
+| said nothing at all | 32/36 | 32/36 |
+| median final prose words | 283 | **256** |
+| sentences over 20 words | 0.4% | 0.5% |
+| words in blocks over 40 words, mean | 59.1% | **45.3%** |
+| words in blocks over 40 words, median | 62.3% | **50.0%** |
+| reading ease | 88.6 | 88.9 |
+| grade level | 2.9 | 2.9 |
+| answers with runnable content | 36/36 | 36/36 |
+| notes that link the file with a line number | 27/36 | 29/36 |
+| a fresh reader could answer all three questions | 100% | 100% |
+| the job's own facts that reach those answers | 90.0% | 93.3% |
+| everything Claude writes in a session | 3,938 tok | **3,490 tok** |
+| average bill per session | $0.461 | $0.452 |
+| average time per session | 48.6 s | 46.0 s |
+
+**The block rule cut the share of words in long blocks by 13.8 points.** It did so in 7 of the 9 jobs, with an exact two-sided sign-flip p of 0.016. The largest drops were in the red test suite, 49% to 6%, and the release notes, 68% to 41%. The rule cost no correctness: every job passed, and the fresh reader answered all three questions for every answer in both setups.
+
+The cost difference is within this batch's noise. Per job, the block rule ranged from 23% cheaper on the half-done rename to 31% dearer on the release notes.
+
+Compare these setups only with each other. The same 1.13.0 voice held 52.3% of its words in long blocks in the batch above, and 59.1% here. The two batches also ran different tool-output compression.
 
 ## The README comparison
 
