@@ -100,11 +100,16 @@ thousands separators, an exponent such as `1e5`, a trailing `%` or a common unit
 `µs`, `ms`, `s`, `min`, `m`, `h`, `d`, `x`, `k`, `b`, and `kb` to `tb` or `KiB` to `TiB`. Any
 other suffix makes the value text, so a hex id such as `7ab` is not a number. Lines where a name
 changes, such as `INFO worker-7 processing job 8007`, are log lines and still fold. So are lines
-where only one number changes, such as `ok 7 - parses input`, and progress lines, where two or more
-numbers rise on every line, such as `downloaded 1200 of 90000 bytes chunk 7 eta 12s`. For the same
-reason, a table where two number columns both rise on every row, such as a row counter and a sorted
-column, folds too. A log with one rising counter and one other changing number, such as
-`epoch 3 loss 0.41`, reads as a table and comes back whole up to 250 lines.
+where only one number changes, such as `ok 7 - parses input`. A progress line folds too, when two
+or more numbers rise on every line next to a number that never changes, its total, such as
+`downloaded 1200 of 90000 bytes chunk 7 eta 12s`. A table whose columns all rise together, such as
+`row id 7 status ok count 7 total 7`, has no such fixed number and comes back whole.
+
+hush makes this trade on purpose: folding data Claude asked for costs a second command, while a log
+that comes back whole costs only its text, and never more than 250 lines. So two kinds of log still
+read as a table and come back whole up to 250 lines: a progress line with no fixed total, such as
+`processed 1200 records chunk 7 eta 12s`, and a log with one rising counter and one other changing
+number, such as `epoch 3 loss 0.41`.
 A failing run, error output, more text than that, and a whole-file print of a log or a
 generated file are trimmed as before.
 

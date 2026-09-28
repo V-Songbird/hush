@@ -982,13 +982,14 @@ function isDataOutput(text) {
   return false;
 }
 
-// Same-shape rows are a table, not a log, when at least two columns vary,
-// every value in them is a number, and fewer than two of them rise on every
-// row, such as `row id 7 count 1,204 took 12ms`. A number may carry a sign,
-// thousands separators, an exponent, and a `%` or a known unit, so a hex id
-// such as `7ab` is not one. A log line or a test line varies a name or a
-// single counter, and a progress line such as `downloaded 1200 of 90000 bytes
-// chunk 7 eta 12s` has two counters that rise together, so they still fold.
+// Same-shape rows are a table, not a log, when at least two columns vary and
+// every value in them is a number, such as `row id 7 count 1,204 took 12ms`.
+// A number may carry a sign, thousands separators, an exponent, and a `%` or
+// a known unit, so a hex id such as `7ab` is not one. A log line or a test
+// line varies a name or a single counter, so it still folds. A progress line
+// such as `downloaded 1200 of 90000 bytes chunk 7 eta 12s` folds too: two
+// counters rise on every row next to a number that never changes, its total.
+// A table whose columns rise together has no such fixed number, so it passes.
 const NUMBER_CELL_RE = /^[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:e[-+]?\d+)?(?:%|ns|us|[µμ]s|ms|s|min|m|h|d|x|k|b|[kmgt]i?b)?$/i;
 
 function isNumberTable(rows) {
@@ -996,7 +997,8 @@ function isNumberTable(rows) {
   const varying = table[0].map((_, i) => i).filter((i) => table.some((r) => r[i] !== table[0][i]));
   const value = (r, i) => parseFloat(r[i].replace(/,/g, ""));
   const rises = (i) => table.every((r, n) => n === 0 || value(r, i) > value(table[n - 1], i));
-  return varying.length >= 2 && varying.every((i) => table.every((r) => NUMBER_CELL_RE.test(r[i]))) && varying.filter(rises).length < 2;
+  const total = table[0].some((t, i) => !varying.includes(i) && NUMBER_CELL_RE.test(t));
+  return varying.length >= 2 && varying.every((i) => table.every((r) => NUMBER_CELL_RE.test(r[i]))) && !(total && varying.filter(rises).length >= 2);
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the

@@ -3745,7 +3745,7 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
   const spaced = (n) => Array.from({ length: n }, (_, i) => JSON.stringify({ id: i, name: `item-${i}`, status: 'ok', count: i, total: i * 2 }).replace(/,"/g, ', "').replace(/":/g, '": '));
   const records = spaced(120).join('\n');
   const compact = Array.from({ length: 120 }, (_, i) => JSON.stringify({ id: i, status: 'ok', count: i })).join('\n');
-  const rows = Array.from({ length: 120 }, (_, i) => `row id ${i} status ok count ${(i * 37) % 101} total ${(i * 53) % 97}`).join('\n');
+  const rows = Array.from({ length: 120 }, (_, i) => `row id ${i} status ok count ${i} total ${i}`).join('\n');
   const command = 'node scripts/recount.js';
   const session = 'hush-test-data-' + Date.now();
   after(() => removeSessions([session]));
@@ -3784,7 +3784,7 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
 
   test('thousands separators, a trailing % and unit suffixes count as numbers', () => {
     for (const fmt of [(i) => (1000 + i * 137).toLocaleString('en-US'), (i) => `${i}%`, (i) => `${i}μs`, (i) => `${(i % 9) + 1}e${(i % 7) + 1}`, (i) => `${i * 3}ms`, (i) => `-${i}.5KiB`, (i) => `+${i}.5%`]) {
-      const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${fmt((i * 37) % 200)} total ${(i * 53) % 97}`).join('\n');
+      const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${fmt(i)} total ${i * 3}`).join('\n');
       assert.ok(out.length > 4000, fmt(7));
       assert.strictEqual(run(out), null, fmt(7));
     }
