@@ -551,6 +551,29 @@ test("the command line prints the mend with the refusal and takes --update-telem
   assert.strictEqual(JSON.parse(done.stdout).styleUpdated, variantPath);
 });
 
+test("with a takeover in the slot and no stock backup, the command line refuses a variant as stock unknown", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const first = variant(projectDir, "pirate.md", "Pirate", "ARR body");
+  const second = variant(projectDir, "rock.md", "Rock", "rock body");
+  activate(first, { pluginRoot, projectDir, homeDir });
+  fs.unlinkSync(path.join(pluginRoot, "output-styles", "hush.md.stock"));
+  const active = slot(pluginRoot);
+
+  const run = spawnSync(process.execPath, [path.join(__dirname, "..", "scripts", "activate-style.js"), second], {
+    cwd: projectDir,
+    encoding: "utf-8",
+    env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginRoot, HOME: homeDir, USERPROFILE: homeDir },
+  });
+
+  assert.strictEqual(run.status, 1, run.stdout);
+  assert.match(JSON.parse(run.stdout).error, /^stock is unknown/);
+  assert.strictEqual(slot(pluginRoot), active);
+  assert.strictEqual(fs.existsSync(path.join(pluginRoot, "output-styles", "hush.md.stock")), false);
+  // The shelf says the same of that row: nothing was checked.
+  const row = shelf(pluginRoot, projectDir, homeDir).styles.find((s) => s.path === second);
+  assert.strictEqual(row.status, "unknown");
+});
+
 test("pick-style and craft-style both know the mend's field and flag", () => {
   for (const name of ["pick-style", "craft-style"]) {
     const text = fs.readFileSync(path.join(__dirname, "..", "skills", name, "SKILL.md"), "utf-8");

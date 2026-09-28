@@ -25,6 +25,12 @@ When a style cannot switch as it is, **Gaps** says so instead of a count:
 - **unknown**: hush cannot find its own stock voice to compare against.
   Before, every style showed 0 in this case.
 
+Switching to a crafted style now stops when hush cannot find its stock voice.
+This happens when a crafted style is active and `hush.md.stock` is missing.
+The switch says stock is unknown and changes nothing. Before, it checked the
+new style against the active crafted style instead of stock, so it could
+refuse or accept the style for the wrong reason.
+
 ## 1.14.0 — 2026-09-28
 
 The final message now keeps each block to 40 words. A block is the text

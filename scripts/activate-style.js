@@ -141,8 +141,12 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir(), upda
     if (!fs.existsSync(target)) throw new Error(`chosen style file not found: ${target}`);
     let chosen = fs.readFileSync(target, "utf-8");
     // Stock lives in the backup once a takeover holds the slot, so that is the
-    // canonical file to check a variant against.
-    const canonical = fs.readFileSync(fs.existsSync(backupPath) ? backupPath : hushPath, "utf-8");
+    // canonical file to check a variant against. With no backup and no stock in
+    // the slot, stock is unknown, and the crafted slot is no stand-in for it.
+    const canonicalPath = fs.existsSync(backupPath) ? backupPath : slotIsStock ? hushPath : null;
+    if (canonicalPath === null)
+      throw new Error(`stock is unknown — ${backupPath} is missing and ${hushPath} does not hold stock, so ${target} cannot be checked against it`);
+    const canonical = fs.readFileSync(canonicalPath, "utf-8");
     if (updateTelemetry) {
       const update = telemetryUpdate(canonical, chosen);
       if (!update) throw new Error(`${target} has no paragraph about [hush ...] lines from an older hush to replace`);
