@@ -802,9 +802,11 @@ function isFileDump(command) {
 // only, on one line, read through unwrapCommand below as isFileDump reads it.
 // find is a listing unless -exec/-ok prints another command's output.
 // LINE_RANGE_SRC is the sed -n and head/tail range both print checks share.
+// A pipe, chain or redirect character inside quotes is text, not a step; an
+// escaped \" or \' opens no quote.
 const LINE_RANGE_SRC = String.raw`sed\s+-n\s|(?:head|tail)\s+-(?:n\s*)?\+?\d`;
 const BOUNDED_PRINT_RE = new RegExp(
-  String.raw`^(?=[^|;&<>\r\n]*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\s|$)|find(?!.*\s-(?:exec|ok)(?:dir)?(?:\s|$))(?:\s|$)|${LINE_RANGE_SRC}` +
+  String.raw`^(?=(?:\\(?:[^|;&<>\r\n]|$)|"[^"]*"|'[^']*'|[^|;&<>\r\n"'\\])*$)(?:(?:ls|dir|gci|Get-ChildItem)(?:\s|$)|find(?!.*\s-(?:exec|ok)(?:dir)?(?:\s|$))(?:\s|$)|${LINE_RANGE_SRC}` +
     String.raw`|(?:cat|type|gc|Get-Content)\s.*\s-(?:TotalCount|Head|First|Tail|Last)\s+\d|git\s+(?:diff|show)(?:\s|$))`,
   "i"
 );
@@ -926,10 +928,13 @@ function isBoundedStep(step) {
 // A for loop over words it names (no glob, variable or substitution) runs its
 // body once per word, so it is bounded when every body step is.
 const FOR_RE = /^for\s+[a-zA-Z_]\w*\s+in(?:\s+[\w./-]+)+$/;
+// Steps split on &&, ; and newlines outside quotes, as PIPE_PART_RE splits
+// pipes; an escaped \" or \' opens no quote.
+const STEP_SEP_RE = /\\["']|"[^"]*"|'[^']*'|&&|;|\r?\n/g;
 
 function isBoundedPrint(command) {
   if (typeof command !== "string") return false;
-  const steps = unwrapCommand(command).split(/&&|;|\r?\n/).map((s) => s.trim().replace(/^do(?:\s+|$)/, "")).filter(Boolean);
+  const steps = unwrapCommand(command).replace(STEP_SEP_RE, (m) => (/^["']/.test(m) ? m : "\0")).split("\0").map((s) => s.trim().replace(/^do(?:\s+|$)/, "")).filter(Boolean);
   const isLoopStep = (s) => FOR_RE.test(s) || s === "done";
   return steps.some((s) => !isNeutralStep(s) && !isLoopStep(s)) && steps.every((s) => isNeutralStep(s) || isLoopStep(s) || isBoundedStep(s));
 }

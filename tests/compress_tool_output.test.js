@@ -3612,6 +3612,35 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < code.length);
   });
 
+  // A ;, &&, |, <, > or & inside quotes is pattern text: it neither splits the
+  // chain into steps nor stops a line-range print.
+  for (const [command, out] of [
+    ['grep -n "a;b" x.js', hits(80, 'x.js')],
+    ["sed -n '/a|b/p' x.js | grep -n y", hits(80, 'x.js')],
+    ['grep -n "a && b" x.js; sed -n "/<a>/p" y.js', [hits(40, 'x.js'), src(60, 'y')].join('\n')],
+  ]) {
+    test(`${command}: quoted separators keep the read whole through the Bash hook`, () => {
+      assert.ok(out.length > 4000, `${out.length} characters`);
+      assert.ok(isBoundedPrint(command));
+      assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } })), null);
+    });
+  }
+
+  test('an unquoted ;, &&, |, < or > beside a quoted one still ends the bounded print', () => {
+    for (const c of [
+      'sed -n 1,5p a.js; rm a.js',
+      'grep -n "a;b" x.js; rm x.js',
+      'grep -n "a;b" x.js && npm test',
+      "sed -n '/a|b/p' x.js | sort",
+      "sed -n '/a|b/p' x.js > out.txt",
+      "sed -n '/a;b/p' < x.js",
+      'grep -n "a;b x.js; rm x.js',
+      String.raw`grep -n \"a; npm test; echo b\" x.js`,
+      String.raw`sed -n 1p \"a | npm test | b\"`,
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
+    for (const c of ['dir C:\\', String.raw`ls C:\src\app`]) assert.ok(isBoundedPrint(c), c);
+  });
+
   test('250 lines and a trailing newline pass whole; past 250 a print keeps 250 lines and folds none', () => {
     const at = lines(250, (i) => `line ${i}`) + '\n';
     assert.strictEqual(compress(at, 0, false, false, [], 1, undefined, undefined, true, {}, true), at);

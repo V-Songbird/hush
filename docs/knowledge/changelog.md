@@ -87,6 +87,9 @@ characters could lose lines from the middle, which could send Claude back to
 read the files again. A whole-file read piped into `grep`, a recursive
 search (`grep -r` or `grep -d recurse`) or a wildcard among the files with
 no line range after it, and a loop over a wildcard are trimmed as before.
+A `;`, `&&`, `|`, `<` or `>` inside quotes, such as `grep -n "a;b" x.js` or
+`sed -n '/a|b/p' x.js | grep -n y`, is now read as part of the pattern, so
+such a read also comes back whole; it was trimmed.
 
 A command's JSON output now comes back whole up to 250 lines when the run did
 not fail and its regular output is one JSON object or array, or JSON Lines. A
