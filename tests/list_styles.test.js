@@ -126,6 +126,30 @@ test("a recorded style the slot no longer runs is read as overwritten", () => {
   assert.strictEqual(shelf(pluginRoot, projectDir, homeDir).restoredOverTakeover, true);
 });
 
+// A style crafted before stock added the 40-word block cap lacks those rules.
+// The shelf counts them with the check activation reports them from, so the
+// list shows the gap before the user switches, against stock in the slot or,
+// once a takeover holds it, in the backup.
+test("each entry counts the current stock rules it lacks", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const stock = fs.readFileSync(path.join(__dirname, "..", "output-styles", "hush.md"), "utf-8");
+  const body = stock.replace(/^---\n[\s\S]*?\n---\n/, "").replace(/\r\n/g, "\n");
+  const cap = " A block is the text between two blank lines, so a whole list is one block. 40 words per block, tops. More than that is two blocks, or a table.";
+  assert.ok(body.includes(cap), "stock lost the block-cap sentence");
+  const crafted = (name) => `---\nname: ${name}\ndescription: A voice. Unmeasured variant of Hush.\nkeep-coding-instructions: true\n---\n`;
+  write(path.join(pluginRoot, "output-styles", "hush.md"), stock);
+  write(path.join(projectDir, ".claude", "output-styles", "old.md"), crafted("Old") + body.replace(cap, ""));
+  write(path.join(projectDir, ".claude", "output-styles", "whole.md"), crafted("Whole") + body);
+
+  const counts = () => shelf(pluginRoot, projectDir, homeDir).styles.map((s) => [s.name, s.gapCount]);
+  const expected = [["Hush (stock)", 0], ["Old", 1], ["Whole", 0]];
+  assert.deepStrictEqual(counts(), expected);
+
+  fs.copyFileSync(path.join(pluginRoot, "output-styles", "hush.md"), path.join(pluginRoot, "output-styles", "hush.md.stock"));
+  write(path.join(pluginRoot, "output-styles", "hush.md"), crafted("Whole") + body);
+  assert.deepStrictEqual(counts(), expected);
+});
+
 test("every listed entry carries its provenance", () => {
   const { pluginRoot, projectDir, homeDir } = makeFixture();
   write(

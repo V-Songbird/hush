@@ -15,6 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { splitFrontmatter, parseFrontmatter, normalize, CRAFTED_MARKER } = require("./verify-style.js");
+const { frameGaps } = require("./activate-style.js");
 
 function readFrontmatter(filePath) {
   const text = normalize(fs.readFileSync(filePath, "utf-8"));
@@ -35,7 +36,13 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
   const entries = [];
 
   const hushPath = path.join(pluginRoot, "output-styles", "hush.md");
-  entries.push({ name: "Hush (stock)", description: "The voice hush ships — no takeover.", source: "stock", path: "stock" });
+  const activeFm = fs.existsSync(hushPath) ? readFrontmatter(hushPath) : {};
+  const activeDesc = activeFm.description || "";
+  // The same stock text activation checks against: the slot while it runs
+  // stock, the backup while a takeover holds it.
+  const stockPath = activeDesc.includes(CRAFTED_MARKER) ? hushPath + ".stock" : hushPath;
+  const stockText = fs.existsSync(stockPath) ? fs.readFileSync(stockPath, "utf-8") : null;
+  entries.push({ name: "Hush (stock)", description: "The voice hush ships — no takeover.", source: "stock", path: "stock", gapCount: 0 });
 
   const craftedDirs = [path.join(homeDir, ".claude", "output-styles"), path.join(projectDir, ".claude", "output-styles")];
   const seen = new Set();
@@ -46,12 +53,12 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
       seen.add(resolved);
       const fm = readFrontmatter(file);
       if (!(fm.description || "").includes(CRAFTED_MARKER)) continue;
-      entries.push({ name: fm.name || path.basename(file), description: fm.description || "", source: "crafted", path: file });
+      // How many current stock rules the style lacks, as activation will report them.
+      const gaps = stockText === null ? 0 : frameGaps(stockText, fs.readFileSync(file, "utf-8")).length;
+      entries.push({ name: fm.name || path.basename(file), description: fm.description || "", source: "crafted", path: file, gapCount: gaps });
     }
   }
 
-  const activeFm = fs.existsSync(hushPath) ? readFrontmatter(hushPath) : {};
-  const activeDesc = activeFm.description || "";
   let activeIndex = entries.findIndex((e) => e.source === "stock");
   if (activeDesc.includes(CRAFTED_MARKER)) {
     const found = entries.findIndex((e) => e.source === "crafted" && e.name === activeFm.name);

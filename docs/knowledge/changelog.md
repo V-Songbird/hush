@@ -24,6 +24,10 @@ stock rules the style lacks, such as the block cap. `/hush:pick-style` shows
 that list after the switch. `/hush:craft-style` shows it too, and asks
 whether to add those rules to the style in its own voice.
 
+The `/hush:pick-style` list now has a **Gaps** column. It counts the stock
+rules each crafted style lacks, so you can see them before you switch. For
+example, a style crafted from hush 1.13.0 counts the missing block cap.
+
 A clean run's data comes back whole in more cases:
 
 - A pretty-printed JSON document with up to two text lines before or after
