@@ -20,19 +20,21 @@ Run:
 node "${CLAUDE_PLUGIN_ROOT}/scripts/list-styles.js"
 ```
 
-It prints one JSON object: `styles` (each with `index`, `name`, `description`, `source`, `path`, `gapCount`, `active`), plus `activeName`, `activeOnShelf`, `stockBackupExists`, and `restoredOverTakeover`.
+It prints one JSON object: `styles` (each with `index`, `name`, `description`, `source`, `path`, `status`, `gapCount`, `active`), plus `activeName`, `activeOnShelf`, `stockBackupExists`, and `restoredOverTakeover`.
 
 Render it as exactly this table, one row per entry in `styles`, in index order:
 
 ```
 | # | Name | Description | Source | Gaps | Active |
 | --- | --- | --- | --- | --- | --- |
-| 1 | <name> | <description> | <source> | <gapCount> | ✓ (only on the active row) |
+| 1 | <name> | <description> | <source> | <gapCount, or status when status is not ready> | ✓ (only on the active row) |
 ```
 
 `source` is `stock` for the voice hush ships and `crafted` for the user's own variants. Print it as it comes — it is what tells two same-named entries apart.
 
 `gapCount` is how many rules of the current stock voice the style lacks, from the same check activation runs, so a completed swap in step 2 lists that many. Print it as it comes. If any row shows more than 0, add one line under the table: "Gaps counts the current stock rules a style lacks; `/hush:craft-style` can add them in its voice."
+
+`status` is what activation will say of the row, from the same check: `ready` activates, and its `gapCount` is a number. `needs update` keeps the paragraph about `[hush ...]` lines from an older hush, so activation offers to swap it first, as in step 2. `refused` lacks hush's mechanics or has a name activation refuses, so activation will relay why; on the stock row it means a takeover holds the slot and `hush.md.stock` is missing, so there is nothing to restore. `unknown` means no stock text is readable, since a takeover holds the slot and `hush.md.stock` is missing, so nothing was checked. Every status but `ready` has a null `gapCount`.
 
 If `restoredOverTakeover` is `true`, add one line above the table: "A plugin update restored stock Hush over a prior takeover." Otherwise add nothing.
 

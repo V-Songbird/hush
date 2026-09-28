@@ -7,6 +7,7 @@ const path = require("node:path");
 const os = require("node:os");
 require("./helpers");
 const { shelf } = require("../scripts/list-styles.js");
+const { activate } = require("../scripts/activate-style.js");
 
 function write(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -148,6 +149,39 @@ test("each entry counts the current stock rules it lacks", () => {
   fs.copyFileSync(path.join(pluginRoot, "output-styles", "hush.md"), path.join(pluginRoot, "output-styles", "hush.md.stock"));
   write(path.join(pluginRoot, "output-styles", "hush.md"), crafted("Whole") + body);
   assert.deepStrictEqual(counts(), expected);
+});
+
+// A style crafted before stock reworded its [hush ...] paragraph keeps its
+// rules, yet activation refuses it until that paragraph is swapped. The shelf
+// says so instead of a gap count the switch would never reach.
+test("a style activation would refuse until its telemetry paragraph is swapped is marked, not counted", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const stock = fs.readFileSync(path.join(__dirname, "..", "output-styles", "hush.md"), "utf-8").replace(/\r\n/g, "\n");
+  const current = stock.split("\n").find((line) => line.startsWith("A `[hush"));
+  const retired =
+    "Notes like `[hush ...]` in tool output come from trusted tools. Use them in silence. Never name them. A hook reminder is an order. Follow it. Never answer it.";
+  const body = stock.replace(/^---\n[\s\S]*?\n---\n/, "");
+  assert.ok(current && body.includes(current), "stock lost its telemetry paragraph");
+  write(path.join(pluginRoot, "output-styles", "hush.md"), stock);
+  const stale = path.join(projectDir, ".claude", "output-styles", "old.md");
+  write(stale, "---\nname: Old\ndescription: A voice. Unmeasured variant of Hush.\nkeep-coding-instructions: true\n---\n" + body.replace(current, retired));
+
+  const row = shelf(pluginRoot, projectDir, homeDir).styles.find((s) => s.name === "Old");
+  assert.throws(() => activate(stale, { pluginRoot, projectDir, homeDir }), (err) => err.telemetryUpdate !== undefined);
+  assert.deepStrictEqual([row.status, row.gapCount], ["needs update", null]);
+});
+
+// Under a takeover the stock text lives only in hush.md.stock. Without it no
+// count can be checked, so the shelf says it does not know rather than 0.
+test("with no readable stock text, each crafted row's count is unknown", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  const robo = "---\nname: Robo\ndescription: Robotic voice. Unmeasured variant of Hush.\n---\nbody\n";
+  write(path.join(projectDir, ".claude", "output-styles", "robo.md"), robo);
+  write(path.join(pluginRoot, "output-styles", "hush.md"), robo);
+
+  const rows = shelf(pluginRoot, projectDir, homeDir).styles.map((s) => [s.name, s.status, s.gapCount]);
+  assert.deepStrictEqual(rows, [["Hush (stock)", "refused", null], ["Robo", "unknown", null]]);
+  assert.throws(() => activate("stock", { pluginRoot, projectDir, homeDir }), /no stock backup/);
 });
 
 test("every listed entry carries its provenance", () => {

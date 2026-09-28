@@ -17,6 +17,14 @@ The `/hush:pick-style` list now has a **Gaps** column. It counts the stock
 rules each crafted style lacks, so you can see them before you switch. For
 example, a style crafted from hush 1.13.0 counts the missing block cap.
 
+When a style cannot switch as it is, **Gaps** says so instead of a count:
+
+- **needs update**: the style has the note about `[hush ...]` lines from an
+  older hush. Switching to it first offers to replace that paragraph.
+- **refused**: the switch will refuse the style and say why.
+- **unknown**: hush cannot find its own stock voice to compare against.
+  Before, every style showed 0 in this case.
+
 ## 1.14.0 — 2026-09-28
 
 The final message now keeps each block to 40 words. A block is the text

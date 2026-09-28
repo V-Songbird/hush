@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { splitFrontmatter, parseFrontmatter, normalize, CRAFTED_MARKER } = require("./verify-style.js");
-const { frameGaps } = require("./activate-style.js");
+const { validateVariant } = require("./activate-style.js");
 
 function readFrontmatter(filePath) {
   const text = normalize(fs.readFileSync(filePath, "utf-8"));
@@ -42,7 +42,9 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
   // stock, the backup while a takeover holds it.
   const stockPath = activeDesc.includes(CRAFTED_MARKER) ? hushPath + ".stock" : hushPath;
   const stockText = fs.existsSync(stockPath) ? fs.readFileSync(stockPath, "utf-8") : null;
-  entries.push({ name: "Hush (stock)", description: "The voice hush ships — no takeover.", source: "stock", path: "stock", gapCount: 0 });
+  // A takeover with no backup leaves activation nothing to restore stock from.
+  const stockGone = activeDesc.includes(CRAFTED_MARKER) && stockText === null;
+  entries.push({ name: "Hush (stock)", description: "The voice hush ships — no takeover.", source: "stock", path: "stock", status: stockGone ? "refused" : "ready", gapCount: stockGone ? null : 0 });
 
   const craftedDirs = [path.join(homeDir, ".claude", "output-styles"), path.join(projectDir, ".claude", "output-styles")];
   const seen = new Set();
@@ -53,9 +55,20 @@ function shelf(pluginRoot, projectDir, homeDir = os.homedir()) {
       seen.add(resolved);
       const fm = readFrontmatter(file);
       if (!(fm.description || "").includes(CRAFTED_MARKER)) continue;
-      // How many current stock rules the style lacks, as activation will report them.
-      const gaps = stockText === null ? 0 : frameGaps(stockText, fs.readFileSync(file, "utf-8")).length;
-      entries.push({ name: fm.name || path.basename(file), description: fm.description || "", source: "crafted", path: file, gapCount: gaps });
+      // What activation will say of the style: the current stock rules it
+      // lacks, a mend it needs first, or a refusal. With no stock text to
+      // check against, nothing can be said.
+      let status = "unknown";
+      let gapCount = null;
+      if (stockText !== null) {
+        try {
+          gapCount = validateVariant(file, fs.readFileSync(file, "utf-8"), stockText).length;
+          status = "ready";
+        } catch (err) {
+          status = err.telemetryUpdate ? "needs update" : "refused";
+        }
+      }
+      entries.push({ name: fm.name || path.basename(file), description: fm.description || "", source: "crafted", path: file, status, gapCount });
     }
   }
 

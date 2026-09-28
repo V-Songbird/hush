@@ -227,4 +227,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { activate, frameGaps };
+module.exports = { activate, frameGaps, validateVariant };
