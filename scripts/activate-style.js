@@ -15,7 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { safeWriteFileSync } = require("../hooks/lib/safe-write.js");
-const { splitFrontmatter, parseFrontmatter, normalize, verify, verifyCore, telemetryUpdate, CRAFTED_MARKER, COLON_NAME_REASON } = require("./verify-style.js");
+const { splitFrontmatter, parseFrontmatter, normalize, sections, verify, verifyCore, telemetryUpdate, CRAFTED_MARKER, COLON_NAME_REASON, GUARDED_SECTIONS } = require("./verify-style.js");
 
 function injectForcePlugin(text) {
   const { frontmatter, body } = splitFrontmatter(normalize(text));
@@ -83,7 +83,7 @@ function validateVariant(target, text, canonicalText) {
   const stockName = parseFrontmatter(splitFrontmatter(normalize(canonicalText)).frontmatter).name;
   if (stockName && stockName.trim().toLowerCase() === name)
     throw new Error(`"${fm.name}" is the name of the style hush ships — rename this variant before activating it`);
-  if (keepsMechanics(canonicalText, text)) return;
+  if (keepsMechanics(canonicalText, text)) return frameGaps(canonicalText, text);
   // A style whose only gap is a retired telemetry paragraph is refused with
   // the mend attached, so the skill can offer it and --update-telemetry apply it.
   const update = telemetryUpdate(canonicalText, text);
@@ -97,6 +97,17 @@ function validateVariant(target, text, canonicalText) {
 
 function keepsMechanics(canonicalText, text) {
   return verify(canonicalText, text).ok || verifyCore(canonicalText, text).ok;
+}
+
+// A style that kept stock's sections was built on the full frame. When it
+// holds only the core contract now, it lacks rules stock added since it was
+// crafted, such as the 40-word block cap. It still activates, unchanged, and
+// the gaps come back so the user can have them added in their own voice. A
+// style on the stripped frame keeps none of those sections and reports none.
+function frameGaps(canonicalText, text) {
+  const kept = Object.keys(sections(splitFrontmatter(normalize(text)).body));
+  if (!GUARDED_SECTIONS.some((name) => kept.includes(name))) return [];
+  return verify(canonicalText, text).problems;
 }
 
 // updateTelemetry: the user agreed to the mend validateVariant offered. The
@@ -122,6 +133,7 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir(), upda
 
   let next;
   let styleUpdated = null;
+  let gaps = [];
   if (target === "stock") {
     if (!fs.existsSync(backupPath)) throw new Error(`no stock backup at ${backupPath} — nothing to restore`);
     next = fs.readFileSync(backupPath, "utf-8");
@@ -136,7 +148,7 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir(), upda
       if (!update) throw new Error(`${target} has no paragraph about [hush ...] lines from an older hush to replace`);
       chosen = update.text;
     }
-    validateVariant(target, chosen, canonical);
+    gaps = validateVariant(target, chosen, canonical);
     if (updateTelemetry) {
       safeWriteFileSync(target, chosen);
       styleUpdated = target;
@@ -189,7 +201,7 @@ function activate(target, { pluginRoot, projectDir, homeDir = os.homedir(), upda
     }
   }
 
-  return { ok: true, target, name, backedUp: fs.existsSync(backupPath), styleUpdated, settingsUpdated, warnings };
+  return { ok: true, target, name, backedUp: fs.existsSync(backupPath), styleUpdated, frameGaps: gaps, settingsUpdated, warnings };
 }
 
 function main() {

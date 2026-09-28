@@ -9,6 +9,7 @@ const { spawnSync } = require("node:child_process");
 require("./helpers");
 const { activate } = require("../scripts/activate-style.js");
 const { shelf } = require("../scripts/list-styles.js");
+const { verify } = require("../scripts/verify-style.js");
 
 function write(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -554,6 +555,62 @@ test("pick-style and craft-style both know the mend's field and flag", () => {
   for (const name of ["pick-style", "craft-style"]) {
     const text = fs.readFileSync(path.join(__dirname, "..", "skills", name, "SKILL.md"), "utf-8");
     assert.ok(text.includes("telemetryUpdate") && text.includes("--update-telemetry"), name + " does not offer the mend");
+  }
+});
+
+// --- a style crafted before stock added a rule --------------------------------
+//
+// 1.13.0's voice had no block cap. Stock minus the two cap sentences is that
+// voice byte for byte, so a style crafted from it keeps every anchor of its day
+// and lacks the new "40". Full verify refuses it; the core contract still holds.
+
+const BLOCK_CAP_RULE = " A block is the text between two blank lines, so a whole list is one block. 40 words per block, tops. More than that is two blocks, or a table.";
+const BLOCK_CAP_CHECK = " Find your longest block. Over 40 words? Split it too.";
+
+test("a style crafted from 1.13.0 activates, and the result names the block-cap rules it lacks", () => {
+  const body = STOCK.replace(/^---\n[\s\S]*?\n---\n/, "");
+  assert.ok(body.includes(BLOCK_CAP_RULE) && body.includes(BLOCK_CAP_CHECK), "stock lost a block-cap sentence");
+  const fixture = makeFixture();
+  const { pluginRoot, projectDir, homeDir } = fixture;
+  write(path.join(pluginRoot, "output-styles", "hush.md"), STOCK);
+  const variantPath = craftedPath(projectDir, "old.md");
+  const text = STALE_FRONTMATTER + body.replace(BLOCK_CAP_RULE, "").replace(BLOCK_CAP_CHECK, "");
+  write(variantPath, text);
+
+  const full = verify(STOCK, text);
+  assert.strictEqual(full.ok, false);
+
+  const result = activate(variantPath, { pluginRoot, projectDir, homeDir });
+
+  assert.strictEqual(result.name, "Old");
+  assert.deepStrictEqual(result.frameGaps, full.problems);
+  assert.ok(result.frameGaps.some((p) => p.includes('"Structure that carries weight"') && p.includes("40")));
+  assert.strictEqual(fs.readFileSync(variantPath, "utf-8"), text, "activation rewrote the user's style");
+});
+
+test("a style on the stripped frame and one that passes full verify report no frame gaps", () => {
+  const { pluginRoot, projectDir, homeDir } = makeFixture();
+  write(path.join(pluginRoot, "output-styles", "hush.md"), STOCK);
+  const core = craftedPath(projectDir, "core.md");
+  write(core, STALE_FRONTMATTER + [
+    STOCK.replace(/^---\n[\s\S]*?\n---\n/, "").split("\n").find(Boolean),
+    "",
+    "Not one word between tool calls. Errors word for word. Quiet never means less work.",
+    "",
+    CURRENT_TELEMETRY,
+    "",
+  ].join("\n"));
+  const whole = craftedPath(projectDir, "whole.md");
+  write(whole, STALE_FRONTMATTER + STOCK.replace(/^---\n[\s\S]*?\n---\n/, ""));
+
+  assert.deepStrictEqual(activate(core, { pluginRoot, projectDir, homeDir }).frameGaps, []);
+  assert.deepStrictEqual(activate(whole, { pluginRoot, projectDir, homeDir }).frameGaps, []);
+});
+
+test("pick-style and craft-style both relay frame gaps", () => {
+  for (const name of ["pick-style", "craft-style"]) {
+    const text = fs.readFileSync(path.join(__dirname, "..", "skills", name, "SKILL.md"), "utf-8");
+    assert.ok(text.includes("frameGaps"), name + " does not relay frameGaps");
   }
 });
 

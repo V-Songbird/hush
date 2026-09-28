@@ -118,6 +118,8 @@ This is the same mechanical swap `hush:pick-style` uses — one script, called f
 
 A refusal that carries `telemetryUpdate` means the style keeps the paragraph about `[hush ...]` lines from an older hush, and nothing else stands in the way. Quote `telemetryUpdate.old` and `telemetryUpdate.new`, say that no other line of the file changes, and ask the user (AskUserQuestion) whether to swap that paragraph and activate. On a yes, run the same command with `--update-telemetry` before the path. On a no, the file stays as it is.
 
+A non-empty `frameGaps` in the result means the style is active but lacks rules the current stock voice has, most often ones stock added after it was crafted: each entry names one, such as the 40-word block cap. Its file is unchanged. Quote the gaps and ask the user (AskUserQuestion) whether to add those rules in the style's voice. On a yes, edit the style as in step 3, re-run step 4 until it exits 0, then activate again. On a no, the style stays as it is.
+
 If the user declines the takeover, the crafted file stays where it was written, inert until they activate it themselves.
 
 ## 6. Report
