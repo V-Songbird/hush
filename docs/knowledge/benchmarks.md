@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "The full Claude Code benchmark tables behind the README: correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
+summary: "The full Claude Code benchmark tables: the current voice on Opus 5.5, then the earlier voices behind the README; correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -8,15 +8,17 @@ related_files:
 
 # The numbers, in full
 
-The README uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison).
+The newest comparison is the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the current voice.
+
+Everything after it measured earlier voices. The README still uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison).
 
 Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
 The records, definitions and source reconciliation behind these figures are kept outside this repository. Raw output-token counts include all output billed by the API; prose word counts exclude fenced code. The README comparison's final prose words and the words column under Prose surface are medians; the job-by-job comparison uses job averages. Reading-ease and grade scores are heuristic averages, not a reader study.
 
-Every figure on this page was measured before output under 4,000 characters stopped being folded by shape or cut by line count (see [Unreleased](changelog.md#unreleased) in the changelog). The README comparison ran hush 1.11.1, the release current when it started, and the August 30 comparisons ran the same compression code; both folded same-shape lines and cut output by line count at any size. To see what that floor changes, the no-plugin sessions' recorded tool output was replayed offline through the compression of hush commit bfe9653 and through the same code without the floor. Every replay on this page counts an output that Claude Code cut before the model saw it at the size the model saw, with or without hush. With the floor, hush prints 2.8% more per session in the README comparison, 1.8% more in the August 30 Opus comparison and 0.1% more in the Sonnet one, averaged over the nine jobs. The largest changes are on Opus: the outage job, +9.3% and +7.6%, and the column rename in the README comparison, +8.7%. Of the three quietest jobs of the README comparison, only the red test suite changes, +3.6%. The replay counts characters only: no price was re-measured, and it cannot show the re-runs the floor exists to prevent.
+Every earlier-voice figure on this page was measured before output under 4,000 characters stopped being folded by shape or cut by line count (see [Unreleased](changelog.md#unreleased) in the changelog). The README comparison ran hush 1.11.1, the release current when it started, and the August 30 comparisons ran the same compression code; both folded same-shape lines and cut output by line count at any size. To see what that floor changes, the no-plugin sessions' recorded tool output was replayed offline through the compression of hush commit bfe9653 and through the same code without the floor. Every replay on this page counts an output that Claude Code cut before the model saw it at the size the model saw, with or without hush. With the floor, hush prints 2.8% more per session in the README comparison, 1.8% more in the August 30 Opus comparison and 0.1% more in the Sonnet one, averaged over the nine jobs. The largest changes are on Opus: the outage job, +9.3% and +7.6%, and the column rename in the README comparison, +8.7%. Of the three quietest jobs of the README comparison, only the red test suite changes, +3.6%. The replay counts characters only: no price was re-measured, and it cannot show the re-runs the floor exists to prevent.
 
-The figures also predate every other change under [Unreleased](changelog.md#unreleased), including the new voice that writes each final answer, directory listings, line-range prints, a lone git diff or git show, a listing or diff piped into one line-range print, reads of whole source files and a clean run's JSON output passed whole up to 250 lines, and more failure evidence kept from long output. Replayed the same way through hush commit 4938191 with and without the whole pass for listings, line-range prints and diffs, hush prints the same per session in all three comparisons: their only matching calls were 15 short directory listings in the README comparison, which the 4,000-character floor already passes whole. Replayed through hush commit 31b504c with and without whole-file source reads, hush prints 0.4% more per session in the README comparison and the same in both August 30 comparisons, which made no such read. The whole change is in the column rename, +3.0%: one 4,076-character read of five source files now passes whole instead of being cut to 1,945 characters, and the other 11 source reads in that comparison came back whole either way. Replayed through hush commit ea30dbe, which also passes a listing or diff piped into one line-range print whole, hush prints 1.1% more per session than through 31b504c in the README comparison and the same in both August 30 comparisons. That change is in the column rename too, +8.8%: four outputs of about 4,500 characters, each an `ls -la` followed by `find … | head -100`, now pass whole instead of being cut to about 2,900 characters. Replayed through hush commit ecaa145 with and without the whole pass for a clean run's JSON output, hush prints the same per session in all three comparisons: none of their no-plugin sessions printed JSON that the pass applies to. Like the floor replay, these four replays count characters only.
+The earlier-voice figures also predate every other change under [Unreleased](changelog.md#unreleased), including the new voice that writes each final answer, directory listings, line-range prints, a lone git diff or git show, a listing or diff piped into one line-range print, reads of whole source files and a clean run's JSON output passed whole up to 250 lines, and more failure evidence kept from long output. Replayed the same way through hush commit 4938191 with and without the whole pass for listings, line-range prints and diffs, hush prints the same per session in all three comparisons: their only matching calls were 15 short directory listings in the README comparison, which the 4,000-character floor already passes whole. Replayed through hush commit 31b504c with and without whole-file source reads, hush prints 0.4% more per session in the README comparison and the same in both August 30 comparisons, which made no such read. The whole change is in the column rename, +3.0%: one 4,076-character read of five source files now passes whole instead of being cut to 1,945 characters, and the other 11 source reads in that comparison came back whole either way. Replayed through hush commit ea30dbe, which also passes a listing or diff piped into one line-range print whole, hush prints 1.1% more per session than through 31b504c in the README comparison and the same in both August 30 comparisons. That change is in the column rename too, +8.8%: four outputs of about 4,500 characters, each an `ls -la` followed by `find … | head -100`, now pass whole instead of being cut to about 2,900 characters. Replayed through hush commit ecaa145 with and without the whole pass for a clean run's JSON output, hush prints the same per session in all three comparisons: none of their no-plugin sessions printed JSON that the pass applies to. Like the floor replay, these four replays count characters only.
 
 ← [Back to the README](../../README.md)
 
@@ -38,9 +40,126 @@ checklist. **A short answer that breaks the job counts as a failure, not a win.*
 
 Every price is the real bill, read back from the API.
 
+## The Opus 5.5 comparison
+
+Batch `o55-451-495ce18f`, started September 28, 2026 at 02:14 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the `opus` alias. Every session recorded the model id `claude-opus-5-5`. No effort was set, so each session ran at the CLI's default effort. Hush ran with `HUSH_WRAP=1` from `main` at commit `556094f`, with every change listed under [Unreleased](changelog.md#unreleased); its manifest still reads 1.12.1.
+
+A third setup ran the same build with one sentence deleted from the voice: "Think as long as you need." Its results are under [The think-longer sentence](#the-think-longer-sentence). The tables in this section compare no plugin with hush.
+
+| Claude Opus 5.5, 36 sessions each | jobs right | spoke at most once before the answer | said nothing at all | median final prose words |
+| --- | --- | --- | --- | --- |
+| no plugin | 36/36 | 28/36 | 12/36 | 369 |
+| **hush** | **36/36** | **36/36** | **34/36** | **271** |
+
+The hush median is 270.5, rounded. Prose words exclude fenced code.
+
+**Without a plugin, Opus 5.5 already talks less while it works.** 28 of 36 sessions spoke at most once before the answer, against 14 of 36 for Opus 5 at medium effort in the README comparison. The worst no-plugin session sent 3 messages while working. The 36 no-plugin sessions sent 34 such messages in all, with 15.4 words of play-by-play per session. Hush sent 2 messages in all, with 1.0 word per session.
+
+### Reading the Opus 5.5 answers
+
+Counted the same way as [Reading it](#reading-it): fenced code left out, inline code, paths and links counted as one word each.
+
+| Claude Opus 5.5, 36 sessions each | sentences over 20 words | over 25 | over 30 | words in blocks over 40 words, mean | median | words per sentence | reading ease | grade level |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| no plugin | 10.9% | 3.2% | 1.2% | 78.3% | 79.7% | 12.0 | 78.2 | 5.3 |
+| **hush** | **0.5%** | **0.0%** | **0.0%** | **52.3%** | **57.6%** | **8.1** | **88.6** | **2.9** |
+
+Job by job: in how many of the nine jobs hush's average beat the no-plugin average, with the exact two-sided sign-flip p over the nine job differences.
+
+| hush against | no plugin |
+| --- | --- |
+| fewer prose words | 6 of 9, p 0.133 |
+| smaller share of sentences over 20 words | 9 of 9, p 0.004 |
+| smaller share of sentences over 30 words | 5 of 9, p 0.063 |
+| less of the message in blocks over 40 words | 9 of 9, p 0.004 |
+| higher reading ease | 9 of 9, p 0.004 |
+
+In the other four jobs, both setups wrote no sentence over 30 words, which counts as no win.
+
+**Here structure is partly separate from length.** Hush's range of prose words per session overlaps the no-plugin range in five of the nine jobs. In three jobs hush wrote more on average: the red test suite, the notification router and the half-done rename. In the first two, every hush session was longer than every no-plugin session. Yet hush wrote shorter sentences and fewer long blocks in all nine.
+
+Hush messages still hold about half their words in blocks over 40 words. That is less than without a plugin, but far more than the 5.8% of the earlier voice in the README comparison.
+
+### Cost and runnable content on Opus 5.5
+
+Each price is the average bill of a job's four sessions, read back from the API, with the change against no plugin; the cheapest setup is in bold. Runnable content uses the same heuristic as [Cost and runnable content by job](#cost-and-runnable-content-by-job). Jobs are ordered by how much tool output the no-plugin sessions took in, least first.
+
+| The job | tool output per session, no plugin | no plugin | hush | answers with runnable content, no plugin · hush |
+| --- | --- | --- | --- | --- |
+| Plan a `--json` flag without editing anything | 2.4k chars | **$0.087** | $0.104, +19% | 4/4 · 4/4 |
+| Get a build clean again after a dependency bump | 6.0k chars | **$0.134** | $0.153, +14% | 4/4 · 4/4 |
+| Fix a red test suite hiding three real failures | 10.5k chars | **$0.132** | $0.149, +13% | 4/4 · 4/4 |
+| Build a notification router while the plan changes four times | 12.9k chars | **$1.073** | $1.270, +18% | 4/4 · 4/4 |
+| Dig through 300 KB of logs for the cause of an outage | 22.2k chars | **$1.160** | $1.205, +4% | 4/4 · 4/4 |
+| Finish a half-done rename across 76 files | 23.2k chars | **$0.219** | $0.289, +32% | 4/4 · 4/4 |
+| Scope a column rename that matches a thousand lines | 23.2k chars | **$0.223** | $0.267, +20% | 4/4 · 4/4 |
+| Triage a 57 KB application log | 47.1k chars | $0.317 | **$0.258, −18%** | 4/4 · 4/4 |
+| Find what actually changed for users across 380 commits | 72.1k chars | $0.444 | **$0.424, −4%** | 4/4 · 4/4 |
+
+**On Opus 5.5, hush cost more on seven of the nine jobs**, by 4% to 32%. It was cheaper only on the two jobs whose commands print the most. Runnable content appeared in all 36 answers of both setups.
+
+Averaged per session over the nine jobs:
+
+| Claude Opus 5.5 | no plugin | hush | |
+| --- | --- | --- | --- |
+| what your commands print | 24.4k chars | **22.2k chars** | −9% |
+| play-by-play while working | 15.4 words | **1.0 word** | −94% |
+| everything Claude writes in a session | **3,453 tok** | 3,654 tok | +6% |
+| average bill per session | **$0.421** | $0.458 | +9% |
+
+Without a plugin, Opus 5.5 wrote 3,453 tokens per session here, against 5,058 for Opus 5 at medium effort in the README comparison. Hush's rules have less output to cut, and they still ride along on every round trip.
+
+Treat a per-job cost difference under about 15% in this batch as noise. The hush setup and the setup without the think-longer sentence differ by one sentence, yet their average cost on one job differed by up to 14%.
+
+### Acting on the Opus 5.5 answers
+
+The same test as [Can you act on it without asking?](#can-you-act-on-it-without-asking): a fresh Claude Sonnet session gets only the request and the final message, and answers three questions.
+
+| Claude Opus 5.5, 36 sessions each | no plugin | hush |
+| --- | --- | --- |
+| what happened | 100% | 100% |
+| what to open or run | 97.2% | **100%** |
+| what to do next | 97.2% | **100%** |
+| all three | 94.4% | **100%** |
+| the job's own facts that reach those answers | 83.3% | **90.0%** |
+
+The two no-plugin misses both came from the notification router job. This test moves a few points between runs on its own.
+
+### Naming the file on Opus 5.5
+
+| notes that link the file to open, with a line number | no plugin | hush |
+| --- | --- | --- |
+| Claude Opus 5.5 | 0% | **81%** |
+
+That is 29 of 36 hush answers, and none of the 36 without a plugin.
+
+### The think-longer sentence
+
+Anthropic's guidance for Opus 5.5 says the model sets its own thinking depth, and that lines asking it to think more can delay replies. The voice ends its quiet section with "Think as long as you need." The third setup ran the same build without that sentence, in the same batch.
+
+| Claude Opus 5.5, 36 sessions each | hush | hush without the sentence |
+| --- | --- | --- |
+| jobs right | 36/36 | 36/36 |
+| spoke at most once before the answer | 36/36 | 36/36 |
+| said nothing at all | **34/36** | 32/36 |
+| median final prose words | **271** | 284 |
+| sentences over 20 words | 0.5% | 0.5% |
+| words in blocks over 40 words, mean | **52.3%** | 58.2% |
+| reading ease | **88.6** | 87.9 |
+| grade level | **2.9** | 3.1 |
+| answers with runnable content | 36/36 | 36/36 |
+| notes that link the file with a line number | **29/36** | 28/36 |
+| a fresh reader could answer all three questions | **100%** | 94.4% |
+| average bill per session | **$0.458** | $0.470 |
+| average time per session | **45.6 s** | 48.2 s |
+
+Without the sentence, sessions did not finish sooner, and no measure improved. Each difference is small and within this batch's noise. The sentence stays in the voice.
+
+The "all three" row uses the test under [Acting on the Opus 5.5 answers](#acting-on-the-opus-55-answers). The two misses without the sentence came from the `--json` plan and the column rename.
+
 ## The README comparison
 
-Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the recorded `opus` alias (identified as Opus 5 by the published source) at medium effort. Hush ran with `HUSH_WRAP=1` and the writing voice shipped when the batch started.
+Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs above, four repetitions per setup, in Claude Code with the recorded `opus` alias (identified as Opus 5 by the published source) at medium effort. Hush ran with `HUSH_WRAP=1` and the writing voice shipped when the batch started, an earlier voice than the one measured in [The Opus 5.5 comparison](#the-opus-55-comparison).
 
 | Claude Opus 5, 36 sessions each | jobs right | spoke at most once before the answer | median final prose words |
 | --- | --- | --- | --- |
@@ -103,7 +222,7 @@ Treat a per-job cost difference under about 15% in this one batch as noise. The 
 
 ## The earlier comparisons
 
-Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the writing voice shipped when each batch started.
+Below: the earlier Opus and Sonnet comparisons described above. Failing-command trimming was on (`HUSH_WRAP=1`), with the writing voice shipped when each batch started. Both measured earlier voices on Opus 5 and Sonnet, not the current voice.
 
 ## Does it still work?
 
@@ -257,7 +376,11 @@ Plain Claude Code did not produce a single clickable file link in any of the 54 
 
 ## Where hush loses
 
-Four places, all of them above.
+Five places, all of them above.
+
+**On Opus 5.5, most jobs cost more.** In [The Opus 5.5 comparison](#the-opus-55-comparison), hush cost more than no plugin on seven of the nine jobs, by 4% to 32%, and 9% more per session on average. Only the two loudest jobs came out cheaper: the 57 KB log by 18% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, and hush sessions wrote 6% more output tokens in all. Hush's answers were also longer on three of the nine jobs, and still held about half their words in blocks over 40 words.
+
+The rest of this section describes the earlier voices.
 
 **A quiet job can cost more.** hush's writing rules ride along on every round trip. On a job that
 prints little there is nothing to trim against them. In the README comparison, hush cost more than
