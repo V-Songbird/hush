@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 1.13.0 — 2026-09-28
 
 A new voice. Claude still stays quiet while it works and writes one message
 at the end, now in the language you write in. That message opens with the
@@ -19,8 +19,7 @@ result in one bold line, then the idea in one sentence, how it was checked,
 and one exact next step. A request with several parts, or for the long
 version, gets one short block per part. A request to understand something
 ends with a short question you can check yourself against. The old limits of
-8 lines and 90 words per reply are gone. Its effect on cost has not been
-measured yet.
+8 lines and 90 words per reply are gone.
 
 Long command output keeps more of what explains a failure:
 
@@ -262,23 +261,24 @@ opens with a tool call, and a line that comes first says what Claude will do,
 what it does not know yet and how it will find out. The voice's speak-early
 line now says it has two other cases, which it always listed.
 
-The README's demo animation stops for readers who ask for reduced motion, and
-its mascot image has an English title and description.
+The README now shows the new voice, measured on Claude Opus 5.5. Every test
+job still came out right, and hush spoke at most once before its answer in
+every session. Its final answers were about 27% shorter than without a
+plugin. On Opus 5.5, hush costs more: about 9% more per session on average,
+and more on seven of the nine test jobs. Opus 5.5 already says less while it
+works, so hush has less to cut. Only the two jobs whose commands print the
+most came out cheaper.
 
-The benchmark details now include the README's comparison table, from the
-same September 1 run, so you can check each of its figures there. A new
-table there gives that run's cost and runnable content job by job, behind the
-README's 94% and 1–10% figures.
-
-The benchmark details now also show how much of each final answer sits in
-long sentences or long unbroken blocks, beside whether the job came out
-right, and in how many of the nine jobs hush came out ahead. The page says
-that run does not separate structure from length: every difference there is
-also a length difference. Reading ease and grade level are now labeled
-prose surface, since they measure word and sentence length, not whether you
-understood the answer. The README's quiet column now reads "Spoke at most
-once before the answer", as the benchmark details do, because an opening line
-counts too.
+The September 1 run on Claude Opus 5, which measured the earlier voice, moved
+from the README to the benchmark details, with its play-by-play chart and its
+recorded demo. That page labels it and the older runs as earlier voices. It
+now also gives that run's cost and runnable content job by job, how much of
+each final answer sits in long sentences or long unbroken blocks, and in how
+many of the nine jobs hush came out ahead. Reading ease and grade level are
+now labeled prose surface, since they measure word and sentence length, not
+whether you understood the answer. The demo animation stops for readers who
+ask for reduced motion, and the mascot image has an English title and
+description.
 
 The README and the benchmark details no longer compare hush with caveman.
 The caveman sessions in the September 1 run also used Claude Code's Concise

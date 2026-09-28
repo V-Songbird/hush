@@ -75,32 +75,23 @@ Full-output references point to temporary files. Disabling runtime controls and 
 
 ## The numbers
 
-The comparison asks whether jobs were completed correctly, how often the assistant spoke at most once before the answer, and how long its final answers were. These observations do not guarantee the same behavior in your sessions.
+The comparison asks whether jobs were completed correctly, how often the assistant spoke at most once before the answer, how long its final answers were and what a session cost. These observations do not guarantee the same behavior in your sessions.
 
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-01","reviewedAt":"2026-09-26"} -->
-| Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words |
-| --- | --- | --- | --- | --- |
-| Claude Opus 5 | No plugin | 36/36 | 14/36 | 367 |
-| Claude Opus 5 | hush | 36/36 | 36/36 | 69 |
+### Claude Code results
 
-In this recorded comparison, Hush’s median final prose was 69 words against 367 without a plugin—about 81% shorter. Both setups passed all 36 task checks. Hush spoke at most once before the answer in every session.
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-09-28"} -->
+| Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
+| --- | --- | --- | --- | --- | --- |
+| Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.421 |
+| Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.458 |
 
-A text heuristic detected runnable content in 94% of Hush answers versus 100% without a plugin. Three quiet jobs cost 1–10% more, within that batch's noise of about 15%. The heuristic does not check that the suggested action is correct or complete. See [cost and runnable content by job](docs/knowledge/benchmarks.md#cost-and-runnable-content-by-job).
+Both setups passed all 36 task checks. Hush spoke at most once before the answer in every session, and said nothing at all before it in 34 of 36. Without a plugin, Opus 5.5 already spoke at most once in 28 of 36 sessions.
 
-Nine fixture jobs, four repetitions per setup; batch started September 1, 2026. The published source identifies Opus 5; the records retain the alias `opus` at medium effort. Measurements used the voice hush shipped then and `HUSH_WRAP=1`; they predate the current voice and output trimming. Word counts exclude fenced code. The earlier comparisons are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
+Hush's median final prose was 271 words against 369 without a plugin, about 27% shorter. Its sentences were shorter too: 0.5% ran past 20 words, against 10.9% without a plugin. Runnable content appeared in all 36 answers of both setups; that text heuristic does not check that a command is correct or complete.
 
-Anthropic also reported approximately 55% lower cost on SWE-bench Verified with Sonnet 5 after combining medium effort with concise agent output. Hush already applies concise responses in Claude Code, alongside narration controls and tool-output trimming. That result measures Anthropic’s combined optimization, not Hush. [Read Anthropic’s findings](https://claude.com/blog/reducing-cost-and-improving-performance-with-claude-platform).
+**On Opus 5.5, hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%, and four of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper, by 19% and 4%. Opus 5.5 already writes less without a plugin, so hush has less to cut. See [cost and runnable content on Opus 5.5](docs/knowledge/benchmarks.md#cost-and-runnable-content-on-opus-55).
 
-<p align="center"><img src="assets/hero.svg" alt="One spike per recorded session for words of play-by-play before the answer: 36 sessions without hush reach 134 words, and the same 36 with hush speak at most once, never past 7 words." width="700"></p>
-
-Batch rivalA-762f888b: nine fixture jobs, four runs each, in Claude Code with Opus 5 at medium effort, September 1, 2026. These measurements describe the recorded Claude sessions, not Codex performance.
-
-<details>
-<summary>Watch the recorded Claude Code demo: one real session each on Claude Opus 5, replayed on the recorded clock, published September 4, 2026</summary>
-
-<p align="center"><img src="assets/demo.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 4 progress notes and a 254-word write-up; with hush it stays quiet, then sends one 42-word answer. Both leave the suite green." width="700"></p>
-
-</details>
+Batch `o55-451-495ce18f`: nine fixture jobs, four runs per setup, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort, September 28, 2026. Measurements used the voice this release ships and `HUSH_WRAP=1`. Word counts exclude fenced code. These measurements describe the recorded Claude sessions, not Codex performance. The earlier voices, measured on Opus 5 and Sonnet, are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
 *Results can vary between runs.*
 
