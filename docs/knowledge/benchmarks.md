@@ -221,7 +221,7 @@ Short is not the same as easy to read. The same sessions were measured for how m
 | no plugin | 36/36 | 19.2% | 9.8% | 3.9% | 67.8% | 69.3% |
 | **hush** | **36/36** | **0.3%** | **0.0%** | **0.0%** | **5.8%** | **0.0%** |
 
-For sentences and blocks, fenced code is left out, and inline code, paths, file names, identifiers, flags, versions, hashes and URLs each count as one word. Sentence shares are pooled over every sentence a setup wrote. A block is the text between blank lines, table rows left out; the last two columns give the share of each message's words that sit in blocks over 40 words, as the mean and the median over the 36 sessions.
+For sentences and blocks, fenced code is left out, and inline code, paths, file names, identifiers, flags, versions, hashes and URLs each count as one word. Sentence shares are pooled over every sentence a setup wrote. A recount of the no-plugin sessions with this counting reads within 0.3 points of their published sentence shares. A block is the text between blank lines, table rows left out; the last two columns give the share of each message's words that sit in blocks over 40 words, as the mean and the median over the 36 sessions.
 
 Reading ease and grade level are prose surface: formulas over word and sentence length, not a measure of whether a reader understood the answer or could act on it. Same sessions, same counting:
 
