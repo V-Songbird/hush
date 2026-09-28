@@ -3710,7 +3710,7 @@ describe("a clean run's JSON stdout passes whole like a bounded print", () => {
   test('stderr, non-JSON and scalar lines keep their current paths', () => {
     assert.ok(run({ stdout: '', stderr: doc, interrupted: false }).hookSpecificOutput.updatedToolOutput.stderr.length < doc.length);
     const numbers = Array.from({ length: 900 }, (_, i) => String(1000 + i)).join('\n');
-    for (const out of [`${doc}\ndone`, `${jsonl}${jsonl}not json`, numbers]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.length < out.length);
+    for (const out of [`${doc}\ndone`, `${jsonl}not json\n${jsonl}`, numbers]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.length < out.length);
   });
 
   test('a whole-file print of a JSON Lines log keeps the dump cap, which shrinks as the session grows', () => {
@@ -3736,6 +3736,47 @@ describe("a clean run's JSON stdout passes whole like a bounded print", () => {
     const big = `[\n${[...records, ...records, ...records, ...records].map((r) => JSON.stringify(r)).join(',\n')}\n]`;
     assert.ok(big.length >= 15000 && big.split('\n').length <= 250, 'a print this size would pass whole');
     assert.match(run(big, command, 'Bash', { HUSH_SIDECAR: '' }).hookSpecificOutput.updatedToolOutput, /saved in full to/);
+  });
+});
+
+// A script's data rows with a header or a summary line around them, and a
+// table of numbers, came back folded to their first row.
+describe("a clean run's data rows pass whole with a header or summary line", () => {
+  const spaced = (n) => Array.from({ length: n }, (_, i) => JSON.stringify({ id: i, name: `item-${i}`, status: 'ok', count: i, total: i * 2 }).replace(/,"/g, ', "').replace(/":/g, '": '));
+  const records = spaced(120).join('\n');
+  const compact = Array.from({ length: 120 }, (_, i) => JSON.stringify({ id: i, status: 'ok', count: i })).join('\n');
+  const rows = Array.from({ length: 120 }, (_, i) => `row id ${i} status ok count ${i} total ${i}`).join('\n');
+  const command = 'node scripts/recount.js';
+  const session = 'hush-test-data-' + Date.now();
+  after(() => removeSessions([session]));
+  const run = (stdout, env) =>
+    hookOutput(runHook('compress-tool-output.js', { session_id: session, tool_name: 'Bash', tool_input: { command }, tool_response: { stdout, stderr: '', interrupted: false } }, env));
+
+  test('JSON Lines with a trailing summary or a leading header line pass untouched', () => {
+    for (const out of [`${records}\nsum=6020\n`, `recount results\n${records}\n`, `${compact}\nsum=6020\n`]) {
+      assert.ok(out.length > 4000 && out.length < 15000);
+      assert.strictEqual(run(out), null);
+    }
+  });
+
+  test('a table of same-shape rows whose varying values are numbers passes untouched', () => {
+    assert.ok(rows.length > 4000);
+    assert.strictEqual(run(`${rows}\n`), null);
+  });
+
+  test('log lines, test lines and text between the rows still fold or are cut', () => {
+    const log = Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n');
+    const tap = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`).join('\n');
+    const half = spaced(60).join('\n');
+    const split = `${half}\nhalf done\n${half}`;
+    assert.ok(split.length > 4000 && split.length < 15000);
+    for (const out of [log, tap, split]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length);
+  });
+
+  test('from 15,000 characters data rows are still parked', () => {
+    const big = `${spaced(300).join('\n')}\nsum=44850`;
+    assert.ok(big.length >= 15000);
+    assert.match(run(big, { HUSH_SIDECAR: '' }).hookSpecificOutput.updatedToolOutput.stdout, /saved in full to/);
   });
 });
 

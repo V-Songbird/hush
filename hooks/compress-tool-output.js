@@ -939,25 +939,56 @@ function isBoundedPrint(command) {
   return steps.some((s) => !isNeutralStep(s) && !isLoopStep(s)) && steps.every((s) => isNeutralStep(s) || isLoopStep(s) || isBoundedStep(s));
 }
 
-// A clean run's stdout that parses whole as one JSON object or array, or as
-// JSON Lines of them, is data a script was asked to print: it has no warning
-// lines for the cap to keep, so a cut drops structure the model then fetches
-// again. main() passes it as a bounded print. Unlike a print, it stays parked
-// from SIDECAR_MIN_CHARS: minified JSON packs any size into a few lines, so
-// the line count alone would not bound it.
-function isJsonOutput(text) {
-  if (text.length >= SIDECAR_MIN_CHARS) return false;
-  const t = text.trim();
-  if (!/^[[{]/.test(t)) return false;
+// A clean run's stdout that is data a script was asked to print has no warning
+// lines for the cap to keep, so a cut or a fold drops the rows the model then
+// fetches again. main() passes it as a bounded print. Data is one JSON object
+// or array, or rows: JSON Lines of them, outnumbering the text lines around
+// them, or a number table (isNumberTable) of at least TEMPLATE_MIN_RUN lines
+// that share the first row's shape. Up to DATA_EDGE_LINES text lines may open
+// or close the rows, such as a header or a `sum=` line. Unlike a print, it
+// stays parked from SIDECAR_MIN_CHARS: minified JSON packs any size into a
+// few lines, so the line count alone would not bound it.
+const DATA_EDGE_LINES = 2;
+
+function isJsonLine(line) {
+  if (!/^\s*[[{]/.test(line)) return false;
   try {
-    JSON.parse(t);
+    JSON.parse(line);
     return true;
-  } catch {}
-  try {
-    return t.split("\n").every((l) => !l.trim() || (/^\s*[[{]/.test(l) && (JSON.parse(l), true)));
   } catch {
     return false;
   }
+}
+
+function isDataOutput(text) {
+  if (text.length >= SIDECAR_MIN_CHARS) return false;
+  const t = text.trim();
+  if (/^[[{]/.test(t)) {
+    try {
+      JSON.parse(t);
+      return true;
+    } catch {}
+  }
+  const lines = t.split("\n").filter((l) => l.trim());
+  for (let head = 0; head <= DATA_EDGE_LINES && head < lines.length; head++) {
+    const json = isJsonLine(lines[head]);
+    const shape = templateTokens(lines[head]);
+    const isRow = (l) => (json ? isJsonLine(l) : shareTemplate(shape, templateTokens(l)));
+    let end = head;
+    while (end < lines.length && isRow(lines[end])) end++;
+    const rows = end - head;
+    if (lines.length - end <= DATA_EDGE_LINES && (json ? rows > lines.length - rows : rows >= TEMPLATE_MIN_RUN && isNumberTable(lines.slice(head, end)))) return true;
+  }
+  return false;
+}
+
+// Same-shape rows are a table, not a log, when at least two columns vary and
+// every value in them is a number, such as `row id 7 count 7 total 14`. A log
+// line or a test line varies a name or a single counter, and still folds.
+function isNumberTable(rows) {
+  const table = rows.map(templateTokens);
+  const varying = table[0].map((_, i) => i).filter((i) => table.some((r) => r[i] !== table[0][i]));
+  return varying.length >= 2 && varying.every((i) => table.every((r) => /^-?\d+(?:\.\d+)?$/.test(r[i])));
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the
@@ -1957,8 +1988,8 @@ function main() {
   // printed text, not a failed run.
   const noCode = isDump || bounded ? 0 : undefined;
   // A failure, stderr and a file print (a log keeps its dump cap) keep their
-  // paths; a clean run's JSON stdout is a bounded print (isJsonOutput).
-  const json = (text, exitCode) => !exitCode && !isDump && isJsonOutput(text);
+  // paths; a clean run's data stdout is a bounded print (isDataOutput).
+  const isData = (text, exitCode) => !exitCode && !isDump && isDataOutput(text);
 
   if (typeof response === "string") {
     const wrapped = exitWrapped ? extractWrappedExit(response) : null;
@@ -1969,8 +2000,8 @@ function main() {
     const exitCode = wrapped ? wrapped.exitCode : undefined;
     const decision = { bytesIn: response.length };
     const text = wrapped ? wrapped.cleanText : response;
-    const isJson = json(text, exitCode);
-    let out = compress(text, isJson ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || isJson);
+    const asData = isData(text, exitCode);
+    let out = compress(text, asData ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || asData);
     if (wrapped && exitCode !== null) out += `\n${exitNote(exitCode)}`;
     decision.bytesOut = out.length;
     if (!decision.recovery) decision.recovery = "rerun-command";
@@ -1999,8 +2030,8 @@ function main() {
         const fieldWrapped = field === source ? wrapped : null;
         const decision = {};
         const text = fieldWrapped ? fieldWrapped.cleanText : next[field];
-        const isJson = field === "stdout" && json(text, exitCode);
-        let out = compress(text, isJson ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || isJson);
+        const asData = field === "stdout" && isData(text, exitCode);
+        let out = compress(text, asData ? 0 : exitCode ?? noCode, isDump, enumerate, relevance, scale, data.session_id, undefined, true, decision, bounded || asData);
         // Only the field that supplied the code is stripped and annotated; a
         // malformed trailer there is stripped with no note.
         if (fieldWrapped && exitCode != null) out += `\n${exitNote(exitCode)}`;

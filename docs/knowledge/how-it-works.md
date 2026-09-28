@@ -90,7 +90,15 @@ Lines: one object or array per line. A script's JSON report has no warning lines
 keep, so a trim only cut the data Claude asked for. Past 250 lines it is handled like such a print.
 Unlike a print, JSON of 15,000 characters or more is parked in a file like any other output,
 because a few lines of compact JSON can hold any amount of data.
-A failing run, error output, output that is not all JSON, and a whole-file print of a log or a
+
+The same applies to a clean run's data rows with a little text around them. Up to two text lines
+may come before the rows and up to two after them, such as a header or a `sum=6020` line. The rows
+are either JSON Lines that outnumber those text lines, or a table: five or more lines of the same
+shape where at least two values change from row to row and every changing value is a number, such
+as `row id 7 status ok count 7 total 14`. Lines where a name changes, such as
+`INFO worker-7 processing job 8007`, or only one number changes, such as `ok 7 - parses input`, are
+log or test lines and still fold.
+A failing run, error output, more text than that, and a whole-file print of a log or a
 generated file are trimmed as before.
 
 A whole-file print of a log or a generated file keeps up to 250 lines like a failing run, and

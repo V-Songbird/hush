@@ -95,7 +95,10 @@ A command's JSON output now comes back whole up to 250 lines when the run did
 not fail and its regular output is one JSON object or array, or JSON Lines. A
 trim could keep only the first and last stretch of the data, so Claude had to
 fetch the data a second time. JSON of 15,000 characters or more is
-still saved to a file, and error output is trimmed as before.
+still saved to a file, and error output is trimmed as before. JSON Lines with
+up to two text lines before or after them, such as a header or a `sum=` line,
+and a table of same-shape rows whose changing values are all numbers now come
+back whole the same way; they were folded to their first row.
 
 A `git diff` or `git show` run on its own now comes back whole up to 250
 lines, however long the session, as a listing or a line-range print does:
