@@ -10,7 +10,7 @@ related_files:
 
 The newest comparison is the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the current voice.
 
-Everything after it measured earlier voices. The README still uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison).
+The other comparisons on this page measured earlier voices. The README still uses the September 1, 2026 comparison, `rivalA-762f888b`; its setup and tables are under [The README comparison](#the-readme-comparison).
 
 Every table from [The earlier comparisons](#the-earlier-comparisons) onward preserves the August 30 comparisons: `rm320-99a236ff` (`opus`, 36 sessions per setup) and `sn320-a9885078` (`sonnet`, 18 per setup). Those batches did not record an explicit effort override, so the effective host default is unknown. They are separate runs, not additional repetitions of the README comparison.
 
@@ -57,7 +57,7 @@ The hush median is 270.5, rounded. Prose words exclude fenced code.
 
 ### Reading the Opus 5.5 answers
 
-Counted the same way as [Reading it](#reading-it): fenced code left out, inline code, paths and links counted as one word each.
+Counted as in [Reading it](#reading-it): fenced code left out, inline code, paths and links counted as one word each. The same counting, run again on the README comparison's sessions, reads within 0.3 points of the figures published there.
 
 | Claude Opus 5.5, 36 sessions each | sentences over 20 words | over 25 | over 30 | words in blocks over 40 words, mean | median | words per sentence | reading ease | grade level |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -109,7 +109,7 @@ Averaged per session over the nine jobs:
 
 Without a plugin, Opus 5.5 wrote 3,453 tokens per session here, against 5,058 for Opus 5 at medium effort in the README comparison. Hush's rules have less output to cut, and they still ride along on every round trip.
 
-Treat a per-job cost difference under about 15% in this batch as noise. The hush setup and the setup without the think-longer sentence differ by one sentence, yet their average cost on one job differed by up to 14%.
+Treat a per-job cost difference under about 16% in this batch as noise. The hush setup and the setup without the think-longer sentence differ by one sentence, yet their average cost on the column rename differed by 16%: $0.267 against $0.231. Four of the seven jobs where hush cost more are above that line: the `--json` plan, the notification router, the half-done rename and the column rename.
 
 ### Acting on the Opus 5.5 answers
 
@@ -135,7 +135,7 @@ That is 29 of 36 hush answers, and none of the 36 without a plugin.
 
 ### The think-longer sentence
 
-Anthropic's guidance for Opus 5.5 says the model sets its own thinking depth, and that lines asking it to think more can delay replies. The voice ends its quiet section with "Think as long as you need." The third setup ran the same build without that sentence, in the same batch.
+The voice ends its quiet section with "Think as long as you need." This test checks whether that sentence still earns its place on Opus 5.5, or only slows replies. The third setup ran the same build without that sentence, in the same batch.
 
 | Claude Opus 5.5, 36 sessions each | hush | hush without the sentence |
 | --- | --- | --- |
@@ -378,7 +378,7 @@ Plain Claude Code did not produce a single clickable file link in any of the 54 
 
 Five places, all of them above.
 
-**On Opus 5.5, most jobs cost more.** In [The Opus 5.5 comparison](#the-opus-55-comparison), hush cost more than no plugin on seven of the nine jobs, by 4% to 32%, and 9% more per session on average. Only the two loudest jobs came out cheaper: the 57 KB log by 18% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, and hush sessions wrote 6% more output tokens in all. Hush's answers were also longer on three of the nine jobs, and still held about half their words in blocks over 40 words.
+**On Opus 5.5, most jobs cost more.** In [The Opus 5.5 comparison](#the-opus-55-comparison), hush cost more than no plugin on seven of the nine jobs, by 4% to 32%, and 9% more per session on average. Four of those seven are above that batch's noise of about 16%. Only the two loudest jobs came out cheaper: the 57 KB log by 18% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, and hush sessions wrote 6% more output tokens in all. Hush's answers were also longer on three of the nine jobs, and still held about half their words in blocks over 40 words.
 
 The rest of this section describes the earlier voices.
 
