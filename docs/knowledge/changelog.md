@@ -265,8 +265,8 @@ The README now shows the new voice, measured on Claude Opus 5.5. Every test
 job still came out right, and hush spoke at most once before its answer in
 every session. Its final answers were about 27% shorter than without a
 plugin. On Opus 5.5, hush costs more: about 9% more per session on average,
-and more on seven of the nine test jobs. Opus 5.5 already says less while it
-works, so hush has less to cut. Only the two jobs whose commands print the
+and more on seven of the nine test jobs. Opus 5.5 already writes less without
+a plugin, so hush has less to cut. Only the two jobs whose commands print the
 most came out cheaper.
 
 The September 1 run on Claude Opus 5, which measured the earlier voice, moved
