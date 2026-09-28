@@ -11,12 +11,11 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 1.14.0 — 2026-09-28
 
 The final message now keeps each block to 40 words. A block is the text
 between two blank lines, so a whole list counts as one. A longer block
-becomes two blocks, or a table. On Claude Opus 5.5, this cut the share of
-words in long blocks from 59.1% to 45.3%, and every job still passed. See
+becomes two blocks, or a table. The measurement is under
 [Capping blocks at 40 words](benchmarks.md#capping-blocks-at-40-words).
 
 A style you crafted from hush 1.13.0 or earlier has no 40-word block cap.
