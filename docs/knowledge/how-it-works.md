@@ -97,7 +97,7 @@ JSON document, pretty-printed or not, JSON Lines that outnumber those text lines
 or more lines of the same shape where at least two values change from row to row and every
 changing value is a number, such as `row id 7 count 1,204 took 12ms`. A number may use a sign,
 thousands separators, an exponent such as `1e5`, a trailing `%` or a common unit: `ns`, `us`,
-`µs`, `ms`, `s`, `min`, `m`, `h`, `d`, `x`, `k`, `b`, and `kb` to `tb` or `KiB` to `TiB`. Any
+`µs` or `μs`, `ms`, `s`, `min`, `m`, `h`, `d`, `x`, `k`, `b`, and `kb` to `tb` or `KiB` to `TiB`. Any
 other suffix makes the value text, so a hex id such as `7ab` is not a number. Lines where a name
 changes, such as `INFO worker-7 processing job 8007`, are log lines and still fold. So are lines
 where only one number changes, such as `ok 7 - parses input`. A progress line folds too, when two

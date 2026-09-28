@@ -26,8 +26,8 @@ A clean run's data comes back whole in more cases:
 A table with two changing number columns still comes back whole, even when
 its columns all rise together. A progress log folds instead, when two or more
 of its numbers rise on every line next to a total: a fixed number after `of`
-that they never pass, as in `downloaded 1200 of 90000 bytes chunk 7 eta 12s`. A progress log with no such
-total still comes back whole, up to 250 lines.
+that they never pass, as in `downloaded 1200 of 90000 bytes chunk 7 eta 12s`.
+A progress log with no such total still comes back whole, up to 250 lines.
 
 A unit must be a common one, such as `ms`, `s`, `KiB` or `x`. A hex id such as
 `7ab` no longer reads as a number, so a table of them folds.
