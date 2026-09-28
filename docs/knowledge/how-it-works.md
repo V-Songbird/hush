@@ -101,9 +101,10 @@ thousands separators, an exponent such as `1e5`, a trailing `%` or a common unit
 other suffix makes the value text, so a hex id such as `7ab` is not a number. Lines where a name
 changes, such as `INFO worker-7 processing job 8007`, are log lines and still fold. So are lines
 where only one number changes, such as `ok 7 - parses input`. A progress line folds too, when two
-or more numbers rise on every line next to a number that never changes, its total, such as
-`downloaded 1200 of 90000 bytes chunk 7 eta 12s`. A table whose columns all rise together, such as
-`row id 7 status ok count 7 total 7`, has no such fixed number and comes back whole.
+or more numbers rise on every line next to a total: a number after `of` that never changes and that
+they never pass, such as `downloaded 1200 of 90000 bytes chunk 7 eta 12s`. A table whose columns all
+rise together, such as `row id 7 status ok count 7 total 7`, comes back whole. So does one beside
+another fixed number, such as `schema 2` or `year 2026`.
 
 hush makes this trade on purpose: folding data Claude asked for costs a second command, while a log
 that comes back whole costs only its text, and never more than 250 lines. So two kinds of log still

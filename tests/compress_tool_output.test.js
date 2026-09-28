@@ -3790,6 +3790,14 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
     }
   });
 
+  test('rising columns beside a fixed number that is not their total are a table, not progress', () => {
+    for (const fixed of ['schema 2', 'year 2026', 'of 2']) {
+      const out = Array.from({ length: 160 }, (_, i) => `row id ${i} ${fixed} count ${i} total ${i}`).join('\n');
+      assert.ok(out.length > 4000, fixed);
+      assert.strictEqual(run(out), null, fixed);
+    }
+  });
+
   test('a table with two changing number columns passes untouched', () => {
     const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${(i * 37) % 101}ms`).join('\n');
     assert.ok(out.length > 4000);
@@ -3808,8 +3816,8 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
   test('log lines, test lines, progress lines and text between the rows still fold or are cut', () => {
     const log = Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n');
     const tap = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`).join('\n');
-    const progress = Array.from({ length: 150 }, (_, i) => `downloaded ${i * 1200} of 90000 bytes chunk ${i}`).join('\n');
-    const eta = Array.from({ length: 120 }, (_, i) => `downloaded ${i * 1200} of 90000 bytes chunk ${i} eta ${(i * 7) % 60}s`).join('\n');
+    const progress = Array.from({ length: 150 }, (_, i) => `downloaded ${i * 600} of 90000 bytes chunk ${i}`).join('\n');
+    const eta = Array.from({ length: 120 }, (_, i) => `downloaded ${i * 600} of 90000 bytes chunk ${i} eta ${(i * 7) % 60}s`).join('\n');
     const half = spaced(60).join('\n');
     const split = `${half}\nhalf done\n${half}`;
     assert.ok(split.length > 4000 && split.length < 15000 && eta.length < 15000);

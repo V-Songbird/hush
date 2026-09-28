@@ -988,8 +988,9 @@ function isDataOutput(text) {
 // a known unit, so a hex id such as `7ab` is not one. A log line or a test
 // line varies a name or a single counter, so it still folds. A progress line
 // such as `downloaded 1200 of 90000 bytes chunk 7 eta 12s` folds too: two
-// counters rise on every row next to a number that never changes, its total.
-// A table whose columns rise together has no such fixed number, so it passes.
+// counters rise on every row next to a total: a fixed number after `of` that
+// they never pass. A table whose columns rise together has no such number,
+// even beside a fixed one such as `schema 2` or `year 2026`, so it passes.
 const NUMBER_CELL_RE = /^[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:e[-+]?\d+)?(?:%|ns|us|[µμ]s|ms|s|min|m|h|d|x|k|b|[kmgt]i?b)?$/i;
 
 function isNumberTable(rows) {
@@ -997,8 +998,13 @@ function isNumberTable(rows) {
   const varying = table[0].map((_, i) => i).filter((i) => table.some((r) => r[i] !== table[0][i]));
   const value = (r, i) => parseFloat(r[i].replace(/,/g, ""));
   const rises = (i) => table.every((r, n) => n === 0 || value(r, i) > value(table[n - 1], i));
-  const total = table[0].some((t, i) => !varying.includes(i) && NUMBER_CELL_RE.test(t));
-  return varying.length >= 2 && varying.every((i) => table.every((r) => NUMBER_CELL_RE.test(r[i]))) && !(total && varying.filter(rises).length >= 2);
+  // A fixed number is a total only after `of` and when no rising value passes it.
+  const isProgress = () => {
+    const rising = varying.filter(rises);
+    const last = table[table.length - 1];
+    return rising.length >= 2 && table[0].some((t, i) => table[0][i - 1] === "of" && !varying.includes(i) && NUMBER_CELL_RE.test(t) && rising.every((j) => value(last, j) <= value(table[0], i)));
+  };
+  return varying.length >= 2 && varying.every((i) => table.every((r) => NUMBER_CELL_RE.test(r[i]))) && !isProgress();
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the
