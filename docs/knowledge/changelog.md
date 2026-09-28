@@ -78,6 +78,16 @@ now counts as a line-range print too; it was trimmed like any other
 output. A read of a Windows long path, such as `cat \\?\C:\src\a.js`, no longer
 counts as a read with a wildcard.
 
+A command that mixes line-range prints with searches now comes back whole up
+to 250 lines, like a line-range print. This covers `grep -n` on named files,
+a line-range print or `grep -n` filtered by `grep -n`, a search ending in
+`head` with or without a count, and a `for` loop over named files, such as
+`sed -n 60,110p a.js; grep -n "x" b.js | head -5`. Such a read over 4,000
+characters could lose lines from the middle, so Claude read the files a
+second time. A whole-file read piped into `grep`, a `grep -r` or wildcard
+search with no line range after it, and a loop over a wildcard are trimmed
+as before.
+
 A command's JSON output now comes back whole up to 250 lines when the run did
 not fail and its regular output is one JSON object or array, or JSON Lines. A
 trim could keep only the first and last stretch of the data, so Claude had to

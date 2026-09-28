@@ -3537,6 +3537,66 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     });
   }
 
+  // Compound reads as a Claude Code worker wrote them: line ranges chained
+  // with grep -n, an uncounted head and for loops over named files. Each
+  // output is over 4,000 characters, so the line cap used to cut it.
+  const src = (n, tag) => lines(n, (i) => `  const ${tag}${i} = computeTheValue(${i}, options);`);
+  const hits = (n, file) => lines(n, (i) => `${file}:${i * 7 + 3}:  listen(${i}, handler); // wires listener ${i} to the stage`);
+  for (const [shape, command, out] of [
+    ['sed -n, cat | head -80 and grep -n -r | head',
+      'cd "D:/work/site" && sed -n 1,40p site/tests/stage.test.js && cat site/site.css | head -80 && grep -n "listen\\|Listen" -r site tools/build-site.js | head',
+      [src(40, 'stage'), src(80, 'css'), hits(10, 'site/app.js')].join('\n')],
+    ['a for loop of grep -n | head -12 and grep -n | head -20',
+      'cd "D:/work/site/pieces" && for f in water dry kaleido enter draft blueprint papercut impasto; do echo "=== $f"; grep -n "^module.exports" -A6 $f.js | head -12; grep -n "^const [A-Z_]* = " $f.js | head -20; done',
+      ['water', 'dry', 'kaleido', 'enter', 'draft', 'blueprint', 'papercut', 'impasto'].map((f) => `=== ${f}\n${hits(12, `${f}.js`)}`).join('\n')],
+    ['sed -n; sed -n; grep -n | head -5',
+      'cd "D:/work/site/pieces" && sed -n 60,110p water.js; sed -n 75,120p dry.js; grep -n "tearOrder" dry.js | head -5',
+      [src(51, 'water'), src(46, 'dry'), hits(5, 'dry.js')].join('\n')],
+    ['a for loop of sed -n | grep -n and grep -n | grep -n',
+      'cd "D:/work/site/pieces" && for f in trace print fold paint; do echo "=== $f"; sed -n 1,40p $f.cjs | grep -n "^//" ; grep -n "module.exports" -A12 $f.cjs | grep -n "time\\|build\\|\\[" ; done',
+      ['trace', 'print', 'fold', 'paint'].map((f) => `=== ${f}\n${hits(25, `${f}.cjs`)}`).join('\n')],
+    ['sed -n; sed -n; grep -n with an alternation | head',
+      'cd "D:/work/site/pieces" && sed -n 120,175p papercut.js; sed -n 36,75p impasto.js; grep -n "s.dabs\\b\\|s.dabs =\\|dabs.push\\|t: \\|function laid" impasto.js | head',
+      [src(56, 'papercut'), src(40, 'impasto'), hits(10, 'impasto.js')].join('\n')],
+  ]) {
+    test(`${shape}: the whole compound read passes through the Bash hook`, () => {
+      assert.ok(out.length > 4000, `${out.length} characters`);
+      assert.ok(isBoundedPrint(command));
+      assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command }, tool_response: { stdout: out, stderr: '', interrupted: false } })), null);
+      const wrapped = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: wrapBash(command) },
+        tool_response: { stdout: `${out}\n[[hush:exit=\n0\n]]\n`, stderr: '', interrupted: false } });
+      assert.strictEqual(hookOutput(wrapped).hookSpecificOutput.updatedToolOutput.stdout, `${out}\n[hush: exit 0]`);
+    });
+  }
+
+  test('a compound read with a whole, glob, recursive or following read and no line range is still trimmed', () => {
+    for (const c of [
+      'cat a.js b.js | grep x',
+      'cat a.js b.js | grep -n x',
+      'grep -n x *.js',
+      'grep -rn x src',
+      'grep -n -r x src | sort',
+      'grep x a.js',
+      'grep -n x app.log',
+      'sed -n 1,40p a.js | grep x',
+      'tail -f app.js | grep -n x',
+      'grep -n x a.js | sed "s/x/y/"',
+      'grep -n x a.js || true',
+      'grep -n x a.js | | head',
+      ' | grep -n x',
+      'grep -n "$(cat list)" a.js',
+      'for f in *.js; do cat $f; done',
+      'for f in $(ls); do sed -n 1,5p $f; done',
+      'for f in a b; do npm test; done',
+      'for f in a b; do cat $f; done > out.txt',
+      'for f in a b; do cat $f; done | grep x',
+      'while true; do sed -n 1,5p a.js; done',
+      'ls -la | head',
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
+    const r = runHook('compress-tool-output.js', { tool_name: 'Bash', tool_input: { command: 'cat a.js b.js | grep x' }, tool_response: code });
+    assert.ok(hookOutput(r).hookSpecificOutput.updatedToolOutput.length < code.length);
+  });
+
   test('250 lines and a trailing newline pass whole; past 250 a print keeps 250 lines and folds none', () => {
     const at = lines(250, (i) => `line ${i}`) + '\n';
     assert.strictEqual(compress(at, 0, false, false, [], 1, undefined, undefined, true, {}, true), at);

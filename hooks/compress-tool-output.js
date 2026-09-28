@@ -846,8 +846,11 @@ const ARG_RE = /"[^"]*"|'[^']*'|\S+/g;
 const PIPED_RANGE_RE = new RegExp(String.raw`^(?:${LINE_RANGE_SRC}|(?:Select-Object|select)\s(?:.*\s)?-(?:First|Last)\s+\d)`, "i");
 const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|gc|Get-Content)\s(?:.*\s)?-Wait)(?:\s|$)/i;
 
+// A |, <, > or & inside quotes, such as grep's "a\|b", is text, not a pipe or
+// redirect; a $( or backtick inside double quotes still runs.
 function isPlainStep(step) {
-  return !/[|<>&`]|\$\(/.test(step) && !/(?:^|\s)\(/.test(step.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
+  const bare = step.replace(ARG_RE, (a) => (a[0] === "'" ? "''" : a[0] === '"' ? a.replace(/[|<>&]/g, "") : a));
+  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|\s)\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
 }
 
 function isNeutralStep(step) {
@@ -855,25 +858,54 @@ function isNeutralStep(step) {
 }
 
 // ranged: a line range bounds a glob read, so only an unpiped glob stays a dump.
-function isSourceRead(step, ranged) {
-  // The slash lets a relative logs/x.txt match as the absolute paths Read gets do.
-  const paths = step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, "").replace(/^(?:\\\\|\/\/)\?[\\/]/, ""));
-  return WHOLE_READ_RE.test(step) && isPlainStep(step) &&
-    !paths.some((p) => (!ranged && /[*?]/.test(p)) || isLogPath(p) || isGeneratedPath(p));
+// The slash lets a relative logs/x.txt match as the absolute paths Read gets do.
+function argPaths(step) {
+  return step.match(ARG_RE).slice(1).map((arg) => "/" + arg.replace(/^["']|["',]+$/g, "").replace(/^(?:\\\\|\/\/)\?[\\/]/, ""));
 }
 
-function isBoundedStep(step) {
-  if (step.split("|").some((part) => FOLLOW_RE.test(part.trim()))) return false;
-  const pipe = /^([^|]+)\|([^|]+)$/.exec(step);
-  if (!pipe) return BOUNDED_PRINT_RE.test(step) || isSourceRead(step);
-  const [from, range] = [pipe[1].trim(), pipe[2].trim()];
-  return (BOUNDED_PRINT_RE.test(from) || isSourceRead(from, true)) && PIPED_RANGE_RE.test(range) && isPlainStep(range);
+function isSourceRead(step, ranged) {
+  return WHOLE_READ_RE.test(step) && isPlainStep(step) &&
+    !argPaths(step).some((p) => (!ranged && /[*?]/.test(p)) || isLogPath(p) || isGeneratedPath(p));
 }
+
+// grep -n prints only the matching lines of the files it names, each with its
+// line number, so it is bounded like a line-range print. A recursive grep or
+// an unquoted glob searches files nobody named, so it needs a line range after
+// it (ranged), as a glob read does.
+function isGrepRead(step, ranged) {
+  const args = step.match(ARG_RE) || [];
+  return args[0] === "grep" && args.some((a) => /^-(?:[a-zA-Z]*n[a-zA-Z]*|-line-number)$/.test(a)) && isPlainStep(step) &&
+    (ranged || !args.some((a) => /^-[a-zA-Z]*r|^--(?:dereference-)?recursive$/i.test(a) || (!/^["']/.test(a) && /[*?]/.test(a)))) &&
+    !argPaths(step).some((p) => isLogPath(p) || isGeneratedPath(p));
+}
+
+// Pipes outside quotes; a pipe inside quotes is part of a grep pattern.
+const PIPE_PART_RE = /(?:"[^"]*"|'[^']*'|[^|"'])+/g;
+
+function isBoundedStep(step) {
+  const raw = step.match(PIPE_PART_RE) || [];
+  if (raw.join("|") !== step) return false;
+  const [from, ...rest] = raw.map((part) => part.trim());
+  if ([from, ...rest].some((part) => FOLLOW_RE.test(part))) return false;
+  if (!rest.length) return BOUNDED_PRINT_RE.test(from) || isSourceRead(from) || isGrepRead(from);
+  if (rest.length === 1 && (BOUNDED_PRINT_RE.test(from) || isSourceRead(from, true)) && PIPED_RANGE_RE.test(rest[0]) && isPlainStep(rest[0])) return true;
+  // A grep -n, or a print filtered by grep -n, optionally closed by a line
+  // range; head or tail with no count prints 10 lines.
+  const last = rest[rest.length - 1];
+  const ranged = (PIPED_RANGE_RE.test(last) || /^(?:head|tail)$/.test(last)) && isPlainStep(last);
+  const filters = ranged ? rest.slice(0, -1) : rest;
+  return (isGrepRead(from, ranged) || (BOUNDED_PRINT_RE.test(from) && filters.length > 0)) && filters.every((part) => isGrepRead(part));
+}
+
+// A for loop over words it names (no glob, variable or substitution) runs its
+// body once per word, so it is bounded when every body step is.
+const FOR_RE = /^for\s+[a-zA-Z_]\w*\s+in(?:\s+[\w./-]+)+$/;
 
 function isBoundedPrint(command) {
   if (typeof command !== "string") return false;
-  const steps = unwrapCommand(command).split(/&&|;|\r?\n/).map((s) => s.trim()).filter(Boolean);
-  return steps.some((s) => !isNeutralStep(s)) && steps.every((s) => isNeutralStep(s) || isBoundedStep(s));
+  const steps = unwrapCommand(command).split(/&&|;|\r?\n/).map((s) => s.trim().replace(/^do(?:\s+|$)/, "")).filter(Boolean);
+  const isLoopStep = (s) => FOR_RE.test(s) || s === "done";
+  return steps.some((s) => !isNeutralStep(s) && !isLoopStep(s)) && steps.every((s) => isNeutralStep(s) || isLoopStep(s) || isBoundedStep(s));
 }
 
 // A clean run's stdout that parses whole as one JSON object or array, or as
