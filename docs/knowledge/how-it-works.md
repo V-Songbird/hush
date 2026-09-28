@@ -91,13 +91,17 @@ keep, so a trim only cut the data Claude asked for. Past 250 lines it is handled
 Unlike a print, JSON of 15,000 characters or more is parked in a file like any other output,
 because a few lines of compact JSON can hold any amount of data.
 
-The same applies to a clean run's data rows with a little text around them. Up to two text lines
-may come before the rows and up to two after them, such as a header or a `sum=6020` line. The rows
-are either JSON Lines that outnumber those text lines, or a table: five or more lines of the same
-shape where at least two values change from row to row and every changing value is a number, such
-as `row id 7 status ok count 7 total 14`. Lines where a name changes, such as
-`INFO worker-7 processing job 8007`, or only one number changes, such as `ok 7 - parses input`, are
-log or test lines and still fold.
+The same applies to a clean run's data with a little text around it. Up to two text lines may come
+before the data and up to two after it, such as a header or a `sum=6020` line. The data is either a
+JSON document, pretty-printed or not, JSON Lines that outnumber those text lines, or a table: five
+or more lines of the same shape where at least three values change from row to row and every
+changing value is a number, such as `row id 7 count 1,204 took 12ms`. A number may use a sign,
+thousands separators, an exponent such as `1e5`, a trailing `%` or a unit of up to three letters, such as
+`ms` or `KiB`. Lines where a name changes, such as `INFO worker-7 processing job 8007`, are log
+lines and still fold. So are lines where only one or two numbers change, such as
+`ok 7 - parses input` or the progress line `downloaded 1200 of 90000 bytes chunk 7`. A progress
+line where three numbers change, such as one that adds `eta 12s`, reads as a table and comes back
+whole up to 250 lines.
 A failing run, error output, more text than that, and a whole-file print of a log or a
 generated file are trimmed as before.
 

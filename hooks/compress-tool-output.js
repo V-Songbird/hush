@@ -942,12 +942,13 @@ function isBoundedPrint(command) {
 // A clean run's stdout that is data a script was asked to print has no warning
 // lines for the cap to keep, so a cut or a fold drops the rows the model then
 // fetches again. main() passes it as a bounded print. Data is one JSON object
-// or array, or rows: JSON Lines of them, outnumbering the text lines around
-// them, or a number table (isNumberTable) of at least TEMPLATE_MIN_RUN lines
-// that share the first row's shape. Up to DATA_EDGE_LINES text lines may open
-// or close the rows, such as a header or a `sum=` line. Unlike a print, it
-// stays parked from SIDECAR_MIN_CHARS: minified JSON packs any size into a
-// few lines, so the line count alone would not bound it.
+// or array, even pretty-printed, or rows: JSON Lines of them, outnumbering the
+// text lines around them, or a number table (isNumberTable) of at least
+// TEMPLATE_MIN_RUN lines that share the first row's shape. Up to
+// DATA_EDGE_LINES text lines may open or close the data, such as a header or a
+// `sum=` line. Unlike a print, it stays parked from SIDECAR_MIN_CHARS:
+// minified JSON packs any size into a few lines, so the line count alone would
+// not bound it.
 const DATA_EDGE_LINES = 2;
 
 function isJsonLine(line) {
@@ -962,15 +963,14 @@ function isJsonLine(line) {
 
 function isDataOutput(text) {
   if (text.length >= SIDECAR_MIN_CHARS) return false;
-  const t = text.trim();
-  if (/^[[{]/.test(t)) {
-    try {
-      JSON.parse(t);
-      return true;
-    } catch {}
-  }
-  const lines = t.split("\n").filter((l) => l.trim());
+  const lines = text.split("\n").filter((l) => l.trim());
   for (let head = 0; head <= DATA_EDGE_LINES && head < lines.length; head++) {
+    for (let tail = 0; tail <= DATA_EDGE_LINES && /^\s*[[{]/.test(lines[head]); tail++) {
+      try {
+        JSON.parse(lines.slice(head, lines.length - tail).join("\n"));
+        return true;
+      } catch {}
+    }
     const json = isJsonLine(lines[head]);
     const shape = templateTokens(lines[head]);
     const isRow = (l) => (json ? isJsonLine(l) : shareTemplate(shape, templateTokens(l)));
@@ -982,13 +982,16 @@ function isDataOutput(text) {
   return false;
 }
 
-// Same-shape rows are a table, not a log, when at least two columns vary and
-// every value in them is a number, such as `row id 7 count 7 total 14`. A log
-// line or a test line varies a name or a single counter, and still folds.
+// Same-shape rows are a table, not a log, when at least three columns vary and
+// every value in them is a number, such as `row id 7 count 1,204 took 12ms`. A
+// number may carry a sign, thousands separators, an exponent, and a `%` or a
+// unit of up to three letters. A log line or a test line varies a name or a
+// single counter, and a progress line such as `downloaded 1200 of 90000 bytes chunk
+// 7` varies two, so they still fold.
 function isNumberTable(rows) {
   const table = rows.map(templateTokens);
   const varying = table[0].map((_, i) => i).filter((i) => table.some((r) => r[i] !== table[0][i]));
-  return varying.length >= 2 && varying.every((i) => table.every((r) => /^-?\d+(?:\.\d+)?$/.test(r[i])));
+  return varying.length >= 3 && varying.every((i) => table.every((r) => /^[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:e[-+]?\d+)?(?:%|[a-zµ]{1,3})?$/i.test(r[i])));
 }
 
 // Reads the trailer preserve-exit-code.js appends. Real output splits the

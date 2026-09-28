@@ -3710,7 +3710,7 @@ describe("a clean run's JSON stdout passes whole like a bounded print", () => {
   test('stderr, non-JSON and scalar lines keep their current paths', () => {
     assert.ok(run({ stdout: '', stderr: doc, interrupted: false }).hookSpecificOutput.updatedToolOutput.stderr.length < doc.length);
     const numbers = Array.from({ length: 900 }, (_, i) => String(1000 + i)).join('\n');
-    for (const out of [`${doc}\ndone`, `${jsonl}not json\n${jsonl}`, numbers]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.length < out.length);
+    for (const out of [`${doc}\nstep 1\nstep 2\ndone`, `${jsonl}not json\n${jsonl}`, numbers]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.length < out.length);
   });
 
   test('a whole-file print of a JSON Lines log keeps the dump cap, which shrinks as the session grows', () => {
@@ -3762,15 +3762,42 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
   test('a table of same-shape rows whose varying values are numbers passes untouched', () => {
     assert.ok(rows.length > 4000);
     assert.strictEqual(run(`${rows}\n`), null);
+    assert.strictEqual(run(`id status count total\n${rows}\n`), null, 'with a header line');
   });
 
-  test('log lines, test lines and text between the rows still fold or are cut', () => {
+  const doc = `{\n  "rows": [\n${spaced(60).map((r) => `    ${r}`).join(',\n')}\n  ]\n}`;
+
+  test('up to two text lines before and two after the rows or a pretty JSON document pass untouched', () => {
+    for (const body of [records, rows, doc]) {
+      const out = `recount results\nfrom cache\n${body}\nsum=6020\ndone\n`;
+      assert.ok(out.length > 4000 && out.length < 15000);
+      assert.strictEqual(run(out), null);
+    }
+    assert.strictEqual(run(`${doc}\ndone\n`), null);
+  });
+
+  test('three text lines before or after the rows still fold or are cut', () => {
+    for (const body of [records, rows, doc]) {
+      for (const out of [`one\ntwo\nthree\n${body}`, `${body}\none\ntwo\nthree`]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length);
+    }
+  });
+
+  test('thousands separators, a trailing % and unit suffixes count as numbers', () => {
+    for (const fmt of [(i) => (1000 + i * 137).toLocaleString('en-US'), (i) => `${i}%`, (i) => `${(i % 9) + 1}e${(i % 7) + 1}`, (i) => `${i * 3}ms`, (i) => `-${i}.5KiB`, (i) => `+${i}.5%`]) {
+      const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${fmt(i)} total ${i * 3}`).join('\n');
+      assert.ok(out.length > 4000, fmt(7));
+      assert.strictEqual(run(out), null, fmt(7));
+    }
+  });
+
+  test('log lines, test lines, progress lines and text between the rows still fold or are cut', () => {
     const log = Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n');
     const tap = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`).join('\n');
+    const progress = Array.from({ length: 150 }, (_, i) => `downloaded ${i * 1200} of 90000 bytes chunk ${i}`).join('\n');
     const half = spaced(60).join('\n');
     const split = `${half}\nhalf done\n${half}`;
     assert.ok(split.length > 4000 && split.length < 15000);
-    for (const out of [log, tap, split]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length);
+    for (const out of [log, tap, progress, `fetching model\n${progress}\ndone`, split]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length, out.slice(0, 40));
   });
 
   test('from 15,000 characters data rows are still parked', () => {

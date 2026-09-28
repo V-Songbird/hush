@@ -11,6 +11,22 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+A clean run's data comes back whole in more cases:
+
+- A pretty-printed JSON document with up to two text lines before or after
+  it, such as a header or a `done` line. Before, only JSON Lines passed with
+  such lines, and the document was cut.
+- A table whose numbers use a sign, thousands separators, an exponent, a
+  trailing `%` or a short unit, such as `+3`, `1,204`, `1e5`, `12%` or
+  `12ms`. Before, such
+  a table folded to its first row.
+
+A table now needs at least three changing number columns, up from two. A
+progress log such as `downloaded 1200 of 90000 bytes chunk 7` folds again
+instead of coming back whole.
+
 ## 1.13.0 — 2026-09-28
 
 A new voice. Claude still stays quiet while it works and writes one message
