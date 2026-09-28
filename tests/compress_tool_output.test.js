@@ -3569,6 +3569,16 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     });
   }
 
+  test('grep -n reads a glob only in its file arguments, never in its pattern', () => {
+    for (const c of [
+      'grep -n init.*config src/app.js',
+      'grep -n "init.*config" src/app.js',
+      'grep -n -e init.* -e ^end? src/app.js',
+      'grep -n -A2 fix.* src/a.js src/b.js',
+      'grep -n -d recurse TODO . | head -20',
+    ]) assert.ok(isBoundedPrint(c), c);
+  });
+
   test('a compound read with a whole, glob, recursive or following read and no line range is still trimmed', () => {
     for (const c of [
       'cat a.js b.js | grep x',
@@ -3583,6 +3593,11 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'grep -n x a.js | sed "s/x/y/"',
       'grep -n x a.js || true',
       'grep -n x a.js | | head',
+      'grep -n -d recurse TODO .',
+      'grep -n --directories=recurse TODO .',
+      'grep -nd recurse TODO .',
+      'grep -n -e x *.js',
+      'grep -n x -- *.js',
       ' | grep -n x',
       'grep -n "$(cat list)" a.js',
       'for f in *.js; do cat $f; done',

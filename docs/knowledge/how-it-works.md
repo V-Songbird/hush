@@ -76,8 +76,10 @@ line-range print counts as a line-range print too: `sed -n`, `head` or `tail` wi
 A search with `grep -n` counts as such a print too: it prints only the matching lines of the files
 it names, each with its line number. It can run alone, filter a line-range print or another
 `grep -n`, and end in a line range, where `head` or `tail` with no count prints 10 lines, such as
-`sed -n 1,40p a.js | grep -n "^//"` or `grep -n "listen" a.js | head`. A `grep -r` or a `grep` over
-a wildcard searches files nobody named, so it counts only when it ends in a line range. A `for`
+`sed -n 1,40p a.js | grep -n "^//"` or `grep -n "listen" a.js | head`. A recursive `grep`
+(`-r`, `-R` or `-d recurse`) or a `grep` with a wildcard among its files searches files nobody
+named, so it counts only when it ends in a line range. A wildcard in the pattern, such as
+`grep -n init.*config a.js`, does not count as one. A `for`
 loop over words it names, such as `for f in a b; do sed -n 1,40p $f.js; done`, counts when every
 step inside it does. A whole-file read piped into `grep`, such as `cat a.js b.js | grep x`, and a
 loop over a wildcard are trimmed as before.

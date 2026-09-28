@@ -83,10 +83,10 @@ to 250 lines, like a line-range print. This covers `grep -n` on named files,
 a line-range print or `grep -n` filtered by `grep -n`, a search ending in
 `head` with or without a count, and a `for` loop over named files, such as
 `sed -n 60,110p a.js; grep -n "x" b.js | head -5`. Such a read over 4,000
-characters could lose lines from the middle, so Claude read the files a
-second time. A whole-file read piped into `grep`, a `grep -r` or wildcard
-search with no line range after it, and a loop over a wildcard are trimmed
-as before.
+characters could lose lines from the middle, which could send Claude back to
+read the files again. A whole-file read piped into `grep`, a recursive
+search (`grep -r` or `grep -d recurse`) or a wildcard among the files with
+no line range after it, and a loop over a wildcard are trimmed as before.
 
 A command's JSON output now comes back whole up to 250 lines when the run did
 not fail and its regular output is one JSON object or array, or JSON Lines. A

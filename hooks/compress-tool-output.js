@@ -868,14 +868,40 @@ function isSourceRead(step, ranged) {
     !argPaths(step).some((p) => (!ranged && /[*?]/.test(p)) || isLogPath(p) || isGeneratedPath(p));
 }
 
+// grep's file arguments: every non-option argument but the pattern, which is
+// the first one unless -e or -f gave it. An option in GREP_VALUE_RE takes the
+// next argument as its value.
+const GREP_VALUE_RE = /^(?:-[a-zA-Z]*[efABCmdD]|--(?:regexp|file|after-context|before-context|context|max-count|directories|devices))$/;
+
+function grepFiles(args) {
+  const files = [];
+  let pattern = false;
+  let options = true;
+  for (let i = 1; i < args.length; i++) {
+    const a = args[i];
+    if (options && a === "--") options = false;
+    else if (options && GREP_VALUE_RE.test(a)) {
+      if (/^-[a-zA-Z]*[ef]$|^--(?:regexp|file)$/.test(a)) pattern = true;
+      i++;
+    } else if (options && /^-/.test(a)) {
+      if (/^-[a-zA-Z]*[ef].|^--(?:regexp|file)=/.test(a)) pattern = true;
+    } else if (pattern) files.push(a);
+    else pattern = true;
+  }
+  return files;
+}
+
 // grep -n prints only the matching lines of the files it names, each with its
-// line number, so it is bounded like a line-range print. A recursive grep or
-// an unquoted glob searches files nobody named, so it needs a line range after
-// it (ranged), as a glob read does.
+// line number, so it is bounded like a line-range print. A recursive grep
+// (-r, -R, -d recurse) or an unquoted glob among its files searches files
+// nobody named, so it needs a line range after it (ranged), as a glob read
+// does.
 function isGrepRead(step, ranged) {
   const args = step.match(ARG_RE) || [];
+  const recursive = args.some((a) => /^-[a-zA-Z]*r|^--(?:dereference-)?recursive$|^--directories=["']?recurse/i.test(a)) ||
+    /(?:^|\s)(?:-[a-zA-Z]*d\s*|--directories\s+)["']?recurse\b/.test(step);
   return args[0] === "grep" && args.some((a) => /^-(?:[a-zA-Z]*n[a-zA-Z]*|-line-number)$/.test(a)) && isPlainStep(step) &&
-    (ranged || !args.some((a) => /^-[a-zA-Z]*r|^--(?:dereference-)?recursive$/i.test(a) || (!/^["']/.test(a) && /[*?]/.test(a)))) &&
+    (ranged || !(recursive || grepFiles(args).some((a) => !/^["']/.test(a) && /[*?]/.test(a)))) &&
     !argPaths(step).some((p) => isLogPath(p) || isGeneratedPath(p));
 }
 
