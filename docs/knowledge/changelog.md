@@ -23,9 +23,13 @@ A clean run's data comes back whole in more cases:
   `12ms`. Before, such
   a table folded to its first row.
 
-A table now needs at least three changing number columns, up from two. A
-progress log such as `downloaded 1200 of 90000 bytes chunk 7` folds again
-instead of coming back whole.
+A table with two changing number columns still comes back whole. A progress
+log folds instead: two or more of its numbers rise on every line, as in
+`downloaded 1200 of 90000 bytes chunk 7 eta 12s`. A table where two number
+columns both rise on every row folds the same way.
+
+A unit must be a common one, such as `ms`, `s`, `KiB` or `x`. A hex id such as
+`7ab` no longer reads as a number, so a table of them folds.
 
 ## 1.13.0 — 2026-09-28
 

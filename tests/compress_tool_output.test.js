@@ -3745,7 +3745,7 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
   const spaced = (n) => Array.from({ length: n }, (_, i) => JSON.stringify({ id: i, name: `item-${i}`, status: 'ok', count: i, total: i * 2 }).replace(/,"/g, ', "').replace(/":/g, '": '));
   const records = spaced(120).join('\n');
   const compact = Array.from({ length: 120 }, (_, i) => JSON.stringify({ id: i, status: 'ok', count: i })).join('\n');
-  const rows = Array.from({ length: 120 }, (_, i) => `row id ${i} status ok count ${i} total ${i}`).join('\n');
+  const rows = Array.from({ length: 120 }, (_, i) => `row id ${i} status ok count ${(i * 37) % 101} total ${(i * 53) % 97}`).join('\n');
   const command = 'node scripts/recount.js';
   const session = 'hush-test-data-' + Date.now();
   after(() => removeSessions([session]));
@@ -3783,10 +3783,25 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
   });
 
   test('thousands separators, a trailing % and unit suffixes count as numbers', () => {
-    for (const fmt of [(i) => (1000 + i * 137).toLocaleString('en-US'), (i) => `${i}%`, (i) => `${(i % 9) + 1}e${(i % 7) + 1}`, (i) => `${i * 3}ms`, (i) => `-${i}.5KiB`, (i) => `+${i}.5%`]) {
-      const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${fmt(i)} total ${i * 3}`).join('\n');
+    for (const fmt of [(i) => (1000 + i * 137).toLocaleString('en-US'), (i) => `${i}%`, (i) => `${i}μs`, (i) => `${(i % 9) + 1}e${(i % 7) + 1}`, (i) => `${i * 3}ms`, (i) => `-${i}.5KiB`, (i) => `+${i}.5%`]) {
+      const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${fmt((i * 37) % 200)} total ${(i * 53) % 97}`).join('\n');
       assert.ok(out.length > 4000, fmt(7));
       assert.strictEqual(run(out), null, fmt(7));
+    }
+  });
+
+  test('a table with two changing number columns passes untouched', () => {
+    const out = Array.from({ length: 200 }, (_, i) => `bench id ${i} value ${(i * 37) % 101}ms`).join('\n');
+    assert.ok(out.length > 4000);
+    assert.strictEqual(run(out), null);
+  });
+
+  test('a digit-led hex id or an unknown suffix is not a number', () => {
+    const hex = (i) => `${i % 10}${'abcdef'[i % 6]}${'abcdef'[(i * 5) % 6]}`;
+    for (const id of [hex, (i) => `${i}px`]) {
+      const out = Array.from({ length: 200 }, (_, i) => `object id ${id(i)} size ${(i * 37) % 101} refs ${(i * 53) % 97}`).join('\n');
+      assert.ok(out.length > 4000, id(7));
+      assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length, id(7));
     }
   });
 
@@ -3794,10 +3809,21 @@ describe("a clean run's data rows pass whole with a header or summary line", () 
     const log = Array.from({ length: 150 }, (_, i) => `INFO worker-${i} processing job ${8000 + i}`).join('\n');
     const tap = Array.from({ length: 200 }, (_, i) => `ok ${i} - some subtest`).join('\n');
     const progress = Array.from({ length: 150 }, (_, i) => `downloaded ${i * 1200} of 90000 bytes chunk ${i}`).join('\n');
+    const eta = Array.from({ length: 120 }, (_, i) => `downloaded ${i * 1200} of 90000 bytes chunk ${i} eta ${(i * 7) % 60}s`).join('\n');
     const half = spaced(60).join('\n');
     const split = `${half}\nhalf done\n${half}`;
-    assert.ok(split.length > 4000 && split.length < 15000);
-    for (const out of [log, tap, progress, `fetching model\n${progress}\ndone`, split]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length, out.slice(0, 40));
+    assert.ok(split.length > 4000 && split.length < 15000 && eta.length < 15000);
+    for (const out of [log, tap, progress, `fetching model\n${progress}\ndone`, eta, `fetching model\n${eta}\ndone`, split]) assert.ok(run(out).hookSpecificOutput.updatedToolOutput.stdout.length < out.length, out.slice(0, 40));
+  });
+
+  test('past 250 lines a progress log folds and a table is cut', () => {
+    const progress = Array.from({ length: 400 }, (_, i) => `got ${i * 12} of 9000 part ${i}`).join('\n');
+    const table = Array.from({ length: 400 }, (_, i) => `row ${i} val ${(i * 37) % 101}`).join('\n');
+    assert.ok(progress.length < 15000 && table.length < 15000);
+    assert.match(run(progress).hookSpecificOutput.updatedToolOutput.stdout, /399 similar lines collapsed/);
+    const cut = run(table).hookSpecificOutput.updatedToolOutput.stdout;
+    assert.doesNotMatch(cut, /similar lines collapsed/);
+    assert.ok(cut.split('\n').length > 200 && cut.split('\n').length <= 260);
   });
 
   test('from 15,000 characters data rows are still parked', () => {

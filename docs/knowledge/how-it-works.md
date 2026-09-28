@@ -94,14 +94,17 @@ because a few lines of compact JSON can hold any amount of data.
 The same applies to a clean run's data with a little text around it. Up to two text lines may come
 before the data and up to two after it, such as a header or a `sum=6020` line. The data is either a
 JSON document, pretty-printed or not, JSON Lines that outnumber those text lines, or a table: five
-or more lines of the same shape where at least three values change from row to row and every
+or more lines of the same shape where at least two values change from row to row and every
 changing value is a number, such as `row id 7 count 1,204 took 12ms`. A number may use a sign,
-thousands separators, an exponent such as `1e5`, a trailing `%` or a unit of up to three letters, such as
-`ms` or `KiB`. Lines where a name changes, such as `INFO worker-7 processing job 8007`, are log
-lines and still fold. So are lines where only one or two numbers change, such as
-`ok 7 - parses input` or the progress line `downloaded 1200 of 90000 bytes chunk 7`. A progress
-line where three numbers change, such as one that adds `eta 12s`, reads as a table and comes back
-whole up to 250 lines.
+thousands separators, an exponent such as `1e5`, a trailing `%` or a common unit: `ns`, `us`,
+`µs`, `ms`, `s`, `min`, `m`, `h`, `d`, `x`, `k`, `b`, and `kb` to `tb` or `KiB` to `TiB`. Any
+other suffix makes the value text, so a hex id such as `7ab` is not a number. Lines where a name
+changes, such as `INFO worker-7 processing job 8007`, are log lines and still fold. So are lines
+where only one number changes, such as `ok 7 - parses input`, and progress lines, where two or more
+numbers rise on every line, such as `downloaded 1200 of 90000 bytes chunk 7 eta 12s`. For the same
+reason, a table where two number columns both rise on every row, such as a row counter and a sorted
+column, folds too. A log with one rising counter and one other changing number, such as
+`epoch 3 loss 0.41`, reads as a table and comes back whole up to 250 lines.
 A failing run, error output, more text than that, and a whole-file print of a log or a
 generated file are trimmed as before.
 
