@@ -92,8 +92,8 @@ Each price is the average bill of a job's four sessions, read back from the API,
 | Build a notification router while the plan changes four times | 12.9k chars | **$1.073** | $1.270, +18% | 4/4 · 4/4 |
 | Dig through 300 KB of logs for the cause of an outage | 22.2k chars | **$1.160** | $1.205, +4% | 4/4 · 4/4 |
 | Finish a half-done rename across 76 files | 23.2k chars | **$0.219** | $0.289, +32% | 4/4 · 4/4 |
-| Scope a column rename that matches a thousand lines | 23.2k chars | **$0.223** | $0.267, +20% | 4/4 · 4/4 |
-| Triage a 57 KB application log | 47.1k chars | $0.317 | **$0.258, −18%** | 4/4 · 4/4 |
+| Scope a column rename that matches a thousand lines | 23.2k chars | **$0.223** | $0.267, +19% | 4/4 · 4/4 |
+| Triage a 57 KB application log | 47.1k chars | $0.317 | **$0.258, −19%** | 4/4 · 4/4 |
 | Find what actually changed for users across 380 commits | 72.1k chars | $0.444 | **$0.424, −4%** | 4/4 · 4/4 |
 
 **On Opus 5.5, hush cost more on seven of the nine jobs**, by 4% to 32%. It was cheaper only on the two jobs whose commands print the most. Runnable content appeared in all 36 answers of both setups.
@@ -103,13 +103,13 @@ Averaged per session over the nine jobs:
 | Claude Opus 5.5 | no plugin | hush | |
 | --- | --- | --- | --- |
 | what your commands print | 24.4k chars | **22.2k chars** | −9% |
-| play-by-play while working | 15.4 words | **1.0 word** | −94% |
+| play-by-play while working | 15.4 words | **1.0 word** | −93% |
 | everything Claude writes in a session | **3,453 tok** | 3,654 tok | +6% |
 | average bill per session | **$0.421** | $0.458 | +9% |
 
 Without a plugin, Opus 5.5 wrote 3,453 tokens per session here, against 5,058 for Opus 5 at medium effort in the README comparison. Hush's rules have less output to cut, and they still ride along on every round trip.
 
-Treat a per-job cost difference under about 16% in this batch as noise. The hush setup and the setup without the think-longer sentence differ by one sentence, yet their average cost on the column rename differed by 16%: $0.267 against $0.231. Four of the seven jobs where hush cost more are above that line: the `--json` plan, the notification router, the half-done rename and the column rename.
+Treat a per-job cost difference under about 16% in this batch as noise. That bound is one observed gap, not a measured spread. The hush setup and the setup without the think-longer sentence differ by one sentence, yet their average cost on the column rename differed by 16%: $0.267 against $0.231. It is the largest gap between those two setups on any of the nine jobs. Four of the seven jobs where hush cost more are above that line: the `--json` plan, the notification router, the half-done rename and the column rename.
 
 ### Acting on the Opus 5.5 answers
 
@@ -378,7 +378,7 @@ Plain Claude Code did not produce a single clickable file link in any of the 54 
 
 Five places, all of them above.
 
-**On Opus 5.5, most jobs cost more.** In [The Opus 5.5 comparison](#the-opus-55-comparison), hush cost more than no plugin on seven of the nine jobs, by 4% to 32%, and 9% more per session on average. Four of those seven are above that batch's noise of about 16%. Only the two loudest jobs came out cheaper: the 57 KB log by 18% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, and hush sessions wrote 6% more output tokens in all. Hush's answers were also longer on three of the nine jobs, and still held about half their words in blocks over 40 words.
+**On Opus 5.5, most jobs cost more.** In [The Opus 5.5 comparison](#the-opus-55-comparison), hush cost more than no plugin on seven of the nine jobs, by 4% to 32%, and 9% more per session on average. Four of those seven are above about 16%, the largest gap observed between two near-identical setups in that batch. Only the two loudest jobs came out cheaper: the 57 KB log by 19% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, and hush sessions wrote 6% more output tokens in all. Hush's answers were also longer on three of the nine jobs, and still held about half their words in blocks over 40 words.
 
 The rest of this section describes the earlier voices.
 
