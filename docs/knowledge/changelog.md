@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 1.15.0 — 2026-09-28
 
 The `/hush:pick-style` list now has a **Gaps** column. It counts the stock
 rules each crafted style lacks, so you can see them before you switch. For
