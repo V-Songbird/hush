@@ -1,12 +1,10 @@
 ---
 type: knowledge
-summary: "hush's environment variables, the output style setting, the status-line count and the two voice commands; read before changing a switch or the style slot."
+summary: "hush's environment variables, the output style setting, and the status-line count; read before changing a switch or the style slot."
 related_files:
   - hooks/lib/gate.js
   - hooks/compress-tool-output.js
   - output-styles/hush.md
-  - skills/pick-style/SKILL.md
-  - skills/craft-style/SKILL.md
 ---
 
 # Settings
@@ -24,7 +22,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice is a separate switch — run `/hush:pick-style` to put the original back, or uninstall. |
+| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminder and the subagent brief keep running. |
 | `HUSH_QUIET=off` | Stops the reminder and the subagent brief. The trims keep running, and so does the writing voice. |
 | `HUSH_NUDGE=off` | Stops only the reminder. |
@@ -81,8 +79,6 @@ run that same setup, add this line to `~/.claude/settings.json`:
 }
 ```
 
-`/hush:pick-style` swaps voices for you after that, and it will not remove this line.
-
 ## Showing what hush kept out
 
 hush keeps a running count next to the parked output, in `saved.json`: characters in, characters
@@ -104,21 +100,3 @@ process.stdin.on('data', (d) => (stdin += d)).on('end', () => {
   }
 });
 ```
-
-## Writing your own voice
-
-| You want to… | Command |
-| --- | --- |
-| Build a voice of your own on hush's quiet frame | `/hush:craft-style` |
-| Switch between your voices, or go back to the one hush installs | `/hush:pick-style` |
-
-Describe the voice you want and `/hush:craft-style` writes it — robotic, dry, loud, whatever you
-ask for. The words change; the machinery underneath does not. A check runs after the rewrite and
-names anything the new voice dropped, and a voice that lost a rule never reaches your session.
-When the only gap is the paragraph about `[hush ...]` lines from an older hush, both commands offer
-to swap in the current one, and with your yes it is the only line of the file that changes.
-
-Both commands ask before they swap, and both take effect at your next session. Updating the plugin
-puts the shipped voice back, so pick again after an update.
-
-Every published number belongs to the voice hush shipped when its batch ran. A voice you craft is unmeasured.

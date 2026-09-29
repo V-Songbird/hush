@@ -4,8 +4,6 @@ summary: "What each hush hook does: the output trims, parked output, failing com
 related_files:
   - hooks/
   - output-styles/hush.md
-  - scripts/activate-style.js
-  - scripts/verify-style.js
 ---
 
 # How hush works
@@ -244,22 +242,12 @@ where it looked, and write nothing between tool calls.
 
 ## The voice slot
 
-Claude Code keeps one active output style. hush ships its own and claims that slot.
-
-`/hush:pick-style` swaps which voice sits in it, and `/hush:craft-style` writes you a new one. Both
-back up the shipped voice before they touch anything, and both put it back on request. A crafted
-voice is checked against the shipped one after it is written: if the rewrite dropped a rule, it
-never reaches your session. When a voice's only gap is the paragraph about `[hush ...]` lines from an
-older hush, both commands offer to swap in the current one, and with your yes it is the only line of
-the file that changes.
-
-Updating the plugin puts the shipped voice back. Pick again after an update.
+Claude Code keeps one active output style. hush ships its own and claims that slot while the plugin
+is enabled. To use another output style, disable or uninstall the plugin.
 
 ## What hush leaves alone
 
-It edits your files only when you ask: `/hush:craft-style` writes the voice you describe, and
-picking a voice can remove an `outputStyle` setting the swap makes redundant and, with your yes,
-swap in the current `[hush ...]` paragraph. It never sends anything off your machine. It never cuts
+It never edits your files, and it never sends anything off your machine. It never cuts
 a warning, an error or a failure line from a trimmed view, and when a digest samples them, the file
 it names holds every one. And it never claims it can regenerate output that was lost — if the
 parked file is gone, it tells you to run the command again.

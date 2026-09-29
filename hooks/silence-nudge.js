@@ -53,20 +53,6 @@ const TOOL = `${STEP} ${STEP}`;
 const TURN_DIAL =
   "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message. Everything you learn goes in the final message.";
 
-// The reminders re-state the quiet rule of whichever style holds hush's own
-// slot. Stock and every variant that passes scripts/verify-style.js carry this
-// phrase. A style activated there without it shares progress between tool
-// calls, and a reminder would only contradict it. An unreadable slot keeps the
-// reminders on.
-const QUIET_PHRASE = "Not one word between tool calls";
-function styleKeepsQuiet(pluginRoot = path.join(__dirname, "..")) {
-  try {
-    return fs.readFileSync(path.join(pluginRoot, "output-styles", "hush.md"), "utf8").includes(QUIET_PHRASE);
-  } catch {
-    return true;
-  }
-}
-
 // The default's corrective state: nonzero once this turn's corrective has
 // fired. Lives beside the session's other scratch, so Core's session-end
 // cleanup clears it; with Core off nothing reaps it and it is left for OS
@@ -163,7 +149,6 @@ function nudgeFor(event) {
 function main() {
   if (quietOff()) return;
   if (OFF) return;
-  if (!styleKeepsQuiet()) return;
   // A malformed payload is not a reason to drop the reminder: the event name
   // is the only field used, and PostToolUse is the common case.
   readInputAsync((input) => {
@@ -184,4 +169,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, countMidTurnText, styleKeepsQuiet, QUIET_PHRASE };
+module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, countMidTurnText };

@@ -25,16 +25,11 @@ docs/knowledge/         # how it works, settings, benchmark details and the
                         # changelog, dated entries newest first
 output-styles/
 └── hush.md             # the shipped voice
-skills/
-├── craft-style/
-│   └── SKILL.md        # /hush:craft-style: build a voice on hush's frame
-└── pick-style/
-    └── SKILL.md        # /hush:pick-style: list voices and swap the active one
 hooks/
 ├── hooks.json          # Hook event wiring (PreToolUse, PostToolUse, etc.)
 ├── *.js                # one script per hook
 └── lib/                # gate, harness, sidecar store and transforms
-scripts/                # activate-style, list-styles, verify-style; git-hooks/
+scripts/                # git-hooks/: the commit gates
 tests/                  # node:test suite, with contract/ and fixtures/
 ```
 
@@ -43,8 +38,6 @@ The README puts plain-language sections first and technical depth behind links; 
 ---
 
 ## What to keep in mind
-
-**Skills are Claude-facing instruction files.** Changes to `SKILL.md` affect how Claude interprets a skill — be precise, and test manually by invoking the affected skill in a real session before submitting.
 
 **Hooks are scripts that run on every tool call or session event.** Keep them fast (no network, no blocking I/O) and test on both Unix and Windows.
 
