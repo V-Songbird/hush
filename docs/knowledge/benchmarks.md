@@ -55,6 +55,10 @@ The hush median is 270.5, rounded. Prose words exclude fenced code.
 
 **Without a plugin, Opus 5.5 already talks less while it works.** 28 of 36 sessions spoke at most once before the answer, against 14 of 36 for Opus 5 at medium effort in the README comparison. The worst no-plugin session sent 3 messages while working. The 36 no-plugin sessions sent 34 such messages in all, with 15.4 words of play-by-play per session. Hush sent 2 messages in all, with 1.0 word per session.
 
+The README's overview graphic plots those words, one spike per session on one scale. The loudest no-plugin session wrote 59 words of play-by-play, and the loudest hush session wrote 19.
+
+The README's demo replays one pair from the red test suite job: the passing session whose final message has the median length, for each setup. That is no-plugin run 2 and hush run 4. The no-plugin session sent 2 progress notes, then a 179-word answer. The hush session sent nothing, then one 206-word answer. Both left the suite green. These two counts include every word of the message, table cells included, so they are not the prose words above. The recorded times are each session's total wall-clock time, so the demo spaces the messages evenly within it. Both answers are cut after 11 lines.
+
 ### Reading the Opus 5.5 answers
 
 Counted as in [Reading it](#reading-it): fenced code left out, inline code, paths and links counted as one word each. The same counting, run again on the README comparison's sessions, reads within 0.3 points of the figures published there.
@@ -199,12 +203,12 @@ Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: the nine jobs a
 | no plugin | 36/36 | 14/36 | 367 |
 | **hush** | **36/36** | **36/36** | **69** |
 
-<p align="center"><img src="../../assets/hero.svg" alt="One spike per recorded session for words of play-by-play before the answer: 36 sessions without hush reach 134 words, and the same 36 with hush speak at most once, never past 7 words." width="700"></p>
+<p align="center"><img src="../../assets/hero-opus5.svg" alt="One spike per recorded session for words of play-by-play before the answer: 36 sessions without hush reach 134 words, and the same 36 with hush speak at most once, never past 7 words." width="700"></p>
 
 <details>
 <summary>Watch the recorded Claude Code demo: one real session each on Claude Opus 5 with the earlier voice, replayed on the recorded clock, published September 4, 2026</summary>
 
-<p align="center"><img src="../../assets/demo.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 4 progress notes and a 254-word write-up; with hush it stays quiet, then sends one 42-word answer. Both leave the suite green." width="700"></p>
+<p align="center"><img src="../../assets/demo-opus5.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 4 progress notes and a 254-word write-up; with hush it stays quiet, then sends one 42-word answer. Both leave the suite green." width="700"></p>
 
 </details>
 
