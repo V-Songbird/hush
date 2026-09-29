@@ -87,6 +87,15 @@ These results measure the voice released in [1.13.0](docs/knowledge/changelog.md
 | Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.421 |
 | Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.458 |
 
+<p align="center"><img src="assets/hero.svg" alt="One spike per recorded session on Claude Opus 5.5 for words of play-by-play before the answer: 36 sessions without hush average 15.4 words and 28 speak at most once; 36 sessions of the same nine jobs with hush average 1.0 word, and all 36 speak at most once." width="700"></p>
+
+<details>
+<summary>Watch the recorded Claude Code demo: one real session each on Claude Opus 5.5, paced by each session's recorded wall-clock time</summary>
+
+<p align="center"><img src="assets/demo.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 2 progress notes, then a 179-word answer; with hush it stays quiet, then sends one 206-word answer. Both leave the suite green." width="700"></p>
+
+</details>
+
 Both setups passed all 36 task checks. Hush spoke at most once before the answer in every session, and said nothing at all before it in 34 of 36. Without a plugin, Opus 5.5 already spoke at most once in 28 of 36 sessions.
 
 Hush's median final prose was 271 words against 369 without a plugin, about 27% shorter. Its sentences were shorter too: 0.5% ran past 20 words, against 10.9% without a plugin. Runnable content appeared in all 36 answers of both setups; that text heuristic does not check that a command is correct or complete.
