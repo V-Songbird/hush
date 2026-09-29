@@ -11,6 +11,14 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+Claude's final message no longer puts labels such as "How I know:" or
+"Risks:" over its parts. Each part opens with what it says, and the part
+that explains how a result was checked stays in sentences instead of a list.
+The last line still starts with `Next:`. The published figures were measured
+on the earlier voice.
+
 ## 2.0.0 — 2026-09-29
 
 hush has a new icon: a blue pebble with a crescent moon, from Foundry's
