@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.0.0 — 2026-09-29
 
 hush has a new icon: a blue pebble with a crescent moon, from Foundry's
 hallmark-seal identity. The README banner and wordmark use it. The Ember scene
