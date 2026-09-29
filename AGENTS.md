@@ -32,9 +32,8 @@ later; there is no install or build step. This repository is Foundry's hush subm
 | Path | Content |
 | --- | --- |
 | `hooks/` | The session hooks: `compress-tool-output`, `silence-nudge`, `precompact-summary`, `postcompact-rearm`, `preserve-exit-code`, `session-end-cleanup`, `subagent-brief`; `lib/` holds the gate, the harness, the sidecar store and the transforms |
-| `output-styles/hush.md` | The shipped voice; `/hush:pick-style` writes `hush.md.stock` and `hush.md.active.json` beside it at run time, both ignored |
-| `scripts/` | `activate-style.js`, `list-styles.js` and `verify-style.js` behind the two skills; `git-hooks/` holds the commit gates |
-| `skills/` | `craft-style` and `pick-style` |
+| `output-styles/hush.md` | The shipped voice |
+| `scripts/git-hooks/` | The commit gates |
 | `tests/` | The `node:test` suite, with `contract/` and `fixtures/` |
 | `docs/knowledge/` | How it works, settings, benchmark details and the changelog |
 
@@ -46,5 +45,4 @@ functional tests only. `CLAUDE.md` imports this file; keep shared contributor fa
 ## Pitfalls
 
 - **Claude Code guards the output of a failing command.** hush trims it only when the session no longer asks for per-step approval or `HUSH_WRAP=1` is set, which is the setup every published number used.
-- **Updating the plugin puts the shipped voice back in the slot.** A picked voice needs picking again.
 - **A passing nav check verifies anchors, not measurements.** Review the source of every README claim before calling a change ready.

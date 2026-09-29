@@ -31,22 +31,18 @@ It quiets routine narration, shortens noisy tool output and shapes the final ans
 - Read the result with less play-by-play.
 - Keep noisy command output from crowding the conversation.
 - Inspect retained full output when you need more detail.
-- Choose a writing voice that suits you.
 
 ## How it works
 
-A writing style asks the assistant to stay quiet during routine work and finish with a short, useful answer. Session controls reinforce that behavior and trim selected tool results. Large outputs can be stored temporarily, with a reference for closer inspection. You can change the voice while keeping the session controls.
+A writing style asks the assistant to stay quiet during routine work and finish with a short, useful answer. Session controls reinforce that behavior and trim selected tool results. Large outputs can be stored temporarily, with a reference for closer inspection.
 
 ## What you can do
 
 | You want to | Outcome |
 | --- | --- |
-| Keep the default voice | Short, plain answers focused on the result |
-| Choose another voice | A different tone with the session controls retained |
-| Describe a new voice | A custom style checked against Hush’s requirements |
+| Read the result first | Short, plain answers focused on the result |
 | Inspect shortened output | A reference to the retained full result where available |
-
-Use `/hush:pick-style` to choose a voice and `/hush:craft-style` to describe a new one. See the settings guide for disabling the session controls.
+| Turn off a session control | One environment variable per control, listed in [Settings](docs/knowledge/settings.md#environment-variables) |
 
 ## Install
 
@@ -71,7 +67,7 @@ Requirements: Claude Code 2.1.139 or later, and Node.js 22 or later.
 
 Correctness comes before silence. A short answer can omit a useful detail, and quieter sessions do not always cost less. Ask for depth when you need it, and check the result before acting.
 
-Full-output references point to temporary files. Disabling runtime controls and restoring the writing style are separate actions. See [Settings](docs/knowledge/settings.md) for switches, and [How hush works](docs/knowledge/how-it-works.md#where-the-parked-output-goes) for how long those files are kept and who can read them on each platform.
+Full-output references point to temporary files. Disabling the session controls leaves the writing style on; disable the plugin to turn it off. See [Settings](docs/knowledge/settings.md) for switches, and [How hush works](docs/knowledge/how-it-works.md#where-the-parked-output-goes) for how long those files are kept and who can read them on each platform.
 
 ## The numbers
 

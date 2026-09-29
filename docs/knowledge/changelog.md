@@ -19,6 +19,10 @@ now ends with a stamp pressing that seal onto the answer, and each README
 graphic carries the seal in a corner. No recorded text, number or timing in the
 graphics changed.
 
+`/hush:craft-style` and `/hush:pick-style` are gone; hush ships one voice. If
+you had a crafted style active, updating hush puts stock Hush back, and your
+style file stays where you saved it.
+
 ## 1.15.0 — 2026-09-28
 
 The `/hush:pick-style` list now has a **Gaps** column. It counts the stock
