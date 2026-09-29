@@ -11,6 +11,14 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+hush has a new icon: a blue pebble with a crescent moon, from Foundry's
+hallmark-seal identity. The README banner and wordmark use it. The Ember scene
+now ends with a stamp pressing that seal onto the answer, and each README
+graphic carries the seal in a corner. No recorded text, number or timing in the
+graphics changed.
+
 ## 1.15.0 — 2026-09-28
 
 The `/hush:pick-style` list now has a **Gaps** column. It counts the stock
