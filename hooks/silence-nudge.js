@@ -49,7 +49,9 @@ const TOOL = `${STEP} ${STEP}`;
 // work is done" let the model call the work done and announce a verification
 // step out loud, mid-turn, right before running it. It is the text for the
 // configuration with no standing step reminder. Its opening-line rule is the
-// shipped voice's own words (output-styles/hush.md), so the two agree.
+// shipped voice's own words (output-styles/hush.md), so the two agree;
+// tests/silence_nudge.test.js holds that sentence and checks both carry it,
+// so a rewording changes all three together.
 const TURN_DIAL =
   "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message. Everything you learn goes in the final message.";
 

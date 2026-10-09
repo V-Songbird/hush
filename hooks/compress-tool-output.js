@@ -256,6 +256,9 @@ const TEMPLATE_RECOVERY_NOTE =
 // those two match, so deleting them would change no line kept. What only
 // SIGNAL_RE keeps is warnings, deprecations, criticals and the compound
 // *Error, *Warning and *Exception names.
+// The i flag reaches the compound alternative too, so it matches the bare
+// word as well ("error", "warning"): a name added there keeps every
+// standalone use of that word, not only the compound names.
 const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning|Exception)\b/i;
 
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
@@ -474,6 +477,9 @@ function capLines(lines, cap, relevanceTokens) {
 // summary with ✖ even when the run found only warnings and exited 0.
 // npm's `ERR!` needs no alternative of its own: `err` followed by `!`, a
 // non-alphanumeric character, already matches.
+// Each word needs a non-alphanumeric character or a line edge on both sides,
+// so a longer word never matches a shorter alternative: Rust's `panicked` is
+// not `panic`.
 const FAILURE_RE =
   /(^|[^0-9a-zA-Z])(fail(ed|ure|ures|ing|s)?|err(or)?s?|not ok|traceback|exception|panic|fatal|✗|✘)([^0-9a-zA-Z]|$)|^[ \t]*[✕×][ \t]/im;
 
@@ -485,10 +491,13 @@ const FAILURE_RE =
 const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 
 // The one KEEP vocabulary, shared by every transform that elides lines
-// (dedupeConsecutive, collapseTemplates, capLines). It is the union of what
-// hush calls signal and what it calls failure evidence, so every word that
-// makes a run read as failed — `not ok`, `✗`, `panic`, `fatal`, `Traceback`,
-// `exception`, `failing` — also keeps its line past the cap, and a capped view
+// (dedupeConsecutive, collapseTemplates, capLines, compressGrep) and by the
+// sidecar digest's signal sample and census, so a change to SIGNAL_RE,
+// FAILURE_RE, TRACEBACK_FRAME_RE or ZERO_COUNT_RE moves all of them. It is
+// the union of what hush calls signal and what it calls failure evidence, so
+// every word that makes a run read as failed — `not ok`, `✗`, `panic`,
+// `fatal`, `Traceback`, `exception`, `failing` — also keeps its line past the
+// cap, and a capped view
 // can promise that every failure line was kept. One vocabulary, one promise.
 // Zero-quantified counts are blanked first, as looksLikeFailure blanks them: a
 // passing summary ("Failures: 0, Errors: 0", "0 failed", node's "# fail 0")
@@ -1840,6 +1849,10 @@ function extractExitCode(response) {
 // command printed carry no note of hush's, and in the byte-exact views a
 // lookalike is not escaped, so a note claiming every tool result would vouch
 // for text hush never wrote.
+//
+// Five goldens under tests/contract/golden/ carry this text byte for byte:
+// after a wording change, run `node tests/contract.test.js --update` and check
+// that the diff moves only the note.
 const NOTE_TEXT =
   "hush's compression hook is active in this session. Its telemetry notes appear only in " +
   "Bash and PowerShell output, in Reads of logs, generated files and saved outputs, and in " +
