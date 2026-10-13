@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "The full Claude Code benchmark tables: the 1.13.0 voice on Opus 5.5 behind the README and the 40-word block cap tested against it, then the earlier voices; correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
+summary: "The full Claude Code benchmark tables: the 1.13.0 voice on Opus 5.5 behind the README and the 40-word block cap tested against it, the 2.0.0 build on Sonnet 5.5 with quiet and required-fact figures, then the earlier voices; correctness, quiet, cost per job, runnable content, long-sentence and block exposure, prose surface, answer usefulness and where hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -8,7 +8,9 @@ related_files:
 
 # The numbers, in full
 
-The newest comparison is the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the 1.13.0 voice, and the README shows its figures. A second batch the same day tested the limit of 40 words per block that the voice now carries; its results are under [Capping blocks at 40 words](#capping-blocks-at-40-words).
+The README shows the September 28, 2026 batch `o55-451-495ce18f` on Claude Opus 5.5, under [The Opus 5.5 comparison](#the-opus-55-comparison). It measures the 1.13.0 voice. A second batch the same day tested the limit of 40 words per block that the voice now carries; its results are under [Capping blocks at 40 words](#capping-blocks-at-40-words).
+
+The newest comparison is the October 13, 2026 batch `b31-quiet-0c14009e` on Claude Sonnet 5.5, under [The Sonnet 5.5 comparison](#the-sonnet-55-comparison). It ran no plugin and the hush 2.0.0 build in one batch, to measure how quiet hush is now and how many required facts each answer carries.
 
 The other comparisons on this page measured earlier voices. The README showed the September 1, 2026 comparison, `rivalA-762f888b`, until release 1.13.0, so this page still calls it the README comparison; its setup, tables and images are under [The README comparison](#the-readme-comparison).
 
@@ -193,6 +195,58 @@ Batch `o55-888-1bec0539`, started September 28, 2026 at 07:19 UTC: the same nine
 The cost difference is within this batch's noise. Per job, the block rule ranged from 23% cheaper on the half-done rename to 31% dearer on the release notes.
 
 Compare these setups only with each other. The same 1.13.0 voice held 52.3% of its words in long blocks in the batch above, and 59.1% here. The two batches also ran different tool-output compression.
+
+## The Sonnet 5.5 comparison
+
+Batch `b31-quiet-0c14009e`, started October 13, 2026 at 02:29 UTC, in Claude Code with the `sonnet` alias. Every session recorded the model id `claude-sonnet-5-5`. No effort was set, so each session ran at the CLI's default effort. Each setup ran two repetitions of eleven jobs, 22 sessions in all.
+
+Both setups ran in this one batch, with their order shuffled inside each job and repetition. Compare these figures only with each other: separate batches of the same build can differ by as much as the two setups do.
+
+Hush ran with `HUSH_WRAP=1` from `main` at commit `9b66cde`. Its manifest read 2.0.0. The build also carried the changes listed under [Unreleased](changelog.md#unreleased), including the voice that puts no labels over the parts of the final message.
+
+The jobs are the nine above, plus two more:
+
+- List 167 locale files with their sizes, and name the missing and empty ones.
+- Find the three bad rows in a 151-line stretch of a 1,600-row CSV file.
+
+Each of the two prints a little more than the size at which hush trims ordinary output. They test whether hush passes a whole listing or a whole line-range print through.
+
+This batch also re-measures how quiet hush is. Since [1.15.0](changelog.md#1150--2026-09-28), the mid-turn reminder to stay quiet comes at most once per turn. It never follows the one-line update that Claude Code asks for when you have not heard from Claude in a while. The figures under [How quiet](#how-quiet) were measured before that change.
+
+| Claude Sonnet 5.5, 22 sessions each | no plugin | hush |
+| --- | --- | --- |
+| jobs right | 20/22 | **22/22** |
+| spoke at most once before the answer | 17/22 | **22/22** |
+| said nothing at all | 14/22 | **21/22** |
+| worst single session | 3 messages | **1** |
+| total mid-work messages | 14 | **1** |
+| words of play-by-play, per session | 10.2 | **1.1** |
+| median final prose words | 293 | **231** |
+| sentences over 12 words | 32.8% | **15.8%** |
+| words in blocks over 40 words, mean | 74.1% | **46.8%** |
+| words in blocks over 40 words, median | 80.8% | **47.1%** |
+| average bill per session | **$0.164** | $0.174 |
+
+The medians are 292.5 and 230.5, rounded. Prose words exclude fenced code.
+
+**Both no-plugin misses came from the `--json` flag plan.** In both sessions Claude planned without reading the code. Neither plan named `cli.js` or the file that builds the rows, and the job's check needs both.
+
+The 12-word and 40-word limits are the ones the hush voice sets for itself. Sentences and blocks are counted as in [Reading it](#reading-it). Sentence shares are pooled over every sentence a setup wrote: 240 of 732 without a plugin, and 97 of 613 with hush. Hush still wrote about one sentence in six over its own limit, and kept almost half of each message in blocks over 40 words.
+
+Hush cost 6% more per session. Two sessions per job are too few to tell a difference that size from noise.
+
+### Required facts on Sonnet 5.5
+
+Each job has a fixed answer key: the facts a correct final message must carry. Code checks the facts it can match exactly, such as a path, a time or a count. A Claude Sonnet session judges the rest, and it must quote the passage it relies on. A quote that is not in the message counts as a missing fact. The judge used scoring prompt `cov-2` and keys version 1.0.0. Coverage is averaged per job first, then over the jobs.
+
+Nine of the eleven jobs have a key; the two new jobs have none. The notification router is left out too. Its key lists rules that the user adds in later prompts, and the final message does not have to repeat them, so both setups scored 25% there.
+
+| Claude Sonnet 5.5, 8 jobs, 16 sessions each | no plugin | hush |
+| --- | --- | --- |
+| required facts carried | 79.2% | **88.8%** |
+| sessions that carried every fact | 10/16 | **11/16** |
+
+**The gap comes from one job.** The two no-plugin plans for the `--json` flag carried none of its facts, and the two hush plans carried all of them. Over the other seven jobs, no plugin carried 90.5% and hush 87.1%. Hush carried more on the column rename, and less on the release notes and the half-done rename. The other four jobs tied. Job by job, hush carried more on 2 of the 8 jobs and less on 2, an exact two-sided sign-flip p of 0.875.
 
 ## The README comparison
 
