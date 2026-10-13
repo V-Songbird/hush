@@ -21,7 +21,8 @@ on the earlier voice.
 
 When Claude Code asks for an update because you have not heard from Claude in
 a while, Claude now answers with one short line beside its next tool call,
-then goes quiet again. This rule is unmeasured: the benchmark's headless `-p`
+then goes quiet again. The voice and the turn reminder both say so. This rule
+is unmeasured: the benchmark's headless `-p`
 sessions never receive that request.
 
 A PowerShell listing or ranged `Get-Content` piped through up to two

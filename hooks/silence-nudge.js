@@ -40,7 +40,7 @@ const MAX_MODE = /^max$/i.test(nudgeEnv);
 // holds better than the closed-boundary text below. Each text belongs to its
 // own configuration; the two are not interchangeable.
 const TURN =
-  "hush: this turn is silent until the work is done. Everything you learn goes in the final message.";
+  "hush: this turn is silent until the work is done; when Claude Code asks for an update, one short line beside your next tool call answers it. Everything you learn goes in the final message.";
 const STEP =
   "hush: your next output is a tool call. The final message is the only place you explain anything.";
 const TOOL = `${STEP} ${STEP}`;
@@ -53,7 +53,7 @@ const TOOL = `${STEP} ${STEP}`;
 // tests/silence_nudge.test.js holds that sentence and checks both carry it,
 // so a rewording changes all three together.
 const TURN_DIAL =
-  "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message. Everything you learn goes in the final message.";
+  "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message; when Claude Code asks for an update, one short line beside your next tool call answers it. Everything you learn goes in the final message.";
 
 // The default's corrective state: nonzero once this turn's corrective has
 // fired. Lives beside the session's other scratch, so Core's session-end

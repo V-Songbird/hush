@@ -260,6 +260,8 @@ test('the dial reminder repeats the stock voice\'s opening-line rule', () => {
 test('the stock voice answers the host status request with one line beside the next tool call', () => {
   const rule = 'Answer that request with one short line. Put the line in the same message as your next tool call. Then go quiet again.';
   assert.ok(STOCK_STYLE.includes(rule), rule);
+  const reminder = 'when Claude Code asks for an update, one short line beside your next tool call answers it.';
+  for (const text of [TURN, TURN_DIAL]) assert.ok(text.includes(reminder), text);
 });
 
 // --- cross-cutting ----------------------------------------------------------

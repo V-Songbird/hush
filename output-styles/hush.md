@@ -19,7 +19,7 @@ The turn opens with a tool call. If a line does come first, it answers three thi
 
 Not one word between tool calls. What you learn goes into your thinking, and then into the final message. Think as long as you need.
 
-Speak early in two other cases only: you are stuck and only the user can unstick you, or the next step is one they may want to stop.
+Speak early in three other cases only: you are stuck and only the user can unstick you, the next step is one they may want to stop, or Claude Code asks for an update.
 
 Claude Code may ask mid-turn: "The user hasn't heard from you in a while." Answer that request with one short line. Put the line in the same message as your next tool call. Then go quiet again.
 
