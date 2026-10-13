@@ -200,7 +200,7 @@ Compare these setups only with each other. The same 1.13.0 voice held 52.3% of i
 
 Batch `b31-quiet-0c14009e`, started October 13, 2026 at 02:29 UTC, in Claude Code with the `sonnet` alias. Every session recorded the model id `claude-sonnet-5-5`. No effort was set, so each session ran at the CLI's default effort. Each setup ran two repetitions of eleven jobs, 22 sessions in all.
 
-Both setups ran in this one batch, with their order shuffled inside each job and repetition. Compare these figures only with each other: separate batches of the same build can differ by as much as the two setups do.
+Both setups ran in this one batch, with their order shuffled inside each job and repetition. Compare these figures only with each other: the same build's bill per session has moved by about 5% between batches.
 
 Hush ran with `HUSH_WRAP=1` from `main` at commit `9b66cde`. Its manifest read 2.0.0. The build also carried the changes listed under [Unreleased](changelog.md#unreleased), including the voice that puts no labels over the parts of the final message.
 
@@ -211,7 +211,7 @@ The jobs are the nine above, plus two more:
 
 Each of the two prints a little more than the size at which hush trims ordinary output. They test whether hush passes a whole listing or a whole line-range print through.
 
-This batch also re-measures how quiet hush is. Since [1.15.0](changelog.md#1150--2026-09-28), the mid-turn reminder to stay quiet comes at most once per turn. It never follows the one-line update that Claude Code asks for when you have not heard from Claude in a while. The figures under [How quiet](#how-quiet) were measured before that change.
+This batch also re-measures how quiet hush is. Since [1.13.0](changelog.md#1130--2026-09-28), the mid-turn reminder to stay quiet comes at most once per turn. It never follows the one-line update that Claude Code asks for when you have not heard from Claude in a while. The figures under [How quiet](#how-quiet) were measured before that change.
 
 | Claude Sonnet 5.5, 22 sessions each | no plugin | hush |
 | --- | --- | --- |
