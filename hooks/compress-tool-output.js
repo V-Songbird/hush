@@ -841,9 +841,9 @@ function unwrapCommand(command) {
 // has no warning lines to keep, so a cut sends the model back for a re-read.
 // A read can come after a cd and between echo separators, chained with &&, ;
 // or a newline, as long as every step is one of these. A step with a pipe, a
-// redirect, a background & or a command substitution ($(, a backtick, or an
-// unquoted argument opening with a parenthesis) runs something else; a
-// parenthesis inside a quoted path does not.
+// redirect, a background & or a command substitution ($(, a backtick, or any
+// unquoted parenthesis) runs something else; a parenthesis inside a quoted
+// path does not.
 // A glob (* or ?) reads files nobody named, so it stays a dump and its cap
 // still shrinks as the session grows; the ? of a Windows long-path prefix
 // (\\?\C:\... or //?/C:/...) is no glob. A whole read, a listing or a diff piped into one
@@ -862,8 +862,8 @@ const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|
 // A |, <, > or & inside quotes, such as grep's "a\|b", is text, not a pipe or
 // redirect; a $( or backtick inside double quotes still runs. Any unquoted
 // parenthesis counts as code: PowerShell runs a command inside one wherever it
-// sits in an argument, as in -First:(...), Name(...), 'x'(...) or x\(...), and
-// the hook cannot tell which shell runs the step, so bash's escaped \( counts
+// sits in an argument, as in -First:(...), Name(...), 'x'(...) or x\(...). One
+// check serves Bash and PowerShell steps alike, so bash's escaped \( counts
 // too.
 function isPlainStep(step) {
   const bare = step.replace(ARG_RE, (a) => (a[0] === "'" ? "''" : a[0] === '"' ? a.replace(/[|<>&]/g, "") : a));
@@ -954,8 +954,11 @@ const FOR_RE = /^for\s+[a-zA-Z_]\w*\s+in(?:\s+[\w./-]+)+$/;
 // pipes; an escaped \" or \' opens no quote.
 const STEP_SEP_RE = /\\["']|"[^"]*"|'[^']*'|&&|;|\r?\n/g;
 
+// PowerShell also reads U+2018-U+201B as single and U+201C-U+201E as double
+// quotes, which the ASCII quote model above cannot follow, so any typographic
+// quote leaves the command a dump.
 function isBoundedPrint(command) {
-  if (typeof command !== "string") return false;
+  if (typeof command !== "string" || /[‘-‟]/.test(command)) return false;
   const steps = unwrapCommand(command).replace(STEP_SEP_RE, (m) => (/^["']/.test(m) ? m : "\0")).split("\0").map((s) => s.trim().replace(/^do(?:\s+|$)/, "")).filter(Boolean);
   const isLoopStep = (s) => FOR_RE.test(s) || s === "done";
   return steps.some((s) => !isNeutralStep(s) && !isLoopStep(s)) && steps.every((s) => isNeutralStep(s) || isLoopStep(s) || isBoundedStep(s));

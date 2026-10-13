@@ -27,7 +27,8 @@ A listing, line range or shaping step with a script block, `$( )`, a backtick
 or an unquoted parenthesis anywhere in its arguments, such as
 `Select-Object -First:(npm test)` or `Select-Object Name(npm test)`, could run
 another command, so its output is still trimmed; that includes an unquoted
-`\(`, as in `grep -n foo\( a.js`.
+`\(`, as in `grep -n foo\( a.js`. A command with a typographic quote (`‘ ’ ‚ ‛`
+or `“ ” „`), which PowerShell also reads as a quote, is trimmed the same way.
 
 ## 2.0.0 — 2026-09-29
 
