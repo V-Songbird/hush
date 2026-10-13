@@ -23,8 +23,11 @@ A PowerShell listing or ranged `Get-Content` piped through up to two
 `Select-Object` or `Format-Table` steps, such as
 `Get-ChildItem -Recurse | Select-Object FullName,Length | Format-Table`, now
 passes whole up to 250 lines like other listings instead of being trimmed.
-A step that runs another command, such as `Select-Object -First:(npm test)`
-or `Get-ChildItem (npm test)`, is still trimmed.
+A listing, line range or shaping step with a script block, `$( )`, a backtick
+or an unquoted parenthesis anywhere in its arguments, such as
+`Select-Object -First:(npm test)` or `Select-Object Name(npm test)`, could run
+another command, so its output is still trimmed; that includes an unquoted
+`\(`, as in `grep -n foo\( a.js`.
 
 ## 2.0.0 — 2026-09-29
 

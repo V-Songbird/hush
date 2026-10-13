@@ -77,11 +77,13 @@ counts as such a print when it is piped through up to two `Select-Object`, `sele
 `Get-ChildItem -Recurse -File docs | Select-Object FullName,Length | Format-Table -AutoSize`. A
 whole-file `Get-Content` counts only when one of those steps is `Select-Object -First` or `-Last`.
 
-A step that runs another command never counts, in the listing or in any step after it, so its
-output is trimmed as before. That covers a script block (`{ }`), `$( )`, a backtick, and an
-unquoted parenthesis at the start of an argument or after a comma, `@`, a parameter colon or a
-cast, such as `Get-ChildItem (npm test)`, `Select-Object Name,(npm test)`,
-`Select-Object -First:(npm test)` or `Format-Table Name,[string](npm test)`.
+A step that could run another command never counts, in the listing or in any step after it, so
+its output is trimmed as before. Such a step holds a script block (`{ }`), `$( )`, a backtick or
+any parenthesis outside quotes, wherever it sits in an argument, such as
+`Get-ChildItem (npm test)`, `Select-Object -First:(npm test)`, `Select-Object Name(npm test)` or
+`Get-ChildItem 'x'(npm test)`. The parenthesis rule holds for every print in this section, so
+an unquoted escaped `\(`, as in `grep -n foo\( a.js`, is trimmed too; quote it to keep the print
+whole.
 
 A search with `grep -n` counts as such a print too: it prints only the matching lines of the files
 it names, each with its line number. It can run alone, filter a line-range print or another

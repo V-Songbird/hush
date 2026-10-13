@@ -860,13 +860,14 @@ const PS_LISTING_RE = /^(?:ls|dir|gci|Get-ChildItem|gc|Get-Content)(?:\s|$)/i;
 const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|gc|Get-Content)\s(?:.*\s)?-Wait)(?:\s|$)/i;
 
 // A |, <, > or & inside quotes, such as grep's "a\|b", is text, not a pipe or
-// redirect; a $( or backtick inside double quotes still runs. An unquoted
-// parenthesis opening a step or following whitespace, a comma, @, a
-// parameter colon (-First:(...)) or a cast (] as in [string](...)) runs the
-// command inside it.
+// redirect; a $( or backtick inside double quotes still runs. Any unquoted
+// parenthesis counts as code: PowerShell runs a command inside one wherever it
+// sits in an argument, as in -First:(...), Name(...), 'x'(...) or x\(...), and
+// the hook cannot tell which shell runs the step, so bash's escaped \( counts
+// too.
 function isPlainStep(step) {
   const bare = step.replace(ARG_RE, (a) => (a[0] === "'" ? "''" : a[0] === '"' ? a.replace(/[|<>&]/g, "") : a));
-  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|[\s,@:\]])\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
+  return !/[|<>&`]|\$\(/.test(bare) && !bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)).includes("(");
 }
 
 function isNeutralStep(step) {
