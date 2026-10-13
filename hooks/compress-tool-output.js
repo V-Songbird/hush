@@ -863,7 +863,7 @@ const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|
 // redirect; a $( or backtick inside double quotes still runs.
 function isPlainStep(step) {
   const bare = step.replace(ARG_RE, (a) => (a[0] === "'" ? "''" : a[0] === '"' ? a.replace(/[|<>&]/g, "") : a));
-  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|\s)\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
+  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|[\s,@])\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
 }
 
 function isNeutralStep(step) {

@@ -3511,6 +3511,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
       'Get-ChildItem | Select-Object Name | Format-Table; npm test',
       'Get-ChildItem | Select-Object Name | Format-Table > out.txt',
       'Get-ChildItem | Select-Object (npm test)',
+      'Get-ChildItem | Select-Object Name,(npm test)',
+      'Get-ChildItem | Select-Object @(npm test)',
       'Get-Content a.ps1 | Format-Table',
       'Get-Content a.ps1 | Select-Object -Skip 5 | Format-Table',
       'Get-Content *.ps1 | Format-Table',
