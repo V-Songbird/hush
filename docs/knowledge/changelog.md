@@ -19,6 +19,11 @@ that explains how a result was checked stays in sentences instead of a list.
 The last line still starts with `Next:`. The published figures were measured
 on the earlier voice.
 
+When Claude Code asks for an update because you have not heard from Claude in
+a while, Claude now answers with one short line beside its next tool call,
+then goes quiet again. This rule is unmeasured: the benchmark's headless `-p`
+sessions never receive that request.
+
 A PowerShell listing or ranged `Get-Content` piped through up to two
 `Select-Object` or `Format-Table` steps, such as
 `Get-ChildItem -Recurse | Select-Object FullName,Length | Format-Table`, now

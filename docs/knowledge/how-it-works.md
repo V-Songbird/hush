@@ -217,7 +217,9 @@ itself, but only when it has to.
 
 By default it reminds Claude once at the start of each of your turns, and again once, the first time
 chatter slips through in that turn. When you have not heard from Claude in a while, Claude Code
-asks Claude for a short update. A one-line answer does not count as chatter; a longer one does.
+asks Claude for a short update. The voice tells Claude to answer it with one line in the same
+message as its next tool call, then go quiet again. A one-line answer does not count as chatter; a
+longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
 counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.

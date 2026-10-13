@@ -255,6 +255,13 @@ test('the dial reminder repeats the stock voice\'s opening-line rule', () => {
   assert.ok(TURN_DIAL.includes(rule), TURN_DIAL);
 });
 
+// The voice answers the host's status request the way the corrective
+// excuses it: one line, beside the next tool call.
+test('the stock voice answers the host status request with one line beside the next tool call', () => {
+  const rule = 'Answer that request with one short line. Put the line in the same message as your next tool call. Then go quiet again.';
+  assert.ok(STOCK_STYLE.includes(rule), rule);
+});
+
 // --- cross-cutting ----------------------------------------------------------
 
 // Both registrations inject context, so both have to answer to the
