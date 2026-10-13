@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.1.0 — 2026-10-13
 
 Claude's final message no longer puts labels such as "How I know:" or
 "Risks:" over its parts. Each part opens with what it says, and the part

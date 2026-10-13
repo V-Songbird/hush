@@ -202,7 +202,7 @@ Batch `b31-quiet-0c14009e`, started October 13, 2026 at 02:29 UTC, in Claude Cod
 
 Both setups ran in this one batch, with their order shuffled inside each job and repetition. Compare these figures only with each other: the same build's bill per session has moved by about 5% between batches.
 
-Hush ran with `HUSH_WRAP=1` from `main` at commit `9b66cde`. Its manifest read 2.0.0. The build also carried the changes listed under [Unreleased](changelog.md#unreleased), including the voice that puts no labels over the parts of the final message.
+Hush ran with `HUSH_WRAP=1` from `main` at commit `9b66cde`. Its manifest read 2.0.0. The build also carried part of what [2.1.0](changelog.md#210--2026-10-13) released, including the voice that puts no labels over the parts of the final message.
 
 The jobs are the nine above, plus two more:
 
