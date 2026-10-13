@@ -19,6 +19,11 @@ that explains how a result was checked stays in sentences instead of a list.
 The last line still starts with `Next:`. The published figures were measured
 on the earlier voice.
 
+A PowerShell listing or ranged `Get-Content` piped through up to two
+`Select-Object` or `Format-Table` steps, such as
+`Get-ChildItem -Recurse | Select-Object FullName,Length | Format-Table`, now
+passes whole up to 250 lines like other listings instead of being trimmed.
+
 ## 2.0.0 — 2026-09-29
 
 hush has a new icon: a blue pebble with a crescent moon, from Foundry's

@@ -3483,6 +3483,43 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
   });
 
+  test('a PowerShell listing or ranged Get-Content shaped by Select-Object or Format-Table is a bounded print', () => {
+    for (const c of [
+      'Get-ChildItem -Recurse -File locales | Select-Object FullName,Length | Format-Table -AutoSize',
+      'Get-ChildItem -Path locales -Recurse -File | Select-Object -First 50',
+      'gci -Recurse | Select-Object -Last 20 | Format-Table -AutoSize',
+      'Get-ChildItem docs | Select-Object -First 50 | Select-Object Name,Length',
+      'Get-ChildItem docs | Format-Table Name,Length -AutoSize',
+      'Get-Content src/app.ps1 -TotalCount 40 | Select-Object -Last 10',
+      'Get-Content src/app.ps1 -Tail 20 | Format-Table',
+      'Get-Content src/app.ps1 | Select-Object -First 80 | Format-Table',
+      'gc src/app.ps1 | select -Last 20 | ft',
+      wrapPowerShell('Get-ChildItem -Recurse -File locales | Select-Object FullName,Length | Format-Table -AutoSize'),
+    ]) assert.ok(isBoundedPrint(c), c);
+  });
+
+  test('a PowerShell listing piped into anything else, chained or redirected is not a bounded print', () => {
+    for (const c of [
+      'Get-ChildItem -Recurse -File locales | Select-Object FullName,Length | Format-Table -AutoSize | Out-String -Width 250; Get-Content i18n.config.json',
+      "Get-ChildItem -Path locales -Recurse -File | Select-Object @{n='Path';e={$_.FullName}}, Length | Format-Table -AutoSize",
+      'Get-ChildItem | Select-Object @{e={npm test}}',
+      'Get-ChildItem | Select-Object Name | Out-String',
+      'Get-ChildItem | Format-Table | Format-List',
+      'Get-ChildItem | Where-Object Length -gt 0 | Format-Table',
+      'Get-ChildItem | ForEach-Object { Get-Content $_ }',
+      'Get-ChildItem | Select-Object Name | Select-Object -First 5 | Format-Table',
+      'Get-ChildItem | Select-Object Name | Format-Table; npm test',
+      'Get-ChildItem | Select-Object Name | Format-Table > out.txt',
+      'Get-ChildItem | Select-Object (npm test)',
+      'Get-Content a.ps1 | Format-Table',
+      'Get-Content a.ps1 | Select-Object -Skip 5 | Format-Table',
+      'Get-Content *.ps1 | Format-Table',
+      'Get-Content a.ps1 -Wait | Select-Object -First 5 | Format-Table',
+      'npm test | Select-Object -First 5 | Format-Table',
+      'git log | Select-Object Name | Format-Table',
+    ]) assert.strictEqual(isBoundedPrint(c), false, JSON.stringify(c));
+  });
+
   test("preserve-exit-code's Bash wrapper around one command still counts as a bounded print", () => {
     assert.ok(isBoundedPrint("ls docs\n__hush_exit=$?\necho '[[hush:exit='\necho $__hush_exit\necho ']]'\nexit 0"));
   });
@@ -3527,6 +3564,8 @@ describe('listings and ranged prints pass whole up to the failing-run cap', () =
     ['Get-Content -Tail', 'Get-Content src/app.js -Tail 92', code],
     ['Get-Content of two files', 'Set-Location src; Get-Content app.ps1, lib.ps1', code],
     ['Get-Content piped into Select-Object -First', 'Get-Content src/app.js | Select-Object -First 92', code],
+    ['Get-ChildItem piped into Select-Object and Format-Table', 'Get-ChildItem -Recurse -File docs | Select-Object FullName,Length | Format-Table -AutoSize', names],
+    ['Get-Content -Tail piped into Format-Table', 'Get-Content src/app.js -Tail 92 | Format-Table', code],
   ]) {
     test(`${shape}: 92 lines pass through the PowerShell hook whole, wrapped or not`, () => {
       assert.strictEqual(hookOutput(runHook('compress-tool-output.js', { tool_name: 'PowerShell', tool_input: { command }, tool_response: out })), null);

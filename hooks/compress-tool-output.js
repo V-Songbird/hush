@@ -855,6 +855,8 @@ const WHOLE_READ_RE = /^(?:cat|type|gc|Get-Content)\s+\S/i;
 const NEUTRAL_STEP_RE = /^(?:cd|Set-Location|sl|pushd|echo|printf|Write-Output|Write-Host)(?:\s|$)/i;
 const ARG_RE = /"[^"]*"|'[^']*'|\S+/g;
 const PIPED_RANGE_RE = new RegExp(String.raw`^(?:${LINE_RANGE_SRC}|(?:Select-Object|select)\s(?:.*\s)?-(?:First|Last)\s+\d)`, "i");
+const PS_SHAPE_RE = /^(?:Select-Object|select|Format-Table|ft)(?:\s|$)/i;
+const PS_LISTING_RE = /^(?:ls|dir|gci|Get-ChildItem|gc|Get-Content)(?:\s|$)/i;
 const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|gc|Get-Content)\s(?:.*\s)?-Wait)(?:\s|$)/i;
 
 // A |, <, > or & inside quotes, such as grep's "a\|b", is text, not a pipe or
@@ -926,6 +928,11 @@ function isBoundedStep(step) {
   if ([from, ...rest].some((part) => FOLLOW_RE.test(part))) return false;
   if (!rest.length) return BOUNDED_PRINT_RE.test(from) || isSourceRead(from) || isGrepRead(from);
   if (rest.length === 1 && (BOUNDED_PRINT_RE.test(from) || isSourceRead(from, true)) && PIPED_RANGE_RE.test(rest[0]) && isPlainStep(rest[0])) return true;
+  // A PowerShell listing or ranged Get-Content shaped by up to two
+  // Select-Object or Format-Table steps; a whole read needs a -First/-Last
+  // among them. A script block ({ }) runs other code, so it never counts.
+  if (rest.length <= 2 && rest.every((part) => PS_SHAPE_RE.test(part) && isPlainStep(part) && !/[{}]/.test(part)) &&
+    ((PS_LISTING_RE.test(from) && BOUNDED_PRINT_RE.test(from)) || (isSourceRead(from, true) && rest.some((part) => PIPED_RANGE_RE.test(part))))) return true;
   // A grep -n, or a print filtered by grep -n, optionally closed by a line
   // range; head or tail with no count prints 10 lines.
   const last = rest[rest.length - 1];
