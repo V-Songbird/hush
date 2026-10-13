@@ -71,6 +71,18 @@ line-range print counts as a line-range print too: `sed -n`, `head` or `tail` wi
 `Select-Object` with `-First` or `-Last`, such as `cat -n a.js | sed -n '1,80p'`,
 `find . -name '*.md' | head -n 50` or `git diff | head -n 50`.
 
+A PowerShell listing (`ls`, `dir`, `gci` or `Get-ChildItem`) or a `Get-Content` with a line count
+counts as such a print when it is piped through up to two `Select-Object`, `select`,
+`Format-Table` or `ft` steps, such as
+`Get-ChildItem -Recurse -File docs | Select-Object FullName,Length | Format-Table -AutoSize`. A
+whole-file `Get-Content` counts only when one of those steps is `Select-Object -First` or `-Last`.
+
+A step that runs another command never counts, in the listing or in any step after it, so its
+output is trimmed as before. That covers a script block (`{ }`), `$( )`, a backtick, and an
+unquoted parenthesis at the start of an argument or after a comma, `@`, a parameter colon or a
+cast, such as `Get-ChildItem (npm test)`, `Select-Object Name,(npm test)`,
+`Select-Object -First:(npm test)` or `Format-Table Name,[string](npm test)`.
+
 A search with `grep -n` counts as such a print too: it prints only the matching lines of the files
 it names, each with its line number. It can run alone, filter a line-range print or another
 `grep -n`, and end in a line range, where `head` or `tail` with no count prints 10 lines, such as

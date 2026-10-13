@@ -860,10 +860,13 @@ const PS_LISTING_RE = /^(?:ls|dir|gci|Get-ChildItem|gc|Get-Content)(?:\s|$)/i;
 const FOLLOW_RE = /^(?:tail\s(?:.*\s)?-(?:[a-z]*f[a-z]*|-follow\S*)|(?:cat|type|gc|Get-Content)\s(?:.*\s)?-Wait)(?:\s|$)/i;
 
 // A |, <, > or & inside quotes, such as grep's "a\|b", is text, not a pipe or
-// redirect; a $( or backtick inside double quotes still runs.
+// redirect; a $( or backtick inside double quotes still runs. An unquoted
+// parenthesis opening a step or following whitespace, a comma, @, a
+// parameter colon (-First:(...)) or a cast (] as in [string](...)) runs the
+// command inside it.
 function isPlainStep(step) {
   const bare = step.replace(ARG_RE, (a) => (a[0] === "'" ? "''" : a[0] === '"' ? a.replace(/[|<>&]/g, "") : a));
-  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|[\s,@])\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
+  return !/[|<>&`]|\$\(/.test(bare) && !/(?:^|[\s,@:\]])\(/.test(bare.replace(ARG_RE, (a) => (/^["']/.test(a) ? '""' : a)));
 }
 
 function isNeutralStep(step) {
@@ -925,20 +928,22 @@ function isBoundedStep(step) {
   const raw = step.match(PIPE_PART_RE) || [];
   if (raw.join("|") !== step) return false;
   const [from, ...rest] = raw.map((part) => part.trim());
+  // A listing, line range or diff whose arguments run a command is no print.
+  const listing = BOUNDED_PRINT_RE.test(from) && isPlainStep(from);
   if ([from, ...rest].some((part) => FOLLOW_RE.test(part))) return false;
-  if (!rest.length) return BOUNDED_PRINT_RE.test(from) || isSourceRead(from) || isGrepRead(from);
-  if (rest.length === 1 && (BOUNDED_PRINT_RE.test(from) || isSourceRead(from, true)) && PIPED_RANGE_RE.test(rest[0]) && isPlainStep(rest[0])) return true;
+  if (!rest.length) return listing || isSourceRead(from) || isGrepRead(from);
+  if (rest.length === 1 && (listing || isSourceRead(from, true)) && PIPED_RANGE_RE.test(rest[0]) && isPlainStep(rest[0])) return true;
   // A PowerShell listing or ranged Get-Content shaped by up to two
   // Select-Object or Format-Table steps; a whole read needs a -First/-Last
   // among them. A script block ({ }) runs other code, so it never counts.
   if (rest.length <= 2 && rest.every((part) => PS_SHAPE_RE.test(part) && isPlainStep(part) && !/[{}]/.test(part)) &&
-    ((PS_LISTING_RE.test(from) && BOUNDED_PRINT_RE.test(from)) || (isSourceRead(from, true) && rest.some((part) => PIPED_RANGE_RE.test(part))))) return true;
+    ((PS_LISTING_RE.test(from) && listing) || (isSourceRead(from, true) && rest.some((part) => PIPED_RANGE_RE.test(part))))) return true;
   // A grep -n, or a print filtered by grep -n, optionally closed by a line
   // range; head or tail with no count prints 10 lines.
   const last = rest[rest.length - 1];
   const ranged = (PIPED_RANGE_RE.test(last) || /^(?:head|tail)$/.test(last)) && isPlainStep(last);
   const filters = ranged ? rest.slice(0, -1) : rest;
-  return (isGrepRead(from, ranged) || (BOUNDED_PRINT_RE.test(from) && filters.length > 0)) && filters.every((part) => isGrepRead(part));
+  return (isGrepRead(from, ranged) || (listing && filters.length > 0)) && filters.every((part) => isGrepRead(part));
 }
 
 // A for loop over words it names (no glob, variable or substitution) runs its

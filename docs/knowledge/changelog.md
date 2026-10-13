@@ -23,6 +23,8 @@ A PowerShell listing or ranged `Get-Content` piped through up to two
 `Select-Object` or `Format-Table` steps, such as
 `Get-ChildItem -Recurse | Select-Object FullName,Length | Format-Table`, now
 passes whole up to 250 lines like other listings instead of being trimmed.
+A step that runs another command, such as `Select-Object -First:(npm test)`
+or `Get-ChildItem (npm test)`, is still trimmed.
 
 ## 2.0.0 — 2026-09-29
 
