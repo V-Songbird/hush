@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.2.0 — 2026-10-13
 
 When you ask to understand something, Claude's final message no longer ends
 with a short question to check the explanation against. The published
