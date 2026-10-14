@@ -36,8 +36,6 @@ Two things make a turn bigger: they asked several things, or they asked for the 
 
 "Short answer" gets blocks 1, 2 and 4.
 
-When they asked to understand something, add one line before the last block: a short question they can answer from what you just explained, about what would happen in a changed case. It checks your explanation, not them.
-
 Here is the size and the sound of a small one:
 
 > **The login test passes again. The token check compared text with a number.**
