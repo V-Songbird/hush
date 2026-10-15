@@ -38,10 +38,9 @@ function slug(text) {
   return text.toLowerCase().replace(slugCharacters, "").replace(/ /g, "-");
 }
 
-// Headings inside a fenced block are content, not sections -- flint's README
-// quotes a reply whose ten `##` lines would otherwise register as anchors.
-function headingSlugs(markdown) {
-  const slugs = new Set();
+// The lines outside fenced blocks. A fenced block is content, not structure.
+function linesOutsideFences(markdown) {
+  const lines = [];
   let fence = null;
   for (const line of markdown.split(/\r?\n/)) {
     const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -50,7 +49,23 @@ function headingSlugs(markdown) {
       else if (marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
       continue;
     }
-    if (fence) continue;
+    if (!fence) lines.push(line);
+  }
+  return lines;
+}
+
+// A link written in code is an example, not a link -- hush's voice shows the
+// app's `[title](#terminal/<id>)` form, which no heading could ever match.
+// An inline span closes on a backtick run of its own length, within a paragraph.
+function withoutCode(markdown) {
+  return linesOutsideFences(markdown).join("\n").replace(/(`+)(?:[^\n]|\n(?!\s*\n))*?\1(?!`)/g, "");
+}
+
+// Headings inside a fenced block are content, not sections -- flint's README
+// quotes a reply whose ten `##` lines would otherwise register as anchors.
+function headingSlugs(markdown) {
+  const slugs = new Set();
+  for (const line of linesOutsideFences(markdown)) {
     const m = line.match(/^ {0,3}#{1,6}\s+(.*)$/);
     if (m) {
       const text = m[1].replace(/\s+#+\s*$/, "").replace(/<[^>]+>/g, "")
@@ -67,6 +82,7 @@ function headingSlugs(markdown) {
 // Both spellings count: <a href="#x"> in the centered HTML block, and a plain
 // markdown [label](#x) elsewhere in the page.
 function anchorsIn(markdown) {
+  markdown = withoutCode(markdown);
   const found = [];
   for (const m of markdown.matchAll(/href="#([^"]+)"/g)) found.push(m[1]);
   for (const m of markdown.matchAll(/\]\(#([^)]+)\)/g)) found.push(m[1]);
@@ -76,6 +92,7 @@ function anchorsIn(markdown) {
 // Links to another page's anchor, as [page, anchor] pairs: [x](other.md#a) or
 // href="../README.md#a". A URL or a root-relative path has no page here to read.
 function linkedAnchorsIn(markdown) {
+  markdown = withoutCode(markdown);
   const found = [];
   for (const m of markdown.matchAll(/(?:href="|\]\()(?![a-z][a-z\d+.-]*:|\/)([^"()#\s]+\.md)#([^")\s]+)/gi)) {
     found.push([m[1], m[2]]);

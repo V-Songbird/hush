@@ -106,6 +106,11 @@ describe("anchorsIn", () => {
   test("ignores links that leave the page", () => {
     assert.deepEqual(anchorsIn('<a href="https://x/#frag">x</a> [y](other.md)'), []);
   });
+
+  test("ignores links written as inline code or in a fenced block", () => {
+    const md = "[a](#a) `[b](#b)` ``[c](#c) ` x`` and\n```md\n[d](#d)\n````\n[e](#e)\n";
+    assert.deepEqual(anchorsIn(md), ["a", "e"]);
+  });
 });
 
 describe("linkedAnchorsIn", () => {
@@ -116,6 +121,10 @@ describe("linkedAnchorsIn", () => {
 
   test("ignores in-page anchors, URLs, root-relative paths and links with no anchor", () => {
     assert.deepEqual(linkedAnchorsIn("[a](#x) [b](https://x.org/a.md#y) [c](/a.md#z) [d](other.md)"), []);
+  });
+
+  test("ignores links written as code", () => {
+    assert.deepEqual(linkedAnchorsIn("`[a](a.md#x)`\n~~~\n[b](b.md#y)\n~~~\n[c](c.md#z)"), [["c.md", "z"]]);
   });
 });
 
