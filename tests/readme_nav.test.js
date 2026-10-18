@@ -96,6 +96,11 @@ describe("headingSlugs", () => {
   test("ignores headings inside a fenced block", () => {
     assert.deepEqual([...headingSlugs("# Real\n\n```\n## Quoted\n```\n")], ["real"]);
   });
+
+  test("reads a backtick line whose info string holds a backtick as text, not a fence", () => {
+    assert.deepEqual([...headingSlugs("```x``` text\n\n## After\n")], ["after"]);
+    assert.deepEqual([...headingSlugs("~~~ `js`\n## Hidden\n~~~\n## Shown\n")], ["shown"]);
+  });
 });
 
 describe("anchorsIn", () => {
@@ -110,6 +115,40 @@ describe("anchorsIn", () => {
   test("ignores links written as inline code or in a fenced block", () => {
     const md = "[a](#a) `[b](#b)` ``[c](#c) ` x`` and\n```md\n[d](#d)\n````\n[e](#e)\n";
     assert.deepEqual(anchorsIn(md), ["a", "e"]);
+  });
+
+  test("does not join the text around a removed code span into a link", () => {
+    assert.deepEqual(anchorsIn("[a]`x`(#b)"), []);
+  });
+
+  test("reads a backslash-escaped backtick as text, not as a code span", () => {
+    assert.deepEqual(anchorsIn("\\`[a](#a) [b](#b)`"), ["a", "b"]);
+    assert.deepEqual(anchorsIn("\\\\`[a](#a)` [b](#b)"), ["b"]);
+  });
+
+  test("ignores links in an indented code block, not in a paragraph or list it continues", () => {
+    assert.deepEqual(anchorsIn("Text\n\n    [a](#a)\n\n    [b](#b)\n\t[c](#c)\n[d](#d)\n"), ["d"]);
+    assert.deepEqual(anchorsIn("Text\n    [a](#a)\n"), ["a"]);
+    assert.deepEqual(anchorsIn("- item\n\n    [a](#a)\n\n      [b](#b)\n"), ["a"]);
+    assert.deepEqual(anchorsIn("- item\n\nText\n\n    [a](#a)\n"), []);
+  });
+
+  test("ignores Markdown links inside an HTML <code> element in an HTML block, nested ones included", () => {
+    assert.deepEqual(anchorsIn('<p>\n<code>[a](#a) <a href="#b">b</a></code> [c](#c)\n</p>'), ["b", "c"]);
+    assert.deepEqual(anchorsIn("<div><code>x <code>y</code> [a](#a)</code> [b](#b)"), ["b"]);
+    assert.deepEqual(anchorsIn("<code>\n[a](#a)\n</code>\n\n[b](#b)"), ["b"]);
+    assert.deepEqual(anchorsIn("<p><code>[a](#a)\n\n[b](#b)</code> <codex>[c](#c)</codex>"), ["a", "b", "c"]);
+  });
+
+  test("keeps links inside an inline HTML <code> element, which GitHub renders live", () => {
+    assert.deepEqual(anchorsIn("See <code>[a](#a)</code> and <code>x <code>[b](#b)</code></code>"), ["a", "b"]);
+    assert.deepEqual(anchorsIn("<code>[a](#a)</code> text"), ["a"]);
+  });
+
+  test("keeps links in a paragraph that continues a nested list item", () => {
+    assert.deepEqual(anchorsIn("- a\n    - b\n\n      [x](#x) more\n"), ["x"]);
+    assert.deepEqual(anchorsIn("  - a\n\n      - b\n\n        [x](#x)\n\n            [y](#y)\n"), ["x"]);
+    assert.deepEqual(anchorsIn("- a\n  - b\n\n  [x](#x)\n\n      [y](#y)\n"), ["x"]);
   });
 });
 
@@ -133,6 +172,24 @@ describe("navRegion", () => {
     const region = navRegion("[a](#a)\n\n## First\n\n[b](#b)\n");
     assert.match(region, /#a/);
     assert.doesNotMatch(region, /#b/);
+  });
+
+  test("does not stop at a fenced \"## \" line above the first section", () => {
+    const md = "```\n## Example\n```\n~~~\n## Another\n~~~\n[a](#a) [b](#b) [c](#c)\n\n## A\n## B\n## C\n";
+    assert.deepEqual(anchorsIn(navRegion(md)), ["a", "b", "c"]);
+    assert.deepEqual(checkMarkdown(md, "README.md"), []);
+  });
+
+  test("stops at a section indented by up to three spaces", () => {
+    const region = navRegion("[a](#a)\n\n   ## First\n\n[b](#b)\n");
+    assert.match(region, /#a/);
+    assert.doesNotMatch(region, /#b/);
+  });
+
+  test("does not lose the rest of the page to an inline \"```x```\" line", () => {
+    const md = "```x``` text [a](#a) [b](#b) [c](#c)\n\n## A\n## B\n## C\n";
+    assert.deepEqual(anchorsIn(navRegion(md)), ["a", "b", "c"]);
+    assert.deepEqual(checkMarkdown(md, "README.md"), []);
   });
 
   test("is the whole file when there are no sections", () => {
