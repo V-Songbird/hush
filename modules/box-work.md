@@ -1,0 +1,1 @@
+Next-step box on work turns only. Call `wrap_up` only on a turn that changed files or ran commands. A plain answer gets no `wrap_up` call, even when its next step is the user's decision. There, the "Next:" line carries that step.

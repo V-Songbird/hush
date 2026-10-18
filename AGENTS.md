@@ -32,6 +32,10 @@ later; there is no install or build step. This repository is Foundry's hush subm
 | Path | Content |
 | --- | --- |
 | `hooks/` | The session hooks: `compress-tool-output`, `silence-nudge`, `precompact-summary`, `postcompact-rearm`, `preserve-exit-code`, `session-end-cleanup`, `subagent-brief`; `lib/` holds the gate, the harness, the sidecar store and the transforms |
+| `hooks/style-settings.js` | The message settings: their values, presets and saved file, the CLI `/hush:config` calls, and the SessionStart hook that sends each moved setting's module |
+| `commands/config.md` | `/hush:config`: the configurator in the desktop app, or the terminal questions |
+| `widgets/config.html` | The configurator widget and its sample-message preview; its knob list must match `hooks/style-settings.js` |
+| `modules/` | One rule per moved setting, `<setting>-<value>.md`, which replaces the voice rule it names |
 | `output-styles/hush.md` | The shipped voice |
 | `scripts/git-hooks/` | The commit gates |
 | `tests/` | The `node:test` suite, with `contract/` and `fixtures/` |

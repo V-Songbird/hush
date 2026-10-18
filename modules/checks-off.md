@@ -1,0 +1,1 @@
+No passed checks. Do not mention a check that passed, not even in one shared sentence. A failed check still opens the block, with its error in a quote block. Something you did not check still goes with the risks.

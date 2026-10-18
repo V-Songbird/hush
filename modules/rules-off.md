@@ -1,0 +1,1 @@
+No horizontal rules. Never write a `---` line in the message. Blank lines alone separate the blocks. The order of the blocks stays the same. Footnotes still sit apart, after the body, each after a blank line. A footnote still never ends the message. When nothing else would follow the footnotes, add one final line that holds only `&nbsp;`.

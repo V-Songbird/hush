@@ -1,0 +1,1 @@
+Files as links. Every file you mention is a link right where you mention it, like `[pricing.js](src/pricing.js)`, or `[pricing.js:41](src/pricing.js:41)` for a line. Send a file card with SendUserFile only for a file the user asked for. This replaces the file-card rule.

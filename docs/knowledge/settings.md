@@ -5,13 +5,17 @@ related_files:
   - hooks/lib/gate.js
   - hooks/compress-tool-output.js
   - output-styles/hush.md
+  - commands/config.md
+  - hooks/style-settings.js
+  - modules/
+  - widgets/config.html
 ---
 
 # Settings
 
 Most people never touch any of this. hush trims one way, always: the first and last stretch of a
 long output plus every warning, error and failure line, and a digest with the full copy on disk for
-a very large one. There are no levels and no profiles to pick between. The caps tighten on their own
+a very large one. Trimming has no levels and no profiles to pick between. The caps tighten on their own
 as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-commands-output).
 
 ← [Back to the README](../../README.md)
@@ -78,6 +82,69 @@ run that same setup, add this line to `~/.claude/settings.json`:
   "outputStyle": "hush:Hush"
 }
 ```
+
+## Message settings
+
+`/hush:config` shapes the final message with eight choices: length, where you read, the next step,
+scanning aids, checks that passed, warnings, reading, and whether the box asks your decisions. Each
+choice sets one or more of the settings below. In the Claude desktop app it shows a configurator:
+the length as four moon phases, the other choices below, plus the Markdown level (none, essential
+or full) and whether files come as cards or links, and the sample message you would find when
+you come back, with its word count. A choice that changes nothing in the sample under your other
+choices is greyed out and says why. The save button asks Claude to run the save command. In a
+terminal it asks the same eight questions in two rounds. You can also describe what you want in
+your own words, as in `/hush:config only the result and the next step`; the configurator opens with
+those values, or the terminal shows them and asks before saving. Settings no choice covers, such as
+`why` and `records`, keep their saved values. It saves your choice in `~/.claude/hush/config.json`.
+Set `HUSH_CONFIG_FILE` to keep it somewhere else.
+
+| Preset | What you get |
+| --- | --- |
+| `standard` | Every setting at its default |
+| `minimal` | The bold result, the next step, and only blockers, pending approvals and unverified claims |
+| `explainer` | No next step, up to 300 words, terms explained in place, sentences up to 20 words |
+| `terminal` | Plain text for a terminal; the box never asks |
+
+| Setting | Values, default first | What changes |
+| --- | --- | --- |
+| `next` | `end`, `top`, `off` | Where the "Next:" line goes, or none; a decision only you can make still appears as a question |
+| `rules` | `on`, `off` | Whether horizontal rules separate the parts |
+| `detail` | `normal`, `short`, `full`, `bare` | About 150, 80 or 300 words outside code; `bare` keeps only the result, the next step and the floor |
+| `why` | `on`, `off` | The one sentence on what caused what |
+| `checks` | `line`, `each`, `off` | Passed checks in one sentence, a bullet each, or none |
+| `caveats` | `each`, `floor` | Every risk and limit, or only the floor with a link to the rest |
+| `records` | `line`, `off` | The closing line of docs and memory written |
+| `terms` | `footnote`, `inline`, `none` | How an unfamiliar term is explained |
+| `markdown` | `rich`, `basic`, `plain` | Every form the desktop app renders, common Markdown only, or terminal text |
+| `files` | `card`, `link` | A whole file comes as a file card above the message, or as a link in the text. A line in a file is always a link, because a card cannot point at a line. Without the desktop app's file tool, every file is a link |
+| `sentences` | `12`, `20` | Words per sentence, tops |
+| `headers` | `off`, `on` | A short bold header opens each block and names its kind, such as Checks, Warnings or Next step; with `emoji=on` the emoji sits in the header |
+| `emoji` | `off`, `on` | One emoji opens each block to show its kind: ✅ result, 💡 cause, 🔧 changes, 🧪 checks, ⚠️ risks, 🧭 recommendation, 📝 records, 👉 next step. Screen readers read each emoji's name aloud |
+| `box` | `decisions`, `work`, `text` | When the desktop app's next-step box asks: on any turn with a decision of yours, only after work, or never, leaving the step to the "Next:" line |
+
+The rest of the voice is fixed: quiet while it works, the bold result first, plain words, and links
+only to places it saw. No setting removes the floor: a blocker, a pending approval or an unverified
+claim always stays in the message. Each kind has its own place. Checks give room only to what did
+not pass: a failed check opens the block with its error quoted word for word, passed checks share
+one plain sentence, and anything left unchecked joins the risks and limits in prose. A pending
+approval goes in the next step. Checks carry no colors or marks, so they cannot be mistaken for a
+code diff. Failed and unchecked items stay under every `checks` value. The box exists only in the Claude desktop app; in a
+terminal the "Next:" line carries the step under any `box` value.
+
+The desktop app shows the message only when it comes after the next-step box's `wrap_up` call;
+text written before a tool call does not reach the reader as the message. A box that asks a
+question ends the turn with no message, so it asks only when its recap and question say
+everything. When the turn has more to say, the box carries the recap alone and the "Next:" line
+asks the question.
+
+A session-start hook hands a changed setting to the model as a short reminder. It also runs after
+compaction, so the setting survives a summary. With every setting at its default it adds nothing.
+Each setting replaces only the rule it names. `HUSH_DISABLE=1` stops the reminder too.
+
+From a terminal, `node hooks/style-settings.js show` prints the settings, `presets` prints the
+presets, `set preset=minimal next=top` applies a preset and then changes one setting, and `reset`
+returns every setting to its default. A broken or hand-edited file falls back to the
+defaults.
 
 ## Showing what hush kept out
 

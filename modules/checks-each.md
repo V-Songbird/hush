@@ -1,0 +1,1 @@
+Every passed check on its own line. List each check that passed as a plain bullet: the command or the place it checked, then its count. Passed checks no longer share one sentence. A failed check still opens the block, with its error in a quote block.

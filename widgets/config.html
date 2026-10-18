@@ -1,0 +1,140 @@
+<style>
+.w{--hu:#2C75A5;--hut:#2C75A5;--pb:#191C1B;--pt:#EEE9DE;--pm:#A9A496;--pl:rgba(238,233,222,.2);--pc:rgba(238,233,222,.08);--pa:#F2D9A6}@media (prefers-color-scheme:dark){.w{--hut:#79B6DE}}
+.w .pn{position:relative;overflow:hidden;background:var(--pb);color:var(--pt);border-radius:16px;padding:12px 14px 16px;min-width:0}.w .orn{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.w .in{position:relative}
+.w .sec{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--pm);margin:16px 0 0}.w .sec::after{content:"";flex:1;border-top:0.5px solid var(--pl)}.w .in>.sec:first-child{margin-top:0}
+.w .ph{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:12px;cursor:pointer;font-size:11px;color:var(--pm);text-align:center;line-height:1.25}.w .ph b{font-weight:500;font-size:12px;color:var(--pt)}
+.w .ph input,.w .o input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}.w .ph.on{background:var(--pc);outline:1.5px solid #EEE9DE}.w .ph.on b{color:var(--pa)}.w .ph:has(input:focus-visible),.w .o:has(input:focus-visible){outline:2px solid #EEE9DE;outline-offset:1px}
+.w .lab{font-size:12px;color:var(--pt);margin:10px 0 4px}
+.w .sg{display:grid;gap:3px;font-size:12px}
+.w .o{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;min-height:30px;padding:4px 6px;border:0.5px solid var(--pl);border-radius:8px;color:var(--pt);cursor:pointer}.w .o.on{background:var(--hu);border-color:var(--hu);color:#fff}
+.w .dis .o{cursor:not-allowed;color:var(--pm);border-style:dashed}.w .dis .o.on{background:var(--pc);border-color:var(--pl);color:var(--pt)}
+.w .nt{font-size:11px;color:var(--pm);margin-top:4px;display:flex;gap:4px;align-items:flex-start;line-height:1.35}.w .nt:empty{display:none}
+.w .lock{display:inline-flex;gap:5px;align-items:center;font-size:12px;padding:3px 10px;border-radius:999px;background:var(--pc);color:var(--pa)}
+.w .pv{font-size:14px;line-height:1.55}.w .pv p{margin:0 0 .55rem}.w .pv hr{border:0;border-top:0.5px solid var(--border-strong);margin:.6rem 0}.w .pv code{font-family:var(--font-mono);font-size:12px}.w .lk{color:var(--hut)}.w .fn{font-size:12px;color:var(--text-secondary)}.w .hh{display:block}.w .pv b{font-weight:500}
+.w .cd{display:inline-flex;gap:6px;align-items:center;padding:5px 10px;border:0.5px solid var(--border-strong);border-radius:10px;font-size:12px;font-family:var(--font-mono)}
+.w .term{border:0.5px solid var(--border-strong);border-radius:10px;overflow:hidden}.w .term .bar{display:flex;gap:5px;padding:6px 9px;border-bottom:0.5px solid var(--border)}.w .term .bar i{width:8px;height:8px;border-radius:50%;background:var(--border-stronger);display:block}.w .term .pv{font-family:var(--font-mono);font-size:12px;padding:.6rem .8rem}
+.w .box{border:0.5px solid var(--hu);border-radius:12px;padding:.5rem .7rem;margin-top:8px;font-size:13px}.w .bx1{color:var(--text-secondary)}.w .bx2{font-weight:500;margin-top:3px}.w .bt{display:flex;gap:6px;margin-top:6px}.w .bt span{padding:3px 10px;border-radius:var(--radius);border:0.5px solid var(--border-strong);font-size:12px}.w .bt .pri{background:var(--hu);color:#fff;border-color:var(--hu)}
+</style>
+<div class="w">
+<h2 class="sr-only" id="srt"></h2>
+<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin:.3rem 0 1rem;text-align:center">
+<div style="display:flex;align-items:center;gap:10px"><svg width="34" height="34" viewBox="0 0 128 128" aria-hidden="true"><g stroke="var(--text-primary)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M64 15Q100 14 111 43Q118 70 102 94Q86 114 60 112Q30 112 19 88Q10 62 22 38Q36 16 64 15Z" fill="#2c75a5"/><path d="M79 38A30 30 0 1 0 91 88A24 24 0 1 1 79 38Z" fill="#ffffff"/></g></svg><span style="font-size:24px;font-weight:500;color:var(--hut);font-family:var(--font-voice)">hush</span></div>
+<span style="font-size:13px;color:var(--text-secondary)" id="tag"></span>
+<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--hut);margin-top:4px"><span style="width:40px;border-top:0.5px solid var(--hut)"></span><i class="ti ti-moon-stars" aria-hidden="true"></i><span id="motto"></span><span style="width:40px;border-top:0.5px solid var(--hut)"></span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px">
+<div class="pn">
+<svg class="orn" viewBox="0 0 320 900" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><g fill="#EEE9DE"><circle cx="20" cy="30" r="1.2" opacity=".7"/><circle cx="300" cy="18" r="1.5" opacity=".8"/><circle cx="160" cy="10" r=".9" opacity=".6"/><circle cx="270" cy="240" r="1.1" opacity=".5"/><circle cx="12" cy="400" r="1.3" opacity=".6"/><circle cx="306" cy="520" r="1" opacity=".6"/><circle cx="40" cy="690" r="1.4" opacity=".5"/><circle cx="292" cy="760" r="1.2" opacity=".7"/></g><path d="M300 820a60 60 0 1 0 0 120a48 48 0 1 1 0-120z" fill="#EEE9DE" opacity=".1"/></svg>
+<div class="in">
+<p class="sec" id="s_len"></p>
+<div id="phases" role="radiogroup" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px"></div><div id="ctl"></div>
+<p class="lab" id="fl" style="margin-top:14px;color:var(--pm)"></p><div id="locks" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+</div></div>
+<div style="background:var(--surface-1);border-radius:16px;padding:1rem 1.1rem;align-self:start;min-width:0">
+<p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px;display:flex;gap:6px;align-items:center"><i class="ti ti-moon" aria-hidden="true"></i><span id="pl"></span></p>
+<div id="pv" aria-live="polite"></div>
+<div id="mt" style="display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:12px;padding-top:10px;border-top:0.5px dashed var(--border-strong);font-size:12px;color:var(--text-secondary)"></div>
+</div></div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:1rem;justify-content:center"><button id="sv"></button><button id="rs"></button></div>
+</div>
+<script>
+// /hush:config fills CUR with the saved settings (plus any values the user asked for in words) and ROOT with the plugin folder.
+const CUR={};
+const ROOT='';
+// Must match KNOBS in hooks/style-settings.js; tests/style_settings.test.js checks this line.
+const K={"next":["end","top","off"],"rules":["on","off"],"detail":["normal","short","full","bare"],"why":["on","off"],"checks":["line","each","off"],"caveats":["each","floor"],"records":["line","off"],"terms":["footnote","inline","none"],"markdown":["rich","basic","plain"],"files":["card","link"],"sentences":["12","20"],"emoji":["off","on"],"headers":["off","on"],"box":["decisions","work","text"]};
+// Every user-facing string. /hush:config translates the values into the user's language; nothing else changes.
+const T={
+ title:'Hush configurator: pick a length as a moon phase, set the rest in the night panel, and watch the message you will find when you come back.',tagline:'how much do you want to read when you come back?',motto:'for reading at night',
+ secLength:'Length',secFormat:'Format',secContent:'Content',secReading:'Reading',
+ length:'Length',lengthV:[['Minimum','result and step'],['Short','~80 words'],['Normal','~150 words'],['Full','~300, with evidence']],
+ where:'Where you read',whereV:['Desktop app','Other viewer','Terminal'],md:'Markdown',mdV:['No Markdown','Essential','Full'],mdRich:'Everything the desktop app draws: footnotes, cards, cause trees, math and keys.',
+ ask:'The box asks your decisions',askV:['Yes','No'],files:'Files',filesV:['Cards','Links'],next:'The next step',nextV:['Top','End','None'],
+ checks:'Checks that passed',checksV:['None','One sentence','Each one'],caveats:'Warnings',caveatsV:['All','Only the floor'],aids:'Scanning aids',aidsV:['None','Rules','Headers','Headers and emoji'],reading:'Level',readingV:['Plain','Standard','Expert'],
+ floorLabel:'Always stays, at any length',floor:['Blockers','Pending approvals','What I did not verify'],preview:'What you find when you come back',
+ words:'words',blocks:'blocks',longest:'longest sentence',std:'standard:',save:'Save these settings ↗',reset:'Back to standard',
+ whyAsk:'Only the desktop app has the box.',whyAskLong:'The box asks only when it carries the whole reply, as at Minimum.',whyFiles:'Only the desktop app shows file cards.',whyNext:'The box already carries the step.',whyBare:'The Minimum length already drops it.',whyReading:'It shows once the cause appears.',whyNone:'No effect with your other settings.',
+ hCause:'Cause',hChange:'Changes',hChecks:'Checks',hCaveats:'Warnings',hRec:'Recommendation',hRecords:'Notes',hNext:'Next step',
+ result:'The login test passes again.',nextWord:'Next:',nextTxt:'read {auth.js:58} and tell me whether to commit.',nextHd:'Read {auth.js:58} and tell me whether to commit.',ask2:'Shall I commit the fix?',
+ causeLong:'`verifyToken` read the expiry as text, so every TOKEN looked expired.',causeShort:'`verifyToken` read the expiry as text. Every TOKEN looked expired.',token:'token',termInline:' A token is the credential that proves you signed in.',termFn:'token: the credential that proves you signed in.',
+ changeLong:'I changed one line in {auth.js:58} to read the expiry as a number, and added {expiry.test.js}.',changeShort:'I changed one line in {auth.js:58} and added {expiry.test.js}.',changeFull:' The expiry arrived as text and was compared with a number. I ruled out the server clock.',
+ ckEach:'- `npm test`: 212 of 212<br>- `npm run lint`: no errors',ckLine:'`npm test` and `npm run lint` pass.',openProse:' The e2e tests did not run.',
+ cavLong:'I did not try a real login in the browser, so I do not know whether the cookie is kept.',cavShort:'I did not try a real login in the browser.',cavFloor:' I left 1 more risk in {login-fix.md}.',cavEach:' Nor did I check the dark theme of the error screen.',
+ rec:'I recommend adding a test for expired tokens.',recordsTxt:'I wrote the details in {login-fix.md}.',recRich:' The output is in the {npm test} tab.',
+ boxRecap:'The login passes again with a one-line change. The browser check and the commit are still missing.',boxYes:'Yes, commit',boxNo:'Not now',boxOnly:'The box is the whole reply. No message follows it.',
+ savePrompt:'Save my Hush settings: run node "{root}/hooks/style-settings.js" set {args}'};
+const D={};for(const k in K)D[k]=K[k][0];
+let base={...D};for(const k in CUR)if(K[k]&&K[k].includes(CUR[k]))base[k]=CUR[k];
+// Each control sets only its own knobs; a knob no control has touched keeps its saved value.
+const FK={where:['box'],md:['markdown'],ask:['box'],files:['files'],length:['detail'],next:['next'],checks:['checks'],caveats:['caveats'],aids:['rules','headers','emoji'],reading:['terms','sentences']};
+// Picking where you read also picks the Markdown that place renders; the Markdown control can then override it.
+const MDW={app:'rich',viewer:'basic',terminal:'plain'};
+function fieldKnobs(u){return{markdown:u.md,box:u.where==='app'&&u.ask?(base.box==='work'?'work':'decisions'):'text',files:u.files,detail:u.length,next:u.next,checks:u.checks,caveats:u.caveats,rules:u.aids==='none'?'off':'on',headers:u.aids==='headers'||u.aids==='emoji'?'on':'off',emoji:u.aids==='emoji'?'on':'off',terms:{plain:'inline',standard:'footnote',expert:'none'}[u.reading],sentences:u.reading==='expert'?'20':'12'}}
+function fromKnobs(k){return{where:k.box!=='text'||k.markdown==='rich'?'app':k.markdown==='basic'?'viewer':'terminal',md:k.markdown,ask:k.box!=='text',files:k.files,length:k.detail,next:k.next,checks:k.checks,caveats:k.caveats,aids:k.emoji==='on'?'emoji':k.headers==='on'?'headers':k.rules==='off'?'none':'rules',reading:k.terms==='inline'?'plain':k.terms==='none'?'expert':'standard'}}
+function knobs(u,t){const f=fieldKnobs(u),k={...base};t.forEach(x=>FK[x].forEach(y=>k[y]=f[y]));return k}
+const HN={cause:T.hCause,change:T.hChange,checks:T.hChecks,caveats:T.hCaveats,rec:T.hRec,records:T.hRecords,next:T.hNext};
+const wc=t=>(t.match(/[\p{L}\p{N}][\p{L}\p{N}.:_\-]*/gu)||[]).length,longestOf=t=>Math.max(...t.split(/(?<=[.?!])\s+|\n/).map(wc));
+function R(s){
+ const pl=s.markdown==='plain',rich=s.markdown==='rich',E=s.emoji==='on',HD=s.headers==='on',bare=s.detail==='bare',short=s.detail==='short',full=s.detail==='full',L=s.sentences==='20';
+ // The app shows no message after a box that asks, so the box asks only when it carries the whole reply: here, at the Minimum length.
+ if(s.box!=='text'&&bare){const t=T.boxRecap+' '+T.ask2;return{items:[],pl,cd:'',box:'<div class="box"><div class="bx1">'+T.boxRecap+'</div><div class="bx2">'+T.ask2+'</div><div class="bt"><span class="pri">'+T.boxYes+'</span><span>'+T.boxNo+'</span></div></div>',words:wc(t),blocks:1,longest:longestOf(t),sig:'box'}}
+ // A whole file ({name.ext}) becomes a card above the message in the desktop app; a line ({name.ext:N}) stays a link.
+ const cards=new Set(),card=rich&&s.files==='card';
+ const f=t=>t.replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\{([^}]+)\}/g,(m,x)=>pl?'<code>'+x+'</code>':card&&/\.\w+$/.test(x)?(cards.add(x),'<code>'+x+'</code>'):'<a class="lk">'+x+'</a>'),B=x=>'<b>'+x+'</b>';
+ const bl=[],add=(k,e,t)=>bl.push({k,e,t});
+ add('result','✅',B(T.result));
+ const nx=s.next==='off'?{k:'ask',e:'',t:T.ask2}:{k:'next',e:'👉',t:HD?f(T.nextHd):B(T.nextWord)+' '+f(T.nextTxt)};
+ const top=nx.k==='next'&&s.next==='top';if(top)bl.push(nx);
+ let fn='';
+ if(!bare&&s.why==='on'){let tw=T.token,tail='';if(s.terms==='footnote'&&rich){tw='<i>'+T.token+'</i><sup>1</sup>';fn='<sup>1</sup> '+T.termFn}else if(s.terms!=='none')tail=T.termInline;add('cause','💡',f((L?T.causeLong:T.causeShort).replace('TOKEN',tw))+tail)}
+ if(!bare)add('change','🔧',f(L&&!short?T.changeLong:T.changeShort)+(full?T.changeFull:''));
+ // Every check passed here, so the block holds only the passed sentence; what did not run joins the warnings.
+ if(!bare&&s.checks!=='off')add('checks','🧪',f(s.checks==='each'&&!short?T.ckEach:T.ckLine));
+ add('caveats','⚠️',(L?T.cavLong:T.cavShort)+T.openProse+(bare?'':s.caveats==='floor'?f(T.cavFloor):T.cavEach));
+ if(!bare&&!short)add('rec','🧭',T.rec);
+ if(!bare&&s.records==='line')add('records','📝',f(T.recordsTxt)+(rich?f(T.recRich):''));
+ if(fn)add('fn','',fn);
+ if(!top)bl.push(nx);
+ const rules=s.rules==='on'&&!pl,items=[];
+ bl.forEach((b,i)=>{const p=bl[i-1];let hr=false;
+  if(rules&&p){if(b.k==='next')hr=s.next==='end';else if(b.k==='fn')hr=!top;else if(b.k!=='ask'&&(p.k==='result'||p.k==='next'))hr=true}
+  if(hr)items.push({hr:1});
+  const ep=E&&b.e?b.e+' ':'';
+  items.push({k:b.k,html:HD&&HN[b.k]?'<span class="hh">'+B(ep+HN[b.k])+'</span>'+b.t:ep+b.t})});
+ const txt=bl.map(b=>b.t.replace(/<sup>1<\/sup>/g,'').replace(/<br>/g,'\n').replace(/<[^>]+>/g,'')).join('\n');
+ const cd=[...cards].map(x=>'<span class="cd"><i class="ti ti-file-text" aria-hidden="true"></i>'+x+'</span>').join('');
+ return{items,box:'',pl,cd,words:wc(txt),blocks:bl.length,longest:longestOf(txt),sig:JSON.stringify(items)+cd}}
+function view(r,term){
+ if(!r.items.length)return'<p class="fn" style="margin:0 0 6px">'+T.boxOnly+'</p>'+r.box;
+ const h=r.items.map(it=>it.hr?'<hr>':'<p'+(it.k==='fn'?' class="fn"':'')+'>'+it.html+'</p>').join('');
+ return(r.cd?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+r.cd+'</div>':'')+(term?'<div class="term"><div class="bar"><i></i><i></i><i></i></div><div class="pv">'+h+'</div></div>':'<div class="pv">'+h+'</div>')}
+const STD=R(D);
+let u=fromKnobs(base),touched=new Set(Object.keys(CUR).length?[]:Object.keys(FK));const $=id=>document.getElementById(id);
+const args=()=>{const k=knobs(u,touched);return['preset=standard',...Object.keys(D).filter(x=>k[x]!==D[x]).map(x=>x+'='+k[x])].join(' ')};
+const sigOf=(v,t)=>R(knobs(v,t)).sig+(v.where==='terminal');
+function inert(f,vals){const cur=sigOf(u,touched),t=new Set([...touched,f,...(f==='where'?['md']:[])]);return vals.filter(v=>v!==u[f]).every(v=>sigOf({...u,[f]:v,...(f==='where'?{md:MDW[v]}:{})},t)===cur)}
+function why(f){const k=knobs(u,touched);if(f==='ask'&&u.where!=='app')return T.whyAsk;if(f==='ask'&&k.detail!=='bare')return T.whyAskLong;if(f==='files'&&u.where!=='app')return T.whyFiles;if(f==='next'&&k.box!=='text'&&k.detail==='bare')return T.whyNext;if((f==='checks'||f==='caveats')&&k.detail==='bare')return T.whyBare;if(f==='reading')return T.whyReading;return T.whyNone}
+$('srt').textContent=T.title;$('tag').textContent=T.tagline;$('motto').textContent=T.motto;$('fl').textContent=T.floorLabel;$('pl').textContent=T.preview;$('sv').textContent=T.save;$('rs').textContent=T.reset;
+$('s_len').innerHTML='<i class="ti ti-ruler-measure" aria-hidden="true"></i>'+T.secLength;
+$('locks').innerHTML=T.floor.map(x=>'<span class="lock"><i class="ti ti-lock" aria-hidden="true"></i>'+x+'</span>').join('');
+const PH=[['bare',''],['short','M22 4a18 18 0 0 1 0 36a12 18 0 0 0 0-36z'],['normal','M22 4a18 18 0 0 1 0 36z'],['full','full']];
+$('phases').setAttribute('aria-label',T.length);
+$('phases').innerHTML=PH.map(([v,p],i)=>'<label class="ph" data-v="'+v+'"><input type="radio" name="len" value="'+v+'"><svg width="38" height="38" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18" fill="'+(p==='full'?'#EEE9DE':'none')+'" stroke="var(--pm)" stroke-width="1.5"/>'+(p&&p!=='full'?'<path d="'+p+'" fill="#EEE9DE"/>':'')+'</svg><b>'+T.lengthV[i][0]+'</b>'+T.lengthV[i][1]+'</label>').join('');
+$('phases').querySelectorAll('input').forEach(r=>r.onchange=()=>{u.length=r.value;touched.add('length');draw()});
+const CTL=[['where',['app','viewer','terminal'],'fmt'],['md',['plain','basic','rich'],'fmt'],['files',['card','link'],'fmt'],['aids',['none','rules','headers','emoji'],'fmt'],['ask',[true,false],'cnt'],['next',['top','end','off'],'cnt'],['checks',['off','line','each'],'cnt'],['caveats',['each','floor'],'cnt'],['reading',['plain','standard','expert'],'rd']];
+const SEC={fmt:['secFormat','ti-layout'],cnt:['secContent','ti-list-check'],rd:['secReading','ti-book']};
+$('ctl').innerHTML=CTL.map(([f,o,g],j)=>(j===0||CTL[j-1][2]!==g?'<p class="sec"><i class="ti '+SEC[g][1]+'" aria-hidden="true"></i>'+T[SEC[g][0]]+'</p>':'')+'<p class="lab" id="l_'+f+'">'+T[f]+'</p><div class="sg" id="g_'+f+'" role="radiogroup" aria-labelledby="l_'+f+'" style="grid-template-columns:repeat('+o.length+',minmax(0,1fr))">'+o.map((v,i)=>'<label class="o"><input type="radio" name="'+f+'" value="'+i+'">'+T[f+'V'][i]+'</label>').join('')+'</div><div class="nt" id="n_'+f+'"></div>').join('');
+CTL.forEach(([f,o])=>$('g_'+f).querySelectorAll('input').forEach(r=>r.onchange=()=>{u[f]=o[+r.value];touched.add(f);if(f==='where'){touched.add('ask');u.md=MDW[u.where];touched.add('md')}draw()}));
+function draw(){
+ $('phases').querySelectorAll('.ph').forEach(p=>{const on=p.dataset.v===u.length;p.classList.toggle('on',on);p.querySelector('input').checked=on});
+ CTL.forEach(([f,o])=>{const dead=inert(f,o);$('g_'+f).classList.toggle('dis',dead);
+  $('g_'+f).querySelectorAll('.o').forEach((x,i)=>{const on=o[i]===u[f];x.classList.toggle('on',on);const r=x.querySelector('input');r.checked=on;r.disabled=dead});
+  $('n_'+f).innerHTML=dead?'<i class="ti ti-lock" aria-hidden="true"></i>'+why(f):f==='md'&&u.md==='rich'?'<i class="ti ti-sparkles" aria-hidden="true"></i>'+T.mdRich:''});
+ const r=R(knobs(u,touched));$('pv').innerHTML=view(r,u.where==='terminal');
+ const b=n=>'<b style="font-weight:500;color:var(--text-primary)">'+n+'</b>';
+ $('mt').innerHTML='<span>'+b(r.words)+' '+T.words+'</span><span>'+b(r.blocks)+' '+T.blocks+'</span><span>'+T.longest+' '+b(r.longest)+'</span><span>'+T.std+' '+STD.words+' '+T.words+'</span>';
+}
+$('sv').onclick=()=>sendPrompt(T.savePrompt.replace('{root}',ROOT).replace('{args}',args()));
+$('rs').onclick=()=>{base={...D};u=fromKnobs(D);touched=new Set(Object.keys(FK));draw()};
+draw();
+</script>

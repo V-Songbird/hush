@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "What each hush hook does: the output trims, parked output, failing commands, the reminder, compaction, the subagent brief and the voice slot; read before changing a hook or the shipped voice."
+summary: "What each hush hook does: the output trims, parked output, failing commands, the reminder, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
 related_files:
   - hooks/
   - output-styles/hush.md
@@ -21,8 +21,8 @@ hush is two things that happen to fit together.
 **A writing voice.** One Markdown file that tells Claude to stay quiet between tool calls and then
 write one message at the end, in your language. That message opens with the result in one bold
 line, then the idea in one sentence, how it was checked, and one exact next step. A request with
-several parts, or for the long version, gets more blocks. There is no word cap, only a limit of 12
-words per sentence. Claude Code calls this an *output style*.
+several parts, or for the long version, gets more blocks. Most messages fit in about 150 words
+outside code, with at most 12 words per sentence. Claude Code calls this an *output style*.
 
 **A set of trims.** Small programs that run when a command finishes, and shorten what Claude has to
 read back.
@@ -245,6 +245,15 @@ and is re-sent on every turn after. So each subagent gets a short brief when it 
 findings themselves with no preamble and no offers of more help, mark what could not be confirmed and
 where it looked, and write nothing between tool calls.
 
+## Your message settings
+
+When a session starts, hush reads the settings `/hush:config` saved. Each setting you moved away
+from its default adds one short rule for Claude, from the plugin's `modules/` folder, and hush sends
+those rules together as one reminder. Each rule replaces only the part of the voice it names. With
+every setting at its default, hush sends nothing. The hook runs again after compaction, so your
+settings survive the summary. A missing or broken settings file falls back to the defaults.
+[Settings](settings.md#message-settings) lists every setting.
+
 ## Which hook does what
 
 | Hook | When it runs | What it does |
@@ -253,6 +262,7 @@ where it looked, and write nothing between tool calls.
 | `preserve-exit-code` | Before Bash and PowerShell | Keeps a failing command trimmable; see the section on failing commands |
 | `silence-nudge` | At each prompt and after each tool | The reminder |
 | `precompact-summary`, `postcompact-rearm` | Around compaction | Shapes the summary, then re-arms the note |
+| `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |
 | `session-end-cleanup` | When the session ends | Deletes the session's parked files |
 

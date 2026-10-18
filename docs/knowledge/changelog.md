@@ -11,6 +11,48 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+`/hush:config` lets you shape Claude's final message. In the Claude
+desktop app it opens a configurator: pick the length as one of four moon
+phases, set the other choices, and watch a sample message with its word
+count. A choice that changes nothing under your other choices is greyed
+out and says why. In a terminal it asks eight questions in two rounds. You
+can also describe what you want, as in
+`/hush:config only the result and the next step`. Your choice is saved in
+`~/.claude/hush/config.json`; set `HUSH_CONFIG_FILE` to keep it elsewhere.
+
+Behind those choices are 14 settings: where the `Next:` line goes or
+whether it appears, horizontal rules, length, the cause sentence, passed
+checks, warnings, the records line, term explanations, the Markdown level,
+files, sentence length, emoji, section headers and when the next-step box
+asks. Four presets set them all at once: `standard`, `minimal`,
+`explainer` and `terminal`. `node hooks/style-settings.js` shows, sets and
+resets them from a terminal. No setting removes a blocker, a pending
+approval or an unverified claim. See
+[Message settings](settings.md#message-settings).
+
+A new session-start hook, `style-settings`, hands each changed setting to
+Claude as a short reminder. It runs again after compaction, so a setting
+survives the summary. With every setting at its default it adds nothing,
+and `HUSH_DISABLE=1` stops it.
+
+In the desktop app a whole file Claude mentions now comes as a file card
+above the message; a line in a file stays a link. The `files=link` setting
+brings back links for every file.
+
+The default voice is reworked. Most messages now fit in about 150 words
+outside code, and risks, blockers, unverified claims and pending approvals
+never count toward that. A horizontal rule always follows the bold result,
+and the `Next:` line closes the message below its own rule. The message
+uses the Markdown forms the desktop app renders, such as footnotes for
+unfamiliar terms. Only checks that did not pass get room: a failed check
+quotes its error, passed checks share one sentence, and anything left
+unchecked joins the risks in prose. A pending approval goes in the next
+step. Claude writes the message after the next-step box; the box asks a
+question only when it carries the whole reply, and then no message
+follows. The published figures were measured on an earlier voice.
+
 ## 2.2.0 — 2026-10-13
 
 When you ask to understand something, Claude's final message no longer ends

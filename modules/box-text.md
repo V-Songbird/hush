@@ -1,0 +1,1 @@
+Next step in text only. The next-step box never asks. When you call `wrap_up`, send only `recap`: no `ask`, no `actions`, no `blocked`. Every message keeps its "Next:" line, even when the step is a decision only the user can make. Write that decision there as a plain question.

@@ -183,6 +183,13 @@ function cases() {
     writes: true,
     silentWhenEnabled: true, // deletion only, and SessionEnd output goes nowhere
   });
+  c.push({
+    name: 'style-settings.js',
+    session: freshSessionId(),
+    input: { hook_event_name: 'SessionStart', source: 'startup' },
+    // a moved knob, so the enabled run has a reminder to print
+    env: { HUSH_CONFIG_FILE: writeFixture('style-settings.json', JSON.stringify({ next: 'top' })) },
+  });
   return c;
 }
 
@@ -212,7 +219,7 @@ describe('HUSH_DISABLE=1 conformance across every hook', () => {
     test(`${label}: disabled emits nothing and touches no file`, () => {
       const temp = plantedTemp(c.session, 'off');
       const before = snapshot(temp);
-      const r = runHookIn(c.name, temp, c.input, { ...LOUD, HUSH_DISABLE: '1' });
+      const r = runHookIn(c.name, temp, c.input, { ...LOUD, ...c.env, HUSH_DISABLE: '1' });
       assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
       // No stdout at all is the whole contract in one assertion: every channel
       // a hook has — updated tool input or output, injected additional
@@ -224,7 +231,7 @@ describe('HUSH_DISABLE=1 conformance across every hook', () => {
     test(`${label}: the same payload is not inert when enabled`, () => {
       const temp = plantedTemp(c.session, 'on');
       const before = snapshot(temp);
-      const r = runHookIn(c.name, temp, c.input, LOUD);
+      const r = runHookIn(c.name, temp, c.input, { ...LOUD, ...c.env });
       assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
       const printed = (r.stdout || '') !== '';
       const touched = JSON.stringify(snapshot(temp)) !== JSON.stringify(before);
