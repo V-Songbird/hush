@@ -26,11 +26,11 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
-| `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminder and the subagent brief keep running. |
-| `HUSH_QUIET=off` | Stops the reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
-| `HUSH_NUDGE=off` | Stops only the reminder. |
-| `HUSH_NUDGE=max` | As quiet as hush gets. A reminder on every command result, whether or not anything slipped. Costs the most too. |
+| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no turn reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The turn reminder and the subagent brief keep running. |
+| `HUSH_QUIET=off` | Stops the turn reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
+| `HUSH_NUDGE=off` | Stops only the turn reminder. |
+| `HUSH_NUDGE=max` | As quiet as hush gets. A turn reminder on every command result, whether or not anything slipped. Costs the most too. |
 | `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold into one line and a count. |
@@ -43,7 +43,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
 what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off`
 also takes `0` or `false`, in any letter case, and ignores spaces around the value; the switches
-shown as `1` take only `1`, and ignore spaces around it too. With `HUSH_CORE=off`, the reminder's
+shown as `1` take only `1`, and ignore spaces around it too. With `HUSH_CORE=off`, the turn reminder's
 small per-session counter stays in your temp folder until your system clears it.
 
 ## Why `HUSH_WRAP` exists
@@ -103,7 +103,7 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 | Preset | What you get |
 | --- | --- |
 | `standard` | Every setting at its default |
-| `minimal` | The bold result, the next step, and only blockers, pending approvals and unverified claims |
+| `minimal` | The bold result, the next step, and only the floor: blockers, pending approvals, unverified claims, failed checks and anything left unchecked |
 | `explainer` | No next step, up to 300 words, terms explained in place, sentences up to 20 words |
 | `terminal` | Plain text for a terminal; the box never asks |
 
@@ -114,7 +114,7 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 | `detail` | `normal`, `short`, `full`, `bare` | About 150, 80 or 300 words outside code; `bare` keeps only the result, the next step and the floor |
 | `why` | `on`, `off` | The one sentence on what caused what |
 | `checks` | `line`, `each`, `off` | Passed checks in one sentence, a bullet each, or none |
-| `caveats` | `each`, `floor` | Every risk and limit, or only the floor with a link to the rest |
+| `caveats` | `each`, `floor` | Every risk and limit, or only the floor (blockers, pending approvals, unverified claims, anything left unchecked) with a link to the rest; under `detail=bare` there is no link |
 | `records` | `line`, `off` | The closing line of docs and memory written |
 | `terms` | `footnote`, `inline`, `none` | How an unfamiliar term is explained |
 | `markdown` | `rich`, `basic`, `plain` | Every form the desktop app renders, common Markdown only, or terminal text |
@@ -139,9 +139,9 @@ question ends the turn with no message, so it asks only when its recap and quest
 everything. When the turn has more to say, the box carries the recap alone and the "Next:" line
 asks the question.
 
-A session-start hook hands a changed setting to the model as a short reminder. It also runs after
+A session-start hook hands a changed setting to the model as a short settings reminder. It also runs after
 compaction, so the setting survives a summary. With every setting at its default it adds nothing.
-Each setting replaces only the rule it names. Only `HUSH_DISABLE=1` stops this reminder;
+Each setting replaces only the rule it names. Only `HUSH_DISABLE=1` stops this settings reminder;
 `HUSH_QUIET=off` does not.
 
 From a terminal, `node hooks/style-settings.js show` prints the settings, `presets` prints the

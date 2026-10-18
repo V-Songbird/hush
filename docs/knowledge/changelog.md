@@ -18,10 +18,9 @@ desktop app it opens a configurator: pick the length as one of four moon
 phases, set the other choices, and watch a sample message with its word
 count. A choice that changes nothing under your other choices is greyed
 out and says why. In a terminal it asks seven questions in two rounds, or
-eight if you read in the desktop app. You
-can also describe what you want, as in
-`/hush:config only the result and the next step`. Your choice is saved in
-`~/.claude/hush/config.json`; set `HUSH_CONFIG_FILE` to keep it elsewhere.
+eight if you read in the desktop app. You can also describe what you want,
+as in `/hush:config only the result and the next step`. Your choice is saved
+in `~/.claude/hush/config.json`; set `HUSH_CONFIG_FILE` to keep it elsewhere.
 
 Behind those choices are 14 settings: where the `Next:` line goes or
 whether it appears, horizontal rules, length, the cause sentence, passed

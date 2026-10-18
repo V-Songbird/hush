@@ -1,5 +1,5 @@
 ---
-description: Shape Hush's final message - a configurator with a live preview in the Claude desktop app, or eight short questions in a terminal; or describe what you want in your own words
+description: Shape Hush's final message - a configurator with a live preview in the Claude desktop app, or seven or eight short questions in a terminal; or describe what you want in your own words
 argument-hint: "[what you want, in your own words]"
 allowed-tools: AskUserQuestion, Read, Bash(node:*), PowerShell(node:*)
 ---
@@ -27,7 +27,7 @@ No setting removes a blocker, a pending approval or an unverified claim. If the 
 
    Without such a tool, as in a terminal, go to step 4.
 
-4. Ask the eight questions of the table in two AskUserQuestion calls, in the table's order: the first four, then the last four. Skip "The box asks your decisions" unless the answer to "Where you read" is the desktop app. Mark the option that matches the current settings with "(current)" in its label, and give every option a one-line description in the user's language. If step 2 mapped words, first show the values that would change, each with one plain line on what it does, and ask to save or adjust; on save go to step 5, on adjust ask the two calls.
+4. Ask the questions of the table, seven or eight, in two AskUserQuestion calls, in the table's order: the first four, then the rest. Skip "The box asks your decisions" unless the answer to "Where you read" is the desktop app, so the second call asks three or four. Mark the option that matches the current settings with "(current)" in its label, and give every option a one-line description in the user's language. If step 2 mapped words, first show the values that would change, each with one plain line on what it does, and ask to save or adjust; on save go to step 5, on adjust ask the two calls.
 
    | Question | Options, and the settings each one sets |
    | --- | --- |
@@ -36,7 +36,7 @@ No setting removes a blocker, a pending approval or an unverified claim. If the 
    | The next step | Top: `next=top`, right under the result. End: `next=end`, last, below a rule. None: `next=off`; a decision only the user can make still appears as a question. |
    | Scanning aids | None: `rules=off headers=off emoji=off`. Rules: `rules=on headers=off emoji=off`. Headers: `rules=on headers=on emoji=off`, a short bold header names each block. Headers and emoji: `rules=on headers=on emoji=on`, the header opens with an emoji for its kind; screen readers read each emoji's name aloud. |
    | Checks that passed | None: `checks=off`. One sentence: `checks=line`. Each one: `checks=each`, a bullet per check. Failed and unchecked items always stay. |
-   | Warnings | All: `caveats=each`. Only the floor: `caveats=floor`, blockers, pending approvals and unverified claims; the rest goes to a file the message links. |
+   | Warnings | All: `caveats=each`. Only the floor: `caveats=floor`, blockers, pending approvals, unverified claims and anything left unchecked; the rest goes to a file the message links. |
    | Reading | Plain: `terms=inline sentences=12`, terms explained in place. Standard: `terms=footnote sentences=12`. Expert: `terms=none sentences=20`, no term notes, longer sentences. |
    | The box asks your decisions | Yes: `box=decisions`, the desktop app's next-step box asks with buttons. No: `box=text`, the "Next:" line carries every step. |
 
