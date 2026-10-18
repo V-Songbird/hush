@@ -49,6 +49,7 @@ describe('style-settings: modules', () => {
       const text = fs.readFileSync(path.join(MODULES, f), 'utf-8');
       for (const item of ['blocker', 'pending approval', 'unverified claim']) assert.ok(text.includes(item), `${f} names ${item}`);
     }
+    assert.ok(fs.readFileSync(path.join(MODULES, 'detail-bare.md'), 'utf-8').includes('A failed check and anything left unchecked join the warnings prose.'));
   });
 
   test('emoji stays off by default and its module replaces the no-emoji rule', () => {
