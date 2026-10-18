@@ -38,6 +38,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | `HUSH_SUBAGENT=off` | Subagents start without hush's brief. |
 | `HUSH_DEBUG=1` | Writes a local record of what hush did to each command result: sizes in and out, and where the full copy went. It lands in `hush-debug-<session>.jsonl` in your system temp folder, outside the session's parked-output folder. hush never deletes these files: they stay until you remove them. |
 | `HUSH_WRAP=1` | Lets hush trim failing commands as well as passing ones. See below. |
+| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your [message settings](#message-settings) and the session-start hook reads them. The default is `~/.claude/hush/config.json`. |
 
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
 what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off`
