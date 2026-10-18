@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { HOOKS_DIR, SPAWN_TIMEOUT_MS } = require('./helpers');
-const { KNOBS, DEFAULTS, PRESETS, HEADER } = require('../hooks/style-settings');
+const { KNOBS, DEFAULTS, PRESETS, HEADER, parse } = require('../hooks/style-settings');
 
 const SCRIPT = path.join(HOOKS_DIR, 'style-settings.js');
 const MODULES = path.join(HOOKS_DIR, '..', 'modules');
@@ -214,6 +214,18 @@ describe('style-settings CLI', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(config, 'utf-8')), { ...PRESETS.minimal, next: 'top' });
     assert.ok(r.stdout.includes(fs.readFileSync(path.join(MODULES, 'detail-bare.md'), 'utf-8').trim()));
     assert.ok(!r.stdout.includes('No horizontal rules'));
+  });
+
+  test('parse rejects a malformed pair, an inherited name or an untrimmed one, and changes nothing', () => {
+    const bad = ['next', 'next=top=end', '=top', 'next=', '=', '', ' next=top', 'next= top', 'next =top',
+      'constructor=x', 'toString=x', '__proto__=x', 'hasOwnProperty=on', 'preset=constructor', 'preset=toString',
+      'preset=__proto__', 'preset=', 'next=toString', 'next=constructor'];
+    for (const pair of bad) {
+      const { settings, errors } = parse([pair], DEFAULTS);
+      assert.strictEqual(errors.length, 1, JSON.stringify(pair));
+      assert.deepStrictEqual(settings, DEFAULTS, JSON.stringify(pair));
+    }
+    assert.deepStrictEqual(parse(['next=top', 'preset=minimal', 'why=on'], DEFAULTS), { settings: { ...PRESETS.minimal, why: 'on' }, errors: [] });
   });
 
   test('set rejects an unknown preset and writes nothing', () => {

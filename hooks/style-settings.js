@@ -80,11 +80,13 @@ function parse(pairs, base) {
   const settings = { ...base };
   const errors = [];
   for (const pair of pairs) {
-    const [k, v] = pair.split("=");
-    if (k === "preset") {
-      if (PRESETS[v]) Object.assign(settings, PRESETS[v]);
+    const parts = pair.split("=");
+    const [k, v] = parts;
+    if (parts.length !== 2) errors.push(`"${pair}" is not one knob=value pair`);
+    else if (k === "preset") {
+      if (Object.hasOwn(PRESETS, v)) Object.assign(settings, PRESETS[v]);
       else errors.push(`preset takes ${Object.keys(PRESETS).join(" | ")}, not "${v}"`);
-    } else if (!KNOBS[k]) errors.push(`unknown knob "${k}"; knobs: ${Object.keys(KNOBS).join(", ")}`);
+    } else if (!Object.hasOwn(KNOBS, k)) errors.push(`unknown knob "${k}"; knobs: ${Object.keys(KNOBS).join(", ")}`);
     else if (!KNOBS[k].includes(v)) errors.push(`${k} takes ${KNOBS[k].join(" | ")}, not "${v}"`);
     else settings[k] = v;
   }

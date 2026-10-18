@@ -28,7 +28,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminder and the subagent brief keep running. |
-| `HUSH_QUIET=off` | Stops the reminder and the subagent brief. The trims keep running, and so does the writing voice. |
+| `HUSH_QUIET=off` | Stops the reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
 | `HUSH_NUDGE=off` | Stops only the reminder. |
 | `HUSH_NUDGE=max` | As quiet as hush gets. A reminder on every command result, whether or not anything slipped. Costs the most too. |
 | `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
@@ -92,7 +92,8 @@ the length as four moon phases, the other choices below, plus the Markdown level
 or full) and whether files come as cards or links, and the sample message you would find when
 you come back, with its word count. A choice that changes nothing in the sample under your other
 choices is greyed out and says why. The save button asks Claude to run the save command. In a
-terminal it asks the same eight questions in two rounds. You can also describe what you want in
+terminal it asks the same questions in two rounds, and skips the box question unless you say you
+read in the desktop app: seven questions, or eight. You can also describe what you want in
 your own words, as in `/hush:config only the result and the next step`; the configurator opens with
 those values, or the terminal shows them and asks before saving. Settings no choice covers, such as
 `why` and `records`, keep their saved values. It saves your choice in `~/.claude/hush/config.json`.
@@ -139,7 +140,8 @@ asks the question.
 
 A session-start hook hands a changed setting to the model as a short reminder. It also runs after
 compaction, so the setting survives a summary. With every setting at its default it adds nothing.
-Each setting replaces only the rule it names. `HUSH_DISABLE=1` stops the reminder too.
+Each setting replaces only the rule it names. Only `HUSH_DISABLE=1` stops this reminder;
+`HUSH_QUIET=off` does not.
 
 From a terminal, `node hooks/style-settings.js show` prints the settings, `presets` prints the
 presets, `set preset=minimal next=top` applies a preset and then changes one setting, and `reset`

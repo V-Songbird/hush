@@ -20,7 +20,8 @@ hush is two things that happen to fit together.
 
 **A writing voice.** One Markdown file that tells Claude to stay quiet between tool calls and then
 write one message at the end, in your language. That message opens with the result in one bold
-line, then the idea in one sentence, how it was checked, and one exact next step. A request with
+line, then the cause in one sentence. Only checks that did not pass get room; passed checks share
+one sentence. One exact next step closes the message, below its own rule. A request with
 several parts, or for the long version, gets more blocks. Most messages fit in about 150 words
 outside code, with at most 12 words per sentence. Claude Code calls this an *output style*.
 
