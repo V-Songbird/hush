@@ -9,8 +9,7 @@
 // nothing. A moved knob maps to one text, modules/<knob>-<value>.md, and
 // the hook sends those texts under one header. No knob can remove the
 // floor: a blocker, a pending approval, an unverified claim or anything
-// left unchecked. The header
-// and the style file both say so.
+// left unchecked. The header and the style file both say so.
 //
 // A preset sets every knob at once; pairs after it on the same line win.
 //

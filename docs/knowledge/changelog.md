@@ -29,7 +29,7 @@ files, sentence length, emoji, section headers and when the next-step box
 asks. Four presets set them all at once: `standard`, `minimal`,
 `explainer` and `terminal`. `node hooks/style-settings.js` shows, sets and
 resets them from a terminal. No setting removes a blocker, a pending
-approval or an unverified claim. See
+approval, an unverified claim or anything left unchecked. See
 [Message settings](settings.md#message-settings).
 
 A new session-start hook, `style-settings`, hands each changed setting to

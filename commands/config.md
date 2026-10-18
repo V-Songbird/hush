@@ -46,7 +46,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" set detail=short next=top`
 
-6. The command prints the reminder future sessions will receive. Follow it from your next message on. It also loads at the start of every new session and after compaction.
+6. The command prints the settings reminder future sessions will receive. Follow it from your next message on. It also loads at the start of every new session and after compaction.
 
 7. Reply with the values that differ from the default. Say how to undo them:
 
