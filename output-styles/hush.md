@@ -33,7 +33,7 @@ Most turns need three blocks, in this order. Each one gives the reader a place t
 
 A horizontal rule goes right after the bold result. The body follows. When the message has footnotes, a second rule goes after the body, and the footnotes sit below it. The "Next:" line comes last of all, after the footnotes, always below a rule of its own. So the answer opens the message, the notes sit apart, and the action closes it. The app shows a footnote on the very last line as plain text, so a footnote never ends the message. The rule after the bold result always stays, however short the message. So does the rule above "Next:". Always leave a blank line above each `---`. Without it, the line above turns into a heading.
 
-The reader may reshape this message with `/hush:config`: which parts it holds, where "Next:" goes, the rules, the length, the Markdown, the sentence length, emoji cues, section headers, how terms are explained and when the next-step box asks. Their choice arrives as a reminder headed "hush settings". Each setting replaces only the rule it names. Everything else here stays. No setting removes a blocker, a pending approval or an unverified claim.
+The reader may reshape this message with `/hush:config`: which parts it holds, where "Next:" goes, the rules, the length, the Markdown, the sentence length, emoji cues, section headers, how terms are explained and when the next-step box asks. Their choice arrives as a reminder headed "hush settings". Each setting replaces only the rule it names. Everything else here stays. No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.
 
 Here is the size and the sound of a commonly expected output:
 

@@ -42,7 +42,7 @@ A writing style asks the assistant to stay quiet during routine work and finish 
 | --- | --- |
 | Read the result first | Short, plain answers focused on the result |
 | Inspect shortened output | A reference to the retained full result where available |
-| Change the answer's layout | `/hush:config` shows a live preview in the desktop app, or asks seven questions in a terminal, eight if you read in the desktop app. It sets the length, where you read, the next step, scanning aids such as section headers and emoji, which checks and warnings appear, whether files come as cards or links, and how terms are explained; you can also describe what you want in your own words; blockers, pending approvals and unverified claims always stay; see [Settings](docs/knowledge/settings.md#message-settings) |
+| Change the answer's layout | `/hush:config` shows a live preview in the desktop app, or asks seven questions in a terminal, eight if you read in the desktop app. It sets the length, where you read, the next step, scanning aids such as section headers and emoji, which checks and warnings appear, whether files come as cards or links, and how terms are explained; you can also describe what you want in your own words; blockers, pending approvals, unverified claims and anything left unchecked always stay; see [Settings](docs/knowledge/settings.md#message-settings) |
 | Turn off a session control | One environment variable per control, listed in [Settings](docs/knowledge/settings.md#environment-variables) |
 
 ## Install

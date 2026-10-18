@@ -8,7 +8,8 @@
 // silent until a knob moves: a user who never runs the command pays
 // nothing. A moved knob maps to one text, modules/<knob>-<value>.md, and
 // the hook sends those texts under one header. No knob can remove the
-// floor: a blocker, a pending approval or an unverified claim. The header
+// floor: a blocker, a pending approval, an unverified claim or anything
+// left unchecked. The header
 // and the style file both say so.
 //
 // A preset sets every knob at once; pairs after it on the same line win.
@@ -56,7 +57,7 @@ const PRESETS = {
 };
 const MODULES = path.join(__dirname, "..", "modules");
 const HEADER =
-  "hush settings, chosen by the user with /hush:config. Each one replaces only the rule it names. The rest of the Hush style stays. No setting removes a blocker, a pending approval or an unverified claim.";
+  "hush settings, chosen by the user with /hush:config. Each one replaces only the rule it names. The rest of the Hush style stays. No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.";
 
 function configPath() {
   return process.env.HUSH_CONFIG_FILE || path.join(os.homedir(), ".claude", "hush", "config.json");

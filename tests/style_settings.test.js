@@ -42,12 +42,12 @@ describe('style-settings: modules', () => {
   });
 
   test('the floor is in the style file and the header, and no module drops it', () => {
-    const floor = 'No setting removes a blocker, a pending approval or an unverified claim.';
+    const floor = 'No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.';
     assert.ok(fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8').includes(floor));
     assert.ok(HEADER.includes(floor));
     for (const f of ['caveats-floor.md', 'detail-bare.md']) {
       const text = fs.readFileSync(path.join(MODULES, f), 'utf-8');
-      for (const item of ['blocker', 'pending approval', 'unverified claim']) assert.ok(text.includes(item), `${f} names ${item}`);
+      for (const item of ['blocker', 'pending approval', 'unverified claim', 'anything left unchecked']) assert.ok(text.includes(item), `${f} names ${item}`);
     }
     assert.ok(fs.readFileSync(path.join(MODULES, 'detail-bare.md'), 'utf-8').includes('A failed check and anything left unchecked join the warnings prose.'));
   });

@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "What each hush hook does: the output trims, parked output, failing commands, the reminder, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
+summary: "What each hush hook does: the output trims, parked output, failing commands, the turn reminder, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
 related_files:
   - hooks/
   - output-styles/hush.md
@@ -211,7 +211,7 @@ why the benchmark numbers were measured with `HUSH_WRAP=1`.
 grants. Under scoped allow rules such as `Bash(node*)`, Claude Code denies every wrapped command.
 [Settings](settings.md#why-hush_wrap-exists) has the details.
 
-## The reminder
+## The turn reminder
 
 A writing rule read once at the start of a session fades as the session gets long. So hush repeats
 itself, but only when it has to.
@@ -250,7 +250,7 @@ where it looked, and write nothing between tool calls.
 
 When a session starts, hush reads the settings `/hush:config` saved. Each setting you moved away
 from its default adds one short rule for Claude, from the plugin's `modules/` folder, and hush sends
-those rules together as one reminder. Each rule replaces only the part of the voice it names. With
+those rules together as one settings reminder. Each rule replaces only the part of the voice it names. With
 every setting at its default, hush sends nothing. The hook runs again after compaction, so your
 settings survive the summary. A missing or broken settings file falls back to the defaults.
 [Settings](settings.md#message-settings) lists every setting.
@@ -261,7 +261,7 @@ settings survive the summary. A missing or broken settings file falls back to th
 | --- | --- | --- |
 | `compress-tool-output` | After Bash, PowerShell, Read and Grep | The trims above |
 | `preserve-exit-code` | Before Bash and PowerShell | Keeps a failing command trimmable; see the section on failing commands |
-| `silence-nudge` | At each prompt and after each tool | The reminder |
+| `silence-nudge` | At each prompt and after each tool | The turn reminder |
 | `precompact-summary`, `postcompact-rearm` | Around compaction | Shapes the summary, then re-arms the note |
 | `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |

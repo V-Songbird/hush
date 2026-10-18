@@ -6,7 +6,7 @@ allowed-tools: AskUserQuestion, Read, Bash(node:*), PowerShell(node:*)
 
 Help the user shape their Hush message. Speak in the user's language.
 
-No setting removes a blocker, a pending approval or an unverified claim. If the user asks for that, say so in one line, and offer "Warnings: only the floor", the closest choice.
+No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked. If the user asks for that, say so in one line, and offer "Warnings: only the floor", the closest choice.
 
 1. Read the current settings:
 

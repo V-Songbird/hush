@@ -74,8 +74,8 @@ Installing hush does not write Claude Code's **Output style** setting, and the v
 it: the plugin marks its voice to apply whenever the plugin is enabled, so it is active from your next
 session either way.
 
-The setting still changes one thing. When `outputStyle` names hush, Claude Code also adds a short
-reminder on every turn that the style is active. Every published number was measured with it set. To
+The setting still changes one thing. When `outputStyle` names hush, Claude Code also adds its own short
+reminder on every turn that the style is active, apart from hush's turn reminder. Every published number was measured with it set. To
 run that same setup, add this line to `~/.claude/settings.json`:
 
 ```json
@@ -125,8 +125,8 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 | `box` | `decisions`, `work`, `text` | When the desktop app's next-step box asks: on any turn with a decision of yours, only after work, or never, leaving the step to the "Next:" line |
 
 The rest of the voice is fixed: quiet while it works, the bold result first, plain words, and links
-only to places it saw. No setting removes the floor: a blocker, a pending approval or an unverified
-claim always stays in the message. Each kind has its own place. Checks give room only to what did
+only to places it saw. No setting removes the floor: a blocker, a pending approval, an unverified
+claim or anything left unchecked always stays in the message. Each kind has its own place. Checks give room only to what did
 not pass: a failed check opens the block with its error quoted word for word, passed checks share
 one plain sentence, and anything left unchecked joins the risks and limits in prose. A pending
 approval goes in the next step. Checks carry no colors or marks, so they cannot be mistaken for a
