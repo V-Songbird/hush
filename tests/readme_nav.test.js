@@ -133,6 +133,12 @@ describe("anchorsIn", () => {
     assert.deepEqual(anchorsIn("- item\n\nText\n\n    [a](#a)\n"), []);
   });
 
+  test("expands a tab to the next tab stop when measuring indentation", () => {
+    // Two spaces and a tab reach column 4, not 6, so this stays a list paragraph.
+    assert.deepEqual(anchorsIn("- item\n\n  \t[a](#a)\n"), ["a"]);
+    assert.deepEqual(anchorsIn("- item\n\n \t \t[a](#a)\n"), []);
+  });
+
   test("ignores Markdown links inside an HTML <code> element in an HTML block, nested ones included", () => {
     assert.deepEqual(anchorsIn('<p>\n<code>[a](#a) <a href="#b">b</a></code> [c](#c)\n</p>'), ["b", "c"]);
     assert.deepEqual(anchorsIn("<div><code>x <code>y</code> [a](#a)</code> [b](#b)"), ["b"]);

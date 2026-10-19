@@ -63,7 +63,7 @@ function linesOutsideFences(markdown) {
       continue;
     }
     if (fence) { lines.push(""); continue; }
-    const indent = line.replace(/\t/g, "    ").search(/\S/);
+    const indent = line.replace(/^[ \t]+/, (ws) => { let col = 0; for (const c of ws) col += c === "\t" ? 4 - col % 4 : 1; return " ".repeat(col); }).search(/\S/);
     if (indent === -1) { lines.push(line); blank = true; continue; }
     if ((code || blank) && indent >= (lists.at(-1) ?? 0) + 4) { lines.push(""); code = true; continue; }
     const item = line.match(/^( *)([-+*]|\d{1,9}[.)])( {1,4})\S/);
