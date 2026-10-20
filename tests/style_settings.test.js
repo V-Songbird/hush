@@ -108,6 +108,14 @@ describe('style-settings: modules', () => {
     }
   });
 
+  test('the default detail budget is 250 words and full is 400', () => {
+    const root = path.join(HOOKS_DIR, '..');
+    assert.strictEqual(DEFAULTS.detail, 'normal');
+    assert.ok(fs.readFileSync(path.join(root, 'output-styles', 'hush.md'), 'utf-8').includes('fit in 250 words outside code'));
+    assert.ok(fs.readFileSync(path.join(MODULES, 'detail-full.md'), 'utf-8').includes('reach 400 words outside code, not 250'));
+    assert.ok(fs.readFileSync(path.join(MODULES, 'detail-short.md'), 'utf-8').includes('fit in 80 words outside code, not 250'));
+  });
+
   test('every preset sets every knob to a known value', () => {
     for (const [name, preset] of Object.entries(PRESETS)) {
       assert.deepStrictEqual(Object.keys(preset), Object.keys(KNOBS), name);

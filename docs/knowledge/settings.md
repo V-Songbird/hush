@@ -104,7 +104,7 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 | --- | --- |
 | `standard` | Every setting at its default |
 | `minimal` | The bold result, the next step, and only the floor: blockers, pending approvals, unverified claims, failed checks and anything left unchecked |
-| `explainer` | No next step, up to 300 words, terms explained in place, sentences up to 20 words |
+| `explainer` | No next step, up to 400 words, terms explained in place, sentences up to 20 words |
 | `terminal` | Plain text for a terminal; the box never asks |
 
 | Setting | Values, default first | What changes |
