@@ -11,25 +11,25 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.3.0 — 2026-10-20
 
 `/hush:config` lets you shape Claude's final message. In the Claude
-desktop app it opens a configurator: pick the length as one of four moon
-phases, set the other choices, and watch a sample message with its word
-count. A choice that changes nothing under your other choices is greyed
-out and says why. In a terminal it asks seven questions in two rounds, or
-eight if you read in the desktop app. You can also describe what you want,
-as in `/hush:config only the result and the next step`. Your choice is saved
-in `~/.claude/hush/config.json`; set `HUSH_CONFIG_FILE` to keep it elsewhere.
+desktop app it opens a configurator: pick the length as a moon phase, set
+the other choices, and watch a sample message with its word count. A
+choice that changes nothing under your other choices is greyed out and
+says why. In a terminal it asks the same questions in two rounds. You can
+also describe what you want, as in
+`/hush:config only the result and the next step`. Your choice is saved in
+`~/.claude/hush/config.json`; set `HUSH_CONFIG_FILE` to keep it elsewhere.
 
-Behind those choices are 14 settings: where the `Next:` line goes or
-whether it appears, horizontal rules, length, the cause sentence, passed
-checks, warnings, the records line, term explanations, the Markdown level,
-files, sentence length, emoji, section headers and when the next-step box
-asks. Four presets set them all at once: `standard`, `minimal`,
-`explainer` and `terminal`. `node hooks/style-settings.js` shows, sets and
-resets them from a terminal. No setting removes a blocker, a pending
-approval, an unverified claim or anything left unchecked. See
+The settings cover where the `Next:` line goes or whether it appears,
+horizontal rules, length, the cause sentence, passed checks, warnings, the
+records line, term explanations, the Markdown level, files, sentence
+length, emoji, section headers and when the next-step box asks. The
+presets `standard`, `minimal`, `explainer` and `terminal` set them all at
+once. `node hooks/style-settings.js` shows, sets and resets them from a
+terminal. No setting removes a blocker, a pending approval, an unverified
+claim or anything left unchecked. See
 [Message settings](settings.md#message-settings).
 
 A new session-start hook, `style-settings`, hands each changed setting to
@@ -43,7 +43,8 @@ brings back links for every file.
 
 The default voice is reworked. Most messages now fit in about 250 words
 outside code, and risks, blockers, unverified claims and pending approvals
-never count toward that. A horizontal rule always follows the bold result,
+never count toward that. `detail=short` keeps messages to about 80 words,
+and `detail=full` allows up to 400. A horizontal rule always follows the bold result,
 and the `Next:` line closes the message below its own rule. The message
 uses the Markdown forms the desktop app renders, such as footnotes for
 unfamiliar terms. Only checks that did not pass get room: a failed check
@@ -53,8 +54,10 @@ step. Claude writes the message after the next-step box; the box asks a
 question only when it carries the whole reply, and then no message
 follows. The published figures were measured on an earlier voice.
 
-The README nav check now recognises a nested list item indented with a tab,
-so a link in a paragraph under it is no longer skipped as code.
+For contributors: the README nav check no longer reads a link written in
+inline code or a code block as a real link. It also recognises a nested list
+item indented with a tab, so a link in a paragraph under it is no longer
+skipped as code.
 
 ## 2.2.0 — 2026-10-13
 
