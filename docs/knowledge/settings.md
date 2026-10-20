@@ -111,7 +111,7 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 | --- | --- | --- |
 | `next` | `end`, `top`, `off` | Where the "Next:" line goes, or none; a decision only you can make still appears as a question |
 | `rules` | `on`, `off` | Whether horizontal rules separate the parts |
-| `detail` | `normal`, `short`, `full`, `bare` | About 150, 80 or 300 words outside code; `bare` keeps only the result, the next step and the floor |
+| `detail` | `normal`, `short`, `full`, `bare` | About 250, 80 or 400 words outside code; `bare` keeps only the result, the next step and the floor |
 | `why` | `on`, `off` | The one sentence on what caused what |
 | `checks` | `line`, `each`, `off` | Passed checks in one sentence, a bullet each, or none |
 | `caveats` | `each`, `floor` | Every risk and limit, or only the floor (blockers, pending approvals, unverified claims, anything left unchecked) with a link to the rest; under `detail=bare` there is no link |

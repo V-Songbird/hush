@@ -22,7 +22,7 @@ hush is two things that happen to fit together.
 write one message at the end, in your language. That message opens with the result in one bold
 line, then the cause in one sentence. Only checks that did not pass get room; passed checks share
 one sentence. One exact next step closes the message, below its own rule. A request with
-several parts, or for the long version, gets more blocks. Most messages fit in about 150 words
+several parts, or for the long version, gets more blocks. Most messages fit in about 250 words
 outside code, with at most 12 words per sentence. Claude Code calls this an *output style*.
 
 **A set of trims.** Small programs that run when a command finishes, and shorten what Claude has to

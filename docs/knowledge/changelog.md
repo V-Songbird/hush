@@ -41,7 +41,7 @@ In the desktop app a whole file Claude mentions now comes as a file card
 above the message; a line in a file stays a link. The `files=link` setting
 brings back links for every file.
 
-The default voice is reworked. Most messages now fit in about 150 words
+The default voice is reworked. Most messages now fit in about 250 words
 outside code, and risks, blockers, unverified claims and pending approvals
 never count toward that. A horizontal rule always follows the bold result,
 and the `Next:` line closes the message below its own rule. The message

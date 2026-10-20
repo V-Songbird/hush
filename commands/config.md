@@ -31,7 +31,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    | Question | Options, and the settings each one sets |
    | --- | --- |
-   | Length | Minimum: `detail=bare`, only the result, the next step and what always stays. Short: `detail=short`, about 80 words. Normal: `detail=normal`, about 150. Full: `detail=full`, up to 300, with the evidence. |
+   | Length | Minimum: `detail=bare`, only the result, the next step and what always stays. Short: `detail=short`, about 80 words. Normal: `detail=normal`, about 250. Full: `detail=full`, up to 400, with the evidence. |
    | Where you read | Desktop app, file cards: `markdown=rich files=card`, a whole file comes as a card above the message. Desktop app, links: `markdown=rich files=link`, every file is a link in the text. Other viewer: `markdown=basic box=text`, common Markdown only. Terminal: `markdown=plain box=text`, plain text. A line in a file is always a link, and other viewers and terminals have no cards, so their options keep `files` as it is. |
    | The next step | Top: `next=top`, right under the result. End: `next=end`, last, below a rule. None: `next=off`; a decision only the user can make still appears as a question. |
    | Scanning aids | None: `rules=off headers=off emoji=off`. Rules: `rules=on headers=off emoji=off`. Headers: `rules=on headers=on emoji=off`, a short bold header names each block. Headers and emoji: `rules=on headers=on emoji=on`, the header opens with an emoji for its kind; screen readers read each emoji's name aloud. |
