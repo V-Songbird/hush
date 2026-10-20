@@ -53,6 +53,9 @@ step. Claude writes the message after the next-step box; the box asks a
 question only when it carries the whole reply, and then no message
 follows. The published figures were measured on an earlier voice.
 
+The README nav check now recognises a nested list item indented with a tab,
+so a link in a paragraph under it is no longer skipped as code.
+
 ## 2.2.0 — 2026-10-13
 
 When you ask to understand something, Claude's final message no longer ends

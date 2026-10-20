@@ -156,6 +156,10 @@ describe("anchorsIn", () => {
     assert.deepEqual(anchorsIn("  - a\n\n      - b\n\n        [x](#x)\n\n            [y](#y)\n"), ["x"]);
     assert.deepEqual(anchorsIn("- a\n  - b\n\n  [x](#x)\n\n      [y](#y)\n"), ["x"]);
   });
+
+  test("recognises a tab-indented nested list item", () => {
+    assert.deepEqual(anchorsIn("- a\n\t- b\n\n      [x](#x)\n\n              [y](#y)\n"), ["x"]);
+  });
 });
 
 describe("linkedAnchorsIn", () => {
