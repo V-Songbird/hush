@@ -66,9 +66,13 @@ function linesOutsideFences(markdown) {
     const indent = line.replace(/^[ \t]+/, (ws) => { let col = 0; for (const c of ws) col += c === "\t" ? 4 - col % 4 : 1; return " ".repeat(col); }).search(/\S/);
     if (indent === -1) { lines.push(line); blank = true; continue; }
     if ((code || blank) && indent >= (lists.at(-1) ?? 0) + 4) { lines.push(""); code = true; continue; }
-    const item = line.match(/^([ \t]*)([-+*]|\d{1,9}[.)])( {1,4})\S/);
+    const item = line.match(/^(?:[ \t]*)([-+*]|\d{1,9}[.)])( {1,4}|\t)\S/);
     if (item || blank) while (indent < lists.at(-1)) lists.pop();
-    if (item && indent <= (lists.at(-1) ?? 0) + 3) lists.push(indent + item[2].length + item[3].length);
+    if (item) {
+      const marker = indent + item[1].length;
+      const content = marker + (item[2] === "\t" ? 4 - marker % 4 : item[2].length);
+      if (indent <= (lists.at(-1) ?? 0) + 3) lists.push(content);
+    }
     lines.push(line);
     code = blank = false;
   }

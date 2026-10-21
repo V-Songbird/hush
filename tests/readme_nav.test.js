@@ -160,6 +160,12 @@ describe("anchorsIn", () => {
   test("recognises a tab-indented nested list item", () => {
     assert.deepEqual(anchorsIn("- a\n\t- b\n\n      [x](#x)\n\n              [y](#y)\n"), ["x"]);
   });
+
+  test("measures a tab after the list marker to the next tab stop", () => {
+    // "-\t" puts the content at column 4, so a paragraph there continues the item.
+    assert.deepEqual(anchorsIn("-\tb\n\n    [x](#x)\n\n            [y](#y)\n"), ["x"]);
+    assert.deepEqual(anchorsIn("1.\tb\n\n    [x](#x)\n"), ["x"]);
+  });
 });
 
 describe("linkedAnchorsIn", () => {

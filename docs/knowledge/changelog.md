@@ -11,6 +11,12 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+For contributors: the README nav check now treats a tab after a list marker
+as part of the item, so a paragraph indented under `-<tab>item` is no longer
+skipped as code and its links are still checked.
+
 ## 2.3.0 — 2026-10-20
 
 `/hush:config` lets you shape Claude's final message. In the Claude
