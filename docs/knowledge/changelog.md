@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.3.1 — 2026-10-21
 
 For contributors: the README nav check now treats a tab after a list marker
 as part of the item, so a paragraph indented under `-<tab>item` is no longer
