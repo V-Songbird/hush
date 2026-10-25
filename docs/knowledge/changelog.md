@@ -11,6 +11,16 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+A turn the harness starts, such as a task notification or a scheduled
+wakeup, no longer gets the reminder that everything goes in the final
+message. It gets its own: when such a turn brings nothing new, it ends
+with no message or one short line. A failure, a blocker, a finished run or
+a pending decision still gets the full message. The shipped voice states
+the same rule. A session watching a background run no longer answers each
+notification with a status message.
+
 ## 2.3.1 — 2026-10-21
 
 For contributors: the README nav check now treats a tab after a list marker

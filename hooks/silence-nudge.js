@@ -55,6 +55,41 @@ const TOOL = `${STEP} ${STEP}`;
 const TURN_DIAL =
   "hush: this turn opens with a tool call. If a line does come first, it answers three things in one breath: what you will do, what you do not know yet, and how you will find out. Then the turn is silent until the final message; when Claude Code asks for an update, one short line beside your next tool call answers it. Everything you learn goes in the final message.";
 
+// A turn the harness opened (a task notification or a ScheduleWakeup firing)
+// gets this instead of the turn text: "Everything you learn goes in the final
+// message" made every such turn end with a full status message. The rule
+// sentences are the shipped voice's own (output-styles/hush.md);
+// tests/silence_nudge.test.js holds them and checks both carry them.
+const AUTO =
+  "hush: the harness started this turn, not the user. When such a turn brings nothing new, end it with no message or one short line. A failure, a blocker, a finished run or a pending decision still gets the full message.";
+
+// True when the transcript entry carrying this prompt is one the harness
+// wrote. UserPromptSubmit fires for those turns too, and its payload does not
+// say who opened the turn; the entry's origin does, read by isRealUserPrompt.
+// Matched by its text, newest first. No match, an unreadable transcript or a
+// non-string prompt reads as a typed turn, which keeps the existing reminder.
+function isAutomatedTurn(transcriptPath, prompt) {
+  if (!transcriptPath || typeof prompt !== "string" || !prompt.trim()) return false;
+  let lines;
+  try {
+    lines = readTailLines(transcriptPath);
+  } catch {
+    return false;
+  }
+  for (let i = lines.length - 1; i >= 0; i--) {
+    let e;
+    try {
+      e = JSON.parse(lines[i]);
+    } catch {
+      continue;
+    }
+    if (e.type !== "user" || e.isSidechain) continue;
+    const c = e.message && e.message.content;
+    if (typeof c === "string" && c.trim() === prompt.trim()) return !isRealUserPrompt(e);
+  }
+  return false;
+}
+
 // The default's corrective state: nonzero once this turn's corrective has
 // fired. Lives beside the session's other scratch, so Core's session-end
 // cleanup clears it; with Core off nothing reaps it and it is left for OS
@@ -162,7 +197,7 @@ function main() {
       return;
     }
 
-    const text = nudgeFor(event);
+    const text = event === "UserPromptSubmit" && isAutomatedTurn(input.transcript_path, input.prompt) ? AUTO : nudgeFor(event);
     if (text === null) return;
 
     emitContext(event, text);
@@ -171,4 +206,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, countMidTurnText };
+module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, AUTO, countMidTurnText, isAutomatedTurn };

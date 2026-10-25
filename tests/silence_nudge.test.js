@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { runHook, hookOutput } = require('./helpers.js');
-const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, countMidTurnText } = require('../hooks/silence-nudge.js');
+const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, AUTO, countMidTurnText, isAutomatedTurn } = require('../hooks/silence-nudge.js');
 const { sessionDir } = require('../hooks/lib/sidecar-store.js');
 
 // The default's corrective counts mid-turn text blocks per session; a shared
@@ -264,6 +264,47 @@ test('the stock voice answers the host status request with one line beside the n
   for (const text of [TURN, TURN_DIAL]) assert.ok(text.includes(reminder), text);
 });
 
+// --- a turn the harness opened ----------------------------------------------
+
+const NOTICE = '<task-notification>\n<task-id>b1</task-id>\n<summary>Monitor event</summary>\n</task-notification>';
+const notification = () => ({ type: 'user', origin: { kind: 'task-notification' }, message: { role: 'user', content: NOTICE } });
+const wakeup = (text) => ({ type: 'user', isMeta: true, message: { role: 'user', content: text } });
+
+test('a task-notification turn gets the automated wording, not the final-message rule', () => {
+  const tp = writeTranscript([prompt('watch the run'), toolUse(), toolResult(), leak('Watching.'), notification()]);
+  const out = hookOutput(runHook('silence-nudge.js', {
+    hook_event_name: 'UserPromptSubmit', session_id: freshSession(), transcript_path: tp, prompt: NOTICE,
+  }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, AUTO);
+  assert.ok(!AUTO.includes('Everything you learn goes in the final message'), AUTO);
+});
+
+test('a ScheduleWakeup firing gets the automated wording', () => {
+  const tp = writeTranscript([prompt('loop'), leak('done'), wakeup('check the deploy')]);
+  assert.strictEqual(isAutomatedTurn(tp, 'check the deploy'), true);
+});
+
+test('a typed turn after a notification keeps the dial reminder', () => {
+  const tp = writeTranscript([prompt('watch'), notification(), leak('ok'), prompt('what now?')]);
+  const out = hookOutput(runHook('silence-nudge.js', {
+    hook_event_name: 'UserPromptSubmit', session_id: freshSession(), transcript_path: tp, prompt: 'what now?',
+  }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, TURN_DIAL);
+});
+
+test('a prompt the transcript does not hold yet reads as typed', () => {
+  const tp = writeTranscript([prompt('watch'), notification()]);
+  assert.strictEqual(isAutomatedTurn(tp, 'a new typed prompt'), false);
+  assert.strictEqual(isAutomatedTurn(undefined, NOTICE), false);
+});
+
+test('the automated wording repeats the stock voice\'s rule for those turns', () => {
+  const rule = 'When such a turn brings nothing new, end it with no message or one short line. A failure, a blocker, a finished run or a pending decision still gets the full message.';
+  assert.ok(STOCK_STYLE.includes(rule), rule);
+  assert.strictEqual(STOCK_STYLE.split(rule).length - 1, 1, 'rule stated more than once');
+  assert.ok(AUTO.includes(rule), AUTO);
+});
+
 // --- cross-cutting ----------------------------------------------------------
 
 // Both registrations inject context, so both have to answer to the
@@ -277,7 +318,7 @@ for (const event of ['UserPromptSubmit', 'PostToolUse']) {
 
 test('the reminder never names the behavior it is preventing', () => {
   // Wording that describes narrating primes narrating — measured twice.
-  for (const text of [TURN, TOOL, TURN_DIAL, STEP]) {
+  for (const text of [TURN, TOOL, TURN_DIAL, STEP, AUTO]) {
     assert.ok(!/narrat|preface|commentary|do not write|don't write/i.test(text), text);
   }
 });
