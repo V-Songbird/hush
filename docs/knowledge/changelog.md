@@ -22,6 +22,9 @@ the same rule. A session watching a background run no longer answers each
 notification with a status message. The corrective that restates the silence
 rule no longer fires on the first tool call of such a turn because of the
 previous turn's final message; it fires only for text written inside the turn.
+Which transcript entries open a turn, typed or harness-started, is now
+decided in one place, `hooks/lib/transcript.js`, and a skill loaded mid-turn
+is tested in both of its content shapes.
 
 Every turn that answers you now ends with a check: can this session be
 archived? Until it can, the "Next:" line names what is still missing, turn

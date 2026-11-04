@@ -31,6 +31,7 @@ const path = require("node:path");
 const { quietOff, isOff } = require("./lib/gate");
 const { sessionDir } = require("./lib/sidecar-store");
 const { readInputAsync, emitContext, readTailLines, isRealUserPrompt } = require("./lib/harness");
+const { isTurnStart } = require("./lib/transcript");
 
 const nudgeEnv = String(process.env.HUSH_NUDGE || "").trim();
 const OFF = isOff("HUSH_NUDGE");
@@ -108,19 +109,6 @@ function resetReact(sessionId) {
 // you in a while…"), recorded in the transcript as an attachment entry.
 const HOST_STATUS = "silent_turn_reminder";
 
-// True for the entry that opens a turn the harness started: a task
-// notification (non-human origin) or a ScheduleWakeup firing (isMeta with
-// string content). An isMeta entry a tool injected mid-turn, such as a loaded
-// skill, names its tool call in sourceToolUseID and is not a boundary.
-function opensAutomatedTurn(e) {
-  if (e.type !== "user" || e.isSidechain || e.sourceToolUseID) return false;
-  const c = e.message && e.message.content;
-  if (Array.isArray(c) && c.some((b) => b.type === "tool_result")) return false;
-  if (typeof c !== "string" && !Array.isArray(c)) return false;
-  if (e.origin && e.origin.kind !== "human") return true;
-  return Boolean(e.isMeta) && typeof c === "string";
-}
-
 // Count assistant text blocks since the last real human prompt or the
 // automated entry that opened this turn — mid-turn
 // text, because the turn's own final message cannot exist yet while a
@@ -144,7 +132,7 @@ function countMidTurnText(transcriptPath) {
     } catch {
       continue;
     }
-    if (isRealUserPrompt(e) || opensAutomatedTurn(e)) break;
+    if (isTurnStart(e)) break;
     turn.push(e);
   }
   let count = 0;

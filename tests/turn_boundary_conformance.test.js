@@ -12,7 +12,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
-const { isRealUserPrompt } = require('../hooks/lib/transcript');
+const { isRealUserPrompt, isTurnStart } = require('../hooks/lib/transcript');
 
 const FIXTURES = [
   {
@@ -73,6 +73,43 @@ describe('trio conformance: isRealUserPrompt turn-boundary fixture', () => {
   for (const { name, entry, expected } of FIXTURES) {
     test(`${name} -> ${expected}`, () => {
       assert.strictEqual(isRealUserPrompt(entry), expected);
+    });
+  }
+});
+
+// hush only: isTurnStart also counts the turns the harness opens. The shared
+// FIXTURES above stay as they are; each expectation here is isTurnStart's.
+const TURN_START = {
+  'string content, origin absent': true,
+  'human prompt': true,
+  'array content, text block only': true,
+  'task-notification': true,
+  'isMeta wakeup (no origin key)': true,
+  sidechain: false,
+  'array content, tool_result block': false,
+  'assistant entry': false,
+  'empty/undefined content': false,
+};
+const INJECTED = [
+  {
+    name: 'skill injected mid-turn, string content',
+    entry: { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content: 'skill body' } },
+  },
+  {
+    name: 'skill injected mid-turn, text blocks',
+    entry: { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content: [{ type: 'text', text: 'skill body' }] } },
+  },
+];
+
+describe('isTurnStart: typed and harness-opened turns', () => {
+  for (const { name, entry } of FIXTURES) {
+    test(`${name} -> ${TURN_START[name]}`, () => {
+      assert.strictEqual(isTurnStart(entry), TURN_START[name]);
+    });
+  }
+  for (const { name, entry } of INJECTED) {
+    test(`${name} -> false`, () => {
+      assert.strictEqual(isTurnStart(entry), false);
     });
   }
 });

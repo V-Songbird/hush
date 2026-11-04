@@ -303,9 +303,11 @@ test('mid-turn text inside an automated turn still draws the corrective', () => 
 });
 
 test('a skill loaded mid-turn is not a turn boundary', () => {
-  const skill = { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content: [{ type: 'text', text: 'skill body' }] } };
-  const tp = writeTranscript([prompt('go'), leak('slip'), toolUse(), skill, toolUse()]);
-  assert.strictEqual(countMidTurnText(tp), 1);
+  for (const content of [[{ type: 'text', text: 'skill body' }], 'skill body']) {
+    const skill = { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content } };
+    const tp = writeTranscript([prompt('go'), leak('slip'), toolUse(), skill, toolUse()]);
+    assert.strictEqual(countMidTurnText(tp), 1);
+  }
 });
 
 test('a typed turn after a notification keeps the dial reminder', () => {

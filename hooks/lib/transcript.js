@@ -46,6 +46,25 @@ function isRealUserPrompt(entry) {
   return false;
 }
 
+// True for the entry that opens a turn the harness started: a task
+// notification (non-human origin) or a ScheduleWakeup firing (isMeta with
+// string content). An isMeta entry a tool injected mid-turn, such as a loaded
+// skill, names its tool call in sourceToolUseID and is not a boundary.
+function opensAutomatedTurn(entry) {
+  if (entry.type !== 'user' || entry.isSidechain || entry.sourceToolUseID) return false;
+  const content = entry.message?.content;
+  if (Array.isArray(content) && content.some((c) => c.type === 'tool_result')) return false;
+  if (typeof content !== 'string' && !Array.isArray(content)) return false;
+  if (entry.origin && entry.origin.kind !== 'human') return true;
+  return Boolean(entry.isMeta) && typeof content === 'string';
+}
+
+// True for any entry that opens a turn: one a person typed or one the harness
+// started.
+function isTurnStart(entry) {
+  return isRealUserPrompt(entry) || opensAutomatedTurn(entry);
+}
+
 // The plain text of a real user-prompt entry (string content, or its text
 // blocks joined). Empty string for anything else.
 function userPromptText(entry) {
@@ -84,4 +103,4 @@ function lastUserPromptText(transcriptPath) {
   return '';
 }
 
-module.exports = { readTailLines, isRealUserPrompt, lastUserPromptText };
+module.exports = { readTailLines, isRealUserPrompt, opensAutomatedTurn, isTurnStart, lastUserPromptText };
