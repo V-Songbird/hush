@@ -23,6 +23,14 @@ notification with a status message. The corrective that restates the silence
 rule no longer fires on the first tool call of such a turn because of the
 previous turn's final message; it fires only for text written inside the turn.
 
+Every turn that answers you now ends with a check: can this session be
+archived? Until it can, the "Next:" line names what is still missing, turn
+after turn. When nothing is left, that line says the session is finished,
+and that you may archive it or keep taking next steps. A question in the
+next-step box means the session is not done yet. The check rides on the
+"Next:" line: `/hush:config` with the next step on top moves it, and with
+the next step off it stays unsaid.
+
 ## 2.3.1 — 2026-10-21
 
 For contributors: the README nav check now treats a tab after a list marker

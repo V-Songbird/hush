@@ -108,6 +108,21 @@ describe('style-settings: modules', () => {
     }
   });
 
+  test('the voice asks at every turn end whether the session can be archived, and the check rides on the Next line', () => {
+    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    const once = 'Every turn that answers the user ends with one check.';
+    assert.strictEqual(style.split(once).length - 1, 1);
+    for (const s of [
+      'Never assume it is.',
+      'Finalizamos con esta sesión; siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.',
+      'This check rides on the "Next:" line.',
+      'A setting that removes the line leaves the check unsaid.',
+      'Its question is what the session still misses, so the session is not ready to archive.',
+      'Is the session ready to archive?',
+    ]) assert.ok(style.includes(s), s);
+    assert.ok(fs.readFileSync(path.join(MODULES, 'next-off.md'), 'utf-8').includes('The message has no "Next:" line, in any language'));
+  });
+
   test('the default detail budget is 250 words and full is 400', () => {
     const root = path.join(HOOKS_DIR, '..');
     assert.strictEqual(DEFAULTS.detail, 'normal');
