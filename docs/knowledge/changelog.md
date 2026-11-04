@@ -11,7 +11,7 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
-## Unreleased
+## 2.4.0 — 2026-11-04
 
 A turn the harness starts, such as a task notification or a scheduled
 wakeup, no longer gets the reminder that everything goes in the final
