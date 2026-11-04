@@ -26,11 +26,11 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no turn reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
-| `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The turn reminder and the subagent brief keep running. |
-| `HUSH_QUIET=off` | Stops the turn reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
-| `HUSH_NUDGE=off` | Stops only the turn reminder. |
-| `HUSH_NUDGE=max` | As quiet as hush gets. A short step reminder, sent twice, after every tool call, whether or not anything slipped, besides the turn reminder at the start of each turn. Costs the most too. |
+| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminders and the subagent brief keep running. |
+| `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
+| `HUSH_NUDGE=off` | Stops every reminder hush sends while Claude works: the turn reminder, the step reminder and the reminder for turns the harness starts. The subagent brief keeps running. |
+| `HUSH_NUDGE=max` | As quiet as hush gets. The step reminder, a short text sent twice, after every tool call, whether or not anything slipped, besides the turn reminder at the start of each turn. Costs the most too. |
 | `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold into one line and a count. |
@@ -43,7 +43,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside
 what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off`
 also takes `0` or `false`, in any letter case, and ignores spaces around the value; the switches
-shown as `1` take only `1`, and ignore spaces around it too. With `HUSH_CORE=off`, the turn reminder's
+shown as `1` take only `1`, and ignore spaces around it too. With `HUSH_CORE=off`, the step reminder's
 small per-session counter stays in your temp folder until your system clears it.
 
 ## Why `HUSH_WRAP` exists

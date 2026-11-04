@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "What each hush hook does: the output trims, parked output, failing commands, the turn reminder, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
+summary: "What each hush hook does: the output trims, parked output, failing commands, the reminders, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
 related_files:
   - hooks/
   - output-styles/hush.md
@@ -212,25 +212,26 @@ why the benchmark numbers were measured with `HUSH_WRAP=1`.
 grants. Under scoped allow rules such as `Bash(node*)`, Claude Code denies every wrapped command.
 [Settings](settings.md#why-hush_wrap-exists) has the details.
 
-## The turn reminder
+## The reminders
 
 A writing rule read once at the start of a session fades as the session gets long. So hush repeats
 itself, but only when it has to.
 
-By default it reminds Claude once at the start of each of your turns, and again once, the first time
-chatter slips through in that turn. When you have not heard from Claude in a while, Claude Code
+By default it sends two reminders. The turn reminder goes to Claude once at the start of each of your
+turns. The step reminder, a shorter text, goes once, the first time chatter slips through in that turn. When you have not heard from Claude in a while, Claude Code
 asks Claude for a short update. The voice tells Claude to answer it with one line in the same
 message as its next tool call, then go quiet again. A one-line answer does not count as chatter; a
 longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
 counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
-`HUSH_NUDGE=max` reminds after every single tool call instead, with a short step reminder sent
-twice, in addition to the one at the start of the turn. It is quieter, and it costs the most.
+`HUSH_NUDGE=max` sends the step reminder after every single tool call instead, twice each time, in
+addition to the turn reminder at the start of the turn. It is quieter, and it costs the most.
 
 A turn the harness starts, such as a task notification or a scheduled wakeup, gets a different
-reminder at its start: when such a turn brings nothing new, it ends with no message or one short
+reminder at its start in place of the turn reminder: when such a turn brings nothing new, it ends with no message or one short
 line. A failure, a blocker, a finished run or a pending decision still gets the full message.
+`HUSH_NUDGE=off` stops all three reminders.
 
 ## When the conversation is compacted
 
@@ -267,7 +268,7 @@ settings survive the summary. A missing or broken settings file falls back to th
 | --- | --- | --- |
 | `compress-tool-output` | After Bash, PowerShell, Read and Grep | The trims above |
 | `preserve-exit-code` | Before Bash and PowerShell | Keeps a failing command trimmable; see the section on failing commands |
-| `silence-nudge` | At each prompt and after each tool | The turn reminder |
+| `silence-nudge` | At each prompt and after each tool | The turn reminder, the step reminder and the reminder for harness-started turns |
 | `precompact-summary`, `postcompact-rearm` | Around compaction | Shapes the summary, then re-arms the note |
 | `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |
