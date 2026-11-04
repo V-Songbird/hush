@@ -217,14 +217,15 @@ grants. Under scoped allow rules such as `Bash(node*)`, Claude Code denies every
 A writing rule read once at the start of a session fades as the session gets long. So hush repeats
 itself, but only when it has to.
 
-By default it sends two reminders. The turn reminder goes to Claude once at the start of each of your
-turns. The step reminder, a shorter text, goes once, the first time chatter slips through in that turn. When you have not heard from Claude in a while, Claude Code
+By default it sends three reminders. The turn reminder goes to Claude once at the start of each of your
+turns. The step reminder, a shorter text, goes once, the first time chatter slips through in that
+turn. The third, for turns the harness starts, is described below. When you have not heard from Claude in a while, Claude Code
 asks Claude for a short update. The voice tells Claude to answer it with one line in the same
 message as its next tool call, then go quiet again. A one-line answer does not count as chatter; a
 longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
-counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
+counts as chatter and can draw the step reminder. A session that stays quiet pays nothing extra.
 `HUSH_NUDGE=max` sends the step reminder after every single tool call instead, twice each time, in
 addition to the turn reminder at the start of the turn. It is quieter, and it costs the most.
 
