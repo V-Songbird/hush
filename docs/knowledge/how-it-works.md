@@ -224,7 +224,7 @@ longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
 counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
-`HUSH_NUDGE=max` reminds on every single command result instead — quieter, and it costs the most.
+`HUSH_NUDGE=max` reminds after every single tool call instead, not only after commands — quieter, and it costs the most.
 
 ## When the conversation is compacted
 
