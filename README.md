@@ -58,9 +58,9 @@ Inside Claude Code:
 /plugin install hush@foundry
 ```
 
-Start a new session to load the plugin. Hush's voice applies on its own. The published numbers also
-set `"outputStyle": "hush:Hush"` in `~/.claude/settings.json`, which adds Claude Code's per-turn
-reminder that the style is active; see [Settings](docs/knowledge/settings.md#the-output-style-setting).
+Start a new session to load the plugin. Hush's voice applies on its own. The published numbers were also
+measured with `"outputStyle": "hush:Hush"` set in `~/.claude/settings.json`; see
+[Settings](docs/knowledge/settings.md#the-output-style-setting).
 
 Requirements: Claude Code 2.1.139 or later, and Node.js 22 or later.
 
@@ -99,7 +99,7 @@ Hush's median final prose was 271 words against 369 without a plugin, about 27% 
 
 **On Opus 5.5, hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%, and four of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper, by 19% and 4%. Opus 5.5 already writes less without a plugin, so hush has less to remove. See [cost and runnable content on Opus 5.5](docs/knowledge/benchmarks.md#cost-and-runnable-content-on-opus-55).
 
-Batch `o55-451-495ce18f`: nine fixture jobs, four runs per setup, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort, September 28, 2026. Measurements ran with the environment variable `HUSH_WRAP` set to `1`. Word counts exclude fenced code. These measurements describe the recorded Claude sessions, not Codex performance. The earlier voices, measured on Opus 5 and Sonnet, are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
+Batch `o55-451-495ce18f`: nine fixture jobs, four runs per setup, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort, September 28, 2026. Measurements ran with `HUSH_WRAP=1`, set in bash as `HUSH_WRAP=1 claude` and in PowerShell as `$env:HUSH_WRAP = '1'; claude`. Word counts exclude fenced code. These measurements describe the recorded Claude sessions, not Codex performance. The earlier voices, measured on Opus 5 and Sonnet, are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
 *Results can vary between runs.*
 
