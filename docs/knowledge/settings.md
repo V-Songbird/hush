@@ -66,8 +66,9 @@ only when your permission rules let a wrapped command through:
 
 In `bypassPermissions` mode hush wraps even without `HUSH_WRAP`, since nothing is checked there.
 
-Every published number was measured with `HUSH_WRAP=1`. To set it for one session, start Claude Code
-with `HUSH_WRAP=1 claude` in bash, or `$env:HUSH_WRAP = '1'; claude` in PowerShell.
+Every published number was measured with `HUSH_WRAP=1`. To set it for one run, start Claude Code
+with `HUSH_WRAP=1 claude` in bash. In PowerShell, `$env:HUSH_WRAP = '1'; claude` leaves the variable
+set for that window until you run `Remove-Item Env:HUSH_WRAP`.
 
 ## The output style setting
 
