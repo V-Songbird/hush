@@ -30,7 +30,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The turn reminder and the subagent brief keep running. |
 | `HUSH_QUIET=off` | Stops the turn reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
 | `HUSH_NUDGE=off` | Stops only the turn reminder. |
-| `HUSH_NUDGE=max` | As quiet as hush gets. A turn reminder after every tool call, not only commands, whether or not anything slipped. Costs the most too. |
+| `HUSH_NUDGE=max` | As quiet as hush gets. A turn reminder after every tool call, whether or not anything slipped. Costs the most too. |
 | `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold into one line and a count. |
@@ -109,7 +109,7 @@ Set `HUSH_CONFIG_FILE` to keep it somewhere else.
 
 | Setting | Values, default first | What changes |
 | --- | --- | --- |
-| `next` | `end`, `top`, `off` | Where the "Next:" line goes, or none; a decision only you can make still appears as a question |
+| `next` | `end`, `top`, `off` | Where the "Next:" line goes, or none; a decision only you can make still appears as a question. The session-archive check rides on that line: it moves with `top` and stays unsaid with `off` |
 | `rules` | `on`, `off` | Whether horizontal rules separate the parts |
 | `detail` | `normal`, `short`, `full`, `bare` | About 250, 80 or 400 words outside code; `bare` keeps only the result, the next step and the floor |
 | `why` | `on`, `off` | The one sentence on what caused what |

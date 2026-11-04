@@ -21,7 +21,8 @@ hush is two things that happen to fit together.
 **A writing voice.** One Markdown file that tells Claude to stay quiet between tool calls and then
 write one message at the end, in your language. That message opens with the result in one bold
 line, then the cause in one sentence. Only checks that did not pass get room; passed checks share
-one sentence. One exact next step closes the message, below its own rule. A request with
+one sentence. One exact next step closes the message, below its own rule. That Next line also carries the check
+whether the session can be archived. A request with
 several parts, or for the long version, gets more blocks. Most messages fit in about 250 words
 outside code, with at most 12 words per sentence. Claude Code calls this an *output style*.
 
@@ -224,7 +225,7 @@ longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
 counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
-`HUSH_NUDGE=max` reminds after every single tool call instead, not only after commands — quieter, and it costs the most.
+`HUSH_NUDGE=max` reminds after every single tool call instead — quieter, and it costs the most.
 
 ## When the conversation is compacted
 
