@@ -30,7 +30,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 | `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The turn reminder and the subagent brief keep running. |
 | `HUSH_QUIET=off` | Stops the turn reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
 | `HUSH_NUDGE=off` | Stops only the turn reminder. |
-| `HUSH_NUDGE=max` | As quiet as hush gets. A turn reminder after every tool call, whether or not anything slipped. Costs the most too. |
+| `HUSH_NUDGE=max` | As quiet as hush gets. A short step reminder, sent twice, after every tool call, whether or not anything slipped, besides the turn reminder at the start of each turn. Costs the most too. |
 | `HUSH_SIDECAR=off` | Never parks output in a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold into one line and a count. |

@@ -7,7 +7,7 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 ## Before opening a PR
 
 - Check existing issues first — the problem may already be tracked or intentionally deferred.
-- For substantial changes (new skills, significant refactors), open an issue first to align on direction before writing code.
+- For substantial changes (a new hook, a new message setting, significant refactors), open an issue first to align on direction before writing code.
 
 ---
 
@@ -18,19 +18,29 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 ```
 .claude-plugin/
 └── plugin.json        # name, version, description, author, keywords
-AGENTS.md               # contributor rules; CLAUDE.md imports them
-LICENSE                 # MIT
-README.md               # plain-language intro first, technical depth after
-docs/knowledge/         # how it works, settings, benchmark details and the
-                        # changelog, dated entries newest first
-output-styles/
-└── hush.md             # the shipped voice
+.github/workflows/      # test.yml: the suite on Linux and Windows
+assets/                 # README images
+commands/
+└── config.md          # /hush:config
 hooks/
-├── hooks.json          # Hook event wiring (PreToolUse, PostToolUse, etc.)
+├── hooks.json          # Hook event wiring (SessionStart, PreToolUse, PostToolUse, etc.)
 ├── *.js                # one script per hook
 └── lib/                # gate, harness, sidecar store and transforms
+modules/                # one rule per moved message setting, <setting>-<value>.md
+output-styles/
+└── hush.md             # the shipped voice
 scripts/                # git-hooks/: the commit gates
 tests/                  # node:test suite, with contract/ and fixtures/
+widgets/
+└── config.html         # the /hush:config configurator and its preview
+docs/knowledge/         # how it works, settings, benchmark details and the
+                        # changelog, with "Unreleased" first, then releases
+AGENTS.md               # contributor rules; CLAUDE.md imports them
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE                 # MIT
+README.md               # plain-language intro first, technical depth after
+SECURITY.md
 ```
 
 The README puts plain-language sections first and technical depth behind links; [`AGENTS.md`](AGENTS.md) holds the rules for results and host labels.
@@ -71,7 +81,7 @@ hush, razor and foreman keep byte-identical copies of `pre-commit`. A change to 
 
 ## Changelog
 
-Add a dated entry at the top of [`docs/knowledge/changelog.md`](docs/knowledge/changelog.md) for every user-visible change. The version lives in `.claude-plugin/plugin.json`; bump it in the release commit. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
+Add user-visible changes to the `## Unreleased` section at the top of [`docs/knowledge/changelog.md`](docs/knowledge/changelog.md), in plain prose. The release commit renames that heading to `## <version> — <date>` and bumps the version in `.claude-plugin/plugin.json`. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
 
 ---
 

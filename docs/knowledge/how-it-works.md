@@ -225,7 +225,12 @@ longer one does.
 hush spots that request by the `silent_turn_reminder` entry Claude Code writes before the answer, a
 name Claude Code does not document; if Claude Code renames it, the line
 counts as chatter and can draw that one reminder. A session that stays quiet pays nothing extra.
-`HUSH_NUDGE=max` reminds after every single tool call instead — quieter, and it costs the most.
+`HUSH_NUDGE=max` reminds after every single tool call instead, with a short step reminder sent
+twice, in addition to the one at the start of the turn. It is quieter, and it costs the most.
+
+A turn the harness starts, such as a task notification or a scheduled wakeup, gets a different
+reminder at its start: when such a turn brings nothing new, it ends with no message or one short
+line. A failure, a blocker, a finished run or a pending decision still gets the full message.
 
 ## When the conversation is compacted
 
