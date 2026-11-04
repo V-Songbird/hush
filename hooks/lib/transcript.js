@@ -1,9 +1,11 @@
 'use strict';
 
-// Shared transcript-tail helpers. compress-tool-output needs the current
-// turn's real human prompt from the session JSONL; the tail-read and the
-// turn-boundary schema live here so the origin.kind/isMeta rules have one home
-// rather than being restated at a call site.
+// Shared transcript-tail helpers. The tail-read and the turn-boundary schema
+// live here so the origin.kind/isMeta rules have one home rather than being
+// restated at a call site. Hooks reach these helpers through lib/harness,
+// which re-exports them so a port swaps one call site: compress-tool-output
+// reads the current turn's real human prompt, silence-nudge reads turn
+// boundaries (isTurnStart).
 
 const fs = require('fs');
 
