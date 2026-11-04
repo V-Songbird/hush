@@ -66,7 +66,8 @@ only when your permission rules let a wrapped command through:
 
 In `bypassPermissions` mode hush wraps even without `HUSH_WRAP`, since nothing is checked there.
 
-Every published number was measured with `HUSH_WRAP=1`.
+Every published number was measured with `HUSH_WRAP=1`. To set it for one session, start Claude Code
+with `HUSH_WRAP=1 claude` in bash, or `$env:HUSH_WRAP = '1'; claude` in PowerShell.
 
 ## The output style setting
 
@@ -74,9 +75,8 @@ Installing hush does not write Claude Code's **Output style** setting, and the v
 it: the plugin marks its voice to apply whenever the plugin is enabled, so it is active from your next
 session either way.
 
-The setting still changes one thing. When `outputStyle` names hush, Claude Code also adds its own short
-reminder on every turn that the style is active, apart from hush's turn reminder. Every published number was measured with it set. To
-run that same setup, add this line to `~/.claude/settings.json`:
+Every published number was measured with `outputStyle` set to hush. To run that same setup, add this
+line to `~/.claude/settings.json`:
 
 ```json
 {

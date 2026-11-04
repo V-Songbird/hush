@@ -15,6 +15,10 @@
 //   max        A reminder on every tool result (doubled), plus the one at
 //              the top of the turn.
 //
+// A turn the harness opened (a task notification or a scheduled wakeup) gets
+// the AUTO reminder at its top instead of the turn text, at either level.
+// HUSH_NUDGE=off and HUSH_QUIET=off stop all of these reminders.
+//
 // Why the default reminds reactively instead of on every tool result: every
 // reminder is context the session carries and pays for, and `max` adds two on
 // every tool result whether or not anything slipped. The default adds one
