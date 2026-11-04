@@ -310,6 +310,12 @@ test('a skill loaded mid-turn is not a turn boundary', () => {
   }
 });
 
+test('a skill loaded mid-turn with the prompt\'s text does not make the turn automated', () => {
+  const skill = { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content: 'check the deploy' } };
+  const tp = writeTranscript([prompt('check the deploy'), toolUse(), skill]);
+  assert.strictEqual(isAutomatedTurn(tp, 'check the deploy'), false);
+});
+
 test('a typed turn after a notification keeps the dial reminder', () => {
   const tp = writeTranscript([prompt('watch'), notification(), leak('ok'), prompt('what now?')]);
   const out = hookOutput(runHook('silence-nudge.js', {
