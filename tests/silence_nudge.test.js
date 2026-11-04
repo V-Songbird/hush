@@ -284,6 +284,30 @@ test('a ScheduleWakeup firing gets the automated wording', () => {
   assert.strictEqual(isAutomatedTurn(tp, 'check the deploy'), true);
 });
 
+test('the first tool call of an automated turn draws no corrective', () => {
+  for (const opener of [notification(), wakeup('check the deploy')]) {
+    const tp = writeTranscript([prompt('watch'), toolUse(), toolResult(), leak('Final message of the typed turn.'), opener, toolUse()]);
+    const r = runHook('silence-nudge.js', {
+      hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+    });
+    assert.strictEqual((r.stdout || '').trim(), '');
+  }
+});
+
+test('mid-turn text inside an automated turn still draws the corrective', () => {
+  const tp = writeTranscript([prompt('watch'), leak('Final message.'), notification(), leak('slip'), toolUse()]);
+  const out = hookOutput(runHook('silence-nudge.js', {
+    hook_event_name: 'PostToolUse', session_id: freshSession(), transcript_path: tp,
+  }));
+  assert.strictEqual(out.hookSpecificOutput.additionalContext, STEP);
+});
+
+test('a skill loaded mid-turn is not a turn boundary', () => {
+  const skill = { type: 'user', isMeta: true, sourceToolUseID: 't1', message: { role: 'user', content: [{ type: 'text', text: 'skill body' }] } };
+  const tp = writeTranscript([prompt('go'), leak('slip'), toolUse(), skill, toolUse()]);
+  assert.strictEqual(countMidTurnText(tp), 1);
+});
+
 test('a typed turn after a notification keeps the dial reminder', () => {
   const tp = writeTranscript([prompt('watch'), notification(), leak('ok'), prompt('what now?')]);
   const out = hookOutput(runHook('silence-nudge.js', {

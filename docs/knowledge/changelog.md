@@ -19,7 +19,9 @@ message. It gets its own: when such a turn brings nothing new, it ends
 with no message or one short line. A failure, a blocker, a finished run or
 a pending decision still gets the full message. The shipped voice states
 the same rule. A session watching a background run no longer answers each
-notification with a status message.
+notification with a status message. The corrective that restates the silence
+rule no longer fires on the first tool call of such a turn because of the
+previous turn's final message; it fires only for text written inside the turn.
 
 ## 2.3.1 — 2026-10-21
 
