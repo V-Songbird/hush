@@ -20,7 +20,7 @@
 
 ## What is this?
 
-You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. By the time it finishes, the result is buried in the conversation. Hush reduces that reading.
+You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. By the time it finishes, the result is hard to find in the conversation. Hush reduces that reading.
 
 It quiets routine narration, shortens noisy tool output and shapes the final answer around what changed, whether it worked and what comes next. The example illustrates the workflow; the measurements below describe recorded sessions.
 
@@ -28,8 +28,8 @@ It quiets routine narration, shortens noisy tool output and shapes the final ans
 
 ## Why you'd want it
 
-- Read the result with less play-by-play.
-- Keep noisy command output from crowding the conversation.
+- Read the result with less narration along the way.
+- Keep long command output from filling the conversation.
 - Inspect retained full output when you need more detail.
 
 ## How it works
@@ -97,9 +97,9 @@ Both setups passed all 36 task checks. Hush spoke at most once before the answer
 
 Hush's median final prose was 271 words against 369 without a plugin, about 27% shorter. Its sentences were shorter too: 0.5% ran past 20 words, against 10.9% without a plugin. Runnable content appeared in all 36 answers of both setups; that text heuristic does not check that a command is correct or complete.
 
-**On Opus 5.5, hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%, and four of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper, by 19% and 4%. Opus 5.5 already writes less without a plugin, so hush has less to cut. See [cost and runnable content on Opus 5.5](docs/knowledge/benchmarks.md#cost-and-runnable-content-on-opus-55).
+**On Opus 5.5, hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%, and four of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper, by 19% and 4%. Opus 5.5 already writes less without a plugin, so hush has less to remove. See [cost and runnable content on Opus 5.5](docs/knowledge/benchmarks.md#cost-and-runnable-content-on-opus-55).
 
-Batch `o55-451-495ce18f`: nine fixture jobs, four runs per setup, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort, September 28, 2026. Measurements used `HUSH_WRAP=1`. Word counts exclude fenced code. These measurements describe the recorded Claude sessions, not Codex performance. The earlier voices, measured on Opus 5 and Sonnet, are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
+Batch `o55-451-495ce18f`: nine fixture jobs, four runs per setup, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort, September 28, 2026. Measurements ran with the environment variable `HUSH_WRAP` set to `1`. Word counts exclude fenced code. These measurements describe the recorded Claude sessions, not Codex performance. The earlier voices, measured on Opus 5 and Sonnet, are in [the benchmark details](docs/knowledge/benchmarks.md); the records and definitions behind them are kept outside this repository.
 
 *Results can vary between runs.*
 
