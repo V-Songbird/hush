@@ -23,7 +23,7 @@
 // nothing at all, and its golden is an empty file.
 
 const fs = require('fs');
-const { readTailLines, isRealUserPrompt, lastUserPromptText } = require('./transcript');
+const { readTailLines, isRealUserPrompt, isTurnStart, lastUserPromptText } = require('./transcript');
 
 // --- input ------------------------------------------------------------------
 
@@ -161,5 +161,6 @@ module.exports = {
   // reach it through here so a port swaps one call site.
   readTailLines,
   isRealUserPrompt,
+  isTurnStart,
   lastUserPromptText,
 };

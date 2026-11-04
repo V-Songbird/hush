@@ -30,8 +30,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { quietOff, isOff } = require("./lib/gate");
 const { sessionDir } = require("./lib/sidecar-store");
-const { readInputAsync, emitContext, readTailLines, isRealUserPrompt } = require("./lib/harness");
-const { isTurnStart } = require("./lib/transcript");
+const { readInputAsync, emitContext, readTailLines, isRealUserPrompt, isTurnStart } = require("./lib/harness");
 
 const nudgeEnv = String(process.env.HUSH_NUDGE || "").trim();
 const OFF = isOff("HUSH_NUDGE");
