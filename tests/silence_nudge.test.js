@@ -330,6 +330,16 @@ test('a prompt the transcript does not hold yet reads as typed', () => {
   assert.strictEqual(isAutomatedTurn(undefined, NOTICE), false);
 });
 
+for (const off of [{ HUSH_NUDGE: 'off' }, { HUSH_QUIET: 'off' }]) {
+  test(`${Object.entries(off)[0].join('=')} silences a turn the harness opened`, () => {
+    const tp = writeTranscript([prompt('watch the run'), toolUse(), toolResult(), leak('Watching.'), notification()]);
+    const r = runHook('silence-nudge.js', {
+      hook_event_name: 'UserPromptSubmit', session_id: freshSession(), transcript_path: tp, prompt: NOTICE,
+    }, off);
+    assert.strictEqual((r.stdout || '').trim(), '');
+  });
+}
+
 test('the automated wording repeats the stock voice\'s rule for those turns', () => {
   const rule = 'When such a turn brings nothing new, end it with no message or one short line. A failure, a blocker, a finished run or a pending decision still gets the full message.';
   assert.ok(STOCK_STYLE.includes(rule), rule);

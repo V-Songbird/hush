@@ -70,8 +70,9 @@ const AUTO =
 // True when the transcript entry carrying this prompt is one the harness
 // wrote. UserPromptSubmit fires for those turns too, and its payload does not
 // say who opened the turn; the entry's origin does, read by isRealUserPrompt.
-// Matched by its text against turn-start entries (isTurnStart), newest first. No match, an unreadable transcript or a
-// non-string prompt reads as a typed turn, which keeps the existing reminder.
+// The entry is found by its text among the turn-start entries (isTurnStart),
+// newest first. No match, an unreadable transcript or a non-string prompt
+// reads as a typed turn, which keeps the existing reminder.
 function isAutomatedTurn(transcriptPath, prompt) {
   if (!transcriptPath || typeof prompt !== "string" || !prompt.trim()) return false;
   let lines;

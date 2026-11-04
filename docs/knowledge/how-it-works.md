@@ -232,7 +232,7 @@ addition to the turn reminder at the start of the turn. It is quieter, and it co
 A turn the harness starts, such as a task notification or a scheduled wakeup, gets a different
 reminder at its start in place of the turn reminder: when such a turn brings nothing new, it ends with no message or one short
 line. A failure, a blocker, a finished run or a pending decision still gets the full message.
-`HUSH_NUDGE=off` stops all three reminders.
+`HUSH_NUDGE=off` or `HUSH_QUIET=off` stops all three reminders.
 
 ## When the conversation is compacted
 
