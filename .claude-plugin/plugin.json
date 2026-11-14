@@ -9,5 +9,6 @@
   },
   "homepage": "https://github.com/V-Songbird/hush",
   "repository": "https://github.com/V-Songbird/hush",
-  "keywords": ["tokens", "token-optimization", "output-style", "compression", "hooks", "terse", "cost"]
+  "types": "./types/index.d.ts",
+  "keywords":["tokens", "token-optimization", "output-style", "compression", "hooks", "terse", "cost"]
 }
