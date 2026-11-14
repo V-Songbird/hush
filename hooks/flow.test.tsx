@@ -272,6 +272,15 @@ test('a compaction closes the reply; the texts before it are drawn whole', async
   expect(await k.draw('After.')).toBe('Show 1 progress message')
 })
 
+test('a compaction after a queued prompt still keeps the first answer out of the fold', async ($, on) => {
+  const k = kit($, on)
+  const queued: Row = { type: 'attachment', name: 'queued_command', door: 'attachment', content: [{ type: 'text', text: 'And the docs?' }] }
+  const compaction: Row = { type: 'user', isMeta: true, door: 'compaction', content: [{ type: 'text', text: 'Summary of the conversation so far.' }] }
+  await k.turn([call('a'), result('a'), queued, compaction, say('The answer is 42.'), ...work('b'), say('Docs updated.')])
+
+  expect(await k.draw('The answer is 42.')).toBe('whole')
+})
+
 test('a text written twice in one reply is drawn whole and counted nowhere', async ($, on) => {
   const k = kit($, on)
   await k.turn([say('Checking.'), ...work('a'), say('Checking.'), ...work('b'), say('Other.'), ...work('c'), say('Final.')])

@@ -217,8 +217,11 @@ export const register: Register = on => {
       }
 
       // The app may stop drawing the rows before a compaction: what came before it folds nothing.
+      // A prompt queued before it still mixes two answers in what follows.
       if (e.door === 'compaction') {
+        const wasMixed = isMixed
         await closeReply($, true)
+        isMixed = wasMixed
       }
 
       for (const block of blocks) {
