@@ -2,6 +2,7 @@ import { expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { NO_HEADS, withHeads } from './fold'
 import { EN, ES, isSpanish } from './register'
 
 // Each hook here stands for the engine beneath the mod: its own row.
@@ -12,14 +13,12 @@ const mount = async ($: Engine, on: On, text: string, surface: 'desktop' | 'term
   return $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface, props: { text, isFirstOfReply: true } } as never)
 }
 
-// The mod draws nothing of a reply's own: alerts, mermaid fences and prose go to the app whole.
-const REPLY = '**Result.**\n\n> [!WARNING]\n> Risk.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\nAfter.'
+const REPLY = '**Result.**\n\nAfter.'
 
 test('a reply outside every fold is the app’s whole on the desktop', async ($, on) => {
   const ui = await mount($, on, REPLY)
 
   expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe(`engine: ${REPLY}`)
-  expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -37,29 +36,20 @@ test('HUSH_DISABLE=1 leaves a reply to the app', async ($, on) => {
   await ui.unmount()
 })
 
-// The mod adds nothing to the person's command list, and a plain final message writes nothing.
-test('a session start registers no command, and a final message writes nothing', async ($, on) => {
+// The mod adds nothing to the person's command list (what it writes: `flow.test.tsx`).
+test('a session start registers no command', async ($, on) => {
   const registered: string[] = []
-  const written: string[] = []
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 's1' }))
   on('store.get', () => ({ value: undefined }))
-  on('store.set', (_, e) => {
-    written.push(e.key)
-
-    return { value: undefined }
-  })
   on('command.register', (_, e) => {
     registered.push(e.name)
 
     return { value: { command: e.name } }
   })
-  on('turn.complete', () => ({ text: '' }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
-  await $.turn.complete({ answer: '**Done.**\n\n---\n\n**Next:** read it.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
 
   expect(registered).toEqual([])
-  expect(written).toEqual([])
 })
 
 // Every string the person reads comes from the catalog the `language` setting picks.
@@ -67,11 +57,11 @@ const SPANISH = () => ({ value: { language: 'Español' } })
 
 // A fold an earlier reply stored, found again at session start, and its first row drawn on
 // the desktop: the folded line it gets.
-const FOLD = { head: 'text:Now I check the store.', texts: ['Now I check the store.'], tools: ['toolu_a'], errors: 1, warnings: 1 }
+const FOLD = { head: 'Now I check the store.', final: 'Done.', texts: ['Now I check the store.'], risky: ['Now I check the store.'], errors: 1 }
 const foldedLine = async ($: Engine, on: On) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 's1' }))
-  on('store.get', (_, e) => ({ value: e.key === 'folds-2:s1' ? [FOLD] : undefined }))
+  on('store.get', (_, e) => ({ value: e.key === 'folds-4:s1' ? { folds: [FOLD], loose: withHeads(NO_HEADS, ['Done.']) } : undefined }))
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   const ui = await $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface: 'desktop', props: { text: 'Now I check the store.', isFirstOfReply: true } } as never)

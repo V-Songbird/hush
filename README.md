@@ -53,7 +53,9 @@ A shortened view carries a note in square brackets, such as `[hush hook: 12 line
 
 **Where saved output goes.** A `hush-sidecar` folder in your system temp folder, one per session. On macOS and Linux only you can read it; on Windows that lock is not available, so treat it as readable by anything running as you. Hush deletes the folder when the session ends, and also removes session folders idle for a day.
 
-**The desktop mod.** Hush also ships an optional mod, code that Claude Code loads to draw in its interface. The command hooks above are the product: they behave the same whether or not the mod loads, for instance when mods are switched off. In the Claude desktop app's Code tab only, once a final message arrives, the mod folds the progress texts written before it into one dim line above the message, "Show N progress messages". A press opens it. The line counts failed results and texts that name a failure, and its words follow Claude Code's `language` setting, Spanish or English. Every other reply, and every other surface, the terminal included, is left to the app whole. The mod adds no command and nothing leaves your machine.
+**The desktop mod.** Hush also ships an optional mod, code that Claude Code loads to draw in its interface. The command hooks above are the product: every one runs as before without the mod. In the Claude desktop app's Code tab only, once a final message arrives, the mod folds the progress texts written between tool calls into one grey line, "Show N progress messages". One press shows them in place. The line counts failed results and texts that name a failure, and its words follow Claude Code's `language` setting, Spanish or English.
+
+A text whose first words appear elsewhere in the session, a subagent's included, stays drawn. So does every text after a prompt you queued during the turn, and every text before a compaction. Each session keeps its folds across a reopen, for the eight newest sessions. Every other reply, and every other surface, the terminal included, is left to the app whole. The mod adds no command and nothing leaves your machine.
 
 ## What you can do
 
@@ -150,7 +152,7 @@ Inside Claude Code:
 
 Start a new session to load the plugin.
 
-Requirements: Claude Code 2.1.323 or later, and Node.js 22 or later. The plugin declares that Claude Code version in its manifest, so a Claude Code at 2.1.323 or later will not install or load a release it is too old for. An older Claude Code ignores that declaration, and Hush is not tested there.
+Requirements: Claude Code 2.1.323 or later, and Node.js 22 or later. hush names that version in its manifest, but an older Claude Code may still install it; hush is not tested there.
 
 ### Update
 
