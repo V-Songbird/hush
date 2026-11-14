@@ -70,10 +70,19 @@ test('a final message adds one to the tally beside the settings file', async ($,
   const k = kit($, on, { env: HOME_ENV })
 
   await k.finish()
-  await k.finish('plain')
+  await k.finish('plain\n\nmore')
 
   expect(read(k)).toMatchObject({ messages: 2, met: 1, misses: { 'result first': 1, 'rules where set': 1, 'next step where set': 1 } })
   expect(k.writes).toEqual([TALLY, TALLY])
+})
+
+test('a one-line answer is not counted', async ($, on) => {
+  const k = kit($, on, { env: HOME_ENV })
+
+  await k.finish('Nothing new.')
+  await k.finish('  Still waiting.\n')
+
+  expect(k.writes).toEqual([])
 })
 
 test('the tally sits beside HUSH_CONFIG_FILE when it is set, and the settings come from it', async ($, on) => {

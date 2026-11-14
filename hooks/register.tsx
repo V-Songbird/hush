@@ -319,7 +319,9 @@ export const register: Register = on => {
     } else {
       await closeReply($)
 
-      if (e.reason === 'answer' && e.answer.trim() !== '') await checkAnswer($, e.answer)
+      // A one-line answer is left out: a turn nobody asked for may end with one short line, and
+      // the voice asks no structure of it.
+      if (e.reason === 'answer' && e.answer.trim().includes('\n')) await checkAnswer($, e.answer)
     }
 
     return done
