@@ -268,6 +268,8 @@ export const register: Register = on => {
     const done = await next(e)
 
     try {
+      if (await isDisabled($)) return done
+
       const now = await savedSettings($).catch(() => undefined)
       const isSent = (done.additionalContext ?? []).some(text => typeof text === 'string' && text.startsWith(SETTINGS_HEADER))
 

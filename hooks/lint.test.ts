@@ -200,11 +200,23 @@ test('a Next step header may hold a code block, a colon may follow the bold resu
   }
 })
 
-test('the Next word in Spanish, French, German, Japanese and Arabic', () => {
-  for (const next of ['**Siguiente paso:** lee el cambio.', '**Prochaine étape** : lisez le changement.', '**Nächster Schritt:** lies die Änderung.', '**次のステップ：** 変更を読んでください。', '**الخطوة التالية:** اقرأ التغيير.']) {
+test('the Next word in Spanish, French, German, Japanese, Arabic, Hindi and Amharic', () => {
+  for (const next of [
+    '**Siguiente paso:** lee el cambio.',
+    '**Prochaine étape** : lisez le changement.',
+    '**Nächster Schritt:** lies die Änderung.',
+    '**次のステップ：** 変更を読んでください。',
+    '**الخطوة التالية:** اقرأ التغيير.',
+    '**अगला कदम:** बदलाव पढ़ें।',
+    '**ቀጣይ እርምጃ:** ለውጡን አንብብ።',
+  ]) {
     expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', next))).toEqual([])
     expect(lintMessage(msg('**Done.**', '', next, '', '---', '', 'Text.'), settingsOf({ next: 'top' }))).toEqual([])
   }
+  // The bold result with the stop of its script, as the removed sentence test held it.
+  expect(lintMessage(R('**परीक्षण फिर से पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual([])
+  expect(lintMessage(R('**ينجح الاختبار.**', 'هل تريد أن أدفع الفرع الآن؟', '', '---', '', '**الخطوة التالية:** اقرأ التغيير.'))).toEqual([])
+  expect(lintMessage(R('**ሙከራው ያልፋል።**', 'ጊዜው እንደ ጽሑፍ ተነበበ።', '', '---', '', '**ቀጣይ እርምጃ:** ለውጡን አንብብ።'))).toEqual([])
 })
 
 test('a quote block is no structure: its rule is no rule and its Next line no Next line', () => {
