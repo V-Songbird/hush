@@ -36,6 +36,20 @@ test('the voice lifts its ban only under the heading the mod composes', () => {
   assert.ok(read('voice.ts').includes('"Forms the desktop mod draws"'), 'the marker points at that part of the voice');
 });
 
+test('the voice asks a drawn block to earn its place, and writes it above the result', () => {
+  for (const s of [
+    'Would the reader\'s next action fail or do harm without it?',
+    'Is it said nowhere else in the message?',
+    'Limits, unchecked items and unverified claims stay in prose, in their own block.',
+    'A straight chain of steps is a numbered list, however long.',
+    'Draw a flow only when it branches, loops or joins.',
+    'So write them first, above the bold result, like a visual\'s cards.',
+    'Never point to one by its place, such as "below" or "above".',
+  ]) assert.ok(VOICE.includes(s), s);
+  // The whole risks block no longer goes in a Warning.
+  assert.ok(!/risks, limits, unchecked items and unverified claims in one `> \[!WARNING\]`/.test(VOICE));
+});
+
 test('the raw colour list names exactly the hex values the module holds', () => {
   const listed = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, '..', 'mod-colors.allow.json'), 'utf-8')).exceptions;
   const allowed = new Set(listed.flatMap((e) => e.values.map((v) => v.toLowerCase())));

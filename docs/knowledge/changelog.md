@@ -45,7 +45,10 @@ The mod adds no command. Nothing leaves your machine. `HUSH_DISABLE=1` turns the
 The voice now allows `mermaid` blocks and those two alerts only in a session whose prompt has the
 mod's section headed "Forms this desktop session draws". The mod adds it only for Hush on the
 desktop alone with the `markdown` setting at `rich`. Everywhere else the ban stands as before,
-including when the mod is not loaded. The mod is optional: every command hook runs as before
+including when the mod is not loaded. Even there they are rare: an alert only when your next step
+would fail or do harm without it and the message says it nowhere else, and a diagram only for a
+flow that branches, loops or joins, with five parts or more. The mod draws them above the
+message's text, so the voice writes them first, above the bold result. The mod is optional: every command hook runs as before
 without it. The Mermaid renderer is ported from skins (MIT, notice in `hooks/mermaid/`), and the
 alert icons are GitHub's Octicons (MIT, `hooks/LICENSE-octicons`).
 
