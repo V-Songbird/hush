@@ -2,6 +2,7 @@ import { expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { NO_HEADS, withHeads } from './fold'
 import { EN, ES, isSpanish } from './register'
 
 // Each hook here stands for the engine beneath the mod: its own row.
@@ -56,11 +57,11 @@ const SPANISH = () => ({ value: { language: 'Español' } })
 
 // A fold an earlier reply stored, found again at session start, and its first row drawn on
 // the desktop: the folded line it gets.
-const FOLD = { head: 'Now I check the store.', final: 'Done.', texts: ['Now I check the store.'], errors: 1, warnings: 1 }
+const FOLD = { head: 'Now I check the store.', final: 'Done.', texts: ['Now I check the store.'], risky: ['Now I check the store.'], errors: 1 }
 const foldedLine = async ($: Engine, on: On) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 's1' }))
-  on('store.get', (_, e) => ({ value: e.key === 'folds-3:s1' ? { folds: [FOLD], loose: ['Done.'] } : undefined }))
+  on('store.get', (_, e) => ({ value: e.key === 'folds-4:s1' ? { folds: [FOLD], loose: withHeads(NO_HEADS, ['Done.']) } : undefined }))
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   const ui = await $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface: 'desktop', props: { text: 'Now I check the store.', isFirstOfReply: true } } as never)

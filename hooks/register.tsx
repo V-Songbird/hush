@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
 
-import { fitted, foldOf, headOf, isReprompt, labelOf, looseOf, placeOf } from './fold'
+import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
@@ -55,27 +55,27 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 // The final-only view (`fold.ts`). The reply being written: what the conversation stored for it,
 // in order. Module variables: a hot reload mid-reply loses that reply's fold, never a fold
 // already made, which lives in `$.state` and the store.
-const EMPTY: Folds = { folds: [], loose: [] }
-const folds = atom({ plugin: 'hush', key: 'folds' } as const, EMPTY, { shape: 'folds-3' })
+const EMPTY: Folds = { folds: [], loose: NO_HEADS }
+const folds = atom({ plugin: 'hush', key: 'folds' } as const, EMPTY, { shape: 'folds-4' })
 const opened = atom({ plugin: 'hush', key: 'open' } as const, [], { shape: 'open-1' })
-const STORE = 'folds-3:'
+const STORE = 'folds-4:'
 export const FOLDS_KEPT = 300
 // The store is one JSON file of at most 4 MiB in all, shared with every other key the mod keeps:
-// eight sessions of at most 256 KiB each fill half of it.
+// eight sessions of at most 256 KiB each, in UTF-8 bytes, fill half of it.
 export const SESSIONS_KEPT = 8
 export const SESSION_BUDGET = 256 * 1024
 let isReplying = false
 // A prompt queued during the turn: the texts after it answer two prompts, so none of them folds.
 let isMixed = false
-let stored: Stored = { items: [], texts: [], errors: 0 }
+let stored: Stored = { items: [], errors: 0 }
 
 function startReply() {
-  stored = { items: [], texts: [], errors: 0 }
+  stored = { items: [], errors: 0 }
   isMixed = false
 }
 
 const isFolds = (v: unknown): v is Folds =>
-  typeof v === 'object' && v !== null && Array.isArray((v as Folds).folds) && Array.isArray((v as Folds).loose)
+  typeof v === 'object' && v !== null && Array.isArray((v as Folds).folds) && typeof (v as Folds).loose === 'string'
 
 /** Saves the session's folds, keeping the newest sessions' and dropping any older shape's. */
 async function save($: EngineInterface, all: Folds) {
@@ -92,9 +92,12 @@ async function save($: EngineInterface, all: Folds) {
   await $.store.set(key, fitted(all, SESSION_BUDGET))
 }
 
-/** The reply stopped: fold what came before its final message, keep it past a reload. */
-async function closeReply($: EngineInterface) {
-  const fold = isMixed ? null : foldOf(stored)
+/**
+ * The reply stopped: fold what came before its final message, keep it past a reload. A reply cut
+ * by a compaction folds nothing: its first rows may no longer be drawn, so all its texts turn loose.
+ */
+async function closeReply($: EngineInterface, isCut = false) {
+  const fold = isMixed || isCut ? null : foldOf(stored)
   const loose = looseOf(stored, fold)
   startReply()
 
@@ -102,10 +105,7 @@ async function closeReply($: EngineInterface) {
     return
   }
 
-  const all = await update($, folds, s => ({
-    folds: [...s.folds, ...(fold === null ? [] : [fold])].slice(-FOLDS_KEPT),
-    loose: [...new Set([...s.loose, ...loose])],
-  }))
+  const all = await update($, folds, s => kept({ folds: [...s.folds, ...(fold === null ? [] : [fold])], loose: withHeads(s.loose, loose) }, FOLDS_KEPT))
 
   if (all.folds.length > 0) {
     // A store that refuses the write leaves this session's folds in `$.state` until it ends.
@@ -143,7 +143,7 @@ async function drawFolded(
     return isOpen ? draw() : hide()
   }
 
-  const label = labelOf(fold, hidden.length, (await stringsOf($)).fold, isOpen)
+  const label = labelOf(fold, hidden, (await stringsOf($)).fold, isOpen)
   const toggle = () => void update($, opened, list => (list.includes(fold.head) ? list.filter(h => h !== fold.head) : [...list, fold.head]))
   const line = (
     // The desktop draws its own button and ignores a nested `Text`'s props, so the Button dims
@@ -186,14 +186,28 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // What the reply stored, and what ends it: a re-prompt (a Stop hook's, `/goal`'s) or a prompt
-  // the person queued while Claude worked.
+  // What the reply stored, and what ends it: a re-prompt (a Stop hook's, `/goal`'s), a prompt the
+  // person queued while Claude worked, or a compaction.
   on('session.append', async ($, e, next) => {
     const row = await next(e)
+    const blocks = Array.isArray(e.message.content) ? e.message.content : []
+
+    // A subagent's texts are never a reply's, but the app may draw them: their words turn loose,
+    // so a main fold never hides one. Nothing is gathered for the subagent.
+    if (e.agentId !== undefined) {
+      const heads = e.message.type === 'assistant' ? blocks.flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [headOf(block.text)] : [])) : []
+
+      if (heads.length > 0 && !(await isDisabled($))) {
+        const { loose } = await read($, folds)
+
+        if (!heads.every(head => hasHead(loose, head))) await update($, folds, s => ({ ...s, loose: withHeads(s.loose, heads) }))
+      }
+
+      return row
+    }
 
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
-    if (e.agentId === undefined && isReplying) {
-      const blocks = Array.isArray(e.message.content) ? e.message.content : []
+    if (isReplying) {
       const isPrompt = e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command')
 
       // The prompt that starts the turn arrives before anything is gathered and ends nothing.
@@ -202,11 +216,13 @@ export const register: Register = on => {
         isMixed = true
       }
 
+      // The app may stop drawing the rows before a compaction: what came before it folds nothing.
+      if (e.door === 'compaction') {
+        await closeReply($, true)
+      }
+
       for (const block of blocks) {
-        if (e.message.type === 'assistant' && block.type === 'text' && typeof block.text === 'string') {
-          stored.texts.push(block.text)
-          stored.items.push({ kind: 'text', head: headOf(block.text) })
-        }
+        if (e.message.type === 'assistant' && block.type === 'text' && typeof block.text === 'string') stored.items.push(textOf(block.text))
         if (e.message.type === 'assistant' && block.type === 'tool_use') stored.items.push({ kind: 'tool' })
         if (block.type === 'tool_result' && block.is_error === true) stored.errors++
       }

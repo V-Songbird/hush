@@ -44,8 +44,8 @@ hush now ships a mod, a hooks module that draws in the Claude desktop app's Code
 (`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It folds the progress texts
 written between tool calls into one grey line once the final message arrives, with a count of
 failed results and of texts that name a failure. One press shows them in place. A text whose
-first words appear elsewhere in the session stays drawn, and so does every text after a prompt you
-queued during the turn. Each session keeps its folds across a reopen; the mod's store keeps the
+first words appear elsewhere in the session, a subagent's included, stays drawn. So does every
+text after a prompt you queued during the turn, and every text before a compaction. Each session keeps its folds across a reopen; the mod's store keeps the
 eight newest sessions. Every reply is otherwise left to the app whole, and the terminal and every other surface are never touched.
 The line follows the `language` setting, Spanish or English. The mod adds no command. Nothing
 leaves your machine. `HUSH_DISABLE=1` turns the mod off. The mod is optional: every command hook

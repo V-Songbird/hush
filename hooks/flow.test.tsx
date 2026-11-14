@@ -2,6 +2,7 @@ import { expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { NO_HEADS, withHeads } from './fold'
 import { FOLDS_KEPT, SESSIONS_KEPT } from './register'
 
 // Whole replies through the mod: turn.start, the rows the session stores, turn.complete, then a
@@ -13,6 +14,11 @@ const say = (text: string, agentId?: string): Row => ({ type: 'assistant', conte
 const call = (id: string, agentId?: string): Row => ({ type: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: {} }], agentId })
 const result = (id: string, isError = false): Row => ({ type: 'user', content: [{ type: 'tool_result', tool_use_id: id, content: 'ok', is_error: isError }] })
 const work = (id: string) => [call(id), result(id)]
+
+// A fold and a session record in the stored shape.
+const KEY = 'folds-4:'
+const savedFold = (head: string, more: string[] = []) => ({ head, final: `Final of ${head}`, texts: [head, ...more], risky: [], errors: 0 })
+const savedFolds = (folds: ReturnType<typeof savedFold>[]) => ({ folds, loose: withHeads(NO_HEADS, folds.map(fold => fold.final)) })
 
 const kit = ($: Engine, on: On, saved: Record<string, unknown> = {}) => {
   const store = new Map(Object.entries(saved))
@@ -50,6 +56,13 @@ const kit = ($: Engine, on: On, saved: Record<string, unknown> = {}) => {
       }
       mid?.()
       await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId, reason: 'answer' })
+    },
+    /** Everything a text row draws, as JSON. */
+    async whole(text: string) {
+      const ui = await $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface: 'desktop', props: { text, isFirstOfReply: false } } as never)
+      const all = JSON.stringify((await ui.find({ type: 'Box' })) ?? null)
+      await ui.unmount()
+      return all
     },
     /** What a text row draws: the fold's line, the row hidden, or the row whole. */
     async draw(text: string) {
@@ -149,7 +162,7 @@ test('a failed tool result counts on the line', async ($, on) => {
   const k = kit($, on)
   await k.turn([say('Running.'), call('a'), result('a', true), say('Final.')])
 
-  expect(JSON.stringify(k.store.get('folds-3:s1'))).toContain('"errors":1')
+  expect(JSON.stringify(k.store.get(`${KEY}s1`))).toContain('"errors":1')
 })
 
 test('HUSH_DISABLE=1 set while a reply is gathered stores nothing for it', async ($, on) => {
@@ -192,40 +205,86 @@ test('a session start restores that session’s folds and drops another session�
   expect(await k.draw('Looking.')).toBe('Show 1 progress message')
 })
 
-// The old shape carried every tool id; it is discarded, not read.
-test('a fold saved in the old shape is discarded and its key removed on the next save', async ($, on) => {
+// Older shapes (every tool id; a list of loose heads) are discarded, not read.
+test('folds saved in an older shape are discarded and their keys removed on the next save', async ($, on) => {
   const old = [{ head: 'text:Now I check the store.', texts: ['Now I check the store.'], tools: ['toolu_a'], errors: 0, warnings: 0 }]
-  const k = kit($, on, { 'folds-2:s1': old, 'folds-2:s0': old, 'cards-1:s1': [] })
+  const older = { folds: [{ head: 'Now I check the store.', final: 'Done.', texts: ['Now I check the store.'], errors: 0, warnings: 0 }], loose: ['Done.'] }
+  const k = kit($, on, { 'folds-2:s1': old, 'folds-3:s1': older, 'folds-3:s0': older, 'cards-1:s1': [] })
   await k.start()
   expect(await k.draw('Now I check the store.')).toBe('whole')
 
   await k.turn([say('Looking.'), ...work('a'), say('Done.')])
-  expect([...k.store.keys()]).toEqual(['cards-1:s1', 'folds-3:s1'])
-  expect(JSON.stringify(k.store.get('folds-3:s1'))).not.toContain('tools')
+  expect([...k.store.keys()]).toEqual(['cards-1:s1', `${KEY}s1`])
+  expect(JSON.stringify(k.store.get(`${KEY}s1`))).not.toContain('tools')
 })
 
 test('the store keeps the newest sessions’ folds and leaves other keys alone', async ($, on) => {
   const saved: Record<string, unknown> = { 'cards-1:s0': [] }
-  for (let i = 0; i < SESSIONS_KEPT + 2; i++) saved[`folds-3:old${i}`] = { folds: [], loose: [] }
+  for (let i = 0; i < SESSIONS_KEPT + 2; i++) saved[`${KEY}old${i}`] = savedFolds([])
   const k = kit($, on, saved)
   await k.turn([say('Looking.'), ...work('a'), say('Done.')])
 
   const kept = [...k.store.keys()].filter(key => key.startsWith('folds-'))
   expect(kept.length).toBe(SESSIONS_KEPT)
-  expect(kept.at(-1)).toBe('folds-3:s1')
-  expect(kept[0]).toBe(`folds-3:old${3}`)
+  expect(kept.at(-1)).toBe(`${KEY}s1`)
+  expect(kept[0]).toBe(`${KEY}old${3}`)
   expect(k.store.has('cards-1:s0')).toBe(true)
 })
 
-test('a session keeps its newest folds, restored after a reopen', async ($, on) => {
-  const k = kit($, on)
-  for (let i = 0; i <= FOLDS_KEPT; i++) await k.turn([say(`Step ${i}.`), ...work(`a${i}`), say(`Final ${i}.`)])
+// A session already at the cap, saved, then one more reply: the cap holds, and the dropped fold's
+// texts stay drawn whole, so a text it shared with the new fold does not start hiding.
+test('a session keeps its newest folds; a dropped fold’s texts stay whole', async ($, on) => {
+  const folds = Array.from({ length: FOLDS_KEPT }, (_, i) => savedFold(`Step ${i}.`, i === 0 ? ['Shared.'] : []))
+  const k = kit($, on, { [`${KEY}s1`]: savedFolds(folds) })
+  await k.start()
+  expect(await k.draw('Shared.')).toBe('hidden')
+
+  await k.turn([say('Look.'), ...work('a'), say('Shared.'), ...work('b'), say('Final.')])
 
   k.env.session = 's2'
   await k.start()
   k.env.session = 's1'
   await k.start()
+  expect((k.store.get(`${KEY}s1`) as { folds: unknown[] }).folds.length).toBe(FOLDS_KEPT)
   expect(await k.draw('Step 0.')).toBe('whole')
-  expect(await k.draw(`Step ${FOLDS_KEPT}.`)).toBe('Show 1 progress message')
-  expect((k.store.get('folds-3:s1') as { folds: unknown[] }).folds.length).toBe(FOLDS_KEPT)
+  expect(await k.draw('Shared.')).toBe('whole')
+  expect(await k.draw('Step 1.')).toBe('Show 1 progress message')
+  expect(await k.draw('Look.')).toBe('Show 1 progress message')
+})
+
+test('a subagent’s text keeps the same words in a main fold drawn whole, and starts no reply', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([say('Look.'), ...work('a'), say('Reading the config file.'), ...work('b'), say('Final.')])
+  await k.turn([call('t'), say('Reading the config file.', 'sub1'), say('Sub progress.', 'sub1'), call('s', 'sub1'), say('Sub final.', 'sub1'), result('t'), say('Main final.')])
+
+  expect(await k.draw('Reading the config file.')).toBe('whole')
+  expect(await k.draw('Look.')).toBe('Show 1 progress message')
+  expect(await k.draw('Sub progress.')).toBe('whole')
+})
+
+test('a compaction closes the reply; the texts before it are drawn whole', async ($, on) => {
+  const k = kit($, on)
+  const compaction: Row = { type: 'user', isMeta: true, door: 'compaction', content: [{ type: 'text', text: 'Summary of the conversation so far.' }] }
+  await k.turn([say('Before.'), ...work('a'), say('Also before.'), compaction, say('After.'), ...work('b'), say('Final.')])
+
+  expect(await k.draw('Before.')).toBe('whole')
+  expect(await k.draw('Also before.')).toBe('whole')
+  expect(await k.draw('After.')).toBe('Show 1 progress message')
+})
+
+test('a text written twice in one reply is drawn whole and counted nowhere', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([say('Checking.'), ...work('a'), say('Checking.'), ...work('b'), say('Other.'), ...work('c'), say('Final.')])
+
+  expect(await k.draw('Checking.')).toBe('whole')
+  expect(await k.draw('Other.')).toBe('Show 1 progress message')
+})
+
+test('the line warns only about the texts it hides', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([say('Looking.'), ...work('a'), say('The build failed once.'), ...work('b'), say('Final A.')])
+  await k.turn([say('The build failed once.')])
+
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+  expect(await k.whole('Looking.')).not.toContain('warning')
 })

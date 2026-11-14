@@ -1,7 +1,7 @@
 // The final-only view: after Claude stops, the texts it wrote between tool calls before that
 // reply's final message fold into one line that opens with a press. Tool rows never join; the
 // app's own header folds them. A reply stops at a hook's re-prompt (`<Event> hook feedback:`), at
-// a prompt queued during the turn and at the end of a turn.
+// a prompt queued during the turn, at a compaction and at the end of a turn.
 //
 // The fold is built from what the conversation stored, in stored order, never from what the
 // desktop drew: the app draws a hidden window's rows only when the person comes back, so draw
@@ -11,10 +11,10 @@
 
 import type { FoldState, FoldsState } from '../types'
 
-export type Item = { kind: 'text'; head: string } | { kind: 'tool' }
+export type Item = { kind: 'text'; head: string; isRisky: boolean } | { kind: 'tool' }
 
 /** What the conversation stored for the reply so far, in order. */
-export type Stored = { items: Item[]; texts: string[]; errors: number }
+export type Stored = { items: Item[]; errors: number }
 
 export type Fold = FoldState
 export type Folds = FoldsState
@@ -25,12 +25,16 @@ const RISK = /\b(fail(s|ed|ing)?|error|blocked|blocker|cannot|can't|denied|risk|
 const HEAD = 40
 export const headOf = (text: string) => text.replace(/\s+/g, ' ').trim().slice(0, HEAD)
 
+export const textOf = (text: string): Item => ({ kind: 'text', head: headOf(text), isRisky: RISK.test(text) })
+
 export const isReprompt = (text: string) => /^\w+ hook feedback:/.test(text)
+
+const headsOf = (stored: Stored) => stored.items.flatMap(item => (item.kind === 'text' && item.head !== '' ? [item.head] : []))
 
 /**
  * The fold for one finished reply, or null when nothing should fold: no final text, a tool
  * call after the last text (the reply ended without a final message), or no text before it.
- * A text that repeats the final's first words stays out, so the final is never hidden.
+ * A text that repeats the final's first words, or another text's, stays out: drawn whole.
  */
 export function foldOf(stored: Stored): Fold | null {
   const items = stored.items.filter(item => item.kind === 'tool' || item.head !== '')
@@ -40,8 +44,9 @@ export function foldOf(stored: Stored): Fold | null {
     return null
   }
 
-  const texts = items.flatMap(item => (item.kind === 'text' && item.head !== final.head ? [item.head] : []))
-  const first = texts[0]
+  const heads = headsOf(stored)
+  const members = items.flatMap(item => (item.kind === 'text' && heads.indexOf(item.head) === heads.lastIndexOf(item.head) && item.head !== final.head ? [item] : []))
+  const first = members[0]
 
   // Tool rows stay the app's: it folds them under its own "Ran N commands" header, which a mod
   // cannot reach, so a line of ours there would be a second toggle inside the first.
@@ -50,25 +55,63 @@ export function foldOf(stored: Stored): Fold | null {
   }
 
   return {
-    head: first,
+    head: first.head,
     final: final.head,
-    texts,
+    texts: members.map(item => item.head),
+    risky: members.flatMap(item => (item.isRisky ? [item.head] : [])),
     errors: stored.errors,
-    warnings: stored.texts.filter(text => headOf(text) !== final.head && RISK.test(text)).length,
   }
 }
 
-/** The heads of a finished reply's texts that no fold hides: its final, or every text when it made no fold. */
-export const looseOf = (stored: Stored, fold: Fold | null) =>
-  fold === null ? stored.items.flatMap(item => (item.kind === 'text' && item.head !== '' ? [item.head] : [])) : [fold.final]
+/** The heads of a finished reply's texts that its fold does not hide: all of them when it made none. */
+export const looseOf = (stored: Stored, fold: Fold | null) => headsOf(stored).filter(head => !fold?.texts.includes(head))
+
+// The loose heads: a fixed-size set of bits, base64 digits, each head setting four of them. It
+// answers "maybe" for a head it never took, which draws that row whole, and never "no" for one it
+// took, so a long session neither forgets a loose head nor grows.
+const DIGITS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+const SIZE = 32768
+export const NO_HEADS = 'A'.repeat(SIZE)
+
+function spotsOf(head: string) {
+  let a = 0x811c9dc5
+  let b = 0x9747b28c
+
+  for (let i = 0; i < head.length; i++) {
+    a = Math.imul(a ^ head.charCodeAt(i), 16777619)
+    b = Math.imul(b ^ head.charCodeAt(i), 0x5bd1e995)
+  }
+
+  return [0, 1, 2, 3].map(i => ((a + i * (b | 1)) >>> 0) % (SIZE * 6))
+}
+
+export const hasHead = (loose: string, head: string) => spotsOf(head).every(spot => (DIGITS.indexOf(loose[Math.floor(spot / 6)] ?? 'A') >> spot % 6) & 1)
+
+export function withHeads(loose: string, heads: string[]): string {
+  if (heads.every(head => hasHead(loose, head))) return loose
+  const digits = Array.from(loose.length === SIZE ? loose : NO_HEADS, digit => DIGITS.indexOf(digit))
+
+  for (const spot of heads.flatMap(spotsOf)) {
+    digits[Math.floor(spot / 6)] |= 1 << spot % 6
+  }
+
+  return digits.map(digit => DIGITS[digit]).join('')
+}
+
+/** The newest `n` folds; the texts of the dropped ones turn loose, so none of their rows starts hiding. */
+export function kept(all: Folds, n: number): Folds {
+  const dropped = all.folds.slice(0, Math.max(0, all.folds.length - n))
+
+  return dropped.length === 0 ? all : { folds: all.folds.slice(dropped.length), loose: withHeads(all.loose, dropped.flatMap(fold => fold.texts)) }
+}
 
 /**
  * Where a drawn text row sits: its fold's line, a hidden member, or outside every fold. A row
- * joins only when its words name a text of exactly one fold, no reply kept them loose, and the
- * same holds for that fold's first text, so its line is drawn and opens what it hides.
+ * joins only when its words name a text of exactly one fold and are not loose, and the same holds
+ * for that fold's first text, so its line is drawn and opens what it hides.
  */
 export function placeOf(all: Folds, text: string): { fold: Fold; place: 'head' | 'member'; hidden: string[] } | undefined {
-  const isSure = (head: string) => !all.loose.includes(head) && all.folds.filter(fold => fold.texts.includes(head)).length === 1
+  const isSure = (head: string) => !hasHead(all.loose, head) && all.folds.filter(fold => fold.texts.includes(head)).length === 1
   const head = headOf(text)
   const fold = all.folds.find(fold => fold.texts.includes(head))
 
@@ -79,16 +122,16 @@ export function placeOf(all: Folds, text: string): { fold: Fold; place: 'head' |
   return { fold, place: head === fold.head ? 'head' : 'member', hidden: fold.texts.filter(isSure) }
 }
 
-/** The per-session record as stored: under its JSON size budget, the oldest folds dropped first. */
+/** The per-session record as stored: under its budget in UTF-8 bytes, the oldest folds dropped first. */
 export function fitted(all: Folds, budget: number): Folds {
-  let folds = all.folds
+  const bytes = (folds: Folds) => new TextEncoder().encode(JSON.stringify(folds)).length
+  let fit = all
 
-  while (folds.length > 0 && JSON.stringify({ folds, loose: all.loose }).length > budget) {
-    folds = folds.slice(1)
+  while (fit.folds.length > 0 && bytes(fit) > budget) {
+    fit = kept(fit, fit.folds.length - 1)
   }
 
-  // With no fold left, nothing reads the loose heads.
-  return folds.length === 0 ? { folds, loose: [] } : { folds, loose: all.loose }
+  return fit
 }
 
 /** The folded line's words in the person's language, from the catalogs in `register.tsx`. */
@@ -96,12 +139,14 @@ export type FoldWords = { show: (n: number) => string; hide: (n: number) => stri
 
 /**
  * The folded line's words, an action that says what a press does; what failed or warns comes
- * last, so it is never cut off first. `n` counts the texts the line hides.
+ * last, so it is never cut off first. `hidden` is the texts the line hides; only they can warn.
  */
-export function labelOf(fold: Fold, n: number, w: FoldWords, isOpen = false): { text: string; errors?: string; warnings?: string } {
+export function labelOf(fold: Fold, hidden: string[], w: FoldWords, isOpen = false): { text: string; errors?: string; warnings?: string } {
+  const warnings = hidden.filter(head => fold.risky.includes(head)).length
+
   return {
-    text: (isOpen ? w.hide : w.show)(n),
+    text: (isOpen ? w.hide : w.show)(hidden.length),
     ...(fold.errors > 0 && { errors: w.failed(fold.errors) }),
-    ...(fold.warnings > 0 && { warnings: w.warnings(fold.warnings) }),
+    ...(warnings > 0 && { warnings: w.warnings(warnings) }),
   }
 }
