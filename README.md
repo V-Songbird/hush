@@ -185,7 +185,7 @@ Each test session is a real Claude Code session in its own throwaway folder. Nin
 
 #### Claude Opus 5.5, voice 1.13.0
 
-Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four runs per setup, 36 sessions each, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort. Hush ran with `HUSH_WRAP=1`, set in bash as `HUSH_WRAP=1 claude` and in PowerShell as `$env:HUSH_WRAP = '1'; claude`. This measures the voice released as 1.13.0, not the current one.
+Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four runs per setup, 36 sessions each, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort. Hush ran with `HUSH_WRAP=1`, set in bash as `HUSH_WRAP=1 claude` and in PowerShell as `$env:HUSH_WRAP = '1'; claude`. This measures the voice released as [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0), not the current one.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"date":"2026-09-28","reviewedAt":"2026-11-14"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
@@ -203,7 +203,7 @@ A fresh Claude Sonnet session that got only the request and the final message an
 
 #### Claude Opus 5.5, 40 words per block
 
-The voice now also caps each block of the final answer at 40 words; a block is the text between two blank lines. The figures above do not measure that rule. Batch `o55-888-1bec0539`, started September 28, 2026: the same nine jobs, four runs per setup, 36 sessions each, Claude Opus 5.5, default effort, `HUSH_WRAP=1`, with no no-plugin setup. It compares the 1.13.0 build with the same build plus the block rule.
+The voice now also caps each block of the final answer at 40 words; a block is the text between two blank lines. The figures above do not measure that rule. Batch `o55-888-1bec0539`, started September 28, 2026: the same nine jobs, four runs per setup, 36 sessions each, Claude Opus 5.5, default effort, `HUSH_WRAP=1`, with no no-plugin setup. It compares the [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0) build with the same build plus the block rule.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"date":"2026-09-28","reviewedAt":"2026-11-14"} -->
 | Claude Opus 5.5, 36 sessions each | hush 1.13.0 | hush with the block rule |
@@ -221,7 +221,7 @@ The rule cut the share of words in long blocks by 13.8 points, in 7 of the 9 job
 
 #### Claude Sonnet 5.5, voice 2.0.0 build
 
-Batch `b31-quiet-0c14009e`, started October 13, 2026, in Claude Code with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`) at the default effort: two runs of eleven jobs per setup, 22 sessions each, shuffled inside each job and repetition. Hush ran with `HUSH_WRAP=1` from a build whose manifest read 2.0.0; it also carried part of the voice a later release shipped. The eleven jobs are the nine above plus a listing of 167 locale files and the three bad rows in a 151-line stretch of a 1,600-row CSV file. Compare these figures only with each other: the same build's bill per session has moved by about 5% between batches.
+Batch `b31-quiet-0c14009e`, started October 13, 2026, in Claude Code with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`) at the default effort: two runs of eleven jobs per setup, 22 sessions each, shuffled inside each job and repetition. Hush ran with `HUSH_WRAP=1` from a build whose manifest read [2.0.0](https://github.com/V-Songbird/hush/releases/tag/v2.0.0); it also carried part of the voice a later release shipped. The eleven jobs are the nine above plus a listing of 167 locale files and the three bad rows in a 151-line stretch of a 1,600-row CSV file. Compare these figures only with each other: the same build's bill per session has moved by about 5% between batches.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Sonnet 5.5"],"date":"2026-10-13","reviewedAt":"2026-11-14"} -->
 | Claude Sonnet 5.5, 22 sessions each | no plugin | hush |
@@ -242,7 +242,7 @@ Each job has a fixed answer key of required facts, matched by code or judged by 
 
 #### Claude Opus 5, September 1, 2026
 
-Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: nine jobs, four runs per setup, 36 sessions each, in Claude Code with the `opus` alias (the records store the alias, not a model id; it is taken to be Opus 5) at medium effort, `HUSH_WRAP=1`. The hush sessions ran hush 1.11.1, the release current when the batch started; the records do not store a version. This is an earlier voice than the one measured above.
+Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: nine jobs, four runs per setup, 36 sessions each, in Claude Code with the `opus` alias (the records store the alias, not a model id; it is taken to be Opus 5) at medium effort, `HUSH_WRAP=1`. The hush sessions ran hush [1.11.1](https://github.com/V-Songbird/hush/releases/tag/v1.11.1), the release current when the batch started; the records do not store a version. This is an earlier voice than the one measured above.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"date":"2026-09-01","reviewedAt":"2026-11-14"} -->
 | Claude Opus 5, 36 sessions each | Jobs right | Spoke at most once before the answer | Median final prose words | Sentences over 20 words | Words in blocks over 40 words, mean |
