@@ -564,7 +564,8 @@ export const register: Register = on => {
     const s = await stringsOf($)
 
     return (
-      <Box flexDirection="column" rowGap={1}>
+      // A named step between a reply's blocks, which the desktop sizes on its own scale.
+      <Box flexDirection="column" gap="md">
         {parts.map((part, i) => {
           if (part.kind === 'markdown') {
             return <Markdown key={`md${i}`} text={hardBreaks(cite(part.text))} />

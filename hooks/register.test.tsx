@@ -39,6 +39,10 @@ test('a mermaid fence draws as a picture between markdown blocks', async ($, on)
 
   expect(await ui.find({ type: 'Svg' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+  // The blocks sit apart by a named step, not a count of cells.
+  const outer = (await ui.findAll({ type: 'Box' }))[0]
+  expect(outer?.props.gap).toBe('md')
+  expect(outer?.props.rowGap).toBeUndefined()
   await ui.unmount()
 })
 
