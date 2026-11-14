@@ -4,7 +4,7 @@ import type { ChartWords } from './mermaid'
 import type { Palette } from './skin'
 import { HEADER_H, PAD, seriesColor, text, wrapText } from './svg-chart-kit'
 import type { Body } from './svg-chart-kit'
-import { escape, fitText, measure, riseDelay, strokeIcon } from './svg-kit'
+import { escape, fitText, measure, MUTED, MUTED_LINE, riseDelay, strokeIcon } from './svg-kit'
 
 // The system kinds as card bodies: block diagrams and C4 as boxes flowed into frames with
 // straight links between them, architecture as icon tiles on their grid inside group
@@ -151,7 +151,7 @@ function boxSvg(placed: Placed & { part: BoxPart }, color: string, palette: Pale
   }
 
   if (lines.kind !== '') {
-    parts.push(text(cx, at + 12, lines.kind, `font-size="10.5" text-anchor="middle" style="fill:${palette.muted}"`))
+    parts.push(text(cx, at + 12, lines.kind, `font-size="10.5" text-anchor="middle" fill="${palette.muted}" fill-opacity="${MUTED}"`))
     at += NOTE_LINE + 2
   }
 
@@ -176,16 +176,16 @@ function frameSvg(placed: Placed, isDashed: boolean, palette: Palette, words: Ch
   const label =
     name === ''
       ? ''
-      : `<text x="${x + 12}" y="${y + 20}" font-size="11.5" font-weight="600">${escape(both ? name : fitText(name, room, false, 11.5))}${both ? `<tspan style="fill:${palette.muted};font-weight:400">&#160;· ${escape(type)}</tspan>` : ''}</text>`
+      : `<text x="${x + 12}" y="${y + 20}" font-size="11.5" font-weight="600">${escape(both ? name : fitText(name, room, false, 11.5))}${both ? `<tspan fill="${palette.muted}" fill-opacity="${MUTED}" style="font-weight:400">&#160;· ${escape(type)}</tspan>` : ''}</text>`
 
-  return `<rect x="${x + 0.5}" y="${y + 0.5}" width="${w - 1}" height="${h - 1}" rx="10" fill="${palette.fg}" fill-opacity="${depth === 0 ? '.03' : '.04'}" stroke="${palette.muted}" stroke-opacity=".5"${isDashed ? ' stroke-dasharray="6 4"' : ''}/>${label}`
+  return `<rect x="${x + 0.5}" y="${y + 0.5}" width="${w - 1}" height="${h - 1}" rx="10" fill="${palette.fg}" fill-opacity="${depth === 0 ? '.03' : '.04'}" stroke="${palette.muted}" stroke-opacity=".36"${isDashed ? ' stroke-dasharray="6 4"' : ''}/>${label}`
 }
 
 const markerDefs = (id: string, palette: Palette): string =>
-  `<defs><marker id="${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9z" fill="${palette.muted}"/></marker></defs>`
+  `<defs><marker id="${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9z" fill="${palette.muted}" fill-opacity="${MUTED_LINE}"/></marker></defs>`
 
 const strokeOf = (line: Link['line'], palette: Palette): string =>
-  `stroke="${palette.muted}" stroke-opacity=".85" fill="none" stroke-width="${line === 'thick' ? 2.2 : 1.3}"${line === 'dotted' ? ' stroke-dasharray="4 4"' : ''}`
+  `stroke="${palette.muted}" stroke-opacity="${MUTED_LINE}" fill="none" stroke-width="${line === 'thick' ? 2.2 : 1.3}"${line === 'dotted' ? ' stroke-dasharray="4 4"' : ''}`
 
 // Where a line from a box's centre towards (dx, dy) crosses its outline: the drawn circle
 // or diamond where the box is one, its rectangle otherwise.
@@ -218,7 +218,7 @@ function linkSvg(link: Link, from: Placed, to: Placed, palette: Palette, marker:
   const end = edgeOf(to, -dx / length, -dy / length, link.arrow === 'none' ? 0 : 2)
   const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
   const arrows = `${link.arrow === 'both' ? ` marker-start="url(#${marker})"` : ''}${link.arrow === 'none' ? '' : ` marker-end="url(#${marker})"`}`
-  const style = `font-size="11" style="fill:${palette.muted}"`
+  const style = `font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}"`
   // Above a level line, beside an upright one, and on the open side of a slanted one: up
   // and right of a `\`, up and left of a `/`.
   const label =
@@ -259,7 +259,7 @@ function laneSvg(link: Link, from: Placed, to: Placed, lane: number, palette: Pa
   const label =
     link.label === '' || span < 40
       ? ''
-      : text(at.x, at.y, fitText(link.label, span - 12, false, 11), `font-size="11" style="fill:${palette.muted}" text-anchor="middle" transform="rotate(-90 ${at.x} ${at.y})"`)
+      : text(at.x, at.y, fitText(link.label, span - 12, false, 11), `font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}" text-anchor="middle" transform="rotate(-90 ${at.x} ${at.y})"`)
 
   return `<path d="M${start.x} ${start.y}H${lane}V${end.y}H${end.x}" ${strokeOf(link.line, palette)}${arrows}/>${label}`
 }
@@ -495,8 +495,8 @@ export function architectureBody(chart: Architecture, palette: Palette, width: n
       edge.label === ''
         ? ''
         : isFlat
-          ? text((a.x + b.x) / 2, a.y - 6, fitText(edge.label, Math.max(60, Math.abs(b.x - a.x)), false, 11), `font-size="11" text-anchor="middle" style="fill:${palette.muted}"`)
-          : text(a.x + 6, (a.y + b.y) / 2 + 4, fitText(edge.label, 120, false, 11), `font-size="11" style="fill:${palette.muted}"`)
+          ? text((a.x + b.x) / 2, a.y - 6, fitText(edge.label, Math.max(60, Math.abs(b.x - a.x)), false, 11), `font-size="11" text-anchor="middle" fill="${palette.muted}" fill-opacity="${MUTED}"`)
+          : text(a.x + 6, (a.y + b.y) / 2 + 4, fitText(edge.label, 120, false, 11), `font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}"`)
     const arrows = `${edge.arrow === 'from' || edge.arrow === 'both' ? ` marker-start="url(#${marker})"` : ''}${edge.arrow === 'to' || edge.arrow === 'both' ? ` marker-end="url(#${marker})"` : ''}`
 
     return `<g class="rise" ${riseDelay(i, 30, 200)}><path d="M${points.map(point => `${point.x} ${point.y}`).join('L')}" ${strokeOf('solid', palette)} stroke-linejoin="round"${arrows}/>${label}</g>`
@@ -507,7 +507,7 @@ export function architectureBody(chart: Architecture, palette: Palette, width: n
     const color = colorOf(service.group)
 
     if (service.isJunction) {
-      return `<circle cx="${cx}" cy="${y + TILE / 2}" r="3.5" fill="${palette.muted}"/>`
+      return `<circle cx="${cx}" cy="${y + TILE / 2}" r="3.5" fill="${palette.muted}" fill-opacity="${MUTED_LINE}"/>`
     }
 
     return [

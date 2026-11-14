@@ -3,7 +3,7 @@ import type { ChartWords, Commit, GitGraph, MindNode, Mindmap, Quadrant, Radar, 
 import type { Palette } from './skin'
 import { HEADER_H, PAD, seriesColor, text } from './svg-chart-kit'
 import type { Body } from './svg-chart-kit'
-import { escape, fitText, measure, riseDelay } from './svg-kit'
+import { escape, fitText, measure, MUTED, riseDelay } from './svg-kit'
 
 // The shape kinds as card bodies: a mindmap spread both ways from its root, a quadrant
 // chart, a radar's curves, a sankey's flows as bands and a git graph's branches as lanes.
@@ -171,7 +171,7 @@ export function quadrantBody(chart: Quadrant, palette: Palette, width: number): 
     `<line x1="${x0}" y1="${y0 + half}" x2="${x0 + size}" y2="${y0 + half}" stroke="${palette.fg}" stroke-opacity=".18"/>`,
   )
 
-  const axis = `font-size="11" style="fill:${palette.muted}"`
+  const axis = `font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}"`
   const [xLo, xHi] = chart.x
   const [yLo, yHi] = chart.y
   parts.push(
@@ -251,7 +251,7 @@ export function radarBody(chart: Radar, palette: Palette, width: number): Body |
 
     parts.push(
       `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${palette.fg}" stroke-opacity=".1"/>`,
-      text(lx, ly + 4 + sin * 4, fitText(axis.label, 96, false, 11.5), `text-anchor="${anchor}" font-size="11.5" style="fill:${palette.muted}"`),
+      text(lx, ly + 4 + sin * 4, fitText(axis.label, 96, false, 11.5), `text-anchor="${anchor}" font-size="11.5" fill="${palette.muted}" fill-opacity="${MUTED}"`),
     )
   })
 
@@ -395,7 +395,7 @@ export function sankeyBody(chart: Sankey, palette: Palette, width: number): Body
 
     nodes.push(
       `<rect x="${x}" y="${y}" width="${NODE_W}" height="${h}" rx="2" fill="${color}"/>`,
-      `<text x="${lx}" y="${y + h / 2 + 4}"${last ? ' text-anchor="end"' : ''} font-size="12">${escape(label)}<tspan dx="6" style="fill:${palette.muted}">${escape(formatValue(valueOf(node)))}</tspan></text>`,
+      `<text x="${lx}" y="${y + h / 2 + 4}"${last ? ' text-anchor="end"' : ''} font-size="12">${escape(label)}<tspan dx="6" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(formatValue(valueOf(node)))}</tspan></text>`,
     )
   }
 
@@ -500,7 +500,7 @@ export function gitBody(chart: GitGraph, palette: Palette, width: number, words:
       `<g class="rise" ${riseDelay(i, 25, 100)}>`,
       glyph(commit, x, y, color),
       `<title>${escape([commit.shown || commit.id, commit.type === 'merge' ? words.merge(commit.from) : commit.type === 'cherry' ? words.cherryPick(commit.from) : ''].filter(part => part !== '').join(' · '))}</title>`,
-      label === '' ? '' : text(x, y + 22, label, `text-anchor="middle" font-size="10" style="fill:${palette.muted}"`),
+      label === '' ? '' : text(x, y + 22, label, `text-anchor="middle" font-size="10" fill="${palette.muted}" fill-opacity="${MUTED}"`),
       commit.tag === ''
         ? ''
         : `<rect x="${x - tagW / 2}" y="${y - 32}" width="${tagW}" height="18" rx="5" fill="${palette.warn}" fill-opacity=".16"/>${text(x, y - 19, commit.tag, `text-anchor="middle" font-size="10.5" style="fill:${palette.warn};font-weight:600"`)}`,

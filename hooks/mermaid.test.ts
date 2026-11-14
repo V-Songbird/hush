@@ -440,6 +440,19 @@ const said = (words: typeof EN.chart): string =>
     return [...texts, card?.alt ?? ''].join('\n')
   }).join('\n')
 
+// Neutral ink follows the theme: every kind draws its text and neutral marks with
+// `currentColor`, and the only literal colours left are the series palette's.
+test('every chart kind paints neutral ink with currentColor, never a copied grey', () => {
+  const series = new Set(['user', 'read', 'ok', 'warn', 'web', 'mcp', 'search', 'err'].map(slot => PALETTE[slot as keyof typeof PALETTE].toLowerCase()))
+
+  for (const source of SPANISH_CHARTS) {
+    const card = chartSvg(parseMermaid(source) as Chart, PALETTE, 640, ES.chart)?.source ?? ''
+
+    expect(card).toContain('<g class="card" fill="currentColor">')
+    for (const [hex] of card.matchAll(/#[0-9a-f]{6}\b/gi)) expect(series.has(hex.toLowerCase())).toBe(true)
+  }
+})
+
 test('in Spanish no chart draws or says an English word', async () => {
   const text = said(ES.chart)
   const english = /\b(flowchart|chart|pie|timeline|journey|mindmap|quadrant|graph|treemap|packet|diagram|architecture|context|container|component|person|system|external|database|queue|enterprise|steps?|points?|slices?|tasks?|periods?|cards?|nodes?|curves?|flows?|items?|services?|elements?|blocks?|bar|line|empty|with|to|done|active|merge)\b/i

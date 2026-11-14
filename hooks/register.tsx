@@ -244,10 +244,11 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 const asTally = (value: unknown): Tally =>
   typeof value === 'object' && value !== null && typeof (value as Tally).messages === 'number' ? upgrade(value as Tally) : EMPTY
 
-// The desktop app's own design tokens (its `--cds-*` stylesheet, app 4.4212, read
-// 2026-11-02): series take `chart-categorical-1..8`, text `text-primary`, labels and
-// shapes `text-secondary`, minor marks `chart-reference`. A picture cannot read the page's
-// CSS variables, so the values are copied here, once per theme.
+// Text and neutral marks take `currentColor`: the desktop passes its text ink into the
+// picture, so they follow the person's theme and any look with no copied value. Muted ink is
+// that colour at an opacity, set as an attribute where it is drawn. Series have no theme key,
+// so they copy the app's `chart-categorical-1..8` tokens (app 4.4212, read 2026-11-02), once
+// per theme: a picture cannot read the page's CSS variables.
 export const LIGHT: Palette = {
   user: '#2a78d6',
   read: '#eb6834',
@@ -257,13 +258,8 @@ export const LIGHT: Palette = {
   mcp: '#008300',
   search: '#e87ba4',
   err: '#e34948',
-  write: '#eb6834',
-  run: '#eda100',
-  other: '#898781',
-  fg: '#0b0b0b',
-  muted: '#52514e',
-  surface: '#f9f9f7',
-  zebra: '#fcfcfb',
+  fg: 'currentColor',
+  muted: 'currentColor',
 }
 
 export const DARK: Palette = {
@@ -275,13 +271,8 @@ export const DARK: Palette = {
   mcp: '#008300',
   search: '#d55181',
   err: '#e66767',
-  write: '#d95926',
-  run: '#c98500',
-  other: '#97958d',
-  fg: '#f0efec',
-  muted: '#c3c2b7',
-  surface: '#1a1a19',
-  zebra: '#151515',
+  fg: 'currentColor',
+  muted: 'currentColor',
 }
 
 // The app's banner (`shared-frame` in app 4.4212) draws an icon and no title text, so the
@@ -313,12 +304,10 @@ export function themedChart(chart: Chart, width: number, words: ChartWords): { s
     return null
   }
 
-  // Each drawing's sheet styles every text; scoped to its own group, neither wins the other's.
-  // Its ids, an arrowhead's and the corners', are scoped too, or the dark drawing would take
-  // the light one's grey arrowheads.
+  // Each drawing's ids, an arrowhead's and the corners', are scoped, so neither drawing takes
+  // the other's.
   const scoped = (source: string, scope: string) =>
     source
-      .replace('<style>text{', `<style>.${scope} text{`)
       .replaceAll('id="', `id="${scope}-`)
       .replaceAll('url(#', `url(#${scope}-`)
   const style = '@media (prefers-color-scheme:dark){.hl{display:none}}@media not (prefers-color-scheme:dark){.hd{display:none}}'

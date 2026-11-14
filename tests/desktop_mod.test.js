@@ -46,6 +46,16 @@ test('the voice lifts its ban only under the heading the mod composes', () => {
   assert.ok(read('voice.ts').includes('"Forms the desktop mod draws"'), 'the marker points at that part of the voice');
 });
 
+test('the raw colour list names exactly the hex values the module holds', () => {
+  const listed = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, '..', 'mod-colors.allow.json'), 'utf-8')).exceptions;
+  const allowed = new Set(listed.flatMap((e) => e.values.map((v) => v.toLowerCase())));
+  const used = new Set();
+  for (const file of new Set(listed.map((e) => e.file))) {
+    for (const [, hex] of read(file).matchAll(/["'`](#[0-9a-fA-F]{3,8})["'`]/g)) used.add(hex.toLowerCase());
+  }
+  assert.deepStrictEqual([...used].sort(), [...allowed].sort());
+});
+
 test('the ported code keeps its licences beside it', () => {
   assert.match(read('mermaid', 'LICENSE-skins'), /MIT License/);
   assert.match(read('LICENSE-octicons'), /MIT License/);

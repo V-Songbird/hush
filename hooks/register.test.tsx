@@ -240,10 +240,14 @@ test('one chart picture carries both themes, each shown only under its own schem
   const source = built?.source ?? ''
 
   expect(source).toContain('@media (prefers-color-scheme:dark){.hl{display:none}}')
-  expect(source).toContain(`.hl text{fill:${LIGHT.fg}}`)
-  expect(source).toContain(`.hd text{fill:${DARK.fg}}`)
-  // The outer document holds the two drawings and no unscoped text rule.
-  expect(source).not.toContain('<style>text{')
+  // Text and neutral marks take the app's text ink in both drawings, as attributes: no sheet
+  // rule paints text, and no neutral grey is copied in.
+  expect(LIGHT.fg).toBe('currentColor')
+  expect(DARK.muted).toBe('currentColor')
+  expect(source.match(/<g class="card" fill="currentColor">/g)?.length).toBe(2)
+  expect(source).toContain('fill="currentColor" fill-opacity="0.6"')
+  expect(source).not.toMatch(/text\{fill:/)
+  expect(source).not.toMatch(/#0b0b0b|#f0efec|#52514e|#c3c2b7/i)
   // Each drawing points only at its own arrowhead and corners.
   expect(source).toContain('id="hd-arrow-')
   expect(source).not.toMatch(/url\(#(?!h[ld]-)/)
