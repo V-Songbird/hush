@@ -30,6 +30,11 @@ The "Next:" line now stands on its own: it names an earlier item by what it is, 
 it was, such as "my previous message". In a long session, a chapter marks the moment a fix lands,
 the topic changes or your decision starts the next phase, at most one per turn.
 
+The end-of-turn check now asks whether the session is ready to archive, never to delete. The
+"Next:" line mentions archiving only where the app can archive a session; elsewhere it just says
+the session is finished. When nothing is left and the turn has only its recap, the next-step box
+may offer the app's archive action.
+
 The sentence for passed checks now gives each command's counts as the runner printed them,
 passed, failed and skipped, and names every failed test. A count Claude did not read in the
 output is said to be worked out.

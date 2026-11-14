@@ -121,7 +121,12 @@ describe('style-settings: modules', () => {
       'A setting that removes the line leaves the check unsaid.',
       'Its question is what the session still misses, so the session is not ready to archive.',
       'Is the session ready to archive?',
+      'Ask yourself: is this session ready to archive?',
+      'Where the app can archive a session, add that the reader may archive it or keep taking next steps.',
+      'Then the box may ask to archive, with the app\'s `archive` action when it lists one.',
     ]) assert.ok(style.includes(s), s);
+    // Archiving is the reversible act; the voice never offers to delete a session.
+    assert.ok(!/archive or delete/.test(style));
     assert.ok(fs.readFileSync(path.join(MODULES, 'next-off.md'), 'utf-8').includes('The message has no "Next:" line, in any language'));
   });
 
