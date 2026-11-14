@@ -136,7 +136,8 @@ describe('style-settings: modules', () => {
     const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
     for (const s of [
       'The line stands on its own. Name an earlier item by its content, never by its place.',
-      'a fix or change lands, the user moves to a new topic, or a decision of theirs starts the next phase',
+      '| A chapter, `mark_chapter` | A turning point in a long session, listed below |',
+      '- A fix or change lands.\n- The user moves to a new topic.\n- A decision of theirs starts the next phase.',
       'A short noun phrase. At most one per turn.',
     ]) assert.ok(style.includes(s), s);
   });
