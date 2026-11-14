@@ -67,6 +67,8 @@ export const SESSION_BUDGET = 256 * 1024
 let isReplying = false
 // A prompt queued during the turn: the texts after it answer two prompts, so none of them folds.
 let isMixed = false
+// A subagent's words turned loose since the last save.
+let hasUnsaved = false
 let stored: Stored = { items: [], errors: 0 }
 
 function startReply() {
@@ -74,8 +76,12 @@ function startReply() {
   isMixed = false
 }
 
-const isFolds = (v: unknown): v is Folds =>
-  typeof v === 'object' && v !== null && Array.isArray((v as Folds).folds) && typeof (v as Folds).loose === 'string'
+// A damaged set of loose heads could answer "no" for a head it took, so the record is not read.
+const isFolds = (v: unknown): v is Folds => {
+  const { folds, loose } = (typeof v === 'object' && v !== null ? v : {}) as Partial<Folds>
+
+  return Array.isArray(folds) && typeof loose === 'string' && loose.length === NO_HEADS.length && /^[A-Za-z0-9+/]+$/.test(loose)
+}
 
 /** Saves the session's folds, keeping the newest sessions' and dropping any older shape's. */
 async function save($: EngineInterface, all: Folds) {
@@ -90,6 +96,7 @@ async function save($: EngineInterface, all: Folds) {
   // Deleted first, so `keys()`, in insertion order, lists sessions oldest written first.
   await $.store.delete(key)
   await $.store.set(key, fitted(all, SESSION_BUDGET))
+  hasUnsaved = false
 }
 
 /**
@@ -200,7 +207,10 @@ export const register: Register = on => {
       if (heads.length > 0 && !(await isDisabled($))) {
         const { loose } = await read($, folds)
 
-        if (!heads.every(head => hasHead(loose, head))) await update($, folds, s => ({ ...s, loose: withHeads(s.loose, heads) }))
+        if (!heads.every(head => hasHead(loose, head))) {
+          await update($, folds, s => ({ ...s, loose: withHeads(s.loose, heads) }))
+          hasUnsaved = true
+        }
       }
 
       return row
@@ -244,7 +254,14 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
 
-    if (e.agentId !== undefined) return done
+    if (e.agentId !== undefined) {
+      // A subagent may end after the reply's last save: keep its words loose past a reopen.
+      const all = await read($, folds)
+
+      if (hasUnsaved && all.folds.length > 0) await save($, all).catch(() => undefined)
+
+      return done
+    }
 
     // Gathering stops either way, so a reply switched off mid-turn leaves no later turn gathering.
     isReplying = false

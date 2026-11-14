@@ -272,6 +272,27 @@ test('a compaction closes the reply; the texts before it are drawn whole', async
   expect(await k.draw('After.')).toBe('Show 1 progress message')
 })
 
+test('a saved record whose loose heads are damaged is discarded', async ($, on) => {
+  const k = kit($, on, { [`${KEY}s1`]: { folds: [savedFold('Looking.')], loose: 'A'.repeat(10) } })
+  await k.start()
+
+  expect(await k.draw('Looking.')).toBe('whole')
+})
+
+test('a subagent’s words written after the reply’s last save survive a reopen', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([say('Look.'), ...work('a'), say('Reading the config file.'), ...work('b'), say('Final.')])
+  await $.session.append({ message: { type: 'assistant', role: 'assistant', content: [{ type: 'text', text: 'Reading the config file.' }] }, door: 'response', uuid: 'u-sub', origin: { kind: 'model', model: 'm' }, agentId: 'sub1' } as never)
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 'sub-t1', reason: 'answer', agentId: 'sub1' } as never)
+
+  k.env.session = 's2'
+  await k.start()
+  k.env.session = 's1'
+  await k.start()
+  expect(await k.draw('Reading the config file.')).toBe('whole')
+  expect(await k.draw('Look.')).toBe('Show 1 progress message')
+})
+
 test('a compaction after a queued prompt still keeps the first answer out of the fold', async ($, on) => {
   const k = kit($, on)
   const queued: Row = { type: 'attachment', name: 'queued_command', door: 'attachment', content: [{ type: 'text', text: 'And the docs?' }] }
