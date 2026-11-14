@@ -1,35 +1,26 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, RenderInput, ThemeKey } from 'claude-code'
 
 import { hardBreaks } from './mermaid/markdown'
 import type { Chart, ChartWords } from './mermaid/mermaid'
 import type { Palette } from './mermaid/skin'
 import { chartSvg } from './mermaid/svg-chart'
 import { cardWidth } from './mermaid/svg-kit'
-import { EMPTY, SECTION_ALERTS, lintMessage, localLinks, report, settingsOf, tally, upgrade, usesForms } from './lint'
-import type { ReportWords, Tally } from './lint'
 import { foldOf, headOf, isReprompt, labelOf, placeOf } from './fold'
 import type { Fold, FoldWords, Stored } from './fold'
 import { octicon } from './octicons'
 import { cite, splitReply } from './reply'
 import type { AlertType } from './reply'
-import { DESKTOP_SECTION, teachesDesktop } from './voice'
+import { DESKTOP_SECTION, markdownOf, teachesDesktop } from './voice'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it draws a reply's Mermaid fences as pictures and its GitHub alerts as
 // coloured boxes, and folds the progress texts before each final message (`fold.ts`). A reply
 // with neither form is left to the app whole, and every other surface, the terminal included,
-// is never touched. On every surface, it checks each final message against the voice's
-// countable rules and keeps the totals (`lint.ts`). HUSH_DISABLE=1 turns all of it off.
+// is never touched. It adds no command. HUSH_DISABLE=1 turns all of it off.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
-  command: 'How often Hush final messages kept the voice rules',
-  notComposed: 'The last Hush prompt has not been composed yet.',
-  carried: 'The last Hush prompt carried the desktop section.',
-  notCarried: 'The last Hush prompt did not carry the desktop section.',
-  withSection: 'With the desktop section',
-  withoutSection: 'Without it',
   // An alert's icon alt text: the app's banner shows the icon and no title.
   alerts: { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution' } as Record<AlertType, string>,
   fold: {
@@ -38,28 +29,6 @@ export const EN = {
     failed: n => `${n} failed`,
     warnings: n => `${n} ${n === 1 ? 'warning' : 'warnings'}`,
   } as FoldWords,
-  report: {
-    none: title => `${title}: none checked yet.`,
-    summary: (title, n) =>
-      `${title}: ${n.messages} checked, ${n.mermaid} with mermaid and ${n.alert} with an alert among the last ${n.recent}. Average ${n.words} words outside code, ${n.tokens} output tokens per turn.`,
-    rule: 'Rule',
-    passed: 'Passed',
-    rules: {
-      'result first': 'result first',
-      'rules where set': 'rules where set',
-      'next step where set': 'next step where set',
-      'sentences within limit': 'sentences within limit',
-      'blocks within limit': 'blocks within limit',
-      'words within limit': 'words within limit',
-      'no raw html': 'no raw html',
-      'links resolve': 'links resolve',
-      'alerts within limit': 'alerts within limit',
-      'alerts apart': 'alerts apart',
-      'alert types allowed': 'alert types allowed',
-      'alerts hold a risk (proxy)': 'alerts hold a risk (proxy)',
-      'next stands alone (proxy)': 'next stands alone (proxy)',
-    },
-  } as ReportWords,
   // A chart card's header, legend, tooltips and alt text (`mermaid/`).
   chart: {
     kinds: {
@@ -120,40 +89,12 @@ export const EN = {
   } as ChartWords,
 }
 export const ES: typeof EN = {
-  command: 'Con qué frecuencia los mensajes finales de Hush cumplieron las reglas de la voz',
-  notComposed: 'El último prompt de Hush aún no se ha compuesto.',
-  carried: 'El último prompt de Hush llevó la sección de escritorio.',
-  notCarried: 'El último prompt de Hush no llevó la sección de escritorio.',
-  withSection: 'Con la sección de escritorio',
-  withoutSection: 'Sin ella',
   alerts: { note: 'Nota', tip: 'Consejo', important: 'Importante', warning: 'Advertencia', caution: 'Precaución' },
   fold: {
     show: n => `Ver ${n} ${n === 1 ? 'mensaje de avance' : 'mensajes de avance'}`,
     hide: n => `Ocultar ${n} ${n === 1 ? 'mensaje de avance' : 'mensajes de avance'}`,
     failed: n => `${n} ${n === 1 ? 'falló' : 'fallaron'}`,
     warnings: n => `${n} ${n === 1 ? 'aviso' : 'avisos'}`,
-  },
-  report: {
-    none: title => `${title}: ninguno revisado aún.`,
-    summary: (title, n) =>
-      `${title}: ${n.messages} revisados, ${n.mermaid} con mermaid y ${n.alert} con una alerta entre los últimos ${n.recent}. En promedio, ${n.words} palabras fuera del código y ${n.tokens} tokens de salida por turno.`,
-    rule: 'Regla',
-    passed: 'Cumple',
-    rules: {
-      'result first': 'resultado primero',
-      'rules where set': 'separadores donde se piden',
-      'next step where set': 'siguiente paso donde se pide',
-      'sentences within limit': 'oraciones dentro del límite',
-      'blocks within limit': 'bloques dentro del límite',
-      'words within limit': 'palabras dentro del límite',
-      'no raw html': 'sin html crudo',
-      'links resolve': 'los enlaces existen',
-      'alerts within limit': 'alertas dentro del límite',
-      'alerts apart': 'alertas separadas',
-      'alert types allowed': 'tipos de alerta permitidos',
-      'alerts hold a risk (proxy)': 'las alertas llevan un riesgo (aproximado)',
-      'next stands alone (proxy)': 'el siguiente paso se entiende solo (aproximado)',
-    },
   },
   chart: {
     kinds: {
@@ -240,14 +181,11 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
   }
 }
 
-// What the store holds, or a fresh tally when it holds nothing this version wrote.
-const asTally = (value: unknown): Tally =>
-  typeof value === 'object' && value !== null && typeof (value as Tally).messages === 'number' ? upgrade(value as Tally) : EMPTY
-
-// The desktop app's own design tokens (its `--cds-*` stylesheet, app 4.4212, read
-// 2026-11-02): series take `chart-categorical-1..8`, text `text-primary`, labels and
-// shapes `text-secondary`, minor marks `chart-reference`. A picture cannot read the page's
-// CSS variables, so the values are copied here, once per theme.
+// Text and neutral marks take `currentColor`: the desktop passes its text ink into the
+// picture, so they follow the person's theme and any look with no copied value. Muted ink is
+// that colour at an opacity, set as an attribute where it is drawn. Series have no theme key,
+// so they copy the app's `chart-categorical-1..8` tokens (app 4.4212, read 2026-11-02), once
+// per theme: a picture cannot read the page's CSS variables.
 export const LIGHT: Palette = {
   user: '#2a78d6',
   read: '#eb6834',
@@ -257,13 +195,8 @@ export const LIGHT: Palette = {
   mcp: '#008300',
   search: '#e87ba4',
   err: '#e34948',
-  write: '#eb6834',
-  run: '#eda100',
-  other: '#898781',
-  fg: '#0b0b0b',
-  muted: '#52514e',
-  surface: '#f9f9f7',
-  zebra: '#fcfcfb',
+  fg: 'currentColor',
+  muted: 'currentColor',
 }
 
 export const DARK: Palette = {
@@ -275,13 +208,8 @@ export const DARK: Palette = {
   mcp: '#008300',
   search: '#d55181',
   err: '#e66767',
-  write: '#d95926',
-  run: '#c98500',
-  other: '#97958d',
-  fg: '#f0efec',
-  muted: '#c3c2b7',
-  surface: '#1a1a19',
-  zebra: '#151515',
+  fg: 'currentColor',
+  muted: 'currentColor',
 }
 
 // The app's banner (`shared-frame` in app 4.4212) draws an icon and no title text, so the
@@ -290,8 +218,9 @@ export const DARK: Palette = {
 // and `text-danger`. Important takes `autoAccept`'s `text-pro`, not `merged`, whose light
 // purple measured 3.46:1 on the page. The box has no fill: no theme key gives a see-through
 // tint, and a raw one would not follow the person's theme. `light` and `dark` are those text
-// tokens' values, for the icon.
-const ALERTS: Record<AlertType, { color: string; light: string; dark: string }> = {
+// tokens' values, for the icon: an Svg takes no theme key, and the engine refuses one inside a
+// Text ("Svg inside an inline element"), so the key cannot reach it.
+const ALERTS: Record<AlertType, { color: ThemeKey; light: string; dark: string }> = {
   note: { color: 'suggestion', light: '#184f95', dark: '#6da7ec' },
   tip: { color: 'success', light: '#006300', dark: '#0ca30c' },
   important: { color: 'autoAccept', light: '#4a3aa7', dark: '#a096eb' },
@@ -313,12 +242,10 @@ export function themedChart(chart: Chart, width: number, words: ChartWords): { s
     return null
   }
 
-  // Each drawing's sheet styles every text; scoped to its own group, neither wins the other's.
-  // Its ids, an arrowhead's and the corners', are scoped too, or the dark drawing would take
-  // the light one's grey arrowheads.
+  // Each drawing's ids, an arrowhead's and the corners', are scoped, so neither drawing takes
+  // the other's.
   const scoped = (source: string, scope: string) =>
     source
-      .replace('<style>text{', `<style>.${scope} text{`)
       .replaceAll('id="', `id="${scope}-`)
       .replaceAll('url(#', `url(#${scope}-`)
   const style = '@media (prefers-color-scheme:dark){.hl{display:none}}@media not (prefers-color-scheme:dark){.hd{display:none}}'
@@ -329,19 +256,9 @@ export function themedChart(chart: Chart, width: number, words: ChartWords): { s
   }
 }
 
-// Two tallies, so the desktop section can be judged against the voice without it: one for
-// turns whose prompt carried the section, one for the rest (the older tally's key).
-const TALLY = 'lint-tally'
-const TALLY_SECTION = 'lint-tally-desktop'
-
-// Whether the last Hush prompt composed carried the section. Only a Hush-styled prompt sets
-// it, so a subagent's prompt, which has no output style, does not overwrite the main turn's.
-// It lives in the store, not in a module variable: the mod reloads between a turn's prompt
-// and its end, and a variable would start over (seen live, 2026-11-03).
-const LAST_COMPOSE = 'lint-last-compose'
-
-// The settings /hush:config saved, read each turn since the reader may change them mid-session;
-// the same file and override Hush's `style-settings.js` reads. Nothing readable is the defaults.
+// The settings /hush:config saved, read at each prompt since the reader may change them
+// mid-session; the same file and override Hush's `style-settings.js` reads. Nothing readable
+// is the defaults.
 async function hushConfig($: EngineInterface): Promise<unknown> {
   try {
     const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
@@ -444,9 +361,6 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     if (await isDisabled($)) return next(e)
 
-    // A mod's command has no plugin prefix: the person types `/hush-lint`.
-    await $.command.register({ name: 'hush-lint', description: (await stringsOf($)).command })
-
     // A reopened session finds its folds again; a hot reload keeps them in `$.state` already.
     const saved = await $.store.get(`folds-2:${await $.session.id()}`)
 
@@ -493,40 +407,20 @@ export const register: Register = on => {
     return row
   }).catch(($, e, next) => next(e))
 
-  on('command.run', { command: 'hush-lint' }, async $ => {
-    const hasSection = await $.store.get(LAST_COMPOSE)
-    const s = await stringsOf($)
-
-    return {
-      text: [
-        // The app names the mod before a command's text, so the text does not.
-        hasSection === undefined ? s.notComposed : hasSection === true ? s.carried : s.notCarried,
-        report(asTally(await $.store.get(TALLY_SECTION)), s.withSection, s.report),
-        report(asTally(await $.store.get(TALLY)), s.withoutSection, s.report),
-      ].join('\n\n'),
-    }
-  })
-
   // Tell Claude what this mod draws, only where it draws it (`voice.ts`).
   on('prompt.compose', async ($, e, next) => {
     const result = await next(e)
 
     if (await isDisabled($)) return result
 
-    const teaches = teachesDesktop(e, settingsOf(await hushConfig($)))
-
-    if (e.outputStyle !== null && /^hush(:|$)/i.test(e.outputStyle.name)) {
-      await $.store.set(LAST_COMPOSE, teaches)
-    }
-
-    if (!teaches) {
+    if (!teachesDesktop(e, markdownOf(await hushConfig($)))) {
       return result
     }
 
     return { sections: [...result.sections, { id: 'hush:desktop', text: DESKTOP_SECTION, scope: 'session' as const }] }
   })
 
-  // Main-loop answers only: a subagent's report and an aborted turn are no final message.
+  // The main loop's turn ended: fold what came before its final message. A subagent's turn is not one.
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
 
@@ -535,20 +429,6 @@ export const register: Register = on => {
     if (e.agentId === undefined) {
       isReplying = false
       await closeReply($)
-    }
-
-    if (e.agentId === undefined && e.reason === 'answer' && e.answer.trim() !== '') {
-      const taught = (await $.store.get(LAST_COMPOSE)) === true
-      const key = taught ? TALLY_SECTION : TALLY
-      const prev = asTally(await $.store.get(key))
-      // A link resolves against the session's directory, as the app opens it; an absolute
-      // path stands alone.
-      const cwd = await $.session.cwd()
-      const found = await Promise.all(
-        localLinks(e.answer).map(path => $.fs.exists(/^([a-z]:)?[\\/]/i.test(path) ? path : `${cwd}/${path}`).catch(() => true)),
-      )
-      const lint = lintMessage(e.answer, settingsOf(await hushConfig($)), found.filter(isThere => !isThere).length, taught ? SECTION_ALERTS : [])
-      await $.store.set(key, tally(prev, lint, e.usage?.output_tokens ?? 0, new Date().toISOString(), usesForms(e.answer)))
     }
 
     return done
@@ -573,18 +453,31 @@ export const register: Register = on => {
     const width = cardWidth(e.viewport?.columns ?? 100)
     const { Box, Markdown, Svg } = $.ui.resolve(e)
     const s = await stringsOf($)
+    // A chart too crowded for this width keeps its source as a code block, in the prose.
+    const charts = parts.map(part => (part.kind === 'chart' ? themedChart(part.chart, width, s.chart) : null))
+    const isDrawn = (part: (typeof parts)[number], i: number) => part.kind === 'alert' || (part.kind === 'chart' && charts[i] !== null)
+
+    if (!parts.some(isDrawn)) {
+      return next(e)
+    }
+
+    // A message holds one engine drawing, and the first `next` call wins: a second call's text
+    // is dropped with no refusal (md-probe, 2026-11-02; seen again 2026-11-14). So the app's
+    // own renderer draws all the prose in one call, at its own size, after the drawings: every
+    // prose part, footnote line and over-wide chart's source, in authored order.
+    const prose = parts
+      .flatMap((part, i) =>
+        part.kind === 'markdown' ? [cite(part.text)] : part.kind === 'notes' ? [part.text] : part.kind === 'chart' && !isDrawn(part, i) ? [`\`\`\`mermaid\n${part.source}\n\`\`\``] : [],
+      )
+      .map(text => text.replace(/^\n+|\n+$/g, ''))
+      .filter(text => text.trim() !== '')
+      .join('\n\n')
+    const text = prose === '' ? null : await next({ ...e, props: { ...e.props, text: prose } })
 
     return (
-      <Box flexDirection="column" rowGap={1}>
+      // A named step between a reply's blocks, which the desktop sizes on its own scale.
+      <Box flexDirection="column" gap="md">
         {parts.map((part, i) => {
-          if (part.kind === 'markdown') {
-            return <Markdown key={`md${i}`} text={hardBreaks(cite(part.text))} />
-          }
-
-          if (part.kind === 'notes') {
-            return <Markdown key={`notes${i}`} text={hardBreaks(cite(part.text))} dimColor />
-          }
-
           if (part.kind === 'alert') {
             const alert = ALERTS[part.type]
             const line = (
@@ -608,15 +501,11 @@ export const register: Register = on => {
             )
           }
 
-          // A chart too crowded for this width keeps its source as a code block.
-          const built = themedChart(part.chart, width, s.chart)
+          const built = charts[i]
 
-          return built === null ? (
-            <Markdown key={`md${i}`} text={`\`\`\`mermaid\n${part.source}\n\`\`\``} />
-          ) : (
-            <Svg key={`chart${i}`} source={built.source} alt={built.alt} />
-          )
+          return !built ? null : <Svg key={`chart${i}`} source={built.source} alt={built.alt} />
         })}
+        {text === null ? null : <Box key="prose">{text}</Box>}
       </Box>
     )
   })

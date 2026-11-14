@@ -440,6 +440,21 @@ const said = (words: typeof EN.chart): string =>
     return [...texts, card?.alt ?? ''].join('\n')
   }).join('\n')
 
+// Neutral ink follows the theme: every kind draws its text and neutral marks with
+// `currentColor`, and the only literal colours left are the series palette's.
+test('every chart kind paints neutral ink with currentColor, never a copied grey', () => {
+  const series = new Set(['user', 'read', 'ok', 'warn', 'web', 'mcp', 'search', 'err'].map(slot => PALETTE[slot as keyof typeof PALETTE].toLowerCase()))
+
+  for (const source of SPANISH_CHARTS) {
+    const card = chartSvg(parseMermaid(source) as Chart, PALETTE, 640, ES.chart)?.source ?? ''
+
+    expect(card).toContain('<g class="card" fill="currentColor">')
+    // Sentence case, as the app writes its labels: no spaced capitals in any header.
+    expect(card).not.toContain('letter-spacing')
+    for (const [hex] of card.matchAll(/#[0-9a-f]{6}\b/gi)) expect(series.has(hex.toLowerCase())).toBe(true)
+  }
+})
+
 test('in Spanish no chart draws or says an English word', async () => {
   const text = said(ES.chart)
   const english = /\b(flowchart|chart|pie|timeline|journey|mindmap|quadrant|graph|treemap|packet|diagram|architecture|context|container|component|person|system|external|database|queue|enterprise|steps?|points?|slices?|tasks?|periods?|cards?|nodes?|curves?|flows?|items?|services?|elements?|blocks?|bar|line|empty|with|to|done|active|merge)\b/i
@@ -448,7 +463,7 @@ test('in Spanish no chart draws or says an English word', async () => {
   expect(text.match(english)?.[0] ?? null).toBeNull()
   expect(text.match(months)?.[0] ?? null).toBeNull()
   // The words each kind adds, in Spanish.
-  for (const word of ['DIAGRAMA DE FLUJO', 'Gráfico circular: Mascotas', '2 sectores', 'barras', 'línea 1', 'del 2026-10-01 al 2026-10-05 (terminada)', '(en curso)', 'ene 2026', 'con Yo, Gato', 'sin elementos', 'Hueco: sin elementos', 'fusión de', 'cherry-pick de rasgo', 'Persona externa', 'Contenedor de base de datos externo · SQL', 'empresa', 'C4 DE CONTENEDORES', 'total']) {
+  for (const word of ['Diagrama de flujo','Gráfico circular: Mascotas', '2 sectores', 'barras', 'línea 1', 'del 2026-10-01 al 2026-10-05 (terminada)', '(en curso)', 'ene 2026', 'con Yo, Gato', 'sin elementos', 'Hueco: sin elementos', 'fusión de', 'cherry-pick de rasgo', 'Persona externa', 'Contenedor de base de datos externo · SQL', 'empresa', 'C4 de contenedores', 'total']) {
     expect(text).toContain(word)
   }
   expect(text).toMatch(/\b\d{1,2} oct\b/)
@@ -457,7 +472,7 @@ test('in Spanish no chart draws or says an English word', async () => {
 test('with English words the same charts speak English', async () => {
   const text = said(EN.chart)
 
-  for (const word of ['FLOWCHART', 'Pie: Mascotas', '2 slices', 'bar', 'line 1', '2026-10-01 to 2026-10-05 (done)', '(active)', 'Jan 2026', 'with Yo, Gato', 'Hueco: empty', 'merge ', 'cherry-pick rasgo', 'External person', 'External container database · SQL', 'enterprise', 'C4 CONTAINER', 'total']) {
+  for (const word of ['Flowchart','Pie: Mascotas', '2 slices', 'bar', 'line 1', '2026-10-01 to 2026-10-05 (done)', '(active)', 'Jan 2026', 'with Yo, Gato', 'Hueco: empty', 'merge ', 'cherry-pick rasgo', 'External person', 'External container database · SQL', 'enterprise', 'C4 container', 'total']) {
     expect(text).toContain(word)
   }
   expect(text).toMatch(/\bOct \d{1,2}\b/)

@@ -105,6 +105,12 @@ export const staggerEnd = (count: number, stepMs: number, startMs = 80, duration
 export const riseEnd = (source: string): number =>
   Math.max(RISE_MS, ...[...source.matchAll(/animation-delay:(\d+)ms/g)].map(([, delay = '0']) => Number(delay) + RISE_MS))
 
+// Muted ink is the text colour (`currentColor`) at an opacity, set as an attribute: secondary
+// text at MUTED, lines, arrowheads and outlines at MUTED_LINE. The values approach the app's
+// `text-secondary` against its text ink.
+export const MUTED = 0.72
+export const MUTED_LINE = 0.6
+
 const RADIUS = 12
 
 // The room a card leaves in its top-right corner for a Copy button laid over it.
@@ -124,8 +130,10 @@ export function svgCard(width: number, height: number, palette: Palette, style: 
     `<defs><clipPath id="${clip}"><rect width="${width}" height="${height}" rx="${RADIUS}"/></clipPath></defs>`,
     // Sans for text that names no font of its own: a CSS rule on all text would beat the
     // monospace attribute on code, paths and output.
-    `<style>text{fill:${palette.fg}}text:not([font-family]){font-family:${FONT}}${MOTION}${style}</style>`,
-    `<g class="card"><g clip-path="url(#${clip})">${body}</g>`,
+    `<style>text:not([font-family]){font-family:${FONT}}${MOTION}${style}</style>`,
+    // Text takes its ink from this attribute, not from a sheet rule, so an element's own
+    // `fill` attribute (a muted label, a series colour) still wins over it.
+    `<g class="card" fill="${palette.fg}"><g clip-path="url(#${clip})">${body}</g>`,
     `<rect x=".5" y=".5" width="${width - 1}" height="${height - 1}" rx="${RADIUS - 0.5}" fill="none" stroke="${palette.fg}" stroke-opacity=".2"/></g>`,
     `</svg>`,
   ].join('')

@@ -98,6 +98,8 @@ describe('style-settings: modules', () => {
     const root = path.join(HOOKS_DIR, '..');
     const style = fs.readFileSync(path.join(root, 'output-styles', 'hush.md'), 'utf-8');
     assert.ok(style.includes('Checks give room only to what did not pass.'));
+    assert.ok(style.includes("Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test."));
+    assert.ok(style.includes('A count you did not read in the output is worked out, so say so.'));
     assert.ok(style.includes('Write the message after `wrap_up`, never before it.'));
     assert.ok(!style.includes('write the message first'));
     const files = [path.join(root, 'output-styles', 'hush.md'), path.join(root, 'widgets', 'config.html'), path.join(root, 'commands', 'config.md')];
@@ -119,8 +121,22 @@ describe('style-settings: modules', () => {
       'A setting that removes the line leaves the check unsaid.',
       'Its question is what the session still misses, so the session is not ready to archive.',
       'Is the session ready to archive?',
+      'Ask yourself: is this session ready to archive?',
+      'Where the app can archive a session, add that the reader may archive it or keep taking next steps.',
+      'Then the box may ask to archive, with the app\'s `archive` action when it lists one.',
     ]) assert.ok(style.includes(s), s);
+    // Archiving is the reversible act; the voice never offers to delete a session.
+    assert.ok(!/archive or delete/.test(style));
     assert.ok(fs.readFileSync(path.join(MODULES, 'next-off.md'), 'utf-8').includes('The message has no "Next:" line, in any language'));
+  });
+
+  test('the Next line stands on its own, and chapters name their moments', () => {
+    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    for (const s of [
+      'The line stands on its own. Name an earlier item by its content, never by its place.',
+      'a fix or change lands, the user moves to a new topic, or a decision of theirs starts the next phase',
+      'A short noun phrase. At most one per turn.',
+    ]) assert.ok(style.includes(s), s);
   });
 
   test('the default detail budget is 250 words and full is 400', () => {

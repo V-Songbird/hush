@@ -3,7 +3,7 @@ import type { ChartWords, Gantt, Journey, Kanban, Timeline } from './mermaid'
 import type { Palette } from './skin'
 import { HEADER_H, PAD, seriesColor, text, wrapText } from './svg-chart-kit'
 import type { Body } from './svg-chart-kit'
-import { fitText, measure, riseDelay } from './svg-kit'
+import { fitText, measure, MUTED, riseDelay } from './svg-kit'
 
 // The planning kinds as card bodies: gantt bars on a time axis, a timeline rail with its
 // events as chips, a journey's mood as a curve, a kanban board as panels.
@@ -57,13 +57,13 @@ export function ganttBody(chart: Gantt, palette: Palette, width: number, words: 
     const x = xOf(tick.at)
     parts.push(
       `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bottom}" stroke="${palette.fg}" stroke-opacity=".08"/>`,
-      text(x, top - 12, tick.label, `text-anchor="middle" font-size="10.5" style="fill:${palette.muted}"`),
+      text(x, top - 12, tick.label, `text-anchor="middle" font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}"`),
     )
   }
 
   rows.forEach((row, i) => {
     if (row.section !== undefined) {
-      parts.push(text(PAD, row.y + 16, row.section.toUpperCase(), `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(row.section))};letter-spacing:.08em;font-weight:600"`))
+      parts.push(text(PAD, row.y + 16, row.section, `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(row.section))};font-weight:600"`))
       return
     }
 
@@ -93,7 +93,7 @@ export function ganttBody(chart: Gantt, palette: Palette, width: number, words: 
     parts.push(
       `<g class="rise" ${riseDelay(i, 30, 80)}>${label}`,
       `<rect x="${left}" y="${mid - BAR_H / 2}" width="${w}" height="${BAR_H}" rx="4" fill="${color}" fill-opacity="${opacity}"${ring}/>`,
-      text(Math.min(left + w + 8, x1 + 6), mid + 4, lengthOf(task.end - task.start, words), `font-size="10.5" style="fill:${palette.muted}"`),
+      text(Math.min(left + w + 8, x1 + 6), mid + 4, lengthOf(task.end - task.start, words), `font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}"`),
       `</g>`,
     )
   })
@@ -132,7 +132,7 @@ export function timelineBody(chart: Timeline, palette: Palette, width: number): 
   periods.forEach((period, i) => {
     if (grouped && period.section !== section) {
       section = period.section
-      parts.push(text(PAD, y + 12, section.toUpperCase(), `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(section))};letter-spacing:.08em;font-weight:600"`))
+      parts.push(text(PAD, y + 12, section, `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(section))};font-weight:600"`))
       y += 26
     }
 
@@ -208,7 +208,7 @@ export function journeyBody(chart: Journey, palette: Palette, width: number, wor
   for (let score = 1; score <= 5; score++) {
     parts.push(
       `<line x1="${x0}" y1="${yOf(score)}" x2="${x1}" y2="${yOf(score)}" stroke="${palette.fg}" stroke-opacity="${score === 3 ? 0.14 : 0.06}"/>`,
-      text(PAD, yOf(score) + 4, String(score), `font-size="10.5" style="fill:${palette.muted}"`),
+      text(PAD, yOf(score) + 4, String(score), `font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}"`),
     )
   }
 
@@ -267,7 +267,7 @@ export function journeyBody(chart: Journey, palette: Palette, width: number, wor
   let height = top + MOOD_H + 26 + 30 + (labelRows - 1) * 15
 
   if (chart.actors.length > 0) {
-    parts.push(text(x0, height + 4, fitText(words.with(chart.actors.join(', ')), x1 - x0, false, 11.5), `font-size="11.5" style="fill:${palette.muted}"`))
+    parts.push(text(x0, height + 4, fitText(words.with(chart.actors.join(', ')), x1 - x0, false, 11.5), `font-size="11.5" fill="${palette.muted}" fill-opacity="${MUTED}"`))
     height += 20
   }
 
@@ -328,17 +328,17 @@ export function kanbanBody(chart: Kanban, palette: Palette, width: number, words
           const priorityColor = slot === 'muted' ? palette.muted : palette[slot]
 
           if (card.priority !== '') {
-            inner.push(text(x + 8 + CARD_PAD + 6, metaY, card.priority, `font-size="10.5" style="fill:${priorityColor};font-weight:600"`))
+            inner.push(text(x + 8 + CARD_PAD + 6, metaY, card.priority, `font-size="10.5" fill="${priorityColor}" style="font-weight:600"`))
           }
 
-          inner.push(text(x + 8 + CARD_PAD + 6 + priorityW, metaY, fitText(meta, textW - priorityW, false, 10.5), `font-size="10.5" style="fill:${palette.muted}"`))
+          inner.push(text(x + 8 + CARD_PAD + 6 + priorityW, metaY, fitText(meta, textW - priorityW, false, 10.5), `font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}"`))
         }
 
         y += h + 8
       }
 
       if (column.cards.length === 0) {
-        inner.push(text(x + 16, y + 14, words.empty,`font-size="11.5" style="fill:${palette.muted};font-style:italic"`))
+        inner.push(text(x + 16, y + 14, words.empty,`font-size="11.5" fill="${palette.muted}" fill-opacity="${MUTED}" style="font-style:italic"`))
         y += 26
       }
 

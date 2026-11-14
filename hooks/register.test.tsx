@@ -15,11 +15,13 @@ const mount = async (
   text: string,
   surface: 'desktop' | 'terminal' = 'desktop',
   disable?: string,
+  calls: string[] = [],
 ) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
+    calls.push(e.props.text)
 
-    return <Text>engine</Text>
+    return <Text>{`engine: ${e.props.text}`}</Text>
   })
   on('env.get', (_, e) => ({ value: e.name === 'HUSH_DISABLE' ? disable : undefined }))
 
@@ -29,57 +31,89 @@ const mount = async (
 test('a reply with no chart or alert is the app’s whole', async ($, on) => {
   const ui = await mount($, on, '**Done.**\n\n```search_tree\nWhy?\n└── [p=1] Because\n```\n\nSee <kbd>Ctrl</kbd>.')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toMatch(/^engine: \*\*Done\.\*\*/)
   expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })
 
-test('a mermaid fence draws as a picture between markdown blocks', async ($, on) => {
-  const ui = await mount($, on, `**Result.**\n\n${FLOW}\n\nAfter.`)
+// A message holds one engine drawing, and the first `next` call wins: the drawings come first,
+// in authored order, then all the prose in one call to the app's own renderer.
+const SPLIT = `**Result.**\n\nP0.\n\n> [!WARNING]\n> Risk.\n\nP1.\n\n${FLOW}\n\nP2 is the last line.`
 
-  expect(await ui.find({ type: 'Svg' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+test('a split reply draws its drawings first, then all its prose in one app drawing', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, SPLIT, 'desktop', undefined, calls)
+  const tree = (await ui.find({ type: 'Box' })) as unknown as { children: { type: string; props?: { key?: string } }[] }
+
+  // Exactly one call reaches the app, with every prose part in authored order.
+  expect(calls).toEqual(['**Result.**\n\nP0.\n\nP1.\n\nP2 is the last line.'])
+  expect(await ui.find({ type: 'Markdown', text: /P0/ })).toBeUndefined()
+  // The warning, then the chart, then the prose.
+  expect(tree.children.map(child => `${child.type}:${child.props?.key ?? ''}`)).toEqual(['Box:alert1', 'Svg:', 'Box:prose'])
+  // The blocks sit apart by a named step, not a count of cells.
+  const outer = (await ui.findAll({ type: 'Box' }))[0]
+  expect(outer?.props.gap).toBe('md')
+  expect(outer?.props.rowGap).toBeUndefined()
+  await ui.unmount()
+})
+
+test('nothing is dropped: the prose is the reply without its drawn blocks', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, SPLIT, 'desktop', undefined, calls)
+  const words = (text: string) => text.split(/\s+/).filter(Boolean)
+  const withoutDrawn = SPLIT.replace(FLOW, '').replace('> [!WARNING]\n> Risk.', '')
+
+  expect(words(calls.join('\n'))).toEqual(words(withoutDrawn))
+  await ui.unmount()
+})
+
+test('a footnote reference and its note reach the app in the same drawing', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, `See this[^1].\n\n${FLOW}\n\n[^1]: The note.\n\n---\n\n**Next:** read it.`, 'desktop', undefined, calls)
+
+  expect(calls).toEqual(['See this¹.\n\n[1] The note.\n\n---\n\n**Next:** read it.'])
   await ui.unmount()
 })
 
 test('the terminal is never touched', async ($, on) => {
   const ui = await mount($, on, `**Result.**\n\n${FLOW}`, 'terminal')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  // The whole reply, fence included, reaches the app in one piece.
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toContain('```mermaid')
   await ui.unmount()
 })
 
 test('HUSH_DISABLE=1 leaves a mermaid reply to the app', async ($, on) => {
   const ui = await mount($, on, `**Result.**\n\n${FLOW}`, 'desktop', '1')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toContain('```mermaid')
   expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })
 
-// The tally is the mod's one write to disk; HUSH_DISABLE=1 must leave it alone.
-const stores = async ($: Engine, on: On, disable?: string) => {
-  const keys: string[] = []
-  on('env.get', (_, e) => ({ value: e.name === 'HUSH_DISABLE' ? disable : undefined }))
-  on('session.cwd', () => ({ value: '/work' }))
+// The mod adds nothing to the person's command list, and a plain final message writes nothing.
+test('a session start registers no command, and a final message writes nothing', async ($, on) => {
+  const registered: string[] = []
+  const written: string[] = []
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', (_, e) => {
-    keys.push(e.key)
+    written.push(e.key)
 
     return { value: undefined }
   })
+  on('command.register', (_, e) => {
+    registered.push(e.name)
+
+    return { value: { command: e.name } }
+  })
   on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   await $.turn.complete({ answer: '**Done.**\n\n---\n\n**Next:** read it.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
 
-  return keys
-}
-
-test('a final message adds to the tally', async ($, on) => {
-  expect((await stores($, on)).length).toBeGreaterThan(0)
-})
-
-test('HUSH_DISABLE=1 writes no tally', async ($, on) => {
-  expect(await stores($, on, '1')).toEqual([])
+  expect(registered).toEqual([])
+  expect(written).toEqual([])
 })
 
 // The app's own banner shows an icon and no title text, so the box carries no "Warning" label.
@@ -91,60 +125,34 @@ test('an alert draws as a box with its icon and no title text', async ($, on) =>
   await ui.unmount()
 })
 
+// The icon keeps its alert's own colour, light and dark; the box takes the alert's theme key.
+test('an alert icon draws in its alert colour, its box in the alert theme key', async ($, on) => {
+  const ui = await mount($, on, '**Result.**\n\n> [!WARNING]\n> The cache is stale.')
+  const icon = await ui.find({ type: 'Svg' })
+
+  expect(icon?.props.source).toContain('path{fill:#734500}')
+  expect(icon?.props.source).toContain('path{fill:#db9300}')
+  expect((await ui.findAll({ type: 'Box' })).some(box => box.props.borderColor === 'warning')).toBe(true)
+  await ui.unmount()
+})
+
 // Every string the person reads comes from the catalog the `language` setting picks.
 const SPANISH = () => ({ value: { language: 'Español' } })
 const ALERTS = '**Result.**\n\n> [!TIP]\n> Another way.\n\nProse.\n\n> [!WARNING]\n> Not run.'
-const RUN = { command: 'hush-lint', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } } as never
 
-// The engine beneath, registered before the first `$` call: a session id, a store that holds
-// nothing, and the registered command, whose description it keeps.
-const beneath = (on: On) => {
-  const described: string[] = []
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('session.id', () => ({ value: 's1' }))
-  on('store.get', () => ({ value: undefined }))
-  on('command.register', (_, e) => {
-    described.push(e.description ?? '')
-
-    return { value: { command: 'hush-lint' } }
-  })
-
-  return described
-}
-
-const commandText = async ($: Engine) => {
-  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
-
-  return JSON.stringify(await $.command.run(RUN))
-}
-
-test('in a Spanish session every alert icon, the command and its report speak Spanish', async ($, on) => {
+test('in a Spanish session every alert icon speaks Spanish', async ($, on) => {
   on('settings.read', SPANISH)
-  const described = beneath(on)
   const ui = await mount($, on, ALERTS)
 
   expect((await ui.findAll({ type: 'Svg' })).map(svg => svg.props.alt)).toEqual(['Consejo', 'Advertencia'])
   await ui.unmount()
-
-  const text = await commandText($)
-  expect(described).toEqual([ES.command])
-  expect(text).toContain('El último prompt de Hush aún no se ha compuesto.')
-  expect(text).toContain('Con la sección de escritorio: ninguno revisado aún.')
-  expect(text).toContain('Sin ella: ninguno revisado aún.')
 })
 
-test('with no language set, the alerts, the command and its report speak English', async ($, on) => {
-  const described = beneath(on)
+test('with no language set, the alert icons speak English', async ($, on) => {
   const ui = await mount($, on, ALERTS)
 
   expect((await ui.findAll({ type: 'Svg' })).map(svg => svg.props.alt)).toEqual(['Tip', 'Warning'])
   await ui.unmount()
-
-  const text = await commandText($)
-  expect(described).toEqual([EN.command])
-  expect(text).toContain('The last Hush prompt has not been composed yet.')
-  expect(text).toContain('With the desktop section: none checked yet.')
-  expect(text).toContain('Without it: none checked yet.')
 })
 
 // A fold an earlier reply stored, found again at session start, and its first row drawn on
@@ -154,7 +162,6 @@ const foldedLine = async ($: Engine, on: On) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 's1' }))
   on('store.get', (_, e) => ({ value: e.key === 'folds-2:s1' ? [FOLD] : undefined }))
-  on('command.register', () => ({ value: { command: 'hush-lint' } }))
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   const ui = await $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface: 'desktop', props: { text: 'Now I check the store.', isFirstOfReply: true } } as never)
@@ -209,7 +216,7 @@ test('in a Spanish session a chart picture draws and says Spanish', async ($, on
   const svg = await ui.find({ type: 'Svg' })
 
   expect(svg?.props.alt).toBe('Gráfico circular: Pets\nDogs: 3 (75%)\nCats: 1 (25%)')
-  expect(svg?.props.source).toContain('GRÁFICO CIRCULAR')
+  expect(svg?.props.source).toContain('>Gráfico circular<')
   expect(svg?.props.source).toContain('2 sectores')
   await ui.unmount()
 })
@@ -219,7 +226,7 @@ test('with no language set, a chart picture draws and says English', async ($, o
   const svg = await ui.find({ type: 'Svg' })
 
   expect(svg?.props.alt).toBe('Pie: Pets\nDogs: 3 (75%)\nCats: 1 (25%)')
-  expect(svg?.props.source).toContain('>PIE<')
+  expect(svg?.props.source).toContain('>Pie<')
   expect(svg?.props.source).toContain('2 slices')
   await ui.unmount()
 })
@@ -240,10 +247,14 @@ test('one chart picture carries both themes, each shown only under its own schem
   const source = built?.source ?? ''
 
   expect(source).toContain('@media (prefers-color-scheme:dark){.hl{display:none}}')
-  expect(source).toContain(`.hl text{fill:${LIGHT.fg}}`)
-  expect(source).toContain(`.hd text{fill:${DARK.fg}}`)
-  // The outer document holds the two drawings and no unscoped text rule.
-  expect(source).not.toContain('<style>text{')
+  // Text and neutral marks take the app's text ink in both drawings, as attributes: no sheet
+  // rule paints text, and no neutral grey is copied in.
+  expect(LIGHT.fg).toBe('currentColor')
+  expect(DARK.muted).toBe('currentColor')
+  expect(source.match(/<g class="card" fill="currentColor">/g)?.length).toBe(2)
+  expect(source).toContain('fill="currentColor" fill-opacity="0.6"')
+  expect(source).not.toMatch(/text\{fill:/)
+  expect(source).not.toMatch(/#0b0b0b|#f0efec|#52514e|#c3c2b7/i)
   // Each drawing points only at its own arrowhead and corners.
   expect(source).toContain('id="hd-arrow-')
   expect(source).not.toMatch(/url\(#(?!h[ld]-)/)

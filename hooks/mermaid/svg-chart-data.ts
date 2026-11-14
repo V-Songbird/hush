@@ -4,7 +4,7 @@ import type { Packet, Rect, TreeNode, Treemap } from './mermaid-data'
 import type { Palette } from './skin'
 import { HEADER_H, PAD, seriesColor, text } from './svg-chart-kit'
 import type { Body } from './svg-chart-kit'
-import { escape, fitText, riseDelay } from './svg-kit'
+import { escape, fitText, MUTED, riseDelay } from './svg-kit'
 
 // The data kinds as card bodies: a treemap as nested squarified tiles, each top-level
 // section in its own colour, and a packet diagram as rows of bit cells.
@@ -38,7 +38,7 @@ export function treemapBody(chart: Treemap, palette: Palette, width: number): Bo
       tiles.push(
         `<g class="rise" ${riseDelay(leaf++, 18, 100)}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${color}" fill-opacity=".18" stroke="${color}" stroke-opacity=".55">${tip}</rect>`,
         label === '' ? '' : text(x + 6, y + 17, label, 'font-size="12"'),
-        value === '' ? '' : text(x + 6, y + 32, value, `font-size="11" style="fill:${palette.muted}"`),
+        value === '' ? '' : text(x + 6, y + 32, value, `font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}"`),
         '</g>',
       )
 
@@ -52,7 +52,7 @@ export function treemapBody(chart: Treemap, palette: Palette, width: number): Bo
     tiles.push(
       `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${color}" fill-opacity="${depth === 0 ? '.06' : '.04'}" stroke="${color}" stroke-opacity="${depth === 0 ? '.6' : '.35'}">${tip}</rect>`,
       name === '' ? '' : text(x + 8, y + 15, name, `font-size="${depth === 0 ? 12.5 : 11.5}" font-weight="600"`),
-      name === '' || w <= 120 ? '' : text(x + w - 8, y + 15, formatValue(node.value), `font-size="11" text-anchor="end" style="fill:${palette.muted}"`),
+      name === '' || w <= 120 ? '' : text(x + w - 8, y + 15, formatValue(node.value), `font-size="11" text-anchor="end" fill="${palette.muted}" fill-opacity="${MUTED}"`),
     )
 
     const inner = { x: x + 2, y: y + strip, w: w - 4, h: h - strip - 2 }
@@ -122,9 +122,9 @@ export function packetBody(chart: Packet, palette: Palette, width: number): Body
           : text(x + w / 2, y + NUMBER_H + BOX_H / 2 + 4, fitted, 'font-size="12" text-anchor="middle"')
       const numbers =
         piece.start === piece.end
-          ? text(x + w / 2, y + 10, String(piece.start), `font-size="9.5" text-anchor="middle" style="fill:${palette.muted}"`)
-          : text(x + 2, y + 10, String(piece.start), `font-size="9.5" style="fill:${palette.muted}"`) +
-            text(x + w - 2, y + 10, String(piece.end), `font-size="9.5" text-anchor="end" style="fill:${palette.muted}"`)
+          ? text(x + w / 2, y + 10, String(piece.start), `font-size="9.5" text-anchor="middle" fill="${palette.muted}" fill-opacity="${MUTED}"`)
+          : text(x + 2, y + 10, String(piece.start), `font-size="9.5" fill="${palette.muted}" fill-opacity="${MUTED}"`) +
+            text(x + w - 2, y + 10, String(piece.end), `font-size="9.5" text-anchor="end" fill="${palette.muted}" fill-opacity="${MUTED}"`)
 
       parts.push(
         `<g class="rise" ${riseDelay(piece.field, 16, 100)}>`,

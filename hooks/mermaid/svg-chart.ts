@@ -7,7 +7,7 @@ import { ganttBody, journeyBody, kanbanBody, timelineBody } from './svg-chart-pl
 import { gitBody, mindmapBody, quadrantBody, radarBody, sankeyBody } from './svg-chart-shape'
 import { packetBody, treemapBody } from './svg-chart-data'
 import { architectureBody, blockBody, c4Body, systemAlt } from './svg-chart-system'
-import { CONTROL_SLOT, escape, fitText, HEADER_MID, measure, riseDelay, riseEnd, svgCard } from './svg-kit'
+import { CONTROL_SLOT, escape, fitText, HEADER_MID, measure, MUTED, MUTED_LINE, riseDelay, riseEnd, svgCard } from './svg-kit'
 
 // A Mermaid fence drawn as a card in the same shell as code and tables: the kind and
 // title in a header, then the drawing in the skin's colours.
@@ -16,17 +16,18 @@ type Built = { source: string; width: number; height: number; alt: string; entra
 
 function header(chart: Chart, palette: Palette, width: number, hasControl: boolean, words: ChartWords): string {
   const { kind, count } = chartHeading(chart, words)
-  const label = kind.toUpperCase()
+  // Sentence case, as the app writes its own labels.
+  const label = kind
   const title = chart.title
-  const titleX = 16 + measure(label, false, 11) * 1.15 + 12
+  const titleX = 16 + measure(label, false, 11) + 12
   const right = width - 16 - (hasControl ? CONTROL_SLOT : 0)
   const room = right - titleX - measure(count, false, 11) - 16
 
   return [
-    `<text x="16" y="${HEADER_MID + 4}" font-size="11" style="fill:${palette.muted};letter-spacing:.1em;font-weight:600">${escape(label)}</text>`,
+    `<text x="16" y="${HEADER_MID + 4}" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}" style="font-weight:600">${escape(label)}</text>`,
     title === '' ? '' : `<text x="${titleX}" y="${HEADER_MID + 4}" font-size="13" style="font-weight:600">${escape(fitText(title, room, false, 13))}</text>`,
-    `<text x="${right}" y="${HEADER_MID + 4}" text-anchor="end" font-size="11" style="fill:${palette.muted}">${escape(count)}</text>`,
-    `<line x1="0" y1="${HEADER_H - 0.5}" x2="${width}" y2="${HEADER_H - 0.5}" stroke="${palette.muted}" stroke-opacity=".3"/>`,
+    `<text x="${right}" y="${HEADER_MID + 4}" text-anchor="end" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(count)}</text>`,
+    `<line x1="0" y1="${HEADER_H - 0.5}" x2="${width}" y2="${HEADER_H - 0.5}" stroke="${palette.muted}" stroke-opacity=".22"/>`,
   ].join('')
 }
 
@@ -220,7 +221,7 @@ function placeRight(flow: Flow, width: number): Map<string, Placed> | null {
 function nodeSvg(placed: Placed, palette: Palette): string {
   const { node, x, y, w } = placed
   const color = palette[SHAPE_SLOT[node.shape]]
-  const paint = `fill="${color}" fill-opacity=".12" stroke="${color}" stroke-opacity=".85"`
+  const paint = `fill="${color}" fill-opacity=".09" stroke="${color}" stroke-opacity="${MUTED_LINE}"`
   const shape =
     node.shape === 'diamond'
       ? `<path d="M${x} ${y + NODE_H / 2}L${x + 12} ${y}H${x + w - 12}L${x + w} ${y + NODE_H / 2}L${x + w - 12} ${y + NODE_H}H${x + 12}Z" ${paint}/>`
@@ -268,11 +269,11 @@ function edgeSvg(edge: FlowEdge, from: Placed, to: Placed, isDown: boolean, isBa
     labelAt = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 6, anchor: 'middle' }
   }
 
-  const stroke = `stroke="${palette.muted}" stroke-opacity=".85" fill="none" stroke-width="${edge.line === 'thick' ? 2.2 : 1.3}"${edge.line === 'dotted' ? ' stroke-dasharray="4 4"' : ''}`
+  const stroke = `stroke="${palette.muted}" stroke-opacity="${MUTED_LINE}" fill="none" stroke-width="${edge.line === 'thick' ? 2.2 : 1.3}"${edge.line === 'dotted' ? ' stroke-dasharray="4 4"' : ''}`
   const label =
     edge.label === ''
       ? ''
-      : `<text x="${labelAt.x}" y="${labelAt.y}" text-anchor="${labelAt.anchor}" font-size="11" style="fill:${palette.muted}">${escape(fitText(edge.label, 120, false, 11))}</text>`
+      : `<text x="${labelAt.x}" y="${labelAt.y}" text-anchor="${labelAt.anchor}" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(fitText(edge.label, 120, false, 11))}</text>`
 
   return `<path d="${path}" ${stroke}${edge.isArrow ? ` marker-end="url(#${marker})"` : ''}/>${label}`
 }
@@ -303,7 +304,7 @@ function flowBody(flow: Flow, palette: Palette, width: number): Body | null {
   })
 
   const nodes = [...placed.values()].map(node => `<g class="rise" ${riseDelay(rankOf(node.node.id), 70, 60)}>${nodeSvg(node, palette)}</g>`)
-  const defs = `<defs><marker id="${marker}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9z" fill="${palette.muted}"/></marker></defs>`
+  const defs = `<defs><marker id="${marker}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 1L9 5L0 9z" fill="${palette.muted}" fill-opacity="${MUTED_LINE}"/></marker></defs>`
 
   return { body: defs + edges.join('') + nodes.join(''), height }
 }
@@ -334,14 +335,14 @@ function xyBody(chart: XyChart, palette: Palette, width: number, words: ChartWor
   const parts: string[] = []
 
   if (chart.yLabel !== '') {
-    parts.push(`<text x="${PAD}" y="${HEADER_H + 24}" font-size="11" style="fill:${palette.muted}">${escape(fitText(chart.yLabel, x1 - PAD, false, 11))}</text>`)
+    parts.push(`<text x="${PAD}" y="${HEADER_H + 24}" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(fitText(chart.yLabel, x1 - PAD, false, 11))}</text>`)
   }
 
   for (const tick of ticks) {
     const y = scale(tick)
     parts.push(
       `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="${palette.fg}" stroke-opacity="${tick === 0 ? 0.22 : 0.08}"/>`,
-      `<text x="${x0 - 8}" y="${y + 4}" text-anchor="end" font-size="11" style="fill:${palette.muted}">${escape(formatValue(tick))}</text>`,
+      `<text x="${x0 - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(formatValue(tick))}</text>`,
     )
   }
 
@@ -362,7 +363,7 @@ function xyBody(chart: XyChart, palette: Palette, width: number, words: ChartWor
       const y = scale(value)
       const h = Math.max(1, Math.abs(baseline - y))
       const label = showValues
-        ? `<text x="${x + barW / 2}" y="${Math.min(y, baseline) - 6}" text-anchor="middle" font-size="10.5" style="fill:${palette.muted}">${escape(formatValue(value))}</text>`
+        ? `<text x="${x + barW / 2}" y="${Math.min(y, baseline) - 6}" text-anchor="middle" font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(formatValue(value))}</text>`
         : ''
 
       parts.push(
@@ -384,7 +385,7 @@ function xyBody(chart: XyChart, palette: Palette, width: number, words: ChartWor
 
   for (const [i, label] of chart.labels.entries()) {
     if (i % every === 0) {
-      parts.push(`<text x="${x0 + i * band + band / 2}" y="${y1 + 18}" text-anchor="middle" font-size="11" style="fill:${palette.muted}">${escape(fitText(label, band * every - 6, false, 11))}</text>`)
+      parts.push(`<text x="${x0 + i * band + band / 2}" y="${y1 + 18}" text-anchor="middle" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(fitText(label, band * every - 6, false, 11))}</text>`)
     }
   }
 
@@ -400,7 +401,7 @@ function xyBody(chart: XyChart, palette: Palette, width: number, words: ChartWor
         series.kind === 'line'
           ? `<line x1="${x}" y1="${height + 6}" x2="${x + 14}" y2="${height + 6}" stroke="${colorOf(series)}" stroke-width="2.2" stroke-linecap="round"/>`
           : `<rect x="${x}" y="${height}" width="12" height="12" rx="3" fill="${colorOf(series)}" fill-opacity=".85"/>`,
-        `<text x="${x + 20}" y="${height + 10}" font-size="11.5" style="fill:${palette.muted}">${escape(name)}</text>`,
+        `<text x="${x + 20}" y="${height + 10}" font-size="11.5" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(name)}</text>`,
       )
       x += 20 + measure(name, false, 11.5) + 20
     }
@@ -450,7 +451,7 @@ function pieBody(pie: Pie, palette: Palette, width: number, words: ChartWords): 
 
   parts.push(
     `<text x="${cx}" y="${cy + 2}" text-anchor="middle" font-size="16" style="font-weight:600">${escape(formatValue(total))}</text>`,
-    `<text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="10.5" style="fill:${palette.muted}">${escape(words.total)}</text>`,
+    `<text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="10.5" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(words.total)}</text>`,
   )
 
   const legendX = cx + OUTER + 40
@@ -467,7 +468,7 @@ function pieBody(pie: Pie, palette: Palette, width: number, words: ChartWords): 
       `<g class="rise" ${riseDelay(i, 40, 120)}>`,
       `<rect x="${legendX}" y="${y + 6}" width="11" height="11" rx="3" fill="${seriesColor(palette, i)}" fill-opacity=".85"/>`,
       `<text x="${legendX + 20}" y="${y + 16}" font-size="12.5">${escape(fitText(slice.label, room, false, 12.5))}</text>`,
-      `<text x="${legendRight - 48}" y="${y + 16}" text-anchor="end" font-size="12" style="fill:${palette.muted}">${escape(value)}</text>`,
+      `<text x="${legendRight - 48}" y="${y + 16}" text-anchor="end" font-size="12" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(value)}</text>`,
       `<text x="${legendRight}" y="${y + 16}" text-anchor="end" font-size="12" style="font-weight:600">${percent}</text>`,
       `</g>`,
     )

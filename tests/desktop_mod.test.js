@@ -22,20 +22,10 @@ test('hooks.json names one hooks module beside the command hooks, and it exists'
   assert.ok(Object.keys(hooks.hooks).length > 0, 'the command hooks stay registered');
 });
 
-test("the lint reads /hush:config's knobs with style-settings.js's values and defaults", () => {
-  const block = /const KNOBS = \{([\s\S]*?)\} as const/.exec(read('lint.ts'));
-  assert.ok(block, 'lint.ts keeps its KNOBS copy');
-  const copy = Object.fromEntries([...block[1].matchAll(/(\w+): \[([^\]]*)\]/g)].map(([, k, v]) => [k, [...v.matchAll(/'([^']*)'/g)].map((m) => m[1])]));
-  assert.deepStrictEqual(Object.keys(copy), ['next', 'rules', 'detail', 'markdown', 'sentences']);
-  for (const [k, values] of Object.entries(copy)) assert.deepStrictEqual(values, KNOBS[k], `knob ${k}`);
-});
-
-test('the voice names exactly the alert types the lint allows with the desktop section', () => {
-  const allowed = /SECTION_ALERTS: readonly AlertType\[\] = \[([^\]]*)\]/.exec(read('lint.ts'));
-  const lint = [...allowed[1].matchAll(/'(\w+)'/g)].map((m) => m[1]).sort();
-  const voice = [...new Set([...VOICE.matchAll(/\[!(\w+)\]/g)].map((m) => m[1].toLowerCase()))].filter((t) => t !== 'note').sort();
-  // `[!NOTE]` is the voice's example of a banned form; every other type it names is allowed.
-  assert.deepStrictEqual(voice, lint);
+test("the mod reads /hush:config's markdown setting with style-settings.js's values and default", () => {
+  const copy = /const MARKDOWN = \[([^\]]*)\] as const/.exec(read('voice.ts'));
+  assert.ok(copy, 'voice.ts keeps its MARKDOWN copy');
+  assert.deepStrictEqual([...copy[1].matchAll(/'([^']*)'/g)].map((m) => m[1]), KNOBS.markdown);
 });
 
 test('the voice lifts its ban only under the heading the mod composes', () => {
@@ -44,6 +34,30 @@ test('the voice lifts its ban only under the heading the mod composes', () => {
   assert.ok(VOICE.includes(`a section headed "${heading[1]}"`), 'hush.md defers to that heading');
   assert.ok(VOICE.includes('## Forms the desktop mod draws'));
   assert.ok(read('voice.ts').includes('"Forms the desktop mod draws"'), 'the marker points at that part of the voice');
+});
+
+test('the voice asks a drawn block to earn its place, and writes it above the result', () => {
+  for (const s of [
+    'Would the reader\'s next action fail or do harm without it?',
+    'Is it said nowhere else in the message?',
+    'Limits, unchecked items and unverified claims stay in prose, in their own block.',
+    'A straight chain of steps is a numbered list, however long.',
+    'Draw a flow only when it branches, loops or joins.',
+    'So write them first, above the bold result, like a visual\'s cards.',
+    'Never point to one by its place, such as "below" or "above".',
+  ]) assert.ok(VOICE.includes(s), s);
+  // The whole risks block no longer goes in a Warning.
+  assert.ok(!/risks, limits, unchecked items and unverified claims in one `> \[!WARNING\]`/.test(VOICE));
+});
+
+test('the raw colour list names exactly the hex values the module holds', () => {
+  const listed = JSON.parse(fs.readFileSync(path.join(HOOKS_DIR, '..', 'mod-colors.allow.json'), 'utf-8')).exceptions;
+  const allowed = new Set(listed.flatMap((e) => e.values.map((v) => v.toLowerCase())));
+  const used = new Set();
+  for (const file of new Set(listed.map((e) => e.file))) {
+    for (const [, hex] of read(file).matchAll(/["'`](#[0-9a-fA-F]{3,8})["'`]/g)) used.add(hex.toLowerCase());
+  }
+  assert.deepStrictEqual([...used].sort(), [...allowed].sort());
 });
 
 test('the ported code keeps its licences beside it', () => {

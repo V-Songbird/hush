@@ -8,7 +8,10 @@ lines, all for contrast on the desktop's light page. In `svg-chart.ts`, `SHAPE_S
 flowchart shape in the neutral `muted` colour and a node's outline is drawn at opacity .85, not
 .6. In `svg-kit.ts`, the card outline is drawn at opacity .2, not .16: the app's own
 `border-strong` token. Later changes carry the reader's language into every drawn word
-(`ChartWords`).
+(`ChartWords`), and draw neutral ink with the app's own text colour: the card's group sets
+`fill="currentColor"` in place of a sheet rule on `text`, and muted text, lines and
+arrowheads take `currentColor` at the `MUTED` and `MUTED_LINE` opacities in `svg-kit.ts`,
+as attributes, in place of a copied grey.
 Replaced with small stand-ins: `skin.ts` (colour names only) and `chart-art.ts` (the three
 Gantt helpers `svg-chart-plan.ts` reads, without the terminal cell art).
 
