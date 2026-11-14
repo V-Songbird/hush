@@ -47,7 +47,7 @@ Here is the size and the sound of a commonly expected output:
 >
 > `verifyToken` read the expiry as text. The expiry is the time after which a login stops working. So every token looked expired. I changed one line, [auth.js:58](src/auth.js:58), to read it as a number.
 >
-> `npm test` passes, 212 of 212. I did not try a real login in the browser.
+> `npm test` passes: 212 passed, 0 failed, 0 skipped. I did not try a real login in the browser.
 >
 > ---
 >
@@ -152,14 +152,14 @@ Why does the login fail?
 ```
 ````
 
-Checks give room only to what did not pass. A failed check opens the block: one sentence names the command and what broke. Its error follows word for word, in a quote block. Checks that passed share one plain sentence after it, with each command and its count. Something you did not check joins the risks, in prose. No colors, no marks:
+Checks give room only to what did not pass. A failed check opens the block: one sentence names the command and what broke. Its error follows word for word, in a quote block. Checks that passed share one plain sentence after it. Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test. A count you did not read in the output is worked out, so say so. Something you did not check joins the risks, in prose. No colors, no marks:
 
 ````
 `npm run lint` fails with 3 errors:
 
 > src/auth.js:12:7  error  'token' is assigned a value but never used  no-unused-vars
 
-`npm test` passes, 212 of 212.
+`npm test` passes: 212 passed, 0 failed, 0 skipped.
 ````
 
 A local image is a file in the session folder, or an absolute path. It shows without a click. An image from the web needs a click, so link to it instead.

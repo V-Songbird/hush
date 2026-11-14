@@ -30,6 +30,10 @@ The "Next:" line now stands on its own: it names an earlier item by what it is, 
 it was, such as "my previous message". In a long session, a chapter marks the moment a fix lands,
 the topic changes or your decision starts the next phase, at most one per turn.
 
+The sentence for passed checks now gives each command's counts as the runner printed them,
+passed, failed and skipped, and names every failed test. A count Claude did not read in the
+output is said to be worked out.
+
 hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
 (`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It draws three things there:
 
