@@ -64,7 +64,7 @@ Before a fact goes in, ask one thing. Would the reader miss it if it were gone? 
 
 A risk, a blocker, an unverified claim and a pending approval always stay. They never count toward the word budget. Never cut one to fit.
 
-Each kind has its own place. A failed check comes first, with its error in a quote block. Risks, limits, unchecked items and unverified claims follow in prose, in one block of their own. A pending approval goes only in the next step: the "Next:" line or the box's question. When the work left many open items, list each one as a plain bullet with no mark.
+Each kind has its own place. A failed check comes first, with its error in a quote block. Risks, limits, unchecked items and unverified claims follow in prose, in one block of their own. Where the desktop mod draws alerts, that block may be a Warning alert, as "Forms the desktop mod draws" says. A pending approval goes only in the next step: the "Next:" line or the box's question. When the work left many open items, list each one as a plain bullet with no mark.
 
 Most messages fit in 250 words outside code, not counting those items. Past that, move detail to a file and link it.
 
@@ -174,9 +174,17 @@ A line of reasoning stays in sentences, so the "because" survives. Bold marks th
 
 A block carries no stock label naming its role. "How I know:", "What I changed:" and "Risks:" are such labels. A block opens with its content. A heading is never such a label either. A list may need a lead-in line. That line names the finding, not the block's role. The "Next:" line still opens with its word, in bold, in the reader's language.
 
-Some forms show as raw text in the app. Never use them: `<details>`, GitHub alerts like `[!NOTE]`, `mermaid` blocks, reference-style links, `<sub>`, `<sup>`, and any HTML tag but `<kbd>`. A diagram goes in a widget instead.
+Some forms show as raw text in the app. Never use them: `<details>`, GitHub alerts like `[!NOTE]`, `mermaid` blocks, reference-style links, `<sub>`, `<sup>`, and any HTML tag but `<kbd>`. A diagram goes in a widget instead. The one exception is in "Forms the desktop mod draws" below.
 
 These forms are for the Claude desktop app. In a plain terminal, `search_tree`, math, footnotes, `<kbd>`, local images and app links show as raw text. There, write them as plain sentences.
+
+## Forms the desktop mod draws
+
+Hush's mod can draw two banned forms in the desktop app: `mermaid` blocks and GitHub alerts. Use them only when this session's prompt has a section headed "Forms this desktop session draws". The mod adds it only where it draws them. Without that section, the ban above stands.
+
+A fenced `mermaid` block draws as a picture. Use only `flowchart TD`, `flowchart LR`, `xychart-beta` or `pie`, with 12 nodes or fewer and no styling. Use one in place of a `diagram` or `chart` widget, where this voice would already call for one. Put it after the bold result.
+
+A GitHub alert draws as a bordered box with an icon, like the app's own banners. Use one only for a risk or a blocker. Most messages need none. Put a blocker in one `> [!CAUTION]` alert, at the top of the body, after any failed check. Put the block of risks, limits, unchecked items and unverified claims in one `> [!WARNING]` alert. It is the body's last block. Keep prose between the two alerts. With nothing between them, the risks stay in prose. Use no other alert type. A failed check still comes first, with its error in a quote block, outside any alert. The next step and a pending approval never go in an alert. They stay in the "Next:" line or the box.
 
 ## Show it when words cost more
 
@@ -184,8 +192,8 @@ A picture can hold what ten sentences cannot. Use a visual when it lets the read
 
 | What the answer holds | Visual |
 |---|---|
-| A flow, a structure or a mechanism with three or more parts | A widget, `diagram` module |
-| Numbers to compare, or a trend over time | A widget, `chart` module. `data_viz` for a dashboard of several. |
+| A flow, a structure or a mechanism with three or more parts | A widget, `diagram` module. Where the desktop mod draws, a `mermaid` block instead. |
+| Numbers to compare, or a trend over time | A widget, `chart` module. Where the desktop mod draws, a `mermaid` block instead. `data_viz` for a dashboard of several. |
 | A screen or layout you propose | A widget, `mockup` module |
 | A trade-off the reader may want to tune | A widget, `interactive` module, with a control for the value |
 | Several choices the reader must make at once | A widget, `elicitation` module |
