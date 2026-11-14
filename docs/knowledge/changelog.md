@@ -13,9 +13,10 @@ All notable changes to hush are documented here. The version number lives in
 
 ## Unreleased
 
-hush now needs Claude Code 2.1.323 or later, up from 2.1.139. The manifest declares it, so
-Claude Code 2.1.323 or later will not install or load a hush release it is too old for; an older
-Claude Code ignores the declaration, and hush is not tested there.
+hush now needs Claude Code 2.1.323 or later, up from 2.1.139. The manifest names that version
+under `engines`. Whether a given Claude Code acts on it is not verified: `claude plugin validate`
+calls the field unknown, so an older Claude Code may install hush anyway. hush is not tested
+there.
 
 A trimmed view now keeps more of the failure lines that carry no warning, error or failure word:
 `Permission denied`, `Connection refused`, `timed out`, `command not found`, `undefined reference`,
@@ -42,8 +43,10 @@ output is said to be worked out.
 hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
 (`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It folds the progress texts
 written between tool calls into one grey line once the final message arrives, with a count of
-failed results and of texts that name a failure. One press shows them in place. Every reply is
-otherwise left to the app whole, and the terminal and every other surface are never touched.
+failed results and of texts that name a failure. One press shows them in place. A text whose
+first words appear elsewhere in the session stays drawn, and so does every text after a prompt you
+queued during the turn. Each session keeps its folds across a reopen; the mod's store keeps the
+eight newest sessions. Every reply is otherwise left to the app whole, and the terminal and every other surface are never touched.
 The line follows the `language` setting, Spanish or English. The mod adds no command. Nothing
 leaves your machine. `HUSH_DISABLE=1` turns the mod off. The mod is optional: every command hook
 runs as before without it.

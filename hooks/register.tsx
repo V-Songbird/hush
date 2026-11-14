@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
 
-import { foldOf, headOf, isReprompt, labelOf, placeOf } from './fold'
-import type { Fold, FoldWords, Stored } from './fold'
+import { fitted, foldOf, headOf, isReprompt, labelOf, looseOf, placeOf } from './fold'
+import type { Folds, FoldWords, Stored } from './fold'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
@@ -55,42 +55,69 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 // The final-only view (`fold.ts`). The reply being written: what the conversation stored for it,
 // in order. Module variables: a hot reload mid-reply loses that reply's fold, never a fold
 // already made, which lives in `$.state` and the store.
-const folds = atom({ plugin: 'hush', key: 'folds' } as const, [], { shape: 'folds-2' })
+const EMPTY: Folds = { folds: [], loose: [] }
+const folds = atom({ plugin: 'hush', key: 'folds' } as const, EMPTY, { shape: 'folds-3' })
 const opened = atom({ plugin: 'hush', key: 'open' } as const, [], { shape: 'open-1' })
-const FOLDS_KEPT = 300
+const STORE = 'folds-3:'
+export const FOLDS_KEPT = 300
+// The store is one JSON file of at most 4 MiB in all, shared with every other key the mod keeps:
+// eight sessions of at most 256 KiB each fill half of it.
+export const SESSIONS_KEPT = 8
+export const SESSION_BUDGET = 256 * 1024
 let isReplying = false
+// A prompt queued during the turn: the texts after it answer two prompts, so none of them folds.
+let isMixed = false
 let stored: Stored = { items: [], texts: [], errors: 0 }
 
 function startReply() {
   stored = { items: [], texts: [], errors: 0 }
+  isMixed = false
+}
+
+const isFolds = (v: unknown): v is Folds =>
+  typeof v === 'object' && v !== null && Array.isArray((v as Folds).folds) && Array.isArray((v as Folds).loose)
+
+/** Saves the session's folds, keeping the newest sessions' and dropping any older shape's. */
+async function save($: EngineInterface, all: Folds) {
+  const key = `${STORE}${await $.session.id()}`
+  const others = (await $.store.keys()).filter(k => k.startsWith('folds-') && k !== key)
+  const current = others.filter(k => k.startsWith(STORE))
+
+  for (const k of [...others.filter(k => !k.startsWith(STORE)), ...current.slice(0, Math.max(0, current.length - (SESSIONS_KEPT - 1)))]) {
+    await $.store.delete(k)
+  }
+
+  // Deleted first, so `keys()`, in insertion order, lists sessions oldest written first.
+  await $.store.delete(key)
+  await $.store.set(key, fitted(all, SESSION_BUDGET))
 }
 
 /** The reply stopped: fold what came before its final message, keep it past a reload. */
 async function closeReply($: EngineInterface) {
-  const fold = foldOf(stored)
+  const fold = isMixed ? null : foldOf(stored)
+  const loose = looseOf(stored, fold)
   startReply()
 
-  if (fold !== null) {
-    const all = await update($, folds, list => [...list, fold].slice(-FOLDS_KEPT))
-    await $.store.set(`folds-2:${await $.session.id()}`, all)
+  if (fold === null && loose.length === 0) {
+    return
+  }
+
+  const all = await update($, folds, s => ({
+    folds: [...s.folds, ...(fold === null ? [] : [fold])].slice(-FOLDS_KEPT),
+    loose: [...new Set([...s.loose, ...loose])],
+  }))
+
+  if (all.folds.length > 0) {
+    // A store that refuses the write leaves this session's folds in `$.state` until it ends.
+    await save($, all).catch(() => undefined)
   }
 }
 
 /** The fold a row belongs to, read while drawing so a new fold or a press draws it again. */
-async function foldAt($: EngineInterface, row: Parameters<typeof placeOf>[1]) {
-  // The newest fold wins: a text repeated in a later reply belongs to that reply.
-  const all = await read($, folds)
+async function foldAt($: EngineInterface, text: string) {
+  const at = placeOf(await read($, folds), text)
 
-  for (let i = all.length - 1; i >= 0; i--) {
-    const fold = all[i]!
-    const place = placeOf(fold, row)
-
-    if (place !== undefined) {
-      return { fold, place, isOpen: (await read($, opened)).includes(fold.head) }
-    }
-  }
-
-  return undefined
+  return at === undefined ? undefined : { ...at, isOpen: (await read($, opened)).includes(at.fold.head) }
 }
 
 /**
@@ -100,24 +127,23 @@ async function foldAt($: EngineInterface, row: Parameters<typeof placeOf>[1]) {
 async function drawFolded(
   $: EngineInterface,
   e: RenderInput<'AssistantMessage', 'desktop'>,
-  row: Parameters<typeof placeOf>[1],
   draw: () => Promise<RenderElement>,
   hide: () => Promise<RenderElement>,
 ): Promise<RenderElement | undefined> {
-  const at = await foldAt($, row)
+  const at = await foldAt($, e.props.text)
 
   if (at === undefined) {
     return undefined
   }
 
   const { Box, Button, Text } = $.ui.resolve(e)
-  const { fold, place, isOpen } = at
+  const { fold, place, hidden, isOpen } = at
 
   if (place === 'member') {
     return isOpen ? draw() : hide()
   }
 
-  const label = labelOf(fold, (await stringsOf($)).fold, isOpen)
+  const label = labelOf(fold, hidden.length, (await stringsOf($)).fold, isOpen)
   const toggle = () => void update($, opened, list => (list.includes(fold.head) ? list.filter(h => h !== fold.head) : [...list, fold.head]))
   const line = (
     // The desktop draws its own button and ignores a nested `Text`'s props, so the Button dims
@@ -143,12 +169,10 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     if (await isDisabled($)) return next(e)
 
-    // A reopened session finds its folds again; a hot reload keeps them in `$.state` already.
-    const saved = await $.store.get(`folds-2:${await $.session.id()}`)
-
-    if (Array.isArray(saved) && (await read($, folds)).length === 0) {
-      await update($, folds, () => saved as Fold[])
-    }
+    // Each session sees its own folds: the saved ones, or none, never another session's.
+    const saved = await $.store.get(`${STORE}${await $.session.id()}`)
+    await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
+    await update($, opened, () => [])
 
     return next(e)
   })
@@ -162,20 +186,28 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // What the reply stored, and the re-prompt that ends it (a Stop hook's, `/goal`'s).
+  // What the reply stored, and what ends it: a re-prompt (a Stop hook's, `/goal`'s) or a prompt
+  // the person queued while Claude worked.
   on('session.append', async ($, e, next) => {
     const row = await next(e)
 
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
     if (e.agentId === undefined && isReplying) {
       const blocks = Array.isArray(e.message.content) ? e.message.content : []
+      const isPrompt = e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command')
+
+      // The prompt that starts the turn arrives before anything is gathered and ends nothing.
+      if (isPrompt && stored.items.length > 0) {
+        await closeReply($)
+        isMixed = true
+      }
 
       for (const block of blocks) {
         if (e.message.type === 'assistant' && block.type === 'text' && typeof block.text === 'string') {
           stored.texts.push(block.text)
           stored.items.push({ kind: 'text', head: headOf(block.text) })
         }
-        if (e.message.type === 'assistant' && block.type === 'tool_use' && typeof block.id === 'string') stored.items.push({ kind: 'tool', id: block.id })
+        if (e.message.type === 'assistant' && block.type === 'tool_use') stored.items.push({ kind: 'tool' })
         if (block.type === 'tool_result' && block.is_error === true) stored.errors++
       }
 
@@ -207,7 +239,7 @@ export const register: Register = on => {
     if (e.surface !== 'desktop' || (await isDisabled($))) return next(e)
 
     // A hidden text goes to the app empty, so it may drop the row and its gap, not just its words.
-    const folded = await drawFolded($, e, { kind: 'text', text: e.props.text }, () => next(e), () => next({ ...e, props: { ...e.props, text: '' } }))
+    const folded = await drawFolded($, e, () => next(e), () => next({ ...e, props: { ...e.props, text: '' } }))
 
     return folded ?? next(e)
   })

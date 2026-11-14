@@ -62,7 +62,7 @@ Start a new session to load the plugin. Hush's voice applies on its own. The pub
 measured with `"outputStyle": "hush:Hush"` set in `~/.claude/settings.json`; see
 [Settings](docs/knowledge/settings.md#the-output-style-setting).
 
-Requirements: Claude Code 2.1.323 or later, and Node.js 22 or later. hush declares that version in its manifest, so Claude Code 2.1.323 or later will not install or load a release it is too old for. An older Claude Code ignores that declaration; hush is not tested there.
+Requirements: Claude Code 2.1.323 or later, and Node.js 22 or later. hush names that version in its manifest, but an older Claude Code may still install it; hush is not tested there.
 
 ## Good to know
 
