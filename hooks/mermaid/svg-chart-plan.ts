@@ -63,7 +63,7 @@ export function ganttBody(chart: Gantt, palette: Palette, width: number, words: 
 
   rows.forEach((row, i) => {
     if (row.section !== undefined) {
-      parts.push(text(PAD, row.y + 16, row.section.toUpperCase(), `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(row.section))};letter-spacing:.08em;font-weight:600"`))
+      parts.push(text(PAD, row.y + 16, row.section, `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(row.section))};font-weight:600"`))
       return
     }
 
@@ -132,7 +132,7 @@ export function timelineBody(chart: Timeline, palette: Palette, width: number): 
   periods.forEach((period, i) => {
     if (grouped && period.section !== section) {
       section = period.section
-      parts.push(text(PAD, y + 12, section.toUpperCase(), `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(section))};letter-spacing:.08em;font-weight:600"`))
+      parts.push(text(PAD, y + 12, section, `font-size="10.5" style="fill:${seriesColor(palette, sectionOf(section))};font-weight:600"`))
       y += 26
     }
 

@@ -16,14 +16,15 @@ type Built = { source: string; width: number; height: number; alt: string; entra
 
 function header(chart: Chart, palette: Palette, width: number, hasControl: boolean, words: ChartWords): string {
   const { kind, count } = chartHeading(chart, words)
-  const label = kind.toUpperCase()
+  // Sentence case, as the app writes its own labels.
+  const label = kind
   const title = chart.title
-  const titleX = 16 + measure(label, false, 11) * 1.15 + 12
+  const titleX = 16 + measure(label, false, 11) + 12
   const right = width - 16 - (hasControl ? CONTROL_SLOT : 0)
   const room = right - titleX - measure(count, false, 11) - 16
 
   return [
-    `<text x="16" y="${HEADER_MID + 4}" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}" style="letter-spacing:.1em;font-weight:600">${escape(label)}</text>`,
+    `<text x="16" y="${HEADER_MID + 4}" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}" style="font-weight:600">${escape(label)}</text>`,
     title === '' ? '' : `<text x="${titleX}" y="${HEADER_MID + 4}" font-size="13" style="font-weight:600">${escape(fitText(title, room, false, 13))}</text>`,
     `<text x="${right}" y="${HEADER_MID + 4}" text-anchor="end" font-size="11" fill="${palette.muted}" fill-opacity="${MUTED}">${escape(count)}</text>`,
     `<line x1="0" y1="${HEADER_H - 0.5}" x2="${width}" y2="${HEADER_H - 0.5}" stroke="${palette.muted}" stroke-opacity=".22"/>`,

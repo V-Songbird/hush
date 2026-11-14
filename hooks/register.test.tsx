@@ -209,7 +209,7 @@ test('in a Spanish session a chart picture draws and says Spanish', async ($, on
   const svg = await ui.find({ type: 'Svg' })
 
   expect(svg?.props.alt).toBe('Gráfico circular: Pets\nDogs: 3 (75%)\nCats: 1 (25%)')
-  expect(svg?.props.source).toContain('GRÁFICO CIRCULAR')
+  expect(svg?.props.source).toContain('>Gráfico circular<')
   expect(svg?.props.source).toContain('2 sectores')
   await ui.unmount()
 })
@@ -219,7 +219,7 @@ test('with no language set, a chart picture draws and says English', async ($, o
   const svg = await ui.find({ type: 'Svg' })
 
   expect(svg?.props.alt).toBe('Pie: Pets\nDogs: 3 (75%)\nCats: 1 (25%)')
-  expect(svg?.props.source).toContain('>PIE<')
+  expect(svg?.props.source).toContain('>Pie<')
   expect(svg?.props.source).toContain('2 slices')
   await ui.unmount()
 })
