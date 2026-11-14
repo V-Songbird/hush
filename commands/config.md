@@ -16,9 +16,9 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" tally`
 
-   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, `HUSH_DISABLE=1` is set, no message was checked under the current settings yet, or the count's file is not one. A session whose settings changed after it started counts nothing until its next compaction, so a count may lag behind a change. The count holds numbers only, never a word of a message.
+   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, `HUSH_DISABLE=1` is set, no message was checked under the current settings yet, or the count's file is not one. A session counts only under the settings Hush's SessionStart hook sent it, so a count may lag behind a change. The count holds numbers only, never a word of a message.
 
-   The count sentence: when `messages` is above 0, one plain sentence in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name the rule in plain words. When `messages` is 0, there is no count sentence, and never call it an error. Step 3 and step 4 each say where it goes.
+   The count sentence: when `messages` is above 0, one plain sentence in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name it in plain words: `result first` is the bold result opening the message, `rules where set` the horizontal rules, `next step where set` the next step's place. When `messages` is 0, there is no count sentence, and never call it an error. Step 3 and step 7 each say where it goes.
 
 2. If the user wrote what they want after the command ("$ARGUMENTS"), map those words to the choices in the table below. Those values replace the current ones in the next step.
 
@@ -35,7 +35,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    Without such a tool, as in a terminal, go to step 4.
 
-4. Say the count sentence first. Then ask the questions of the table, seven or eight, in two AskUserQuestion calls, in the table's order: the first four, then the rest. Skip "The box asks your decisions" unless the answer to "Where you read" is the desktop app, so the second call asks three or four. Mark the option that matches the current settings with "(current)" in its label, and give every option a one-line description in the user's language. If step 2 mapped words, first show the values that would change, each with one plain line on what it does, and ask to save or adjust; on save go to step 5, on adjust ask the two calls.
+4. Ask the questions of the table, seven or eight, in two AskUserQuestion calls, in the table's order: the first four, then the rest. Skip "The box asks your decisions" unless the answer to "Where you read" is the desktop app, so the second call asks three or four. Mark the option that matches the current settings with "(current)" in its label, and give every option a one-line description in the user's language. If step 2 mapped words, first show the values that would change, each with one plain line on what it does, and ask to save or adjust; on save go to step 5, on adjust ask the two calls.
 
    | Question | Options, and the settings each one sets |
    | --- | --- |
@@ -59,3 +59,5 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 7. Reply with the values that differ from the default. Say how to undo them:
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" reset`
+
+   When you came here through step 4, run `tally` again before this reply, since a changed setting the check reads starts a new count, and put the count sentence, if there is one, in this reply's body, before its next step. After the configurator of step 3, its closing line already carried it.
