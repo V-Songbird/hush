@@ -13,6 +13,11 @@ All notable changes to hush are documented here. The version number lives in
 
 ## Unreleased
 
+hush now needs Claude Code 2.1.323 or later, up from 2.1.139. The manifest names that version
+under `engines`. Whether a given Claude Code acts on it is not verified: `claude plugin validate`
+calls the field unknown, so an older Claude Code may install hush anyway. hush is not tested
+there.
+
 A trimmed view now keeps more of the failure lines that carry no warning, error or failure word:
 `Permission denied`, `Connection refused`, `timed out`, `command not found`, `undefined reference`,
 `Cannot find module`, an HTTP status with its reason such as `404 Not Found`, `assertion`,
@@ -21,6 +26,30 @@ A trimmed view now keeps more of the failure lines that carry no warning, error 
 their line only; they never make a run without an exit code count as failed, so a clean log that
 mentions a timeout keeps the shorter cap. A bare `assert`, `Killed` in prose or a `404` in a URL
 list is not kept, so a Grep view does not fill with them.
+
+The "Next:" line now stands on its own: it names an earlier item by what it is, never by where
+it was, such as "my previous message". In a long session, a chapter marks the moment a fix lands,
+the topic changes or your decision starts the next phase, at most one per turn.
+
+The end-of-turn check now asks whether the session is ready to archive, never to delete. The
+"Next:" line mentions archiving only where the app can archive a session; elsewhere it just says
+the session is finished. When nothing is left and the turn has only its recap, the next-step box
+may offer the app's archive action.
+
+The sentence for passed checks now gives each command's counts as the runner printed them,
+passed, failed and skipped, and names every failed test. A count Claude did not read in the
+output is said to be worked out.
+
+hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
+(`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It folds the progress texts
+written between tool calls into one grey line once the final message arrives, with a count of
+failed results and of texts that name a failure. One press shows them in place. A text whose
+first words appear elsewhere in the session, a subagent's included, stays drawn. So does every
+text after a prompt you queued during the turn, and every text before a compaction. Each session keeps its folds across a reopen; the mod's store keeps the
+eight newest sessions. Every reply is otherwise left to the app whole, and the terminal and every other surface are never touched.
+The line follows the `language` setting, Spanish or English. The mod adds no command. Nothing
+leaves your machine. `HUSH_DISABLE=1` turns the mod off. The mod is optional: every command hook
+runs as before without it.
 
 ## 2.4.0 — 2026-11-04
 
