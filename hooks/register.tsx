@@ -3,11 +3,14 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
+import { asTally, lintMessage, localLinks, settingsOf, tally } from './lint'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
 // the reply's final message arrives (`fold.ts`). Every other reply, and every other surface, the
 // terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
+// It also checks each final message in silence (`lint.ts`): a count kept in `tally.json` beside
+// the settings file, which `/hush:config` reads. It changes nothing in the reply.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
@@ -49,6 +52,51 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
     return (await $.env.get('HUSH_DISABLE'))?.trim() === '1'
   } catch {
     return false
+  }
+}
+
+/**
+ * Where /hush:config keeps the settings and, beside them, the count: the HUSH_CONFIG_FILE as
+ * `hooks/style-settings.js` reads it, else `config.json` in `~/.claude/hush`. Undefined when
+ * no home is known.
+ */
+async function settingsFile($: EngineInterface): Promise<string | undefined> {
+  const named = await $.env.get('HUSH_CONFIG_FILE')
+
+  if (named) return named
+
+  const home = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME'))
+
+  return home ? `${home}/.claude/hush/config.json` : undefined
+}
+
+/**
+ * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
+ * adds and writes in one go, so two sessions ending together may lose a count; the count is a
+ * guide, not a record. A failure anywhere, a read-only home included, is swallowed: the check
+ * never breaks the turn or the fold.
+ */
+async function checkAnswer($: EngineInterface, answer: string) {
+  try {
+    const config = await settingsFile($)
+
+    if (config === undefined) return
+
+    const file = `${config.replace(/[\\/][^\\/]*$/, '') || '.'}/tally.json`
+    const json = (path: string) => $.fs.read(path).then(text => JSON.parse(String(text)) as unknown).catch(() => undefined)
+    const settings = settingsOf(await json(config))
+    const links = localLinks(answer)
+    const cwd = links.length > 0 ? await $.session.cwd().catch(() => undefined) : undefined
+    // A link resolves against the session's directory, as the app opens it; an absolute path
+    // stands alone. With no directory to resolve against, no link counts as missing.
+    const found = await Promise.all(
+      links.map(path => (/^([a-z]:)?[\\/]/i.test(path) ? path : cwd === undefined ? undefined : `${cwd}/${path}`)).map(path => (path === undefined ? true : $.fs.exists(path).catch(() => true))),
+    )
+    const prev = asTally(await json(file))
+
+    await $.fs.write(file, JSON.stringify(tally(prev, lintMessage(answer, settings, found.filter(isThere => !isThere).length), new Date().toISOString().slice(0, 10))) + '\n')
+  } catch {
+    // Nothing to report: the check is silent.
   }
 }
 
@@ -270,6 +318,8 @@ export const register: Register = on => {
       startReply()
     } else {
       await closeReply($)
+
+      if (e.reason === 'answer' && e.answer.trim() !== '') await checkAnswer($, e.answer)
     }
 
     return done

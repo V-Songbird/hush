@@ -304,3 +304,35 @@ describe('style-settings CLI', () => {
     assert.strictEqual(run(['show'], { config }).stdout.trim(), JSON.stringify(DEFAULTS, null, 2));
   });
 });
+
+describe('style-settings: tally', () => {
+  const tallyIn = (dir, text) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'tally.json'), text);
+    return path.join(dir, 'config.json');
+  };
+  const GOOD = { messages: 4, met: 3, misses: { 'next step where set': 1 }, since: '2026-11-01', last: '2026-11-14' };
+
+  test('prints the count the mod keeps beside the settings file, as one JSON line', () => {
+    const config = tallyIn(path.join(tmp, 'tally-good'), JSON.stringify(GOOD));
+    const r = run(['tally'], { config });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout, JSON.stringify(GOOD) + '\n');
+  });
+
+  test('no file, or a file that is not a count, prints no count and no error', () => {
+    for (const config of [path.join(tmp, 'tally-missing', 'config.json'), tallyIn(path.join(tmp, 'tally-junk'), '{nope'), tallyIn(path.join(tmp, 'tally-wrong'), JSON.stringify({ messages: 2, met: 5 }))]) {
+      const r = run(['tally'], { config });
+      assert.strictEqual(r.status, 0);
+      assert.strictEqual(r.stdout, '{"messages":0}\n');
+      assert.strictEqual(r.stderr, '');
+    }
+  });
+
+  test('keeps only counts: a stray text field is dropped', () => {
+    const config = tallyIn(path.join(tmp, 'tally-stray'), JSON.stringify({ ...GOOD, sentence: 'secret words', misses: { 'result first': 2, x: 'text' } }));
+    const out = JSON.parse(run(['tally'], { config }).stdout);
+    assert.deepStrictEqual(out.misses, { 'result first': 2 });
+    assert.ok(!('sentence' in out));
+  });
+});

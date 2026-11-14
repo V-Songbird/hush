@@ -57,6 +57,8 @@ A shortened view carries a note in square brackets, such as `[hush hook: 12 line
 
 A text whose first words appear elsewhere in the session, a subagent's included, stays drawn. So does every text after a prompt you queued during the turn, and every text before a compaction. Each session keeps its folds across a reopen, for the eight newest sessions. Every other reply, and every other surface, the terminal included, is left to the app whole. The mod adds no command and nothing leaves your machine.
 
+The mod also checks each final message in silence. It counts whether the message follows the rules a count can test, under your `/hush:config` settings: the bold result first, the horizontal rules and the "Next:" line where you set them, the sentence, block and word limits, no HTML but `<kbd>`, and links that name a real file. It changes nothing in the reply and draws nothing. It keeps only numbers: how many messages it checked, how many followed every rule, how many missed each rule, and the first and last day. It never keeps a word of a reply. The numbers sit in `tally.json`, beside your settings file (`~/.claude/hush/` unless you set `HUSH_CONFIG_FILE`). Delete the file to start the count again. `/hush:config` tells you the count when it opens. A reply from a subagent, or with no text, is not counted. If the file cannot be written, the check stops without a sound. Two sessions that end together may lose one count.
+
 ## What you can do
 
 | You want to | Outcome |
@@ -79,7 +81,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds and counts nothing. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. Reminders and the subagent brief keep running, and the step reminder's small counter stays in your temp folder until your system clears it. |
 | `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims, the voice and your message settings keep running. |
 | `HUSH_NUDGE=off` | Stops every reminder sent while the assistant works. The subagent brief keeps running. |
@@ -97,7 +99,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 | `HUSH_SUBAGENT=off` | Subagents start without Hush's brief. |
 | `HUSH_DEBUG=1` | Writes a local record of what Hush did to each command result (sizes in and out, and where the full copy went) to `hush-debug-<session>.jsonl` in your system temp folder. Hush never deletes these files. |
 | `HUSH_WRAP=1` | Lets Hush trim failing commands as well as passing ones. See below. |
-| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. |
+| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. The desktop mod keeps its count, `tally.json`, in the same folder. |
 
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off` also takes `0` or `false`, in any letter case, and ignores spaces around the value. The switches shown as `1` take only `1` and ignore spaces around it. The four that take a number read a whole number above zero; zero, a negative number or text leaves the default.
 
@@ -115,7 +117,7 @@ Installing Hush does not write Claude Code's Output style setting, and the voice
 
 #### Message settings
 
-`/hush:config` shapes the final message. In the Claude desktop app it opens a configurator with a sample message and its word count. In a terminal it asks seven questions, or eight if you say you read in the desktop app. You can also describe what you want in your own words, as in `/hush:config only the result and the next step`. Settings no choice covers, such as `why` and `records`, keep their saved values. Your choice is saved in `~/.claude/hush/config.json`.
+`/hush:config` shapes the final message. In the Claude desktop app it opens a configurator with a sample message and its word count. In a terminal it asks seven questions, or eight if you say you read in the desktop app. You can also describe what you want in your own words, as in `/hush:config only the result and the next step`. Settings no choice covers, such as `why` and `records`, keep their saved values. Your choice is saved in `~/.claude/hush/config.json`. When the desktop mod has checked messages, the command also tells you how many followed your settings. With no mod, or before the first message, it says nothing about it.
 
 No setting removes the floor: a blocker, a pending approval, an unverified claim or anything left unchecked always stays in the message. A failed check opens its block with the error quoted word for word, and failed and unchecked items stay under every `checks` value.
 

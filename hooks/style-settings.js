@@ -18,6 +18,7 @@
 //
 //   node style-settings.js               SessionStart hook, payload on stdin
 //   node style-settings.js show          the current settings as JSON
+//   node style-settings.js tally         the mod's count of checked messages, one JSON line
 //   node style-settings.js presets       every preset as JSON
 //   node style-settings.js set k=v ...   check, save, print the new reminder;
 //                                        preset=<name> is one of the pairs
@@ -76,6 +77,27 @@ function load() {
   return out;
 }
 
+// The desktop mod's silent count of final messages, kept beside the settings file (numbers and
+// days only). No file, or one that is not a count, is the same as no count: { messages: 0 }.
+function tallyPath() {
+  return path.join(path.dirname(configPath()), "tally.json");
+}
+
+function readTally() {
+  const none = { messages: 0 };
+  let t;
+  try {
+    t = JSON.parse(fs.readFileSync(tallyPath(), "utf8"));
+  } catch {
+    return none;
+  }
+  const isCount = (v) => Number.isInteger(v) && v >= 0;
+  if (!t || !isCount(t.messages) || t.messages === 0 || !isCount(t.met) || t.met > t.messages) return none;
+  const misses = {};
+  for (const [rule, n] of Object.entries(t.misses && typeof t.misses === "object" ? t.misses : {})) if (isCount(n)) misses[rule] = n;
+  return { messages: t.messages, met: t.met, misses, since: String(t.since), last: String(t.last) };
+}
+
 function parse(pairs, base) {
   const settings = { ...base };
   const errors = [];
@@ -123,6 +145,10 @@ function cli(args) {
     process.stdout.write(JSON.stringify(load(), null, 2) + "\n");
     return 0;
   }
+  if (cmd === "tally") {
+    process.stdout.write(JSON.stringify(readTally()) + "\n");
+    return 0;
+  }
   if (cmd === "presets") {
     process.stdout.write(JSON.stringify(PRESETS, null, 2) + "\n");
     return 0;
@@ -138,7 +164,7 @@ function cli(args) {
     process.stdout.write((text || "Every hush setting is at its default. The style file alone applies.") + "\n");
     return 0;
   }
-  process.stderr.write("usage: style-settings.js [show | presets | set [preset=name] knob=value ... | reset]\n");
+  process.stderr.write("usage: style-settings.js [show | tally | presets | set [preset=name] knob=value ... | reset]\n");
   return 2;
 }
 
@@ -147,4 +173,4 @@ if (require.main === module) {
   else hook();
 }
 
-module.exports = { KNOBS, DEFAULTS, PRESETS, HEADER, load, parse, compose, configPath };
+module.exports = { KNOBS, DEFAULTS, PRESETS, HEADER, load, parse, compose, configPath, tallyPath, readTally };
