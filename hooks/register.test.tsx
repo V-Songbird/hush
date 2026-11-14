@@ -3,7 +3,8 @@ import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 import { parseMermaid } from './mermaid/mermaid'
-import { DARK, EN, ES, LIGHT, isSpanish, themedChart } from './register'
+import { octicon } from './octicons'
+import { DARK, EN, ES, ICON_INK_FROM_THEME, LIGHT, isSpanish, themedChart } from './register'
 import { cite, splitReply } from './reply'
 
 const FLOW = '```mermaid\nflowchart LR\n  A[Ask] --> B[Answer]\n```'
@@ -93,6 +94,23 @@ test('an alert draws as a box with its icon and no title text', async ($, on) =>
   expect(await ui.find({ type: 'Text', text: /^Warning$/ })).toBeUndefined()
   expect(await ui.find({ type: 'Svg' })).toBeDefined()
   await ui.unmount()
+})
+
+// The icon's ink comes from the theme: the picture says `currentColor`, and the box around it
+// keeps the alert's key on its border. ICON_INK_FROM_THEME false brings back the raw pair.
+test('an alert icon draws in currentColor, its box in the alert theme key', async ($, on) => {
+  const ui = await mount($, on, '**Result.**\n\n> [!WARNING]\n> The cache is stale.')
+  const icon = await ui.find({ type: 'Svg' })
+
+  expect(ICON_INK_FROM_THEME).toBe(true)
+  expect(icon?.props.source).toContain('fill="currentColor"')
+  expect(icon?.props.source).not.toMatch(/#[0-9a-f]{3,8}/i)
+  expect((await ui.findAll({ type: 'Box' })).some(box => box.props.borderColor === 'warning')).toBe(true)
+  await ui.unmount()
+})
+
+test('the raw icon colours stay one switch away', () => {
+  expect(octicon('warning', { light: '#734500', dark: '#db9300' })).toContain('path{fill:#734500}')
 })
 
 // Every string the person reads comes from the catalog the `language` setting picks.

@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, RenderInput, ThemeKey } from 'claude-code'
 
 import { hardBreaks } from './mermaid/markdown'
 import type { Chart, ChartWords } from './mermaid/mermaid'
@@ -281,14 +281,22 @@ export const DARK: Palette = {
 // and `text-danger`. Important takes `autoAccept`'s `text-pro`, not `merged`, whose light
 // purple measured 3.46:1 on the page. The box has no fill: no theme key gives a see-through
 // tint, and a raw one would not follow the person's theme. `light` and `dark` are those text
-// tokens' values, for the icon.
-const ALERTS: Record<AlertType, { color: string; light: string; dark: string }> = {
+// tokens' values, for the icon when ICON_INK_FROM_THEME is false.
+const ALERTS: Record<AlertType, { color: ThemeKey; light: string; dark: string }> = {
   note: { color: 'suggestion', light: '#184f95', dark: '#6da7ec' },
   tip: { color: 'success', light: '#006300', dark: '#0ca30c' },
   important: { color: 'autoAccept', light: '#4a3aa7', dark: '#a096eb' },
   warning: { color: 'warning', light: '#734500', dark: '#db9300' },
   caution: { color: 'error', light: '#8e2626', dark: '#ec7e7e' },
 }
+
+// Trial: the icon draws in `currentColor`, the text ink the desktop passes into a picture, so
+// it follows any theme or look. A theme key cannot reach it: an Svg takes no colour prop, a
+// Box has none for its content, and the engine refuses an Svg inside a Text ("Svg inside an
+// inline element", claude plugin test, 2.1.319). So the icon takes the page's text colour,
+// not its alert's; the border keeps the alert's key. False restores the raw light and dark
+// icon colours in ALERTS.
+export const ICON_INK_FROM_THEME = true
 
 // The alerts drawn as a plain line led by their icon, with no box.
 const QUIET: ReadonlySet<AlertType> = new Set(['note', 'tip'])
@@ -581,7 +589,7 @@ export const register: Register = on => {
               <Box key={`alert${i}`} flexDirection="row" alignItems="flex-start" columnGap={1}>
                 {/* One line tall and centred, as the app's banner holds its icon (`min-h-[1lh] items-center`), so the icon sits on the first line of text. */}
                 <Box height={1} flexShrink={0} alignItems="center">
-                  <Svg source={octicon(part.type, alert.light, alert.dark)} alt={s.alerts[part.type]} width={16} height={16} />
+                  <Svg source={ICON_INK_FROM_THEME ? octicon(part.type) : octicon(part.type, alert)} alt={s.alerts[part.type]} width={16} height={16} />
                 </Box>
                 {part.body === '' ? null : <Markdown text={hardBreaks(cite(part.body))} />}
               </Box>
