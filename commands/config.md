@@ -12,13 +12,13 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" show`
 
-   Then read the count the optional desktop mod keeps of how well final messages follow these settings:
+   Then read the count the optional mod keeps of how well final messages follow these settings:
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" tally`
 
-   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, or no message was checked yet. The count holds numbers only, never a word of a message.
+   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, no message was checked under the current settings yet, or the count's file is not one. The count holds numbers only, never a word of a message.
 
-   The count sentence, used in step 3 or step 4: when `messages` is above 0, one or two plain sentences in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name the rule in plain words. When `messages` is 0, say nothing about the count, and never call it an error.
+   The count sentence: when `messages` is above 0, one plain sentence in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name the rule in plain words. When `messages` is 0, there is no count sentence, and never call it an error. Step 3 and step 4 each say where it goes.
 
 2. If the user wrote what they want after the command ("$ARGUMENTS"), map those words to the choices in the table below. Those values replace the current ones in the next step.
 
@@ -29,7 +29,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
    - In the line `const CUR={};`, put the settings from steps 1 and 2 as JSON.
    - In the line `const ROOT='';`, put `${CLAUDE_PLUGIN_ROOT}` with forward slashes.
    - If the user does not write in English, translate every string value inside the `T` object into their language. Keep `{root}`, `{args}`, `TOKEN`, `<br>`, and the text inside braces and backticks. Change nothing else in the file.
-   - Render the result with that tool, then end the turn with one line: change the settings, watch the preview, and press the save button. The count sentence follows that line.
+   - Render the result with that tool, then end the turn with one line: the count sentence, if there is one, then change the settings, watch the preview, and press the save button. Keep both on that one line.
 
    The save button sends a message that asks to run the `set` command with the chosen values. When that message arrives, run it and go to step 6.
 
