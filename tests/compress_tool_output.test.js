@@ -2243,8 +2243,14 @@ describe('the keep vocabulary, pinned category by category', () => {
   test('the keep-only words are not a failure signal in a clean run', () => {
     const lines = Array.from({ length: 300 }, (_, i) => filler(i));
     lines[150] = 'retry: the first request timed out, the second answered 200';
-    const out = comp3(lines.join(NL), undefined, false, false, [], 1, 'keepvocab', true, false);
+    const view = (ls) => comp3(ls.join(NL), undefined, false, false, [], 1, 'keepvocab', true, false);
+    const out = view(lines);
     assert.ok(!out.includes(FAILURE_RERUN_NOTE), 'a keep-only word added the failure note');
+    assert.ok(out.split(NL).includes(lines[150]), 'the keep-only line was cut');
+    // Clean-run cap: the control with an ordinary line at 150 sets it; the kept
+    // line may add itself and nothing more, far under the failure cap.
+    const control = view(lines.map((l, i) => (i === 150 ? filler(150) : l)));
+    assert.ok(out.split(NL).length <= control.split(NL).length + 1, 'the view outgrew the clean-run cap');
   });
 
   test('ordinary lines that only look like those words stay droppable', () => {
