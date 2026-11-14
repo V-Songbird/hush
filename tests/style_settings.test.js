@@ -118,14 +118,15 @@ describe('style-settings: modules', () => {
     assert.strictEqual(style.split(once).length - 1, 1);
     for (const s of [
       'Never assume it is.',
-      'Finalizamos con esta sesión; siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.',
+      '**Siguiente paso:** Finalizamos con esta sesión.',
+      'Siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.',
       'This check rides on the "Next:" line.',
       'A setting that removes the line leaves the check unsaid.',
       'Its question is what the session still misses, so the session is not ready to archive.',
       'Is the session ready to archive?',
       'Ask yourself: is this session ready to archive?',
-      'Where the app can archive a session, add that the reader may archive it or keep taking next steps.',
-      'Then the box may ask to archive, with the app\'s `archive` action when it lists one.',
+      'Where the app can archive a session, add one more sentence. It says the reader may archive it or keep taking next steps.',
+      'Then the box may ask to archive. It uses the app\'s `archive` action when it lists one.',
     ]) assert.ok(style.includes(s), s);
     // Archiving is the reversible act; the voice never offers to delete a session.
     assert.ok(!/archive or delete/.test(style));
