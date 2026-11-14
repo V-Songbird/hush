@@ -11,6 +11,17 @@ related_files:
 All notable changes to hush are documented here. The version number lives in
 `.claude-plugin/plugin.json`.
 
+## Unreleased
+
+A trimmed view now keeps more of the failure lines that carry no warning, error or failure word:
+`Permission denied`, `Connection refused`, `timed out`, `command not found`, `undefined reference`,
+`Cannot find module`, an HTTP status with its reason such as `404 Not Found`, `assertion`,
+`ECONNREFUSED` and its siblings, `No such file or directory`, `Segmentation fault`, and a shell's
+`Killed` or `Aborted`. Before, a view of 22 common failure lines kept 8 of them. The new words keep
+their line only; they never make a run without an exit code count as failed, so a clean log that
+mentions a timeout keeps the shorter cap. A bare `assert`, `Killed` in prose or a `404` in a URL
+list is not kept, so a Grep view does not fill with them.
+
 ## 2.4.0 — 2026-11-04
 
 A turn the harness starts, such as a task notification or a scheduled

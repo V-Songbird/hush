@@ -693,6 +693,29 @@ describe('pinned: narrow edges of the current transforms', () => {
     );
   });
 
+  test('keep-only failure words keep their line past the cap, leave the failed verdict alone and fill no Grep view', () => {
+    const words = [
+      'bash: run.sh: Permission denied',
+      'bash: foo: command not found',
+      'connect ECONNREFUSED 127.0.0.1:5432',
+      'Segmentation fault (core dumped)',
+      'Killed',
+    ];
+    // Without an exit code the words alone must not mark the run failed; with
+    // one, the code decides as before.
+    const text = Array.from({ length: 300 }, (_, i) => (i % 60 === 7 ? words[(i / 60) | 0] : `info step ${i} ${'ok '.repeat(i % 5)}`)).join('\n');
+    assert.strictEqual(looksLikeFailure(text, undefined), false);
+    assert.strictEqual(looksLikeFailure(text, 0), false);
+    assert.strictEqual(looksLikeFailure(text, 1), true);
+    const out = compress(text, undefined, false, false, [], 1, null, true, false, {});
+    assert.ok(!out.includes(FAILURE_RERUN_NOTE), 'a keep-only word added the failure note');
+    const outLines = new Set(out.split('\n'));
+    for (const w of words) assert.ok(outLines.has(w), `dropped ${w}`);
+    // A Grep over source that merely names assert, Killed or 404 stays elided.
+    const hits = Array.from({ length: 40 }, (_, i) => `src/a.js:${i + 1}:  assert(ok_${i}); // Killed 404 ${'x'.repeat(40)}`).join('\n');
+    assert.ok(compressGrep(hits, []).includes('src/a.js: 40 matches, 3 shown'));
+  });
+
   test('"errored" is not failure vocabulary', () => {
     assert.strictEqual(looksLikeFailure('the build errored out'), false);
     assert.strictEqual(looksLikeFailure('the build failed'), true);
