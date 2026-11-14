@@ -19,7 +19,7 @@ const mount = async (
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
 
-    return <Text>engine</Text>
+    return <Text>{`engine: ${e.props.text}`}</Text>
   })
   on('env.get', (_, e) => ({ value: e.name === 'HUSH_DISABLE' ? disable : undefined }))
 
@@ -29,16 +29,18 @@ const mount = async (
 test('a reply with no chart or alert is the app’s whole', async ($, on) => {
   const ui = await mount($, on, '**Done.**\n\n```search_tree\nWhy?\n└── [p=1] Because\n```\n\nSee <kbd>Ctrl</kbd>.')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toMatch(/^engine: \*\*Done\.\*\*/)
   expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })
 
-test('a mermaid fence draws as a picture between markdown blocks', async ($, on) => {
+test('a mermaid fence draws as a picture between prose the app draws itself', async ($, on) => {
   const ui = await mount($, on, `**Result.**\n\n${FLOW}\n\nAfter.`)
 
   expect(await ui.find({ type: 'Svg' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /engine/ })).toBeUndefined()
+  // Each prose part goes to the app's own renderer with its own text, not to a Markdown element.
+  expect((await ui.findAll({ type: 'Text', text: /^engine: / })).map(text => text.text)).toEqual(['engine: **Result.**', 'engine: After.'])
+  expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
   // The blocks sit apart by a named step, not a count of cells.
   const outer = (await ui.findAll({ type: 'Box' }))[0]
   expect(outer?.props.gap).toBe('md')
@@ -49,14 +51,15 @@ test('a mermaid fence draws as a picture between markdown blocks', async ($, on)
 test('the terminal is never touched', async ($, on) => {
   const ui = await mount($, on, `**Result.**\n\n${FLOW}`, 'terminal')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  // The whole reply, fence included, reaches the app in one piece.
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toContain('```mermaid')
   await ui.unmount()
 })
 
 test('HUSH_DISABLE=1 leaves a mermaid reply to the app', async ($, on) => {
   const ui = await mount($, on, `**Result.**\n\n${FLOW}`, 'desktop', '1')
 
-  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+  expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toContain('```mermaid')
   expect(await ui.find({ type: 'Svg' })).toBeUndefined()
   await ui.unmount()
 })

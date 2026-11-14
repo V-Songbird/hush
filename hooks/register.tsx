@@ -563,13 +563,22 @@ export const register: Register = on => {
     const width = cardWidth(e.viewport?.columns ?? 100)
     const { Box, Markdown, Svg } = $.ui.resolve(e)
     const s = await stringsOf($)
+    // The app's own renderer draws each prose part, as it draws a whole reply: `next` once per
+    // part with that part's text. The engine's `Markdown` element draws smaller and tighter
+    // than the app's reply text. Only the first part keeps the reply's `isFirstOfReply`.
+    const first = parts.findIndex(part => part.kind === 'markdown')
+    const prose = await Promise.all(
+      parts.map((part, i) =>
+        part.kind === 'markdown' ? next({ ...e, props: { ...e.props, text: cite(part.text).replace(/^\n+|\n+$/g, ''), isFirstOfReply: e.props.isFirstOfReply && i === first } }) : null,
+      ),
+    )
 
     return (
       // A named step between a reply's blocks, which the desktop sizes on its own scale.
       <Box flexDirection="column" gap="md">
         {parts.map((part, i) => {
           if (part.kind === 'markdown') {
-            return <Markdown key={`md${i}`} text={hardBreaks(cite(part.text))} />
+            return <Box key={`md${i}`}>{prose[i]}</Box>
           }
 
           if (part.kind === 'notes') {
