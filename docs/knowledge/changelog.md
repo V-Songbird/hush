@@ -26,6 +26,10 @@ their line only; they never make a run without an exit code count as failed, so 
 mentions a timeout keeps the shorter cap. A bare `assert`, `Killed` in prose or a `404` in a URL
 list is not kept, so a Grep view does not fill with them.
 
+The "Next:" line now stands on its own: it names an earlier item by what it is, never by where
+it was, such as "my previous message". In a long session, a chapter marks the moment a fix lands,
+the topic changes or your decision starts the next phase, at most one per turn.
+
 hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
 (`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It draws three things there:
 
