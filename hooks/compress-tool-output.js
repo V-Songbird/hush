@@ -510,8 +510,8 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 // The one KEEP vocabulary, shared by every transform that elides lines
 // (dedupeConsecutive, collapseTemplates, capLines, compressGrep) and by the
 // sidecar digest's signal sample and census, so a change to SIGNAL_RE,
-// FAILURE_RE, KEEP_ONLY_RE, TRACEBACK_FRAME_RE or ZERO_COUNT_RE moves all of
-// them. A KEEP_ONLY_RE line counts in a digest's census as failure evidence. It is
+// FAILURE_RE, KEEP_ONLY_RE, KEEP_ONLY_CASE_RE, TRACEBACK_FRAME_RE or
+// ZERO_COUNT_RE moves all of them. A KEEP_ONLY_RE or KEEP_ONLY_CASE_RE line counts in a digest's census as failure evidence. It is
 // the union of what hush calls signal and what it calls failure evidence, so
 // every word that makes a run read as failed — `not ok`, `✗`, `panic`,
 // `fatal`, `Traceback`, `exception`, `failing` — also keeps its line past the
