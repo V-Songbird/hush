@@ -1,8 +1,9 @@
 ---
 type: knowledge
-summary: "What each hush hook does: the output trims, parked output, failing commands, the reminders, compaction, the subagent brief, the message settings and the voice slot; read before changing a hook or the shipped voice."
+summary: "What each hush hook does: the output trims, parked output, failing commands, the reminders, compaction, the subagent brief, the message settings, the desktop mod and the voice slot; read before changing a hook, the mod or the shipped voice."
 related_files:
   - hooks/
+  - hooks/register.tsx
   - output-styles/hush.md
 ---
 
@@ -267,6 +268,37 @@ every setting at its default, hush sends nothing. The hook runs again after comp
 settings survive the summary. A missing or broken settings file falls back to the defaults.
 [Settings](settings.md#message-settings) lists every setting.
 
+## In the desktop app: the mod
+
+Besides its command hooks, hush ships one hooks module, `hooks/register.tsx`, which Claude Code
+loads as a mod: code that runs inside Claude Code and can draw in its interface. `hooks/hooks.json`
+names it under `modules`, beside the command hooks. Claude Code loads the TypeScript source itself;
+there is no build step. The mod is optional. When Claude Code does not load it, because mods are
+off, the session runs with `--bare` or `--safe-mode`, or the host has no mods, every command hook
+above runs as before and the voice keeps its ban on the forms the mod draws.
+
+In the desktop app's Code tab only, it draws a final message's `mermaid` blocks as pictures and
+its GitHub alerts as boxes with an icon, and folds the progress texts written between tool calls
+into one line once the final message arrives. A message with no Mermaid block and no alert is left
+to the app whole. The terminal and every other surface are never touched.
+
+The voice bans `mermaid` blocks and alerts, because the app shows them raw. Its part "Forms the
+desktop mod draws" lifts that ban for four Mermaid kinds and two alerts, but only in a session
+whose prompt holds a section headed "Forms this desktop session draws". Only the mod adds that
+section, when it composes the prompt: the output style is Hush's, the desktop is the only surface
+drawing, the session is not `--bare`, and the `markdown` setting is `rich`. The section names no
+rule; the rule stays in the voice. A thread's prompt is fixed once sent, so a mod turned off
+mid-thread leaves the section in place until the next thread or compaction.
+
+On every surface, the mod checks each final message against the voice's countable rules, such as
+words per sentence and where "Next:" goes, under your message settings. It keeps the totals in
+Claude Code's per-plugin store on your machine, and `/hush-lint` prints them. It shows the reader
+nothing else. `HUSH_DISABLE=1` stops the whole mod.
+
+Its tests run with `claude plugin test .`; `node --test tests/*.test.js` checks the contracts
+between the mod and the rest of hush. The Mermaid renderer in `hooks/mermaid/` is ported from
+skins under the MIT licence, with its notice beside it.
+
 ## Which hook does what
 
 | Hook | When it runs | What it does |
@@ -278,6 +310,7 @@ settings survive the summary. A missing or broken settings file falls back to th
 | `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |
 | `session-end-cleanup` | When the session ends | Deletes the session's parked files |
+| `register.tsx` (the mod) | While Claude Code draws, composes the prompt and ends a turn | Draws Mermaid, alerts and the fold on the desktop; adds the desktop section; keeps the `/hush-lint` totals |
 
 ## The voice slot
 

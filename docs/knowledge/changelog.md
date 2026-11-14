@@ -22,6 +22,30 @@ their line only; they never make a run without an exit code count as failed, so 
 mentions a timeout keeps the shorter cap. A bare `assert`, `Killed` in prose or a `404` in a URL
 list is not kept, so a Grep view does not fill with them.
 
+hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
+(`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It draws three things there:
+
+- A `mermaid` block of the kinds the voice allows (`flowchart TD`, `flowchart LR`,
+  `xychart-beta`, `pie`) as a picture in the app's own colours, light and dark. A block its
+  parser cannot read, or one too crowded for the width, stays a code block.
+- A `[!WARNING]` or `[!CAUTION]` alert as a bordered box with its icon, as the app draws its own
+  banners. A note or tip draws as a line led by its icon.
+- The progress texts written between tool calls, folded into one grey line once the final
+  message arrives, with a count of failed results and of texts that name a failure. One press
+  shows them in place.
+
+A reply with no Mermaid block and no alert is left to the app whole, and the terminal and every
+other surface are never touched. Visible text follows the `language` setting, Spanish or English.
+The mod also keeps a tally of how often final messages kept the voice's countable rules; the
+`/hush-lint` command prints it. Nothing leaves your machine. `HUSH_DISABLE=1` turns the mod off.
+
+The voice now allows `mermaid` blocks and those two alerts only in a session whose prompt has the
+mod's section headed "Forms this desktop session draws". The mod adds it only for Hush on the
+desktop alone with the `markdown` setting at `rich`. Everywhere else the ban stands as before,
+including when the mod is not loaded. The mod is optional: every command hook runs as before
+without it. The Mermaid renderer is ported from skins (MIT, notice in `hooks/mermaid/`), and the
+alert icons are GitHub's Octicons (MIT, `hooks/LICENSE-octicons`).
+
 ## 2.4.0 — 2026-11-04
 
 A turn the harness starts, such as a task notification or a scheduled
