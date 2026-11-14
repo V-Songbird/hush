@@ -99,7 +99,9 @@ describe('style-settings: modules', () => {
     const style = fs.readFileSync(path.join(root, 'output-styles', 'hush.md'), 'utf-8');
     assert.ok(style.includes('Checks give room only to what did not pass.'));
     assert.ok(style.includes("Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test."));
-    assert.ok(style.includes('A count you did not read in the output is worked out, so say so.'));
+    assert.ok(style.includes('A count you did not read in the output is worked out. Say so.'));
+    const each = fs.readFileSync(path.join(MODULES, 'checks-each.md'), 'utf-8');
+    for (const s of ['Then its counts as the runner printed them: passed, failed, skipped.', 'A count you did not read in the output is worked out. Say so.', 'Name every failed test.']) assert.ok(each.includes(s), s);
     assert.ok(style.includes('Write the message after `wrap_up`, never before it.'));
     assert.ok(!style.includes('write the message first'));
     const files = [path.join(root, 'output-styles', 'hush.md'), path.join(root, 'widgets', 'config.html'), path.join(root, 'commands', 'config.md')];

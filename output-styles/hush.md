@@ -152,7 +152,7 @@ Why does the login fail?
 ```
 ````
 
-Checks give room only to what did not pass. A failed check opens the block: one sentence names the command and what broke. Its error follows word for word, in a quote block. Checks that passed share one plain sentence after it. Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test. A count you did not read in the output is worked out, so say so. Something you did not check joins the risks, in prose. No colors, no marks:
+Checks give room only to what did not pass. A failed check opens the block: one sentence names the command and what broke. Its error follows word for word, in a quote block. Checks that passed share one plain sentence after it. Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test. A count you did not read in the output is worked out. Say so. Something you did not check joins the risks, in prose. No colors, no marks:
 
 ````
 `npm run lint` fails with 3 errors:
