@@ -180,11 +180,11 @@ line are not made. For any other note, re-run the command, or read the file with
 limit.
 
 Omission is deterministic. In a trimmed view, a line is cut only when it matches no warning, error
-or failure pattern, or one of the failure messages that carry none of those words, such as
-`Permission denied`, `Connection refused`, `command not found`, `Cannot find module`,
-`No such file or directory`, `404 Not Found`, `Segmentation fault` and a shell's `Killed` or
-`Aborted`. Those messages keep their line but do not make a run count as failed: only the exit code
-or the failure words do that. A digest shows a sample of those lines instead, and names the file that holds
+or failure pattern and none of the failure messages that carry no such word: `Permission denied`,
+`Connection refused`, `command not found`, `Cannot find module`, `No such file or directory`,
+`404 Not Found`, `Segmentation fault`, a shell's `Killed` or `Aborted`, and others like them.
+Those messages keep their line but do not make a run count as failed: only the exit code or the
+failure words do that. A digest shows a sample of the kept lines instead, and names the file that holds
 all of them. The file on disk and the command's real output are never changed.
 
 A line of the output itself that already opens with `[hush` gets a backslash in front, `\[hush`, so
