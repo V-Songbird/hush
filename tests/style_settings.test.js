@@ -123,6 +123,15 @@ describe('style-settings: modules', () => {
     assert.ok(fs.readFileSync(path.join(MODULES, 'next-off.md'), 'utf-8').includes('The message has no "Next:" line, in any language'));
   });
 
+  test('the Next line stands on its own, and chapters name their moments', () => {
+    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    for (const s of [
+      'The line stands on its own. Name an earlier item by its content, never by its place.',
+      'a fix or change lands, the user moves to a new topic, or a decision of theirs starts the next phase',
+      'A short noun phrase. At most one per turn.',
+    ]) assert.ok(style.includes(s), s);
+  });
+
   test('the default detail budget is 250 words and full is 400', () => {
     const root = path.join(HOOKS_DIR, '..');
     assert.strictEqual(DEFAULTS.detail, 'normal');
