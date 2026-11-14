@@ -273,9 +273,9 @@ settings survive the summary. A missing or broken settings file falls back to th
 Besides its command hooks, hush ships one hooks module, `hooks/register.tsx`, which Claude Code
 loads as a mod: code that runs inside Claude Code and can draw in its interface. `hooks/hooks.json`
 names it under `modules`, beside the command hooks. Claude Code loads the TypeScript source itself;
-there is no build step. The mod is optional. When Claude Code does not load it, because mods are
-off, the session runs with `--bare` or `--safe-mode`, or the host has no mods, every command hook
-above runs as before and the voice keeps its ban on the forms the mod draws.
+there is no build step. The mod is optional: the command hooks do not depend on it. When Claude
+Code does not load it, for instance because mods are switched off, the command hooks behave
+exactly as they would without the mod, and the voice keeps its ban on the forms the mod draws.
 
 In the desktop app's Code tab only, it draws a final message's `mermaid` blocks as pictures and
 its GitHub alerts as boxes with an icon, and folds the progress texts written between tool calls

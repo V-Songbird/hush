@@ -57,6 +57,31 @@ test('HUSH_DISABLE=1 leaves a mermaid reply to the app', async ($, on) => {
   await ui.unmount()
 })
 
+// The tally is the mod's one write to disk; HUSH_DISABLE=1 must leave it alone.
+const stores = async ($: Engine, on: On, disable?: string) => {
+  const keys: string[] = []
+  on('env.get', (_, e) => ({ value: e.name === 'HUSH_DISABLE' ? disable : undefined }))
+  on('session.cwd', () => ({ value: '/work' }))
+  on('store.get', () => ({ value: undefined }))
+  on('store.set', (_, e) => {
+    keys.push(e.key)
+
+    return { value: undefined }
+  })
+  on('turn.complete', () => ({ text: '' }))
+  await $.turn.complete({ answer: '**Done.**\n\n---\n\n**Next:** read it.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
+
+  return keys
+}
+
+test('a final message adds to the tally', async ($, on) => {
+  expect((await stores($, on)).length).toBeGreaterThan(0)
+})
+
+test('HUSH_DISABLE=1 writes no tally', async ($, on) => {
+  expect(await stores($, on, '1')).toEqual([])
+})
+
 // The app's own banner shows an icon and no title text, so the box carries no "Warning" label.
 test('an alert draws as a box with its icon and no title text', async ($, on) => {
   const ui = await mount($, on, '**Result.**\n\n> [!WARNING]\n> The cache is stale.')
