@@ -1,158 +1,29 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement, RenderInput, ThemeKey } from 'claude-code'
+import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
 
-import { hardBreaks } from './mermaid/markdown'
-import type { Chart, ChartWords } from './mermaid/mermaid'
-import type { Palette } from './mermaid/skin'
-import { chartSvg } from './mermaid/svg-chart'
-import { cardWidth } from './mermaid/svg-kit'
 import { foldOf, headOf, isReprompt, labelOf, placeOf } from './fold'
 import type { Fold, FoldWords, Stored } from './fold'
-import { octicon } from './octicons'
-import { cite, splitReply } from './reply'
-import type { AlertType } from './reply'
-import { DESKTOP_SECTION, markdownOf, teachesDesktop } from './voice'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
-// On the desktop app, it draws a reply's Mermaid fences as pictures and its GitHub alerts as
-// coloured boxes, and folds the progress texts before each final message (`fold.ts`). A reply
-// with neither form is left to the app whole, and every other surface, the terminal included,
-// is never touched. It adds no command. HUSH_DISABLE=1 turns all of it off.
+// On the desktop app, it folds the progress texts written between tool calls into one line once
+// the reply's final message arrives (`fold.ts`). Every other reply, and every other surface, the
+// terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
-  // An alert's icon alt text: the app's banner shows the icon and no title.
-  alerts: { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution' } as Record<AlertType, string>,
   fold: {
     show: n => `Show ${n} ${n === 1 ? 'progress message' : 'progress messages'}`,
     hide: n => `Hide ${n} ${n === 1 ? 'progress message' : 'progress messages'}`,
     failed: n => `${n} failed`,
     warnings: n => `${n} ${n === 1 ? 'warning' : 'warnings'}`,
   } as FoldWords,
-  // A chart card's header, legend, tooltips and alt text (`mermaid/`).
-  chart: {
-    kinds: {
-      flow: 'Flowchart',
-      xy: 'Chart',
-      pie: 'Pie',
-      gantt: 'Gantt',
-      timeline: 'Timeline',
-      journey: 'Journey',
-      kanban: 'Kanban',
-      mindmap: 'Mindmap',
-      quadrant: 'Quadrant',
-      radar: 'Radar',
-      sankey: 'Sankey',
-      git: 'Git graph',
-      treemap: 'Treemap',
-      packet: 'Packet',
-      block: 'Block diagram',
-      architecture: 'Architecture',
-    },
-    c4Levels: { Context: 'C4 context', Container: 'C4 container', Component: 'C4 component', Dynamic: 'C4 dynamic', Deployment: 'C4 deployment' },
-    units: {
-      step: ['step', 'steps'],
-      point: ['point', 'points'],
-      series: ['series', 'series'],
-      slice: ['slice', 'slices'],
-      task: ['task', 'tasks'],
-      period: ['period', 'periods'],
-      card: ['card', 'cards'],
-      node: ['node', 'nodes'],
-      curve: ['curve', 'curves'],
-      flow: ['flow', 'flows'],
-      commit: ['commit', 'commits'],
-      item: ['item', 'items'],
-      bit: ['bit', 'bits'],
-      block: ['block', 'blocks'],
-      service: ['service', 'services'],
-      element: ['element', 'elements'],
-    },
-    series: { bar: 'bar', line: 'line' },
-    total: 'total',
-    empty: 'empty',
-    with: names => `with ${names}`,
-    span: (start, end) => `${start} to ${end}`,
-    done: 'done',
-    active: 'active',
-    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    day: (month, day) => `${month} ${day}`,
-    durations: { day: 'd', hour: 'h', minute: 'm' },
-    merge: from => `merge ${from}`,
-    cherryPick: from => `cherry-pick ${from}`,
-    c4Kind: (base, store, isExternal) => {
-      const kind = `${isExternal ? 'external ' : ''}${base}${store === null ? '' : ` ${store}`}`
-
-      return kind.charAt(0).toUpperCase() + kind.slice(1)
-    },
-    boundaries: { enterprise: 'enterprise', system: 'system', container: 'container' },
-  } as ChartWords,
 }
 export const ES: typeof EN = {
-  alerts: { note: 'Nota', tip: 'Consejo', important: 'Importante', warning: 'Advertencia', caution: 'Precaución' },
   fold: {
     show: n => `Ver ${n} ${n === 1 ? 'mensaje de avance' : 'mensajes de avance'}`,
     hide: n => `Ocultar ${n} ${n === 1 ? 'mensaje de avance' : 'mensajes de avance'}`,
     failed: n => `${n} ${n === 1 ? 'falló' : 'fallaron'}`,
     warnings: n => `${n} ${n === 1 ? 'aviso' : 'avisos'}`,
-  },
-  chart: {
-    kinds: {
-      flow: 'Diagrama de flujo',
-      xy: 'Gráfico',
-      pie: 'Gráfico circular',
-      gantt: 'Gantt',
-      timeline: 'Cronología',
-      journey: 'Recorrido',
-      kanban: 'Kanban',
-      mindmap: 'Mapa mental',
-      quadrant: 'Cuadrantes',
-      radar: 'Radar',
-      sankey: 'Sankey',
-      git: 'Grafo de git',
-      treemap: 'Mapa de árbol',
-      packet: 'Paquete',
-      block: 'Diagrama de bloques',
-      architecture: 'Arquitectura',
-    },
-    c4Levels: { Context: 'C4 de contexto', Container: 'C4 de contenedores', Component: 'C4 de componentes', Dynamic: 'C4 dinámico', Deployment: 'C4 de despliegue' },
-    units: {
-      step: ['paso', 'pasos'],
-      point: ['punto', 'puntos'],
-      series: ['serie', 'series'],
-      slice: ['sector', 'sectores'],
-      task: ['tarea', 'tareas'],
-      period: ['periodo', 'periodos'],
-      card: ['tarjeta', 'tarjetas'],
-      node: ['nodo', 'nodos'],
-      curve: ['curva', 'curvas'],
-      flow: ['flujo', 'flujos'],
-      commit: ['commit', 'commits'],
-      item: ['elemento', 'elementos'],
-      bit: ['bit', 'bits'],
-      block: ['bloque', 'bloques'],
-      service: ['servicio', 'servicios'],
-      element: ['elemento', 'elementos'],
-    },
-    series: { bar: 'barras', line: 'línea' },
-    total: 'total',
-    empty: 'sin elementos',
-    with: names => `con ${names}`,
-    span: (start, end) => `del ${start} al ${end}`,
-    done: 'terminada',
-    active: 'en curso',
-    months: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'],
-    day: (month, day) => `${day} ${month}`,
-    durations: { day: 'd', hour: 'h', minute: 'min' },
-    merge: from => `fusión de ${from}`,
-    cherryPick: from => `cherry-pick de ${from}`,
-    c4Kind: (base, store, isExternal) => {
-      const kind = { person: 'Persona', system: 'Sistema', container: 'Contenedor', component: 'Componente' }[base]
-      const stored = store === null ? '' : ` de ${store === 'database' ? 'base de datos' : 'cola'}`
-
-      return `${kind}${stored}${isExternal ? (base === 'person' ? ' externa' : ' externo') : ''}`
-    },
-    boundaries: { enterprise: 'empresa', system: 'sistema', container: 'contenedor' },
   },
 }
 
@@ -178,95 +49,6 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
     return (await $.env.get('HUSH_DISABLE'))?.trim() === '1'
   } catch {
     return false
-  }
-}
-
-// Text and neutral marks take `currentColor`: the desktop passes its text ink into the
-// picture, so they follow the person's theme and any look with no copied value. Muted ink is
-// that colour at an opacity, set as an attribute where it is drawn. Series have no theme key,
-// so they copy the app's `chart-categorical-1..8` tokens (app 4.4212, read 2026-11-02), once
-// per theme: a picture cannot read the page's CSS variables.
-export const LIGHT: Palette = {
-  user: '#2a78d6',
-  read: '#eb6834',
-  ok: '#1baf7a',
-  warn: '#eda100',
-  web: '#6250d6',
-  mcp: '#008300',
-  search: '#e87ba4',
-  err: '#e34948',
-  fg: 'currentColor',
-  muted: 'currentColor',
-}
-
-export const DARK: Palette = {
-  user: '#3987e5',
-  read: '#d95926',
-  ok: '#199e70',
-  warn: '#c98500',
-  web: '#9085e9',
-  mcp: '#008300',
-  search: '#d55181',
-  err: '#e66767',
-  fg: 'currentColor',
-  muted: 'currentColor',
-}
-
-// The app's banner (`shared-frame` in app 4.4212) draws an icon and no title text, so the
-// title is only the icon's alt text, in the catalogs above. Theme keys, so an alert's border and icon take the person's theme as the app's own marks
-// do: the desktop maps them to `text-accent`, `text-success`, `text-pro`, `text-warning`
-// and `text-danger`. Important takes `autoAccept`'s `text-pro`, not `merged`, whose light
-// purple measured 3.46:1 on the page. The box has no fill: no theme key gives a see-through
-// tint, and a raw one would not follow the person's theme. `light` and `dark` are those text
-// tokens' values, for the icon: an Svg takes no theme key, and the engine refuses one inside a
-// Text ("Svg inside an inline element"), so the key cannot reach it.
-const ALERTS: Record<AlertType, { color: ThemeKey; light: string; dark: string }> = {
-  note: { color: 'suggestion', light: '#184f95', dark: '#6da7ec' },
-  tip: { color: 'success', light: '#006300', dark: '#0ca30c' },
-  important: { color: 'autoAccept', light: '#4a3aa7', dark: '#a096eb' },
-  warning: { color: 'warning', light: '#734500', dark: '#db9300' },
-  caution: { color: 'error', light: '#8e2626', dark: '#ec7e7e' },
-}
-
-// The alerts drawn as a plain line led by their icon, with no box.
-const QUIET: ReadonlySet<AlertType> = new Set(['note', 'tip'])
-
-// One picture for both themes: the light and the dark drawing, each shown only where the
-// page's colour scheme matches, so the card follows the app without asking for its theme.
-// Null when the chart is too crowded for the width.
-export function themedChart(chart: Chart, width: number, words: ChartWords): { source: string; alt: string } | null {
-  const light = chartSvg(chart, LIGHT, width, words)
-  const dark = chartSvg(chart, DARK, width, words)
-
-  if (light === null || dark === null) {
-    return null
-  }
-
-  // Each drawing's ids, an arrowhead's and the corners', are scoped, so neither drawing takes
-  // the other's.
-  const scoped = (source: string, scope: string) =>
-    source
-      .replaceAll('id="', `id="${scope}-`)
-      .replaceAll('url(#', `url(#${scope}-`)
-  const style = '@media (prefers-color-scheme:dark){.hl{display:none}}@media not (prefers-color-scheme:dark){.hd{display:none}}'
-
-  return {
-    source: `<svg xmlns="http://www.w3.org/2000/svg" width="${light.width}" height="${light.height}" viewBox="0 0 ${light.width} ${light.height}"><style>${style}</style><g class="hl">${scoped(light.source, 'hl')}</g><g class="hd">${scoped(dark.source, 'hd')}</g></svg>`,
-    alt: light.alt,
-  }
-}
-
-// The settings /hush:config saved, read at each prompt since the reader may change them
-// mid-session; the same file and override Hush's `style-settings.js` reads. Nothing readable
-// is the defaults.
-async function hushConfig($: EngineInterface): Promise<unknown> {
-  try {
-    const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
-    const file = (await $.env.get('HUSH_CONFIG_FILE')) ?? `${home}/.claude/hush/config.json`
-
-    return JSON.parse(await $.fs.read(file))
-  } catch {
-    return undefined
   }
 }
 
@@ -313,7 +95,7 @@ async function foldAt($: EngineInterface, row: Parameters<typeof placeOf>[1]) {
 
 /**
  * A folded row on the desktop: the first draws the line, the rest draw nothing until it opens.
- * Undefined for a row outside every fold, which the caller draws as before.
+ * Undefined for a row outside every fold, which the caller leaves to the app.
  */
 async function drawFolded(
   $: EngineInterface,
@@ -407,19 +189,6 @@ export const register: Register = on => {
     return row
   }).catch(($, e, next) => next(e))
 
-  // Tell Claude what this mod draws, only where it draws it (`voice.ts`).
-  on('prompt.compose', async ($, e, next) => {
-    const result = await next(e)
-
-    if (await isDisabled($)) return result
-
-    if (!teachesDesktop(e, markdownOf(await hushConfig($)))) {
-      return result
-    }
-
-    return { sections: [...result.sections, { id: 'hush:desktop', text: DESKTOP_SECTION, scope: 'session' as const }] }
-  })
-
   // The main loop's turn ended: fold what came before its final message. A subagent's turn is not one.
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
@@ -440,73 +209,6 @@ export const register: Register = on => {
     // A hidden text goes to the app empty, so it may drop the row and its gap, not just its words.
     const folded = await drawFolded($, e, { kind: 'text', text: e.props.text }, () => next(e), () => next({ ...e, props: { ...e.props, text: '' } }))
 
-    if (folded !== undefined) {
-      return folded
-    }
-
-    const parts = splitReply(e.props.text)
-
-    if (parts === null) {
-      return next(e)
-    }
-
-    const width = cardWidth(e.viewport?.columns ?? 100)
-    const { Box, Markdown, Svg } = $.ui.resolve(e)
-    const s = await stringsOf($)
-    // A chart too crowded for this width keeps its source as a code block, in the prose.
-    const charts = parts.map(part => (part.kind === 'chart' ? themedChart(part.chart, width, s.chart) : null))
-    const isDrawn = (part: (typeof parts)[number], i: number) => part.kind === 'alert' || (part.kind === 'chart' && charts[i] !== null)
-
-    if (!parts.some(isDrawn)) {
-      return next(e)
-    }
-
-    // A message holds one engine drawing, and the first `next` call wins: a second call's text
-    // is dropped with no refusal (md-probe, 2026-11-02; seen again 2026-11-14). So the app's
-    // own renderer draws all the prose in one call, at its own size, after the drawings: every
-    // prose part, footnote line and over-wide chart's source, in authored order.
-    const prose = parts
-      .flatMap((part, i) =>
-        part.kind === 'markdown' ? [cite(part.text)] : part.kind === 'notes' ? [part.text] : part.kind === 'chart' && !isDrawn(part, i) ? [`\`\`\`mermaid\n${part.source}\n\`\`\``] : [],
-      )
-      .map(text => text.replace(/^\n+|\n+$/g, ''))
-      .filter(text => text.trim() !== '')
-      .join('\n\n')
-    const text = prose === '' ? null : await next({ ...e, props: { ...e.props, text: prose } })
-
-    return (
-      // A named step between a reply's blocks, which the desktop sizes on its own scale.
-      <Box flexDirection="column" gap="md">
-        {parts.map((part, i) => {
-          if (part.kind === 'alert') {
-            const alert = ALERTS[part.type]
-            const line = (
-              <Box key={`alert${i}`} flexDirection="row" alignItems="flex-start" columnGap={1}>
-                {/* One line tall and centred, as the app's banner holds its icon (`min-h-[1lh] items-center`), so the icon sits on the first line of text. */}
-                <Box height={1} flexShrink={0} alignItems="center">
-                  <Svg source={octicon(part.type, alert.light, alert.dark)} alt={s.alerts[part.type]} width={16} height={16} />
-                </Box>
-                {part.body === '' ? null : <Markdown text={hardBreaks(cite(part.body))} />}
-              </Box>
-            )
-
-            // A note or a tip asks for no attention: its icon alone marks the line. Only the
-            // alerts that must be seen take the banner's box.
-            return QUIET.has(part.type) ? (
-              line
-            ) : (
-              <Box key={`alert${i}`} flexDirection="column" borderStyle="round" borderColor={alert.color} paddingX={1}>
-                {line}
-              </Box>
-            )
-          }
-
-          const built = charts[i]
-
-          return !built ? null : <Svg key={`chart${i}`} source={built.source} alt={built.alt} />
-        })}
-        {text === null ? null : <Box key="prose">{text}</Box>}
-      </Box>
-    )
+    return folded ?? next(e)
   })
 }
