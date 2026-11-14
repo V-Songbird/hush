@@ -40,30 +40,13 @@ passed, failed and skipped, and names every failed test. A count Claude did not 
 output is said to be worked out.
 
 hush now ships a mod, a hooks module that draws in the Claude desktop app's Code tab
-(`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It draws three things there:
-
-- A `mermaid` block of the kinds the voice allows (`flowchart TD`, `flowchart LR`,
-  `xychart-beta`, `pie`) as a picture in the app's own colours, light and dark. A block its
-  parser cannot read, or one too crowded for the width, stays a code block.
-- A `[!WARNING]` or `[!CAUTION]` alert as a bordered box with its icon, as the app draws its own
-  banners. A note or tip draws as a line led by its icon.
-- The progress texts written between tool calls, folded into one grey line once the final
-  message arrives, with a count of failed results and of texts that name a failure. One press
-  shows them in place.
-
-A reply with no Mermaid block and no alert is left to the app whole, and the terminal and every
-other surface are never touched. Visible text follows the `language` setting, Spanish or English.
-The mod adds no command. Nothing leaves your machine. `HUSH_DISABLE=1` turns the mod off.
-
-The voice now allows `mermaid` blocks and those two alerts only in a session whose prompt has the
-mod's section headed "Forms this desktop session draws". The mod adds it only for Hush on the
-desktop alone with the `markdown` setting at `rich`. Everywhere else the ban stands as before,
-including when the mod is not loaded. Even there they are rare: an alert only when your next step
-would fail or do harm without it and the message says it nowhere else, and a diagram only for a
-flow that branches, loops or joins, with five parts or more. The mod draws them above the
-message's text, so the voice writes them first, above the bold result. The mod is optional: every command hook runs as before
-without it. The Mermaid renderer is ported from skins (MIT, notice in `hooks/mermaid/`), and the
-alert icons are GitHub's Octicons (MIT, `hooks/LICENSE-octicons`).
+(`hooks/register.tsx`, named under `modules` in `hooks/hooks.json`). It folds the progress texts
+written between tool calls into one grey line once the final message arrives, with a count of
+failed results and of texts that name a failure. One press shows them in place. Every reply is
+otherwise left to the app whole, and the terminal and every other surface are never touched.
+The line follows the `language` setting, Spanish or English. The mod adds no command. Nothing
+leaves your machine. `HUSH_DISABLE=1` turns the mod off. The mod is optional: every command hook
+runs as before without it.
 
 ## 2.4.0 — 2026-11-04
 

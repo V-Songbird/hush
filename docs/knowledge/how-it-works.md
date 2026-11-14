@@ -275,27 +275,17 @@ loads as a mod: code that runs inside Claude Code and can draw in its interface.
 names it under `modules`, beside the command hooks. Claude Code loads the TypeScript source itself;
 there is no build step. The mod is optional: the command hooks do not depend on it. When Claude
 Code does not load it, for instance because mods are switched off, the command hooks behave
-exactly as they would without the mod, and the voice keeps its ban on the forms the mod draws.
+exactly as they would without the mod.
 
-In the desktop app's Code tab only, it draws a final message's `mermaid` blocks as pictures and
-its GitHub alerts as boxes with an icon, and folds the progress texts written between tool calls
-into one line once the final message arrives. A message with no Mermaid block and no alert is left
-to the app whole. The terminal and every other surface are never touched.
-
-The voice bans `mermaid` blocks and alerts, because the app shows them raw. Its part "Forms the
-desktop mod draws" lifts that ban for four Mermaid kinds and two alerts, but only in a session
-whose prompt holds a section headed "Forms this desktop session draws". Only the mod adds that
-section, when it composes the prompt: the output style is Hush's, the desktop is the only surface
-drawing, the session is not `--bare`, and the `markdown` setting is `rich`. The section names no
-rule; the rule stays in the voice. A thread's prompt is fixed once sent, so a mod turned off
-mid-thread leaves the section in place until the next thread or compaction.
+In the desktop app's Code tab only, it folds the progress texts written between tool calls into
+one line once the final message arrives. One press shows them in place. Every message is
+otherwise left to the app whole. The terminal and every other surface are never touched.
 
 The mod keeps each session's folds in Claude Code's per-plugin store on your machine, so they
 come back when the session reopens. It adds no command. `HUSH_DISABLE=1` stops the whole mod.
 
 Its tests run with `claude plugin test .`; `node --test tests/*.test.js` checks the contracts
-between the mod and the rest of hush. The Mermaid renderer in `hooks/mermaid/` is ported from
-skins under the MIT licence, with its notice beside it.
+between the mod and the rest of hush.
 
 ## Which hook does what
 
@@ -308,7 +298,7 @@ skins under the MIT licence, with its notice beside it.
 | `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |
 | `session-end-cleanup` | When the session ends | Deletes the session's parked files |
-| `register.tsx` (the mod) | While Claude Code draws, composes the prompt and ends a turn | Draws Mermaid, alerts and the fold on the desktop; adds the desktop section |
+| `register.tsx` (the mod) | While Claude Code draws and ends a turn | Folds progress texts on the desktop |
 
 ## The voice slot
 

@@ -26,7 +26,7 @@ later; there is no install or build step. This repository is Foundry's hush subm
 | `node scripts/git-hooks/check-readme-nav.js` | The root README has its nav, and every heading anchor linked from a tracked Markdown file resolves | Local |
 | `claude plugin validate .` | Claude Code package shape | Local |
 | `claude plugin test .` | The desktop mod's tests, `hooks/*.test.ts(x)` | Local; needs the Claude Code CLI with mods switched on, so CI does not run it |
-| `node <foundry>/scripts/check-mod-colors.js --types <claude-code.d.ts> --exceptions mod-colors.allow.json hooks` | The mod paints with theme keys; raw colors only as `mod-colors.allow.json` lists them | Local; the checker and the types file live outside this repository |
+| `node <foundry>/scripts/check-mod-colors.js --types <claude-code.d.ts> hooks` | The mod paints only with theme keys; it holds no raw color | Local; the checker and the types file live outside this repository |
 | `git config core.hooksPath scripts/git-hooks` | One-time: the pre-commit hook runs the suite and the nav check | Local |
 
 ## Where things live
@@ -34,7 +34,7 @@ later; there is no install or build step. This repository is Foundry's hush subm
 | Path | Content |
 | --- | --- |
 | `hooks/` | The session hooks: `compress-tool-output`, `silence-nudge`, `precompact-summary`, `postcompact-rearm`, `preserve-exit-code`, `session-end-cleanup`, `subagent-brief`; `lib/` holds the gate, the harness, the sidecar store and the transforms |
-| `hooks/register.tsx` | The desktop mod, an optional hooks module beside the command hooks: `reply.ts` splits a reply, `fold.ts` folds progress texts, `voice.ts` adds the desktop section, `mermaid/` is the renderer ported from skins (MIT); state types in `types/index.d.ts` |
+| `hooks/register.tsx` | The desktop mod, an optional hooks module beside the command hooks: `fold.ts` folds progress texts; state types in `types/index.d.ts` |
 | `hooks/style-settings.js` | The message settings: their values, presets and saved file, the CLI `/hush:config` calls, and the SessionStart hook that sends each moved setting's module |
 | `commands/config.md` | `/hush:config`: the configurator in the desktop app, or the terminal questions |
 | `widgets/config.html` | The configurator widget and its sample-message preview; its knob list must match `hooks/style-settings.js` |
