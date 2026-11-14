@@ -80,16 +80,8 @@ function load() {
 // The mod's silent count of final messages, kept beside the settings file: numbers, days and
 // the key of the settings it was kept under. These copy hooks/lint.ts, which a CommonJS script
 // cannot import; tests/desktop_mod.test.js keeps them equal.
-const TALLY_RULES = [
-  "result first",
-  "rules where set",
-  "next step where set",
-  "sentences within limit",
-  "blocks within limit",
-  "no raw html",
-  "markdown forms as set",
-];
-const TALLY_KNOBS = ["next", "rules", "markdown", "sentences", "emoji", "headers"];
+const TALLY_RULES = ["result first", "rules where set", "next step where set"];
+const TALLY_KNOBS = ["next", "rules", "markdown", "emoji", "headers"];
 const TALLY_FIELDS = ["last", "messages", "met", "misses", "settings", "since"];
 const TALLY_MAX = 65536;
 const DAY = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;

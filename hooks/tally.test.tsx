@@ -9,7 +9,7 @@ const ANSWER = '**Done.**\n\n---\n\nOne fact.\n\n---\n\n**Next:** read it.'
 const HOME = '/home/p'
 const TALLY = `${HOME}/.claude/hush/tally.json`
 const CONFIG = `${HOME}/.claude/hush/config.json`
-const KEY = 'end-on-rich-12-off-off'
+const KEY = 'end-on-rich-off-off'
 
 // The engine may add a drive letter or turn a slash; a path is compared as `/dir/file`.
 const norm = (path: string) => path.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/')
@@ -131,7 +131,7 @@ test('the tally sits beside HUSH_CONFIG_FILE when it is set, and the settings co
   await k.finish()
 
   // next=off: a rule above a final "Next:" line is a miss.
-  expect(read(k, '/cfg/tally.json')).toMatchObject({ messages: 1, met: 0, misses: { 'next step where set': 1 }, settings: 'off-on-rich-12-off-off' })
+  expect(read(k, '/cfg/tally.json')).toMatchObject({ messages: 1, met: 0, misses: { 'next step where set': 1 }, settings: 'off-on-rich-off-off' })
   expect(k.writes).toEqual(['/cfg/tally.json'])
 })
 
@@ -281,7 +281,7 @@ test('a change to a setting the rules read starts a new count', async ($, on) =>
 
   await k.finish()
 
-  expect(read(k, '/cfg/tally.json')).toMatchObject({ messages: 1, settings: 'end-on-rich-12-off-on' })
+  expect(read(k, '/cfg/tally.json')).toMatchObject({ messages: 1, settings: 'end-on-rich-off-on' })
 })
 
 test('a change to a setting no rule reads keeps the count', async ($, on) => {
@@ -316,7 +316,7 @@ test('a compaction sends the saved settings again, and the count goes on under t
   await k.compact()
   await k.finish('**Done.**\n\n---\n\nOne fact.')
 
-  expect(read(k)).toMatchObject({ messages: 1, met: 1, settings: 'off-on-rich-12-off-off' })
+  expect(read(k)).toMatchObject({ messages: 1, met: 1, settings: 'off-on-rich-off-off' })
 })
 
 test('a mod that never saw the session start counts nothing', async ($, on) => {

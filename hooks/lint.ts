@@ -1,23 +1,14 @@
-// A silent check of Hush's final message: each answer is tested against the countable rules of
-// the voice (`output-styles/hush.md`) and of the `modules/*.md` texts the reader's /hush:config
-// settings swap in, and only numbers are kept. It never changes or draws anything in the reply,
-// and it stores no text of one.
+// A silent check of Hush's final message: each answer is tested for the structure the voice
+// (`output-styles/hush.md`) and the `modules/*.md` texts of the reader's /hush:config settings ask
+// for, and only numbers are kept. It never changes or draws anything in the reply, and it stores
+// no text of one.
 //
 // A count that is wrong is worse than none: where a rule cannot tell whether a message follows
-// the voice, it counts no miss. The word budget is not counted at all, since the voice leaves
-// risks, blockers, unverified claims and pending approvals out of it and no mark sets them apart.
-// Links are not counted either: a link to a file the turn deleted or renamed cannot be told from
-// a wrong one.
+// the voice, it counts no miss. So nothing about the text itself is counted: no length, sentence,
+// block, HTML, Markdown form or link. Those depend on the language and on what the message is
+// about, and a count cannot tell them for certain.
 
-export const RULES = [
-  'result first',
-  'rules where set',
-  'next step where set',
-  'sentences within limit',
-  'blocks within limit',
-  'no raw html',
-  'markdown forms as set',
-] as const
+export const RULES = ['result first', 'rules where set', 'next step where set'] as const
 
 export type Rule = (typeof RULES)[number]
 
@@ -49,20 +40,20 @@ export function settingsOf(saved: unknown): Settings {
   return Object.fromEntries(Object.entries(KNOBS).map(([k, values]) => [k, (values as readonly unknown[]).includes(s[k]) ? s[k] : values[0]])) as Settings
 }
 
-// The knobs the rules read, in a fixed order. The others (detail, why, checks, caveats, records,
-// terms, files, box) change what the message holds, not where its result, rules and next step
-// sit, nor its sentence and block limits. A change to one of these starts a new count.
-// style-settings.js keeps the same list as TALLY_KNOBS.
-export const READ = ['next', 'rules', 'markdown', 'sentences', 'emoji', 'headers'] as const
+// The knobs the rules read, in a fixed order. The others change what the message holds, not where
+// its result, rules and next step sit; markdown counts only as far as `plain` has no rules. A
+// change to one of these starts a new count. style-settings.js keeps the same list as TALLY_KNOBS.
+export const READ = ['next', 'rules', 'markdown', 'emoji', 'headers'] as const
 
-/** The values of the knobs the rules read, such as `end-on-rich-12-off-off`: no text of a reply. */
+/** The values of the knobs the rules read, such as `end-on-rich-off-off`: no text of a reply. */
 export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-')
 
 // A message is read as parts: each line outside code, trimmed, and each fenced or `$$` block as
-// one code part. Structure is read from these, so nothing inside code counts.
-type Part = { kind: 'code'; info: string } | { kind: 'line'; text: string }
+// one code part. Structure is read from these, so nothing inside code counts, and a quote
+// block's `>` keeps its lines from reading as a rule or a Next line.
+type Part = { kind: 'code' } | { kind: 'line'; text: string }
 
-const FENCE = /^(`{3,}|~{3,})\s*([^\s`]*)/
+const FENCE = /^(`{3,}|~{3,})/
 
 function partsOf(text: string): Part[] {
   const parts: Part[] = []
@@ -77,15 +68,14 @@ function partsOf(text: string): Part[] {
       continue
     }
 
-    const open = FENCE.exec(line)
-    const marks = open?.[1] ?? ''
+    const marks = FENCE.exec(line)?.[1] ?? ''
 
     // A backtick fence's info string holds no backtick: "```x```" is inline code.
-    if (open !== null && !(marks.startsWith('`') && line.slice(marks.length).includes('`'))) {
-      parts.push({ kind: 'code', info: (open[2] ?? '').toLowerCase() })
+    if (marks !== '' && !(marks.startsWith('`') && line.slice(marks.length).includes('`'))) {
+      parts.push({ kind: 'code' })
       fence = marks
     } else if (line.startsWith('$$')) {
-      parts.push({ kind: 'code', info: 'math' })
+      parts.push({ kind: 'code' })
 
       if (line.length < 4 || !line.endsWith('$$')) fence = '$$'
     } else {
@@ -98,68 +88,25 @@ function partsOf(text: string): Part[] {
 
 const RULE_LINE = /^(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/
 const EMOJI = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*\\s*'
-// A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like), and the ellipsis.
+// French puts a space, U+00A0 or U+202F before a colon; Japanese and Chinese use a full-width one.
+const COLON = '[ \\u00A0\\u202F]?[:：]'
+// A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like) and the ellipsis,
+// which may follow the bold result.
 const STOP = '[\\p{STerm}…]'
 // A bold line; its stop and a footnote mark may follow the bold, in either order.
 const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|\\[\\^[^\\]\\s]+\\])*$`
 // The bold result line; under emoji=on an emoji may open it ("before any bold").
 const RESULT = [new RegExp(`^${BOLD}`, 'u'), new RegExp(`^(?:${EMOJI})?${BOLD}`, 'u')] as const
-// The "Next:" line opens with its word in bold, in any language, with a colon or a full-width one,
-// inside the bold or after it; French puts a space, U+00A0 or U+202F before it.
-const COLON = '[ \\u00A0\\u202F]?[:：]'
+// The "Next:" line opens with its word in bold, in any language, with its colon inside the bold
+// or after it.
 const NEXT_WORD = `(?:\\*\\*[^*]{1,40}?[:：]\\*\\*|\\*\\*[^*]{1,40}\\*\\*${COLON}|__[^_]{1,40}?[:：]__|__[^_]{1,40}__${COLON})`
 const NEXT = [new RegExp(`^${NEXT_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${NEXT_WORD}`, 'u')] as const
 // A section header (headers=on): a short bold line of its own; its emoji may sit in or before it.
 const HEADER_WORD = `(?:\\*\\*[^*]{1,40}\\*\\*|__[^_]{1,40}__)(?:${COLON})?$`
 const HEADER = [new RegExp(`^${HEADER_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${HEADER_WORD}`, 'u')] as const
-const HEADING = /^#{1,6}(?:\s|$)/
-const QUOTE = /^>/
-const LIST_ITEM = /^(?:[-*+]|\d+[.)])\s/
-const FOOTNOTE = /^\[\^[^\]\s]+\]:/
-const TABLE_SEP = /^\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?$/
-const INLINE_CODE = /`+[^`]*`+/g
-// A link or image, its target with balanced parentheses, as in `app/(group)/page.tsx`.
-const LINK = /!?\[([^\]]*)\]\((<[^>]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+"[^"]*")?\)/g
-const TAG = /<(\/?)([A-Za-z][A-Za-z0-9]*)(?:\s[^<>]*)?\/?>/g
-// HTML elements by name. One with content counts only when its closing tag is in the message
-// too, so `x<b and c>d` in prose is no tag; an empty one counts by its tag alone.
-const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
-const ELEMENTS = new Set(
-  (
-    'a abbr address article aside audio b bdi bdo big blockquote body button canvas caption center cite code colgroup dd del details dfn dialog div dl dt em ' +
-    'fieldset figcaption figure font footer form h1 h2 h3 h4 h5 h6 head header html i iframe ins kbd label legend li main mark nav noscript object ol optgroup ' +
-    'option p picture pre q rp rt ruby s samp script section select small span strike strong style sub summary sup svg table tbody td template textarea tfoot ' +
-    'th thead time title tr tt u ul var video'
-  ).split(' '),
-)
-// Scripts written with no spaces between words: a whitespace count says nothing there.
-const UNSPACED = /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Thai}\p{sc=Lao}\p{sc=Khmer}\p{sc=Myanmar}]/u
-
-// A line as the reader reads its words: inline code, math, a link and an image are one name
-// each; footnote marks, struck text and list marks are not read.
-const readable = (line: string) =>
-  line
-    .replace(/^(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, '')
-    .replace(INLINE_CODE, ' x ')
-    .replace(LINK, ' x ')
-    .replace(/\[\^[^\]\s]+\]:?/g, ' ')
-    .replace(/~~.*?~~/g, ' ')
-    .replace(/\$[^$\s](?:[^$]*[^$\s])?\$/g, ' x ')
-    .replace(/&nbsp;/g, ' ')
-
-const wordsOf = (text: string) => text.split(/\s+/).filter(word => /[\p{L}\p{N}]/u.test(word)).length
-
-// A sentence ends at a stop of any script before a space; 1.5 and a.js have none.
-const sentencesOf = (text: string) => text.split(new RegExp(`(?<=${STOP}[\\]"'”’»)*_]*)\\s+`, 'u'))
-
-const cellsOf = (row: string) =>
-  row
-    .replace(INLINE_CODE, ' x ')
-    .replace(/^\||\|$/g, '')
-    .split(/(?<!\\)\|/)
 
 /**
- * Where the result, the rules and the Next step sit, by setting:
+ * Whether the rules and the Next step sit where the settings put them:
  * - rules on: next=end has a rule under the result, and the Next step "below a rule of its
  *   own": what follows the last rule opens with "Next:", and anything may follow that line;
  *   next=top has "Next:" right under the result, then the code its step needs, then a rule;
@@ -167,10 +114,8 @@ const cellsOf = (row: string) =>
  * - rules=off and markdown=plain have no rule outside code, and nothing marks where the Next step
  *   starts: only a message with no "Next:" line at all misses it.
  * - headers=on: a "Next step" header line, then the action, stands where "Next:" stands.
- * A message that would end on a footnote ends on a line holding only `&nbsp;`, which is skipped.
- * `block` is the Next step and what follows it, which the voice lets hold its closing sentence.
  */
-function placement(lines: readonly Part[], s: Settings) {
+function placement(lines: readonly Part[], s: Settings): { rules: boolean; next: boolean } {
   const emoji = s.emoji === 'on' ? 1 : 0
   const textAt = (i: number) => {
     const part = lines[i]
@@ -185,7 +130,6 @@ function placement(lines: readonly Part[], s: Settings) {
   const n = lines.length
   const indices = Array.from({ length: n }, (_, i) => i)
   const hasRule = indices.some(isRule)
-  const from = (start: number) => indices.slice(Math.max(start, 0))
 
   if (s.next === 'off') {
     // No Next line "in any language": a count cannot tell the word, so only the shape the voice
@@ -193,7 +137,7 @@ function placement(lines: readonly Part[], s: Settings) {
     const endAt = s.headers === 'on' ? (isHeader(n - 2) || !isInline(n - 1) ? n - 2 : n - 1) : isInline(n - 1) || !isHeader(n - 2) ? n - 1 : n - 2
     const isShape = ruled && endAt - 1 > 1 && isRule(endAt - 1) && (isInline(endAt) || isHeader(endAt))
 
-    return { rules: ruled ? isRule(1) : !hasRule, next: !isShape, block: [] as number[] }
+    return { rules: ruled ? isRule(1) : !hasRule, next: !isShape }
   }
 
   if (s.next === 'top') {
@@ -202,166 +146,30 @@ function placement(lines: readonly Part[], s: Settings) {
 
     while (lines[i]?.kind === 'code') i++
 
-    return { rules: ruled ? i >= n || isRule(i) : !hasRule, next: isNext(1), block: [1, topSize === 2 ? 2 : -1].filter(j => j >= 0) }
+    return { rules: ruled ? i >= n || isRule(i) : !hasRule, next: isNext(1) }
   }
 
   const lastRule = ruled ? indices.filter(isRule).pop() : undefined
 
-  if (lastRule !== undefined && lastRule >= 1) return { rules: isRule(1), next: isNext(lastRule + 1), block: from(lastRule + 1) }
+  if (lastRule !== undefined && lastRule >= 1) return { rules: isRule(1), next: isNext(lastRule + 1) }
 
   // No rule to anchor the Next step: a miss only when no line after the result is one.
-  const last = indices.filter(isNext).pop()
-
-  return { rules: !ruled ? !hasRule : false, next: last !== undefined, block: last === undefined ? [] : from(last) }
-}
-
-// What markdown=basic and markdown=plain forbid where a count can tell for certain. Italics,
-// `*` bullets and inline math stay out: their marks also appear in plain text.
-function formsMet(parts: readonly Part[], s: Settings): boolean {
-  if (s.markdown === 'rich') return true
-
-  const isPlain = s.markdown === 'plain'
-
-  return parts.every(part => {
-    if (part.kind === 'code') return part.info !== 'search_tree' && part.info !== 'math'
-
-    const t = part.text.replace(INLINE_CODE, ' ')
-    const basic =
-      FOOTNOTE.test(t) || /~~\S(?:.*?\S)?~~/.test(t) || /!\[[^\]]*\]\((?!<?https?:)/i.test(t) || /\]\(<?#(?:terminal\/|local_|trig_|project-settings\/)/.test(t)
-    const plain = t.startsWith('|') || HEADING.test(t) || QUOTE.test(t) || /^[-*+]\s+\[[ xX]\]\s/.test(t) || /\[[^\]]*\]\([^)]*\)/.test(t)
-
-    return !(basic || (isPlain && plain))
-  })
+  return { rules: !ruled ? !hasRule : false, next: indices.some(isNext) }
 }
 
 /** The rules the answer misses. */
 export function lintMessage(text: string, settings: Settings = settingsOf(undefined)): Rule[] {
-  const parts = partsOf(text)
   // The parts a reader sees, blank lines out, with a closing `&nbsp;` line skipped.
-  const at = parts.flatMap((part, i) => (part.kind === 'code' || part.text !== '' ? [i] : []))
+  const lines = partsOf(text).filter(part => part.kind === 'code' || part.text !== '')
 
-  while (at.length > 0 && (parts[at[at.length - 1] ?? -1] as { text?: string } | undefined)?.text === '&nbsp;') at.pop()
+  while ((lines[lines.length - 1] as { text?: string } | undefined)?.text === '&nbsp;') lines.pop()
 
-  const lines = at.map(i => parts[i] as Part)
   const placed = placement(lines, settings)
-  const nextLines = new Set(placed.block.map(i => at[i]))
-  const sentenceLimit = settings.sentences === '20' ? 20 : 12
-  const blockLimit = settings.sentences === '20' ? 60 : 40
-  const emoji = settings.emoji === 'on' ? 1 : 0
-  let isLongSentence = false
-  let isLongBlock = false
-  let isComment = false
-  const opened = new Set<string>()
-  const closed = new Set<string>()
-  let block = 0
-  let isUnspaced = false
-  let isList = false
-
-  // A list is not held to the block limit: the voice never cuts open items, risks or checks to
-  // fit, and a count cannot tell such a list from another. Each item keeps the sentence limit.
-  const close = () => {
-    if (!isUnspaced && !isList && block > blockLimit) isLongBlock = true
-
-    block = 0
-    isUnspaced = false
-    isList = false
-  }
-  const sentences = (t: string) => {
-    if (!UNSPACED.test(t) && sentencesOf(t).some(x => wordsOf(x) > sentenceLimit)) isLongSentence = true
-  }
-  const html = (t: string) => {
-    const prose = t.replace(INLINE_CODE, ' ').replace(LINK, ' ')
-
-    isComment ||= /<!--.*?-->/.test(prose)
-
-    for (const m of prose.matchAll(TAG)) {
-      const name = (m[2] ?? '').toLowerCase()
-
-      if (VOID.has(name) || ELEMENTS.has(name)) (m[1] === '/' ? closed : opened).add(name)
-    }
-  }
-
-  // A table row opens with `|`, or has one in a run of lines that holds a `|---|` row.
-  const tableAt = new Set<number>()
-  let run: number[] = []
-
-  for (let i = 0; i <= parts.length; i++) {
-    const part = parts[i]
-
-    if (part?.kind === 'line' && part.text !== '') {
-      run.push(i)
-      continue
-    }
-
-    const texts = run.map(j => (parts[j] as { text: string }).text)
-    const hasSep = texts.some(t => t.includes('|') && TABLE_SEP.test(t))
-
-    run.forEach((j, k) => {
-      if (texts[k]?.startsWith('|') || (hasSep && texts[k]?.includes('|'))) tableAt.add(j)
-    })
-    run = []
-  }
-
-  // A block is the text between two blank lines, so a whole list is one block. A table is the
-  // voice's way past the block limit, so its rows count only for their cells' sentences. Quote
-  // blocks hold errors and words quoted word for word, and are not measured. A heading is no
-  // sentence. The Next step's sentences are not measured, since the voice prescribes its closing
-  // sentence; its blocks are.
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i] as Part
-
-    if (part.kind === 'code' || part.text === '' || RULE_LINE.test(part.text)) {
-      close()
-      continue
-    }
-
-    const t = part.text
-
-    if (QUOTE.test(t)) {
-      close()
-      continue
-    }
-
-    html(t)
-
-    if (tableAt.has(i)) {
-      close()
-
-      if (!TABLE_SEP.test(t)) cellsOf(t).forEach(cell => sentences(readable(cell)))
-
-      continue
-    }
-
-    if (HEADING.test(t)) {
-      close()
-      continue
-    }
-
-    // A section header names its block's kind; it is not a sentence of the block.
-    if (settings.headers === 'on' && HEADER[emoji].test(t)) continue
-
-    const words = readable(t)
-
-    if (!nextLines.has(i)) sentences(words)
-
-    isList ||= LIST_ITEM.test(t)
-    block += wordsOf(words)
-    isUnspaced ||= UNSPACED.test(words)
-  }
-
-  close()
-
-  const paired = [...opened].filter(name => VOID.has(name) || closed.has(name))
   const first = lines[0]
   const checks: Record<Rule, boolean> = {
-    'result first': first?.kind === 'line' && RESULT[emoji].test(first.text),
+    'result first': first?.kind === 'line' && RESULT[settings.emoji === 'on' ? 1 : 0].test(first.text),
     'rules where set': placed.rules,
     'next step where set': placed.next,
-    'sentences within limit': !isLongSentence,
-    'blocks within limit': !isLongBlock,
-    // The voice allows `<kbd>`; basic and plain Markdown forbid it among their forms.
-    'no raw html': !isComment && paired.every(name => name === 'kbd'),
-    'markdown forms as set': formsMet(parts, settings) && (settings.markdown === 'rich' || !paired.includes('kbd')),
   }
 
   return RULES.filter(rule => !checks[rule])
@@ -411,7 +219,10 @@ export const TALLY_MAX = 65536
 const DAY = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
 const isCount = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0
 
-/** A tally read back from the file for the settings `key`; anything else starts a new count. */
+/**
+ * A tally read back from the file for the settings `key`; anything else starts a new count, one
+ * an earlier version kept under other rules or another key included.
+ */
 export function asTally(v: unknown, key: string): Tally | undefined {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return undefined
 

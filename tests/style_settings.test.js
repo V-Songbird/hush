@@ -311,7 +311,7 @@ describe('style-settings: tally', () => {
     fs.writeFileSync(path.join(dir, 'tally.json'), text);
     return path.join(dir, 'config.json');
   };
-  const KEY = 'end-on-rich-12-off-off';
+  const KEY = 'end-on-rich-off-off';
   const COUNT = { messages: 4, met: 3, misses: { 'next step where set': 1 }, since: '2026-11-01', last: '2026-11-14' };
   const GOOD = { ...COUNT, settings: KEY };
   let t = 0;
@@ -338,7 +338,11 @@ describe('style-settings: tally', () => {
     ['an unsafe integer', JSON.stringify({ ...GOOD, messages: 1e300, met: 1 })],
     ['a stray text field', JSON.stringify({ ...GOOD, sentence: 'secret words' })],
     ['no settings key', JSON.stringify(COUNT)],
-    ['a key for other settings', JSON.stringify({ ...GOOD, settings: 'top-on-rich-12-off-off' })],
+    ['a key for other settings', JSON.stringify({ ...GOOD, settings: 'top-on-rich-off-off' })],
+    // A count an earlier version of the check kept: its key held the sentences knob, and its
+    // misses could name a rule the check no longer has.
+    ['the key an earlier version kept', JSON.stringify({ ...GOOD, settings: 'end-on-rich-12-off-off' })],
+    ['a rule the check no longer has', JSON.stringify({ ...GOOD, misses: { 'sentences within limit': 1 } })],
     ['a key that names no values', JSON.stringify({ ...GOOD, settings: 'print the key' })],
     ['a padded file past the cap', JSON.stringify(GOOD) + ' '.repeat(70 * 1024)],
   ];

@@ -72,17 +72,10 @@ test('the voice’s own sample message, and its failed-check form, meet every ru
   expect(lintMessage(msg('✅ **The fix is ready.**', '', '**👉 Next step**', 'Paste this into your shell.', '', '```bash', 'npm test', '```', '', '---', '', '**💡 Cause**', 'The expiry was read as text.'), moved)).toEqual([])
 })
 
-test('a table cell is held to the sentence limit, as the voice holds a list item', () => {
-  // The cell the first GOOD fixture held: 18 words, which the voice does not allow.
-  const cell = GOOD.replace('212 passed, 0 failed, 0 skipped', '212 of 212, a cell that is a table row and not a sentence of prose at all')
-
-  expect(lintMessage(cell)).toEqual(['sentences within limit'])
-})
-
-test('a long sentence, a missing rule and a footnote at the end each miss their rule', () => {
+test('a missing rule and a footnote at the end each miss their rule', () => {
   const text = ['**Done.**', 'This sentence keeps going on and on well past the twelve words the voice allows here.', '', '[^1]: A note.'].join('\n')
 
-  expect(lintMessage(text)).toEqual(['rules where set', 'next step where set', 'sentences within limit'])
+  expect(lintMessage(text)).toEqual(['rules where set', 'next step where set'])
 })
 
 test('a message that does not open on the bold result misses result first', () => {
@@ -103,8 +96,8 @@ test('each rule follows the reader’s /hush:config settings', () => {
 
   const bare = ['**Done.**', '', long].join('\n')
   expect(lintMessage(bare, settingsOf({ next: 'off', rules: 'off', sentences: '20' }))).toEqual([])
-  // markdown=plain has no rules, whatever the rules knob says, and forbids <kbd> among its forms.
-  expect(lintMessage(`${bare}\n\nPress <kbd>Ctrl</kbd>.`, settingsOf({ next: 'off', markdown: 'plain', sentences: '20' }))).toEqual(['markdown forms as set'])
+  // markdown=plain has no rules, whatever the rules knob says.
+  expect(lintMessage(`${bare}\n\nPress <kbd>Ctrl</kbd>.`, settingsOf({ next: 'off', markdown: 'plain', sentences: '20' }))).toEqual([])
   // next=off with rules on keeps the rule under the result, and no Next line.
   expect(lintMessage(['**Done.**', '', '---', '', 'One fact.'].join('\n'), settingsOf({ next: 'off' }))).toEqual([])
   expect(lintMessage(GOOD, settingsOf({ next: 'off' }))).toEqual(['next step where set'])
@@ -148,7 +141,7 @@ test('headers=on replaces the Next word with a Next step header above the action
   expect(lintMessage(GOOD, settingsOf({ headers: 'on' }))).toEqual(['next step where set'])
 })
 
-test('the closing line the voice prescribes for a finished session meets the sentence limit', () => {
+test('the closing line the voice prescribes for a finished session meets every rule', () => {
   const closing = '**Siguiente paso:** Finalizamos con esta sesión. Siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.'
 
   expect(lintMessage(GOOD.replace(/\*\*Next:\*\*.*$/, closing))).toEqual([])
@@ -173,60 +166,7 @@ test('structure is read outside fenced code', () => {
   expect(lintMessage(framed('```md', '**Note:** inside code', '```'), settingsOf({ next: 'top' }))).toContain('next step where set')
 })
 
-test('a quote block is exempt from the HTML, sentence and block rules', () => {
-  const error = "> TypeError: Cannot read properties of undefined (reading 'id') at Object.<anonymous> (src/app.js:10:5) and many more words in the same quoted line of the log"
-
-  expect(lintMessage(framed('The app threw this on start:', '', error))).toEqual([])
-})
-
-test('a list is not held to the block limit, and each list item is held to the sentence limit', () => {
-  const ten = Array.from({ length: 10 }, (_, i) => `- Item ${i} has exactly ten words in it, as you see.`)
-
-  // The voice never cuts open items, risks or checks to fit, and a count cannot tell them apart.
-  expect(lintMessage(framed(...ten))).toEqual([])
-  // Items with no full stop are still sentences of their own.
-  expect(lintMessage(framed('- first item here', '- second item here', '- third item here', '- fourth item here', '- fifth item here'))).toEqual([])
-  expect(lintMessage(framed('- This single list item runs on for well over the twelve words allowed.'))).toEqual(['sentences within limit'])
-})
-
-test('a table is exempt from the block limit, but each cell keeps the sentence limit', () => {
-  const cell = Array.from({ length: 30 }, () => 'word').join(' ')
-  const rows = Array.from({ length: 20 }, () => `| a | ${cell} |`)
-
-  expect(lintMessage(framed('| A | B |', '|---|---|', ...rows), settingsOf({ detail: 'short' }))).toEqual(['sentences within limit'])
-  const short = Array.from({ length: 20 }, (_, i) => `| row ${i} | eight words in this cell, and no more. |`)
-  expect(lintMessage(framed('| A | B |', '|---|---|', ...short), settingsOf({ detail: 'short' }))).toEqual([])
-})
-
-test('HTML in a table or a heading misses the HTML rule', () => {
-  expect(lintMessage(framed('| a | b |', '|---|---|', '| a | b<br>c |'))).toEqual(['no raw html'])
-  expect(lintMessage(framed('### <details>open</details>', '', 'One fact.'))).toEqual(['no raw html'])
-  expect(lintMessage(framed('Break here.<br/>'))).toEqual(['no raw html'])
-})
-
-test('the block limit follows the sentences setting, and no word budget is counted', () => {
-  const words = Array.from({ length: 30 }, () => 'Plain words here.').join(' ')
-  const text = ['**Done.**', '', '---', '', 'One fact.', '', words, '', '---', '', '**Next:** read it.'].join('\n')
-
-  expect(lintMessage(text, settingsOf({ detail: 'short' }))).toEqual(['blocks within limit'])
-  expect(lintMessage(text, settingsOf({ detail: 'full', sentences: '20' }))).toEqual(['blocks within limit'])
-  // Twelve blocks of 30 words: 360 words, past even full detail, and every rule met.
-  const many = Array.from({ length: 12 }, () => Array.from({ length: 10 }, () => 'Plain words here.').join(' '))
-  expect(lintMessage(framed(...many.flatMap(b => [b, ''])), settingsOf({ detail: 'short' }))).toEqual([])
-  expect(RULES).not.toContain('words within limit' as never)
-})
-
-test('only kbd is allowed as html under rich Markdown, and code does not count', () => {
-  expect(lintMessage('Press <kbd>Ctrl</kbd> and `<details>`.')).not.toContain('no raw html')
-  expect(lintMessage('Open <details>here</details>.')).toContain('no raw html')
-})
-
-test('text with no spaces between words is not measured, and the Next word may end with a full-width colon', () => {
-  const zh = '这'.repeat(400) + '。'
-  const ja = 'これは とても 長い 文 ですが 空白 で 区切られて いる ので 単語 数 が 多く 見えます。'
-
-  expect(lintMessage(framed(zh), settingsOf({ detail: 'short' }))).toEqual([])
-  expect(lintMessage(framed(ja))).toEqual([])
+test('the Next word may end with a full-width colon', () => {
   expect(lintMessage(GOOD.replace('**Next:** open', '**次のステップ：**開く'))).toEqual([])
 })
 
@@ -240,39 +180,21 @@ test('footnotes under next=end sit below their own rule, and "Next:" below anoth
   expect(lintMessage(framed('A *token*[^1] expired.', '', '---', '', '[^1]: A token is a login proof, such as a cookie.'))).toEqual([])
 })
 
-test('markdown=basic and plain count only the forms they forbid that a count can tell', () => {
-  const plain = settingsOf({ markdown: 'plain' })
-  const bareNext = (...body: string[]) => msg('**Done.**', '', ...body, '', '**Next:** read it.')
-
-  expect(lintMessage(bareNext('See `src/a.js:3` and https://x.dev/a.'), plain)).toEqual([])
-  for (const form of ['See [a](a.md).', '| A | B |\n|---|---|\n| a | b |', '### Part', '> quoted', '- [ ] a task', '[^1]: A note.']) {
-    expect(lintMessage(bareNext(form), plain)).toEqual(['markdown forms as set'])
-  }
-
-  const basic = settingsOf({ markdown: 'basic' })
-  expect(lintMessage(framed('| A | B |', '|---|---|', '| a | b |', '', '> quoted', '', 'See [a](https://x.dev/a).'), basic)).toEqual([])
-  for (const form of ['[^1]: A note.', 'We ran ~~212~~ 213 tests.', '![shot](shot.png)', 'Open [the tab](#terminal/1).', '```search_tree\nWhy?\n```', '$$\nx = 1\n$$']) {
-    expect(lintMessage(framed(form), basic)).toEqual(['markdown forms as set'])
-  }
-  // Rich Markdown allows them all.
-  expect(lintMessage(framed('We ran ~~212~~ 213 tests.', '', '[^1]: A note.'))).toEqual([])
+test('the rule list is the structure the settings ask for, and nothing about the text itself', () => {
+  expect([...RULES]).toEqual(['result first', 'rules where set', 'next step where set'])
 })
 
-test('the rule list is exactly the countable rules, with no word budget, link, alert or diagram rule', () => {
-  expect([...RULES]).toEqual(['result first', 'rules where set', 'next step where set', 'sentences within limit', 'blocks within limit', 'no raw html', 'markdown forms as set'])
+test('length, sentences, blocks, HTML and Markdown forms are not counted under any setting', () => {
+  const long = 'This one sentence runs on and on, far past the twelve words the voice allows in a sentence.'
+  const block = Array.from({ length: 30 }, () => 'Plain words here.').join(' ')
+  const body = [long, '', block, '', 'Open <details>here</details> and <!-- a note -->.', '', 'We ran ~~212~~ 213 tests.', '', '[^1]: A note.']
+
+  expect(lintMessage(framed(...body), settingsOf({ detail: 'short', markdown: 'basic' }))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', ...body, '', '| A | B |', '|---|---|', '| a | b |', '', '### Part', '', '**Next:** read it.'), settingsOf({ markdown: 'plain' }))).toEqual([])
 })
 
 // Review 2's inputs: each message follows the voice and its modules, and must meet every rule.
 const R = (result: string, ...body: string[]) => msg(result, '', '---', '', ...body)
-
-test('a sentence ends at the stop of any script, the Hindi danda, Arabic and Amharic included', () => {
-  expect(lintMessage(R('**परीक्षण फिर से पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था। हर टोकन समाप्त दिखता था। मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual([])
-  expect(lintMessage(R('**परीक्षण पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था। मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual([])
-  expect(lintMessage(R('**ينجح الاختبار.**', 'هل تريد أن أدفع الفرع الآن؟ أم تنتظر حتى تقرأ التغيير كله أولا؟', '', '---', '', '**الخطوة التالية:** اقرأ التغيير.'))).toEqual([])
-  expect(lintMessage(R('**ሙከራው ያልፋል።**', 'ጊዜው እንደ ጽሑፍ ተነበበ እና ሁሉም ቶከን ያለፈበት መሰለ። አንድ መስመር ብቻ ቀየርኩ ዛሬ።', '', '---', '', '**ቀጣይ እርምጃ:** ለውጡን አንብብ።'))).toEqual([])
-  // One sentence past the limit still misses it.
-  expect(lintMessage(R('**परीक्षण पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था और हर टोकन समाप्त दिखता था इसलिए मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual(['sentences within limit'])
-})
 
 test('the stop after the bold result may be a full-width one, and a footnote mark may follow it', () => {
   expect(lintMessage(R('**テストが通りました**。', '原因は文字列の比較でした。', '', '---', '', '**次のステップ：** 変更を確認してください。'))).toEqual([])
@@ -312,56 +234,20 @@ test('the bold Next word may take a space, U+00A0 or U+202F before its colon, an
   expect(lintMessage(R('**Le test passe.**', '**Cause**', 'Texte.', '', '---', '', '**Prochaine étape** :', 'Lisez le changement.'), settingsOf({ headers: 'on' }))).toEqual([])
 })
 
-test('the Next block keeps the block limit, though not the sentence limit', () => {
-  // Eleven short sentences, 45 words in one block.
-  const steps = Array.from({ length: 11 }, (_, i) => `Open file ${i} now.`).join(' ')
-
-  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', `**Next:** ${steps}`))).toEqual(['blocks within limit'])
-  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next:** open [auth.js:58](src/auth.js:58) and read the one-line change. Commit it if it looks right.'))).toEqual([])
-})
-
-test('a long list of open items or checks is not held to the block limit', () => {
-  const items = Array.from({ length: 8 }, (_, i) => `- Item ${i} still needs a real login check.`)
-
-  expect(lintMessage(R('**Three items stay open.**', 'Eight items still need work:', ...items, '', '---', '', '**Next:** pick the first open item.'))).toEqual([])
-  // A paragraph of the same words is.
-  expect(lintMessage(R('**Three items stay open.**', items.map(item => item.slice(2)).join(' '), '', '---', '', '**Next:** pick the first open item.'))).toEqual(['blocks within limit'])
-})
-
-test('only real HTML elements count as HTML, and kbd under basic or plain is a Markdown form', () => {
-  const body = (line: string, s = settingsOf(undefined)) => lintMessage(R('**Done.**', line, '', '---', '', '**Next:** x.'), s)
-
-  expect(body('It returns Promise<string> now.')).toEqual([])
-  expect(body('It fails when x<y and y>z hold.')).toEqual([])
-  expect(body('Replace <your-name> with yours.')).toEqual([])
-  expect(body('It fails when x<b and c>d hold.')).toEqual([])
-  expect(body('Text <!-- note --> here.')).toEqual(['no raw html'])
-  expect(body('Use <sub>2</sub> here.')).toEqual(['no raw html'])
-  expect(body('Press <kbd>Ctrl</kbd>.', settingsOf({ markdown: 'basic' }))).toEqual(['markdown forms as set'])
-  expect(body('Press <kbd>Ctrl</kbd>.')).toEqual([])
-})
-
-test('real Chinese, with spaces only around Latin names and numbers, is not measured by spaces', () => {
-  const zh = '这个 bug 来自 verifyToken 函数，它把 expiry 字段当成文本读取，所以每个 token 在 2026 年都显得已经过期，我改了 auth.js 第 58 行。'
-
-  expect(zh.split(/\s+/).length).toBeGreaterThan(12)
-  expect(lintMessage(R('**登录测试又通过了。**', zh, '', '---', '', '**下一步：** 阅读 auth.js 的改动。'))).toEqual([])
-})
-
 test('the settings key names the values of the knobs the rules read, nothing else', () => {
-  expect([...READ]).toEqual(['next', 'rules', 'markdown', 'sentences', 'emoji', 'headers'])
-  expect(settingsKey(settingsOf(undefined))).toBe('end-on-rich-12-off-off')
-  expect(settingsKey(settingsOf({ next: 'top', headers: 'on', detail: 'short', why: 'off' }))).toBe('top-on-rich-12-off-on')
+  expect([...READ]).toEqual(['next', 'rules', 'markdown', 'emoji', 'headers'])
+  expect(settingsKey(settingsOf(undefined))).toBe('end-on-rich-off-off')
+  expect(settingsKey(settingsOf({ next: 'top', headers: 'on', detail: 'short', why: 'off', sentences: '20' }))).toBe('top-on-rich-off-on')
 })
 
-const KEY = 'end-on-rich-12-off-off'
+const KEY = 'end-on-rich-off-off'
 
 test('the tally counts met messages and misses per rule, and holds numbers, days and the settings key only', () => {
   let t = tally(undefined, [], '2026-11-01', KEY)
-  t = tally(t, ['result first', 'no raw html'], '2026-11-02', KEY)
+  t = tally(t, ['result first', 'next step where set'], '2026-11-02', KEY)
   t = tally(t, ['result first'], '2026-11-03', KEY)
 
-  expect(t).toEqual({ messages: 3, met: 1, misses: { 'result first': 2, 'no raw html': 1 }, since: '2026-11-01', last: '2026-11-03', settings: KEY })
+  expect(t).toEqual({ messages: 3, met: 1, misses: { 'result first': 2, 'next step where set': 1 }, since: '2026-11-01', last: '2026-11-03', settings: KEY })
   expect(asTally(t, KEY)).toEqual(t)
 })
 
@@ -369,7 +255,7 @@ test('a tally read back must be a count for the same settings, or a new count st
   const good = { messages: 2, met: 1, misses: { 'result first': 1 }, since: '2026-11-01', last: '2026-11-02', settings: KEY }
 
   expect(asTally(good, KEY)).toEqual(good)
-  expect(asTally(good, 'top-on-rich-12-off-off')).toBeUndefined()
+  expect(asTally(good, 'top-on-rich-off-off')).toBeUndefined()
   for (const bad of [
     undefined,
     null,
@@ -392,6 +278,17 @@ test('a tally read back must be a count for the same settings, or a new count st
     expect(asTally(bad, KEY)).toBeUndefined()
   }
   expect(TALLY_MAX).toBe(65536)
+})
+
+test('a tally an earlier version of the check kept reads as no count', () => {
+  const good = { messages: 2, met: 1, misses: { 'result first': 1 }, since: '2026-11-01', last: '2026-11-02', settings: KEY }
+
+  // Its key held the sentences knob, and its misses could name a rule the check no longer has.
+  expect(asTally({ ...good, settings: 'end-on-rich-12-off-off' }, KEY)).toBeUndefined()
+  expect(asTally({ ...good, settings: 'end-on-rich-12-off-off' }, settingsKey(settingsOf(undefined)))).toBeUndefined()
+  for (const rule of ['sentences within limit', 'blocks within limit', 'no raw html', 'markdown forms as set', 'words within limit', 'links resolve']) {
+    expect(asTally({ ...good, misses: { [rule]: 1 } }, KEY)).toBeUndefined()
+  }
 })
 
 // The same table as tests/style_settings.test.js runs on the CLI's countFiles.
