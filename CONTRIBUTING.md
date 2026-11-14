@@ -19,7 +19,6 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 .claude-plugin/
 └── plugin.json        # name, version, description, author, keywords
 .github/workflows/      # test.yml: the suite on Linux and Windows
-assets/                 # README images
 commands/
 └── config.md          # /hush:config
 hooks/
@@ -33,17 +32,13 @@ scripts/                # git-hooks/: the commit gates
 tests/                  # node:test suite, with contract/ and fixtures/
 widgets/
 └── config.html         # the /hush:config configurator and its preview
-docs/knowledge/         # how it works, settings, benchmark details and the
-                        # changelog, with "Unreleased" first, then releases
-AGENTS.md               # contributor rules; CLAUDE.md imports them
-CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 LICENSE                 # MIT
-README.md               # plain-language intro first, technical depth after
+README.md               # the one user-facing page: mechanism, settings and evidence
 SECURITY.md
 ```
 
-The README puts plain-language sections first and technical depth behind links; [`AGENTS.md`](AGENTS.md) holds the rules for results and host labels.
+The README holds the mechanism, every setting and the published measurements. Every published number belongs to the voice shipped when its batch ran, measured with `HUSH_WRAP=1`, and names its host, model and date. Hush has no Codex package and the README says so.
 
 ---
 
@@ -60,6 +55,8 @@ If this plugin has scripted behavior, run its tests before submitting:
 ```
 node --test tests/*.test.js
 ```
+
+The desktop mod's own tests, `hooks/*.test.ts(x)`, run with `claude plugin test .`, which needs a Claude Code CLI with mods switched on, so CI does not run them. `claude plugin validate .` checks the package shape.
 
 CI runs the suite on Linux and Windows with Node 22. PRs that change script behavior without updating tests will not be merged.
 
@@ -79,12 +76,12 @@ hush, razor and foreman keep byte-identical copies of `pre-commit`. A change to 
 
 ---
 
-## Changelog
+## Release notes
 
-Add user-visible changes to the `## Unreleased` section at the top of [`docs/knowledge/changelog.md`](docs/knowledge/changelog.md), in plain prose. The release commit renames that heading to `## <version> — <date>` and bumps the version in `.claude-plugin/plugin.json`. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
+Release notes live on the [releases page](https://github.com/V-Songbird/hush/releases), written in plain prose when a release is cut. The release commit bumps the version in `.claude-plugin/plugin.json`. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
 
 ---
 
 ## Code of conduct
 
-This project follows the [Contributor Covenant 2.1](./CODE_OF_CONDUCT.md).
+This project follows the [Contributor Covenant 2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
