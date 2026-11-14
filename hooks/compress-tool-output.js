@@ -261,6 +261,23 @@ const TEMPLATE_RECOVERY_NOTE =
 // standalone use of that word, not only the compound names.
 const SIGNAL_RE = /\b(WARN(?:INGS?)?|ERR(?:OR)?|FAIL(?:URE|ED)?|DEPRECATED|CRITICAL)\b|(?:Error|Warning|Exception)\b/i;
 
+// Failure lines that carry none of SIGNAL_RE's words: the shell, linker,
+// Node, HTTP and crash messages a failing command prints without "error" or
+// "failed". They are keep-only: they stay out of FAILURE_RE, because
+// looksLikeFailure reads that pattern when there is no exit code, and a
+// phrase like "timed out" in a clean run's log must not move it to the failure
+// cap or add the failure note. Each phrase is specific enough not to flood a
+// Grep view, which forces every keep line: bare `assert` (source lines),
+// `Killed`/`Aborted` in prose and a bare `404` in a URL are not here. An HTTP
+// status needs its reason phrase; `assertion` is a whole word (pytest's
+// `E   assert` line stays a failing run's context line, not a keep line, so a
+// passing run's report cuts it); `Killed` and `Aborted` count only as a
+// shell's job message: the line's start, or a job number before them.
+// The first pattern is case-insensitive; the second is case-sensitive.
+const KEEP_ONLY_RE =
+  /\b(?:permission denied|connection (?:refused|reset|timed out)|timed out|command not found|undefined reference|cannot find module|no such file or directory|segmentation fault|core dumped|assertion|E(?:CONNREFUSED|CONNRESET|TIMEDOUT|NOENT|ACCES)|[45]\d\d (?:Not Found|Forbidden|Unauthorized|Internal Server Error|Bad Gateway|Service Unavailable))\b/i;
+const KEEP_ONLY_CASE_RE = /^[ \t]*(?:Killed|Aborted)(?:[ \t]*[(:]|[ \t]*$)|\b\d+[ \t]+(?:Killed|Aborted)\b/;
+
 // A bare "N lines omitted" reads to the model as "signal might be hidden in
 // this gap." On a completeness task ("report EVERY warning") that distrust is
 // rational and expensive: the model can't know the cap preserved every signal
@@ -493,7 +510,8 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 // The one KEEP vocabulary, shared by every transform that elides lines
 // (dedupeConsecutive, collapseTemplates, capLines, compressGrep) and by the
 // sidecar digest's signal sample and census, so a change to SIGNAL_RE,
-// FAILURE_RE, TRACEBACK_FRAME_RE or ZERO_COUNT_RE moves all of them. It is
+// FAILURE_RE, KEEP_ONLY_RE, TRACEBACK_FRAME_RE or ZERO_COUNT_RE moves all of
+// them. A KEEP_ONLY_RE line counts in a digest's census as failure evidence. It is
 // the union of what hush calls signal and what it calls failure evidence, so
 // every word that makes a run read as failed — `not ok`, `✗`, `panic`,
 // `fatal`, `Traceback`, `exception`, `failing` — also keeps its line past the
@@ -505,7 +523,13 @@ const TRACEBACK_FRAME_RE = /^\s*File "[^"]+", line \d+/;
 // counted in a digest. Any non-zero count still keeps its line.
 function isKeepLine(line) {
   const scored = line.replace(ZERO_COUNT_RE, "");
-  return SIGNAL_RE.test(scored) || FAILURE_RE.test(scored) || TRACEBACK_FRAME_RE.test(line);
+  return (
+    SIGNAL_RE.test(scored) ||
+    FAILURE_RE.test(scored) ||
+    KEEP_ONLY_RE.test(scored) ||
+    KEEP_ONLY_CASE_RE.test(scored) ||
+    TRACEBACK_FRAME_RE.test(line)
+  );
 }
 
 // Node, Java and Go print a stack after the error line, and its first frame

@@ -2211,6 +2211,56 @@ describe('the keep vocabulary, pinned category by category', () => {
     });
   }
 
+  // Failure lines with no SIGNAL_RE or FAILURE_RE word. They are keep-only:
+  // each is kept past the cap, yet none may turn a run with no exit code into
+  // a failing one, so looksLikeFailure stays false for all of them.
+  const KEEP_ONLY_SAMPLES = [
+    'bash: ./deploy.sh: Permission denied',
+    'curl: (7) Connection refused',
+    'ssh: connect to host 10.0.0.5 port 22: Connection timed out',
+    'the upstream request timed out after 30s',
+    'bash: foo: command not found',
+    "/usr/bin/ld: main.o: undefined reference to `helper'",
+    "Cannot find module './config' imported from src/app.js",
+    'GET https://api.example.com/v1/items 404 Not Found',
+    'POST /login 503 Service Unavailable',
+    "Assertion `n > 0` at main.c:12",
+    'connect ECONNREFUSED 127.0.0.1:5432',
+    'cat: nope.txt: No such file or directory',
+    'Segmentation fault (core dumped)',
+    'Killed',
+    'Aborted (core dumped)',
+    '/bin/sh: line 1: 4242 Killed   node build.js',
+  ];
+
+  for (const sample of KEEP_ONLY_SAMPLES) {
+    test(`the keep-only line "${sample}" survives the cap and does not read as a failure`, () => {
+      assert.ok(cappedView(sample).includes(sample), `cut: ${sample}`);
+      assert.strictEqual(looksLikeFailure(sample, undefined), false);
+    });
+  }
+
+  test('the keep-only words are not a failure signal in a clean run', () => {
+    const lines = Array.from({ length: 300 }, (_, i) => filler(i));
+    lines[150] = 'retry: the first request timed out, the second answered 200';
+    const out = comp3(lines.join(NL), undefined, false, false, [], 1, 'keepvocab', true, false);
+    assert.ok(!out.includes(FAILURE_RERUN_NOTE), 'a keep-only word added the failure note');
+  });
+
+  test('ordinary lines that only look like those words stay droppable', () => {
+    for (const line of [
+      'assert(x > 0);',
+      '    assert.strictEqual(a, b);',
+      'The Killed list in the docs',
+      'He Aborted the plan last week',
+      'https://example.com/404',
+      '404 -> /not-found-page.html',
+      'src/util/assertions.js exports helpers',
+    ]) {
+      assert.strictEqual(isKeepLine(line), false, line);
+    }
+  });
+
   test('the control: an ordinary line in the same position is cut', () => {
     const plain = 'notice compaction finished cleanly';
     const out = cappedView(plain);
@@ -2918,6 +2968,20 @@ describe('grep match-list compression', () => {
     assert.ok(out.includes('app.js:31:'));
     assert.ok(out.includes('app.js:32:'));
     assert.ok(!out.includes('app.js:17:'));
+  });
+
+  test('keep-only failure words are forced into a Grep view, bare assert and 404 are not', () => {
+    const lines = [];
+    for (let i = 1; i <= 30; i++) lines.push(`app.js:${i}: plain line ${'x'.repeat(50)}`);
+    lines.push('app.js:31: bash: build.sh: Permission denied');
+    lines.push('app.js:32: connect ECONNREFUSED 127.0.0.1:5432');
+    lines.push('app.js:33: assert(user, "missing");');
+    lines.push('app.js:34: see https://example.com/404 for details');
+    const out = H.compressGrep(lines.join('\n'), []);
+    assert.ok(out.includes('app.js:31:'));
+    assert.ok(out.includes('app.js:32:'));
+    assert.ok(!out.includes('app.js:33:'), 'a bare assert call was forced into the view');
+    assert.ok(!out.includes('app.js:34:'), 'a bare 404 was forced into the view');
   });
 
   // A match list keeps the keep vocabulary the capped views keep, so failure

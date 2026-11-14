@@ -40,7 +40,7 @@ Every time Claude runs something, hush looks at what came back and decides betwe
 | What came back | What hush does |
 | --- | --- |
 | Something short, under 4,000 characters | Lets it through. Only exact repeats fold, into one line and a count. |
-| A long clean run | Folds runs of five or more same-shape lines, then keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat. |
+| A long clean run | Folds runs of five or more same-shape lines, then keeps up to 60 lines: the first stretch, the last stretch, and every warning, error and failure line wherever it sat, including failure messages such as `Permission denied` or `command not found`. |
 | A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: the first stack frame after a Node, Java or Go error, every frame of a Python traceback, and the values and file:line lines a test runner prints for a failed check — go test, Jest, Vitest, pytest, cargo test and RSpec. |
 | Something very large — 15,000 characters or more | Writes the whole thing to a file on your machine, then hands Claude a digest that names that file: the first 20 and last 15 lines, the first and last 10 warning, error and failure lines with their line numbers, and a count of each kind. The file holds every line. |
 
@@ -180,7 +180,11 @@ line are not made. For any other note, re-run the command, or read the file with
 limit.
 
 Omission is deterministic. In a trimmed view, a line is cut only when it matches no warning, error
-or failure pattern. A digest shows a sample of those lines instead, and names the file that holds
+or failure pattern, or one of the failure messages that carry none of those words, such as
+`Permission denied`, `Connection refused`, `command not found`, `Cannot find module`,
+`No such file or directory`, `404 Not Found`, `Segmentation fault` and a shell's `Killed` or
+`Aborted`. Those messages keep their line but do not make a run count as failed: only the exit code
+or the failure words do that. A digest shows a sample of those lines instead, and names the file that holds
 all of them. The file on disk and the command's real output are never changed.
 
 A line of the output itself that already opens with `[hush` gets a backslash in front, `\[hush`, so
