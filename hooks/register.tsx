@@ -3,14 +3,15 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
-import { asTally, lintMessage, localLinks, settingsOf, tally } from './lint'
+import { TALLY_MAX, asTally, countFiles, lintMessage, localLinks, settingsKey, settingsOf, tally } from './lint'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
 // the reply's final message arrives (`fold.ts`). Every other reply, and every other surface, the
 // terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
-// It also checks each final message in silence (`lint.ts`): a count kept in `tally.json` beside
-// the settings file, which `/hush:config` reads. It changes nothing in the reply.
+// It also checks each final message of a session someone reads, on any surface, in silence
+// (`lint.ts`): a count kept in `tally.json` beside the settings file, which `/hush:config`
+// reads. It changes nothing in the reply.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
@@ -56,45 +57,56 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 }
 
 /**
- * Where /hush:config keeps the settings and, beside them, the count: the HUSH_CONFIG_FILE as
- * `hooks/style-settings.js` reads it, else `config.json` in `~/.claude/hush`. Undefined when
- * no home is known.
- */
-async function settingsFile($: EngineInterface): Promise<string | undefined> {
-  const named = await $.env.get('HUSH_CONFIG_FILE')
-
-  if (named) return named
-
-  const home = (await $.env.get('USERPROFILE')) || (await $.env.get('HOME'))
-
-  return home ? `${home}/.claude/hush/config.json` : undefined
-}
-
-/**
  * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
  * adds and writes in one go, so two sessions ending together may lose a count; the count is a
  * guide, not a record. A failure anywhere, a read-only home included, is swallowed: the check
  * never breaks the turn or the fold.
+ *
+ * Only a session someone reads is counted: one that draws on a surface, the terminal's REPL or
+ * an app. A `claude -p` run draws on none.
  */
 async function checkAnswer($: EngineInterface, answer: string) {
   try {
-    const config = await settingsFile($)
+    if ((await $.session.surfaces()).length === 0) return
 
-    if (config === undefined) return
+    const root = await $.session.root().catch(() => undefined)
+    const cwd = await $.session.cwd().catch(() => undefined)
+    const dirs = [...new Set([root, cwd].filter((dir): dir is string => dir !== undefined))]
+    const at = dirs[0]
 
-    const file = `${config.replace(/[\\/][^\\/]*$/, '') || '.'}/tally.json`
-    const json = (path: string) => $.fs.read(path).then(text => JSON.parse(String(text)) as unknown).catch(() => undefined)
-    const settings = settingsOf(await json(config))
-    const links = localLinks(answer)
-    const cwd = links.length > 0 ? await $.session.cwd().catch(() => undefined) : undefined
-    // A link resolves against the session's directory, as the app opens it; an absolute path
-    // stands alone. With no directory to resolve against, no link counts as missing.
-    const found = await Promise.all(
-      links.map(path => (/^([a-z]:)?[\\/]/i.test(path) ? path : cwd === undefined ? undefined : `${cwd}/${path}`)).map(path => (path === undefined ? true : $.fs.exists(path).catch(() => true))),
-    )
-    const prev = asTally(await json(file))
+    if (at === undefined) return
 
-    await $.fs.write(file, JSON.stringify(tally(prev, lintMessage(answer, settings, found.filter(isThere => !isThere).length), new Date().toISOString().slice(0, 10))) + '\n')
+    // The engine's paths are absolute: a POSIX one opens with `/`, a Windows one with a drive or
+    // `\\`. The home is the one `os.homedir()` reads, as /hush:config's CLI does.
+    const isWindows = !at.startsWith('/')
+    const named = await $.env.get('HUSH_CONFIG_FILE')
+    const home = named ? undefined : isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')
+    const files = countFiles(named, home, isWindows)
+
+    if (files === undefined) return
+
+    const settings = settingsOf(await $.fs.read(files.config).then(text => JSON.parse(String(text)) as unknown).catch(() => undefined))
+    const isAbsolute = (path: string) => (isWindows ? /^(?:[A-Za-z]:)?[\\/]/ : /^\//).test(path)
+    const under = (dir: string, path: string) => `${dir.replace(/[\\/]+$/, '')}/${path.replace(/^[\\/]+/, '')}`
+    let missing = 0
+
+    // A link resolves against the project root, then the session's directory; an absolute path
+    // also stands alone. An answer the disk cannot give counts as found.
+    for (const link of localLinks(answer)) {
+      const tries = isAbsolute(link) ? [link, ...(/^[\\/]/.test(link) ? dirs.map(dir => under(dir, link)) : [])] : dirs.map(dir => under(dir, link))
+      let isFound = false
+
+      for (const path of tries) {
+        if (!isFound) isFound = await $.fs.exists(path).catch(() => true)
+      }
+
+      if (!isFound) missing++
+    }
+
+    const key = settingsKey(settings)
+    const prev = asTally(await $.fs.read(files.tally).then(text => (String(text).length > TALLY_MAX ? undefined : (JSON.parse(String(text)) as unknown))).catch(() => undefined), key)
+
+    await $.fs.write(files.tally, JSON.stringify(tally(prev, lintMessage(answer, settings, missing), new Date().toISOString().slice(0, 10), key)) + '\n')
   } catch {
     // Nothing to report: the check is silent.
   }

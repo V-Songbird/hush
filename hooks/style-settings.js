@@ -77,25 +77,76 @@ function load() {
   return out;
 }
 
-// The desktop mod's silent count of final messages, kept beside the settings file (numbers and
-// days only). No file, or one that is not a count, is the same as no count: { messages: 0 }.
-function tallyPath() {
-  return path.join(path.dirname(configPath()), "tally.json");
+// The mod's silent count of final messages, kept beside the settings file: numbers, days and
+// the key of the settings it was kept under. These copy hooks/lint.ts, which a CommonJS script
+// cannot import; tests/desktop_mod.test.js keeps them equal.
+const TALLY_RULES = [
+  "result first",
+  "rules where set",
+  "next step where set",
+  "sentences within limit",
+  "blocks within limit",
+  "no raw html",
+  "markdown forms as set",
+  "links resolve",
+];
+const TALLY_KNOBS = ["next", "rules", "markdown", "sentences", "emoji", "headers"];
+const TALLY_FIELDS = ["last", "messages", "met", "misses", "settings", "since"];
+const TALLY_MAX = 65536;
+const DAY = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
+
+const settingsKey = (settings) => TALLY_KNOBS.map((k) => settings[k]).join("-");
+
+// The settings file and the count beside it, named exactly as lint.ts countFiles names them,
+// and only for an absolute path, so a relative HUSH_CONFIG_FILE reads no tally in a project.
+function countFiles(named, home, isWindows) {
+  const sep = isWindows ? "\\" : "/";
+  const config = named || (home ? `${home.replace(isWindows ? /[\\/]+$/ : /\/+$/, "")}${sep}.claude${sep}hush${sep}config.json` : "");
+  const isAbsolute = isWindows ? /^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/]+[^\\/]+[\\/]+[^\\/])/ : /^\//;
+  if (!isAbsolute.test(config)) return undefined;
+  const trimmed = config.replace(isWindows ? /(?<=[^\\/:])[\\/]+$/ : /(?<=[^/])\/+$/, "");
+  const cut = isWindows ? Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\")) : trimmed.lastIndexOf("/");
+  return { config, tally: `${trimmed.slice(0, cut + 1)}tally.json` };
 }
 
+// The home os.homedir() reads first: USERPROFILE on Windows, HOME elsewhere.
+function tallyPath(env = process.env, isWindows = process.platform === "win32") {
+  return countFiles(env.HUSH_CONFIG_FILE, isWindows ? env.USERPROFILE : env.HOME, isWindows)?.tally;
+}
+
+// Everything printed is checked first: counts, known rule names, days, and a settings key for
+// the current settings. No file, or one that is not such a count, is no count: { messages: 0 }.
 function readTally() {
   const none = { messages: 0 };
+  const file = tallyPath();
   let t;
   try {
-    t = JSON.parse(fs.readFileSync(tallyPath(), "utf8"));
+    const text = fs.readFileSync(file, "utf8");
+    if (text.length > TALLY_MAX) return none;
+    t = JSON.parse(text);
   } catch {
     return none;
   }
-  const isCount = (v) => Number.isInteger(v) && v >= 0;
-  if (!t || !isCount(t.messages) || t.messages === 0 || !isCount(t.met) || t.met > t.messages) return none;
-  const misses = {};
-  for (const [rule, n] of Object.entries(t.misses && typeof t.misses === "object" ? t.misses : {})) if (isCount(n)) misses[rule] = n;
-  return { messages: t.messages, met: t.met, misses, since: String(t.since), last: String(t.last) };
+  const isCount = (v) => Number.isSafeInteger(v) && v >= 0;
+  const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+  if (
+    !isObject(t) ||
+    Object.keys(t).some((k) => !TALLY_FIELDS.includes(k)) ||
+    t.settings !== settingsKey(load()) ||
+    !isCount(t.messages) ||
+    t.messages === 0 ||
+    !isCount(t.met) ||
+    t.met > t.messages ||
+    typeof t.since !== "string" ||
+    !DAY.test(t.since) ||
+    typeof t.last !== "string" ||
+    !DAY.test(t.last) ||
+    t.since > t.last ||
+    !isObject(t.misses) ||
+    Object.entries(t.misses).some(([rule, n]) => !TALLY_RULES.includes(rule) || !isCount(n) || n > t.messages)
+  )
+    return none;
+  return { messages: t.messages, met: t.met, misses: { ...t.misses }, since: t.since, last: t.last };
 }
 
 function parse(pairs, base) {
@@ -173,4 +224,21 @@ if (require.main === module) {
   else hook();
 }
 
-module.exports = { KNOBS, DEFAULTS, PRESETS, HEADER, load, parse, compose, configPath, tallyPath, readTally };
+module.exports = {
+  KNOBS,
+  DEFAULTS,
+  PRESETS,
+  HEADER,
+  TALLY_RULES,
+  TALLY_KNOBS,
+  TALLY_FIELDS,
+  TALLY_MAX,
+  load,
+  parse,
+  compose,
+  configPath,
+  countFiles,
+  settingsKey,
+  tallyPath,
+  readTally,
+};
