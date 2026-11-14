@@ -13,6 +13,10 @@ All notable changes to hush are documented here. The version number lives in
 
 ## Unreleased
 
+hush now needs Claude Code 2.1.323 or later, up from 2.1.139. The manifest declares it, so
+Claude Code 2.1.323 or later will not install or load a hush release it is too old for; an older
+Claude Code ignores the declaration, and hush is not tested there.
+
 A trimmed view now keeps more of the failure lines that carry no warning, error or failure word:
 `Permission denied`, `Connection refused`, `timed out`, `command not found`, `undefined reference`,
 `Cannot find module`, an HTTP status with its reason such as `404 Not Found`, `assertion`,

@@ -10,5 +10,6 @@
   "homepage": "https://github.com/V-Songbird/hush",
   "repository": "https://github.com/V-Songbird/hush",
   "types": "./types/index.d.ts",
+  "engines": { "claude-code": ">=2.1.323" },
   "keywords":["tokens", "token-optimization", "output-style", "compression", "hooks", "terse", "cost"]
 }
