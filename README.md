@@ -60,15 +60,27 @@ A text whose first words appear elsewhere in the session, a subagent's included,
 The mod also checks each final message in silence, in every session someone reads: the terminal and the desktop app alike. A `claude -p` run, which draws on no screen, is not counted. Neither is a reply from a subagent, a reply of a single line or with no text, or a turn that was stopped, refused or failed. The check counts whether the message follows the rules of the voice that a count can tell, under your `/hush:config` settings:
 
 - The bold result comes first.
-- The horizontal rules and the "Next:" line sit where your settings put them, with emoji and section headers when you turn them on.
+- The horizontal rules and the "Next:" line sit where your settings put them, with emoji and section headers when you turn them on. With the next step at the end and rules on, what follows the last rule opens with "Next:", and anything may follow that line.
 - Sentences, list items and table cells stay within the sentence limit, and blocks within the block limit.
-- No HTML but `<kbd>`, which basic and plain Markdown forbid too.
-- Under basic or plain Markdown, none of the forms that setting forbids, where a count can be sure: footnotes, struck text, local images, app links, `search_tree` and math blocks, and under plain also tables, links, headings, quote blocks and task lists.
-- Every link to a file names one that exists, from the project root or the session's folder.
+- No HTML element but `<kbd>`, and no HTML comment. Basic and plain Markdown forbid `<kbd>` too, so there it counts as one of their forms.
+- Under basic or plain Markdown, none of the forms that setting forbids, where a count can be sure: footnotes, struck text, local images, app links, `<kbd>`, `search_tree` and math blocks, and under plain also tables, links, headings, quote blocks and task lists.
 
-Where a rule cannot tell, it counts no miss, so some things are not counted. The word budget is not: the voice leaves risks, blockers, unverified claims and pending approvals out of it, and nothing in a message marks them. Quote blocks, which hold errors word for word, and the "Next:" line, which may carry the closing sentence, are not measured. Neither is text written without spaces between words, such as Chinese, Japanese or Thai. Italics, `*` bullets and inline `$…$` math are not counted under basic or plain Markdown, since their marks also appear in ordinary text. With the next step off, a closing bold label counts only when a rule of its own stands above it, since another word for "Next:" cannot be told from a label.
+Where a rule cannot tell, it counts no miss, so some things are not counted:
 
-It changes nothing in the reply and draws nothing. It keeps only numbers: how many messages it checked, how many followed every rule, how many missed each rule, the first and last day, and the values of the settings the rules read. It never keeps a word of a reply. The numbers sit in `tally.json`, beside your settings file (`~/.claude/hush/` unless you set `HUSH_CONFIG_FILE`). A `HUSH_CONFIG_FILE` that is not an absolute path gets no count, so no file lands in your project. A change to a setting the rules read starts the count again, and so does deleting the file. `/hush:config` tells you the count when it opens. If the file cannot be written, the check stops without a sound. Two sessions that end together may lose one count.
+- The word budget. The voice leaves risks, blockers, unverified claims and pending approvals out of it, and nothing in a message marks them.
+- Links. A link to a file the turn deleted or renamed cannot be told from a wrong link.
+- The length of a list as a block. The voice never cuts open items, risks or checks to fit, so a list is held only to the sentence limit, item by item.
+- The length of quote blocks, which hold errors word for word, and of headings. Quote blocks are not checked for HTML either.
+- The sentences of the "Next:" line and what follows it, which may carry the closing sentence. Their blocks still keep the block limit.
+- Text written without spaces between words, such as Chinese, Japanese or Thai.
+- Italics, `*` bullets and inline `$…$` math under basic or plain Markdown, since their marks also appear in ordinary text.
+- A name in angle brackets that is no HTML element, such as `Promise<string>`, and an element whose closing tag is not in the message. An empty element such as `<br>` counts by itself.
+- With rules off, where the "Next:" line stands. Only a message with no "Next:" line at all misses it.
+- With the next step off, a closing bold label, unless a rule of its own stands above it, since another word for "Next:" cannot be told from a label.
+
+The check counts under the settings the session was given, which the SessionStart hook sends when the session starts and again after a compaction. When the saved settings differ from those, as in a session still open when you change them, that session counts nothing until its next compaction. A settings file that exists but cannot be read counts nothing either; only a missing one means the defaults.
+
+It changes nothing in the reply and draws nothing. It keeps only numbers: how many messages it checked, how many followed every rule, how many missed each rule, the first and last day, and the values of the settings the rules read. It never keeps a word of a reply. The numbers sit in `tally.json`, beside your settings file (`~/.claude/hush/` unless you set `HUSH_CONFIG_FILE`). A `HUSH_CONFIG_FILE` that is not an absolute path to a file gets no count, so no file lands in your project or in the folder above the one you named. A change to a setting the rules read starts the count again, and so does deleting the file. `/hush:config` tells you the count when it opens. If the file cannot be written, the check stops without a sound. Two sessions that end together may lose one count.
 
 ## What you can do
 
@@ -110,7 +122,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 | `HUSH_SUBAGENT=off` | Subagents start without Hush's brief. |
 | `HUSH_DEBUG=1` | Writes a local record of what Hush did to each command result (sizes in and out, and where the full copy went) to `hush-debug-<session>.jsonl` in your system temp folder. Hush never deletes these files. |
 | `HUSH_WRAP=1` | Lets Hush trim failing commands as well as passing ones. See below. |
-| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. The mod keeps its count, `tally.json`, in the same folder, and keeps none when the path is not absolute. |
+| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. The mod keeps its count, `tally.json`, in the same folder, and keeps none when the path is not absolute or ends in a separator. |
 
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off` also takes `0` or `false`, in any letter case, and ignores spaces around the value. The switches shown as `1` take only `1` and ignore spaces around it. The four that take a number read a whole number above zero; zero, a negative number or text leaves the default.
 

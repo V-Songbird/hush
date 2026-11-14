@@ -16,7 +16,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" tally`
 
-   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, no message was checked under the current settings yet, or the count's file is not one. The count holds numbers only, never a word of a message.
+   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, `HUSH_DISABLE=1` is set, no message was checked under the current settings yet, or the count's file is not one. A session whose settings changed after it started counts nothing until its next compaction, so a count may lag behind a change. The count holds numbers only, never a word of a message.
 
    The count sentence: when `messages` is above 0, one plain sentence in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name the rule in plain words. When `messages` is 0, there is no count sentence, and never call it an error. Step 3 and step 4 each say where it goes.
 
