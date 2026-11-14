@@ -3,7 +3,7 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
-import { TALLY_MAX, asTally, countFiles, lintMessage, settingsKey, settingsOf, tally } from './lint'
+import { TALLY_MAX, asTally, countFiles, isDefault, lintMessage, settingsKey, settingsOf, tally } from './lint'
 import type { Settings } from './lint'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
@@ -62,7 +62,7 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
  * know them: then nothing is counted. Only a missing settings file means the defaults; one that
  * exists but cannot be read or parsed is unknown. A rejection is the caller's to swallow.
  */
-async function savedSettings($: EngineInterface): Promise<{ settings: Settings; key: string; tally: string } | undefined> {
+async function savedSettings($: EngineInterface): Promise<{ settings: Settings; key: string; isDefault: boolean; tally: string } | undefined> {
   // The project root tells the platform: a POSIX path opens with one `/`, a Windows one with a
   // drive or `\\`. Anything else, an empty root included, is neither. The home is the one
   // `os.homedir()` reads, as /hush:config's CLI does.
@@ -87,28 +87,22 @@ async function savedSettings($: EngineInterface): Promise<{ settings: Settings; 
 
   const settings = settingsOf(saved)
 
-  return { settings, key: settingsKey(settings), tally: files.tally }
+  return { settings, key: settingsKey(settings), isDefault: isDefault(settings), tally: files.tally }
 }
 
-// The settings key the model was sent: the SessionStart hook sends the saved settings when the
-// session starts and again after a compaction, so the mod reads them at those two moments. It
-// lives in `$.state`, which a hot reload keeps. A later `session.start` of the mod in the same
-// session (a reload, a worker respawn) keeps what it holds, since the model was sent nothing
-// new. A key that could not be read is held as `''`, which matches no settings, so nothing is
-// counted until the next compaction reads it again.
+/** The first words of what `hooks/style-settings.js` sends the model; tests/desktop_mod.test.js keeps the two equal. */
+export const SETTINGS_HEADER =
+  'hush settings, chosen by the user with /hush:config. Each one replaces only the rule it names. The rest of the Hush style stays. No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.'
+
+// The settings key the model was sent, which the check counts under. Hush's SessionStart command
+// hook sends the saved settings under SETTINGS_HEADER at a start, a /clear, a resume, a fork and a
+// compaction, and sends nothing for the defaults. It runs beneath the hooks modules, so its text
+// is in what `next(e)` answers. The saved key is held only when what the model got matches what
+// is saved: that text for settings off their defaults, no such text for the defaults. Anything
+// else, a hook that failed or timed out included, holds `''`, which matches no settings, so the
+// session counts nothing. A session the mod saw no SessionStart for, as when the plugin is
+// enabled mid-session, holds nothing and counts nothing.
 const IN_FORCE = { plugin: 'hush', key: 'inForce' } as const
-
-async function remember($: EngineInterface, isStart: boolean) {
-  try {
-    if (isStart && (await $.state.get(IN_FORCE)).version > 0) return
-
-    const now = await savedSettings($).catch(() => undefined)
-
-    await $.state.set(IN_FORCE, now?.key ?? '')
-  } catch {
-    // Nothing held: the first count reads an empty key and counts nothing.
-  }
-}
 
 /**
  * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
@@ -265,10 +259,24 @@ export const register: Register = on => {
     const saved = await $.store.get(`${STORE}${await $.session.id()}`)
     await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
     await update($, opened, () => [])
-    // The settings the model is sent at the start, for the check; it never throws.
-    await remember($, true)
 
     return next(e)
+  })
+
+  // The settings the model was sent, for the check (IN_FORCE). The answer goes on unchanged.
+  on('classic.SessionStart', async ($, e, next) => {
+    const done = await next(e)
+
+    try {
+      const now = await savedSettings($).catch(() => undefined)
+      const isSent = (done.additionalContext ?? []).some(text => typeof text === 'string' && text.startsWith(SETTINGS_HEADER))
+
+      await $.state.set(IN_FORCE, now !== undefined && isSent === !now.isDefault ? now.key : '')
+    } catch {
+      // Nothing held: the next count reads no key and counts nothing.
+    }
+
+    return done
   })
 
   on('turn.start', async ($, e, next) => {
@@ -362,16 +370,6 @@ export const register: Register = on => {
     }
 
     return done
-  })
-
-  // The settings the model was sent, for the check, after a compaction of the main conversation:
-  // the SessionStart hook sends them again then.
-  on('session.append', { door: 'compaction' }, async ($, e, next) => {
-    const row = await next(e)
-
-    if (e.agentId === undefined && !(await isDisabled($))) await remember($, false)
-
-    return row
   })
 
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {

@@ -2,8 +2,12 @@ import { expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
+import { isDefault, settingsOf } from './lint'
+import { SETTINGS_HEADER } from './register'
+
 // The silent check through the mod: a final message adds to `tally.json` beside the settings
-// file. Each beneath hook stands for the engine: its files, its environment, its session.
+// file. Each beneath hook stands for the engine: its files, its environment, its session, and
+// Hush's own SessionStart command hook beneath the modules.
 
 const ANSWER = '**Done.**\n\n---\n\nOne fact.\n\n---\n\n**Next:** read it.'
 const HOME = '/home/p'
@@ -24,6 +28,13 @@ type Opts = {
   failWrite?: boolean
   surfaces?: string[]
   root?: string
+  /**
+   * What the SessionStart command hook beneath answers: `sends`, as `style-settings.js` does, the
+   * saved settings under their header when they are off their defaults and nothing otherwise;
+   * `silent`, nothing, as when it failed or timed out; `foreign`, another plugin's context only;
+   * `prefixed`, the settings with words before the header.
+   */
+  hook?: 'sends' | 'silent' | 'foreign' | 'prefixed'
 }
 
 const kit = ($: Engine, on: On, opts: Opts = {}) => {
@@ -72,6 +83,22 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
   })
   on('turn.start', (_, e) => ({ turnId: e.turnId }) as never)
   on('turn.complete', () => ({ text: '' }))
+  on('classic.SessionStart', () => {
+    const env = opts.env ?? {}
+    const config = env.HUSH_CONFIG_FILE || (env.USERPROFILE && opts.root?.includes('\\') ? `${env.USERPROFILE}\\.claude\\hush\\config.json` : `${env.HOME}/.claude/hush/config.json`)
+    let saved: unknown
+
+    try {
+      saved = JSON.parse(files.get(norm(config)) ?? '{}')
+    } catch {
+      // style-settings.js reads a broken file as the defaults.
+    }
+
+    const settings = isDefault(settingsOf(saved)) ? [] : [`${SETTINGS_HEADER}\n\nNext step on top.`]
+    const contexts = { sends: settings, silent: [], foreign: ['Another plugin’s context.'], prefixed: settings.map(text => `Session context: ${text}`) }[opts.hook ?? 'sends']
+
+    return (contexts.length === 0 ? {} : { additionalContext: contexts }) as never
+  })
 
   return {
     files,
@@ -80,17 +107,17 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
     registered,
     stored,
     start: () => $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never),
-    compact: (agentId?: string) =>
-      $.session.append({ message: { type: 'user', role: 'user', content: [{ type: 'text', text: 'The summary.' }] }, door: 'compaction', uuid: 'c1', origin: { kind: 'engine' }, ...(agentId === undefined ? {} : { agentId }) } as never),
+    sessionStart: (source = 'startup') => $.classic.SessionStart({ source } as never),
     finish: (answer = ANSWER, extra: object = {}) => $.turn.complete({ answer, durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer', ...extra } as never),
   }
 }
 
-// A session as the engine runs it: the mod reads the settings in force at its start.
+// A session as the engine runs it: the mod loads, then the SessionStart hooks send the settings.
 const started = async ($: Engine, on: On, opts: Opts = {}) => {
   const k = kit($, on, opts)
 
   await k.start()
+  await k.sessionStart()
 
   return k
 }
@@ -293,7 +320,7 @@ test('a change to a setting no rule reads keeps the count', async ($, on) => {
   expect(read(k, '/cfg/tally.json')).toMatchObject({ messages: 6, met: 6, settings: KEY })
 })
 
-// The settings the model was sent: at the start and after a compaction, never at a turn's end.
+// The settings the model was sent: at each SessionStart, never at a turn's end.
 test('settings saved after the session started are not the ones in force: that turn is not counted', async ($, on) => {
   const k = await started($, on, { env: HOME_ENV })
 
@@ -305,18 +332,70 @@ test('settings saved after the session started are not the ones in force: that t
   expect(k.writes).toEqual([])
 })
 
-test('a compaction sends the saved settings again, and the count goes on under them', async ($, on) => {
+test('each SessionStart, a /clear, a resume, a fork and a compaction, reads the saved settings again', async ($, on) => {
   const k = await started($, on, { env: HOME_ENV })
 
-  k.files.set(norm(CONFIG), JSON.stringify({ next: 'off' }))
-  await k.compact('a1')
+  for (const [source, saved, key] of [
+    ['clear', { next: 'off' }, 'off-on-rich-off-off'],
+    ['resume', { next: 'top' }, 'top-on-rich-off-off'],
+    ['fork', { headers: 'on' }, 'end-on-rich-off-on'],
+    ['compact', {}, KEY],
+  ] as const) {
+    k.files.set(norm(CONFIG), JSON.stringify(saved))
+    await k.finish()
+    // Saved after the last SessionStart: not yet the settings in force.
+    expect(read(k)?.settings).not.toBe(key)
+
+    await k.sessionStart(source)
+    await k.finish()
+
+    expect([source, read(k)]).toMatchObject([source, { messages: 1, settings: key }])
+  }
+})
+
+test('saved settings off their defaults that the SessionStart hook did not send count nothing', async ($, on) => {
+  // The hook failed or timed out: the model got the defaults, not the saved settings.
+  const silent = await started($, on, { env: HOME_ENV, hook: 'silent', files: { [CONFIG]: JSON.stringify({ next: 'top' }) } })
+
+  await silent.finish()
+
+  expect(silent.writes).toEqual([])
+})
+
+for (const hook of ['foreign', 'prefixed'] as const) {
+  test(`a SessionStart context that does not open with the settings header (${hook}) is not the settings`, async ($, on) => {
+    const k = await started($, on, { env: HOME_ENV, hook, files: { [CONFIG]: JSON.stringify({ next: 'top' }) } })
+
+    await k.finish()
+
+    expect(k.writes).toEqual([])
+  })
+}
+
+test('with the defaults saved, a SessionStart that sent nothing still counts: the model got the defaults', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV, hook: 'silent' })
+
+  await k.finish()
+
+  expect(read(k)).toMatchObject({ messages: 1, settings: KEY })
+})
+
+test('settings off their defaults only in a knob no rule reads count once the hook sent them', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV, files: { [CONFIG]: JSON.stringify({ why: 'off' }) } })
+
+  await k.finish()
+
+  expect(read(k)).toMatchObject({ messages: 1, settings: KEY })
+})
+
+test('the SessionStart answer goes on exactly as the hooks beneath gave it, even when the settings cannot be read', async ($, on) => {
+  const k = kit($, on, { env: HOME_ENV, envDeny: 'HUSH_CONFIG_FILE', files: { [CONFIG]: JSON.stringify({ next: 'top' }) } })
+
+  await k.start()
+  // The engine reads the settings file the hook would; the mod is denied its environment.
+  expect(await k.sessionStart('clear')).toEqual({ additionalContext: [`${SETTINGS_HEADER}\n\nNext step on top.`] })
   await k.finish()
   expect(k.writes).toEqual([])
-
-  await k.compact()
-  await k.finish('**Done.**\n\n---\n\nOne fact.')
-
-  expect(read(k)).toMatchObject({ messages: 1, met: 1, settings: 'off-on-rich-off-off' })
 })
 
 test('a mod that never saw the session start counts nothing', async ($, on) => {
@@ -375,6 +454,7 @@ test('the file holds no word of any reply', async ($, on) => {
 test('the check leaves the fold as it was: a reply folds and the count still adds', async ($, on) => {
   const k = kit($, on, { env: HOME_ENV })
   await k.start()
+  await k.sessionStart()
   await $.turn.start({ turnId: 't1' } as never)
   await $.session.append({ message: { type: 'assistant', role: 'assistant', content: [{ type: 'text', text: 'Now I check the store.' }] }, door: 'response', uuid: 'u1', origin: { kind: 'model', model: 'm' } } as never)
   await $.session.append({ message: { type: 'assistant', role: 'assistant', content: [{ type: 'text', text: ANSWER }] }, door: 'response', uuid: 'u2', origin: { kind: 'model', model: 'm' } } as never)
@@ -387,11 +467,13 @@ test('the check leaves the fold as it was: a reply folds and the count still add
 test('a failing write leaves the fold saved', async ($, on) => {
   const k = kit($, on, { env: HOME_ENV, failWrite: true })
   await k.start()
+  await k.sessionStart()
   await $.turn.start({ turnId: 't1' } as never)
   await $.session.append({ message: { type: 'assistant', role: 'assistant', content: [{ type: 'text', text: 'Now I check the store.' }] }, door: 'response', uuid: 'u1', origin: { kind: 'model', model: 'm' } } as never)
   await $.session.append({ message: { type: 'assistant', role: 'assistant', content: [{ type: 'text', text: ANSWER }] }, door: 'response', uuid: 'u2', origin: { kind: 'model', model: 'm' } } as never)
   await k.finish()
 
+  expect(k.writes).toEqual([TALLY])
   expect(k.stored).toEqual(['folds-4:s1'])
 })
 

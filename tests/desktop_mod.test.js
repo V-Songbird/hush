@@ -43,6 +43,13 @@ test('the mod and the CLI share the rule names, the knobs the settings key reads
   for (const k of settings.TALLY_KNOBS) assert.ok(Object.hasOwn(settings.KNOBS, k), `${k} is a knob`);
 });
 
+test('the mod knows the settings the SessionStart hook sends by the exact header it sends them under', () => {
+  const register = fs.readFileSync(path.join(HOOKS_DIR, 'register.tsx'), 'utf-8');
+  const m = /export const SETTINGS_HEADER =\s*'([^']*)'/.exec(register);
+  assert.ok(m, 'register.tsx keeps SETTINGS_HEADER');
+  assert.strictEqual(m[1], settings.HEADER);
+});
+
 test('the CLI names the count’s file exactly as the mod does, for the table the mod is tested on', () => {
   const source = fs.readFileSync(path.join(HOOKS_DIR, 'lint.test.ts'), 'utf-8');
   const table = /const FILES: [^=]+= (\[[\s\S]*?\n\])\n/.exec(source);

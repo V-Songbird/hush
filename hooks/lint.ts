@@ -40,6 +40,9 @@ export function settingsOf(saved: unknown): Settings {
   return Object.fromEntries(Object.entries(KNOBS).map(([k, values]) => [k, (values as readonly unknown[]).includes(s[k]) ? s[k] : values[0]])) as Settings
 }
 
+/** Whether every knob is at its default, so Hush's SessionStart hook sends the model nothing. */
+export const isDefault = (s: Settings): boolean => Object.entries(KNOBS).every(([k, values]) => s[k as keyof Settings] === values[0])
+
 // The knobs the rules read, in a fixed order. The others change what the message holds, not where
 // its result, rules and next step sit; markdown counts only as far as `plain` has no rules. A
 // change to one of these starts a new count. style-settings.js keeps the same list as TALLY_KNOBS.
