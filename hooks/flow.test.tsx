@@ -157,8 +157,15 @@ test('HUSH_DISABLE=1 set while a reply is gathered stores nothing for it', async
   await k.turn([say('Looking.'), ...work('a'), say('Done.')], () => (k.env.disable = '1'))
 
   expect([...k.store.keys()]).toEqual([])
+
+  // The next turn, still switched off, gathers nothing: its re-prompt closes no reply.
+  const reprompt: Row = { type: 'user', isMeta: true, door: 'hook-context', content: [{ type: 'text', text: 'Stop hook feedback:\n[goal]: not yet' }] }
+  await k.turn([say('Again.'), ...work('b'), say('Final.'), reprompt, say('More.')])
+  expect([...k.store.keys()]).toEqual([])
+
   k.env.disable = undefined
   expect(await k.draw('Looking.')).toBe('whole')
+  expect(await k.draw('Again.')).toBe('whole')
 })
 
 // A plain answer, or a reply that ends on a tool call, writes nothing to the store.

@@ -225,10 +225,14 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const done = await next(e)
 
-    if (await isDisabled($)) return done
+    if (e.agentId !== undefined) return done
 
-    if (e.agentId === undefined) {
-      isReplying = false
+    // Gathering stops either way, so a reply switched off mid-turn leaves no later turn gathering.
+    isReplying = false
+
+    if (await isDisabled($)) {
+      startReply()
+    } else {
       await closeReply($)
     }
 
