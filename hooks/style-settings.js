@@ -88,7 +88,6 @@ const TALLY_RULES = [
   "blocks within limit",
   "no raw html",
   "markdown forms as set",
-  "links resolve",
 ];
 const TALLY_KNOBS = ["next", "rules", "markdown", "sentences", "emoji", "headers"];
 const TALLY_FIELDS = ["last", "messages", "met", "misses", "settings", "since"];
@@ -98,15 +97,15 @@ const DAY = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/;
 const settingsKey = (settings) => TALLY_KNOBS.map((k) => settings[k]).join("-");
 
 // The settings file and the count beside it, named exactly as lint.ts countFiles names them,
-// and only for an absolute path, so a relative HUSH_CONFIG_FILE reads no tally in a project.
+// and only for an absolute path to a file, so a relative HUSH_CONFIG_FILE reads no tally in a
+// project, and one that ends in a separator reads none in the folder above it.
 function countFiles(named, home, isWindows) {
   const sep = isWindows ? "\\" : "/";
   const config = named || (home ? `${home.replace(isWindows ? /[\\/]+$/ : /\/+$/, "")}${sep}.claude${sep}hush${sep}config.json` : "");
   const isAbsolute = isWindows ? /^(?:[A-Za-z]:[\\/]|[\\/]{2}[^\\/]+[\\/]+[^\\/]+[\\/]+[^\\/])/ : /^\//;
-  if (!isAbsolute.test(config)) return undefined;
-  const trimmed = config.replace(isWindows ? /(?<=[^\\/:])[\\/]+$/ : /(?<=[^/])\/+$/, "");
-  const cut = isWindows ? Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\")) : trimmed.lastIndexOf("/");
-  return { config, tally: `${trimmed.slice(0, cut + 1)}tally.json` };
+  if (!isAbsolute.test(config) || (isWindows ? /[\\/]$/ : /\/$/).test(config)) return undefined;
+  const cut = isWindows ? Math.max(config.lastIndexOf("/"), config.lastIndexOf("\\")) : config.lastIndexOf("/");
+  return { config, tally: `${config.slice(0, cut + 1)}tally.json` };
 }
 
 // The home os.homedir() reads first: USERPROFILE on Windows, HOME elsewhere.
@@ -116,9 +115,11 @@ function tallyPath(env = process.env, isWindows = process.platform === "win32") 
 
 // Everything printed is checked first: counts, known rule names, days, and a settings key for
 // the current settings. No file, or one that is not such a count, is no count: { messages: 0 }.
+// So is HUSH_DISABLE=1, under which the mod counts nothing.
 function readTally() {
   const none = { messages: 0 };
   const file = tallyPath();
+  if (isOn("HUSH_DISABLE") || file === undefined) return none;
   let t;
   try {
     const text = fs.readFileSync(file, "utf8");

@@ -27,6 +27,11 @@ declare module 'claude-code' {
       folds: Shaped<FoldsState>
       /** The heads of the folds the person opened. */
       open: Shaped<string[]>
+      /**
+       * The settings key (`lint.ts` settingsKey) the model was sent at the session's start or
+       * its last compaction, which the silent check counts under; `''` when it could not be read.
+       */
+      inForce: string
     }
   }
 }

@@ -3,7 +3,8 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
-import { TALLY_MAX, asTally, countFiles, lintMessage, localLinks, settingsKey, settingsOf, tally } from './lint'
+import { TALLY_MAX, asTally, countFiles, lintMessage, settingsKey, settingsOf, tally } from './lint'
+import type { Settings } from './lint'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
@@ -57,56 +58,80 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 }
 
 /**
+ * The settings saved now and the count's file beside them, or undefined when the check cannot
+ * know them: then nothing is counted. Only a missing settings file means the defaults; one that
+ * exists but cannot be read or parsed is unknown. A rejection is the caller's to swallow.
+ */
+async function savedSettings($: EngineInterface): Promise<{ settings: Settings; key: string; tally: string } | undefined> {
+  // The project root tells the platform: a POSIX path opens with one `/`, a Windows one with a
+  // drive or `\\`. Anything else, an empty root included, is neither. The home is the one
+  // `os.homedir()` reads, as /hush:config's CLI does.
+  const root = await $.session.root()
+  const isWindows = /^(?:[A-Za-z]:[\\/]|[\\/]{2})/.test(root)
+
+  if (!isWindows && !/^\/(?!\/)/.test(root)) return undefined
+
+  const named = await $.env.get('HUSH_CONFIG_FILE')
+  const home = named ? undefined : isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')
+  const files = countFiles(named, home, isWindows)
+
+  if (files === undefined) return undefined
+
+  let saved: unknown
+
+  try {
+    saved = JSON.parse(String(await $.fs.read(files.config)))
+  } catch {
+    if (await $.fs.exists(files.config)) return undefined
+  }
+
+  const settings = settingsOf(saved)
+
+  return { settings, key: settingsKey(settings), tally: files.tally }
+}
+
+// The settings key the model was sent: the SessionStart hook sends the saved settings when the
+// session starts and again after a compaction, so the mod reads them at those two moments. It
+// lives in `$.state`, which a hot reload keeps. A later `session.start` of the mod in the same
+// session (a reload, a worker respawn) keeps what it holds, since the model was sent nothing
+// new. A key that could not be read is held as `''`, which matches no settings, so nothing is
+// counted until the next compaction reads it again.
+const IN_FORCE = { plugin: 'hush', key: 'inForce' } as const
+
+async function remember($: EngineInterface, isStart: boolean) {
+  try {
+    if (isStart && (await $.state.get(IN_FORCE)).version > 0) return
+
+    const now = await savedSettings($).catch(() => undefined)
+
+    await $.state.set(IN_FORCE, now?.key ?? '')
+  } catch {
+    // Nothing held: the first count reads an empty key and counts nothing.
+  }
+}
+
+/**
  * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
  * adds and writes in one go, so two sessions ending together may lose a count; the count is a
  * guide, not a record. A failure anywhere, a read-only home included, is swallowed: the check
  * never breaks the turn or the fold.
  *
  * Only a session someone reads is counted: one that draws on a surface, the terminal's REPL or
- * an app. A `claude -p` run draws on none.
+ * an app. A `claude -p` run draws on none. A one-line answer is left out: a turn nobody asked
+ * for may end with one short line, and the voice asks no structure of it. A turn whose saved
+ * settings differ from the ones the model was sent is left out too.
  */
 async function checkAnswer($: EngineInterface, answer: string) {
   try {
-    if ((await $.session.surfaces()).length === 0) return
+    if (!answer.trim().includes('\n') || (await $.session.surfaces()).length === 0) return
 
-    const root = await $.session.root().catch(() => undefined)
-    const cwd = await $.session.cwd().catch(() => undefined)
-    const dirs = [...new Set([root, cwd].filter((dir): dir is string => dir !== undefined))]
-    const at = dirs[0]
+    const now = await savedSettings($)
 
-    if (at === undefined) return
+    if (now === undefined || now.key !== (await $.state.get(IN_FORCE)).value) return
 
-    // The engine's paths are absolute: a POSIX one opens with `/`, a Windows one with a drive or
-    // `\\`. The home is the one `os.homedir()` reads, as /hush:config's CLI does.
-    const isWindows = !at.startsWith('/')
-    const named = await $.env.get('HUSH_CONFIG_FILE')
-    const home = named ? undefined : isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')
-    const files = countFiles(named, home, isWindows)
+    const prev = asTally(await $.fs.read(now.tally).then(text => (String(text).length > TALLY_MAX ? undefined : (JSON.parse(String(text)) as unknown))).catch(() => undefined), now.key)
 
-    if (files === undefined) return
-
-    const settings = settingsOf(await $.fs.read(files.config).then(text => JSON.parse(String(text)) as unknown).catch(() => undefined))
-    const isAbsolute = (path: string) => (isWindows ? /^(?:[A-Za-z]:)?[\\/]/ : /^\//).test(path)
-    const under = (dir: string, path: string) => `${dir.replace(/[\\/]+$/, '')}/${path.replace(/^[\\/]+/, '')}`
-    let missing = 0
-
-    // A link resolves against the project root, then the session's directory; an absolute path
-    // also stands alone. An answer the disk cannot give counts as found.
-    for (const link of localLinks(answer)) {
-      const tries = isAbsolute(link) ? [link, ...(/^[\\/]/.test(link) ? dirs.map(dir => under(dir, link)) : [])] : dirs.map(dir => under(dir, link))
-      let isFound = false
-
-      for (const path of tries) {
-        if (!isFound) isFound = await $.fs.exists(path).catch(() => true)
-      }
-
-      if (!isFound) missing++
-    }
-
-    const key = settingsKey(settings)
-    const prev = asTally(await $.fs.read(files.tally).then(text => (String(text).length > TALLY_MAX ? undefined : (JSON.parse(String(text)) as unknown))).catch(() => undefined), key)
-
-    await $.fs.write(files.tally, JSON.stringify(tally(prev, lintMessage(answer, settings, missing), new Date().toISOString().slice(0, 10), key)) + '\n')
+    await $.fs.write(now.tally, JSON.stringify(tally(prev, lintMessage(answer, now.settings), new Date().toISOString().slice(0, 10), now.key)) + '\n')
   } catch {
     // Nothing to report: the check is silent.
   }
@@ -240,6 +265,8 @@ export const register: Register = on => {
     const saved = await $.store.get(`${STORE}${await $.session.id()}`)
     await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
     await update($, opened, () => [])
+    // The settings the model is sent at the start, for the check; it never throws.
+    await remember($, true)
 
     return next(e)
   })
@@ -331,12 +358,20 @@ export const register: Register = on => {
     } else {
       await closeReply($)
 
-      // A one-line answer is left out: a turn nobody asked for may end with one short line, and
-      // the voice asks no structure of it.
-      if (e.reason === 'answer' && e.answer.trim().includes('\n')) await checkAnswer($, e.answer)
+      if (e.reason === 'answer') await checkAnswer($, e.answer)
     }
 
     return done
+  })
+
+  // The settings the model was sent, for the check, after a compaction of the main conversation:
+  // the SessionStart hook sends them again then.
+  on('session.append', { door: 'compaction' }, async ($, e, next) => {
+    const row = await next(e)
+
+    if (e.agentId === undefined && !(await isDisabled($))) await remember($, false)
+
+    return row
   })
 
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {

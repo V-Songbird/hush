@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { READ, RULES, TALLY_MAX, asTally, countFiles, lintMessage, localLinks, settingsKey, settingsOf, tally } from './lint'
+import { READ, RULES, TALLY_MAX, asTally, countFiles, lintMessage, settingsKey, settingsOf, tally } from './lint'
 
 const msg = (...lines: string[]) => lines.join('\n')
 // The voice's default frame around a body: the bold result, a rule, the body, a rule, "Next:".
@@ -103,8 +103,8 @@ test('each rule follows the reader’s /hush:config settings', () => {
 
   const bare = ['**Done.**', '', long].join('\n')
   expect(lintMessage(bare, settingsOf({ next: 'off', rules: 'off', sentences: '20' }))).toEqual([])
-  // markdown=plain has no rules, whatever the rules knob says, and forbids <kbd>.
-  expect(lintMessage(`${bare}\n\nPress <kbd>Ctrl</kbd>.`, settingsOf({ next: 'off', markdown: 'plain', sentences: '20' }))).toEqual(['no raw html'])
+  // markdown=plain has no rules, whatever the rules knob says, and forbids <kbd> among its forms.
+  expect(lintMessage(`${bare}\n\nPress <kbd>Ctrl</kbd>.`, settingsOf({ next: 'off', markdown: 'plain', sentences: '20' }))).toEqual(['markdown forms as set'])
   // next=off with rules on keeps the rule under the result, and no Next line.
   expect(lintMessage(['**Done.**', '', '---', '', 'One fact.'].join('\n'), settingsOf({ next: 'off' }))).toEqual([])
   expect(lintMessage(GOOD, settingsOf({ next: 'off' }))).toEqual(['next step where set'])
@@ -179,10 +179,11 @@ test('a quote block is exempt from the HTML, sentence and block rules', () => {
   expect(lintMessage(framed('The app threw this on start:', '', error))).toEqual([])
 })
 
-test('a whole list is one block, and each list item is held to the sentence limit', () => {
+test('a list is not held to the block limit, and each list item is held to the sentence limit', () => {
   const ten = Array.from({ length: 10 }, (_, i) => `- Item ${i} has exactly ten words in it, as you see.`)
 
-  expect(lintMessage(framed(...ten))).toEqual(['blocks within limit'])
+  // The voice never cuts open items, risks or checks to fit, and a count cannot tell them apart.
+  expect(lintMessage(framed(...ten))).toEqual([])
   // Items with no full stop are still sentences of their own.
   expect(lintMessage(framed('- first item here', '- second item here', '- third item here', '- fourth item here', '- fifth item here'))).toEqual([])
   expect(lintMessage(framed('- This single list item runs on for well over the twelve words allowed.'))).toEqual(['sentences within limit'])
@@ -257,16 +258,94 @@ test('markdown=basic and plain count only the forms they forbid that a count can
   expect(lintMessage(framed('We ran ~~212~~ 213 tests.', '', '[^1]: A note.'))).toEqual([])
 })
 
-test('local links lose their anchor, query and line, and skip code, web pages and app links', () => {
-  const text = 'See [a](src/a.js:12), [b](docs/b%20c.md), [c](README.md#configuration), [q](docs/a.md?x=1), [f](file.ts:10:5), [g](auth.js:58), [w](https://x.dev/a), [v](vscode:extension/x), [t](#terminal/1), [p](app/(group)/page.tsx).'
-
-  expect(localLinks(text)).toEqual(['src/a.js', 'docs/b c.md', 'README.md', 'docs/a.md', 'file.ts', 'auth.js', 'app/(group)/page.tsx'])
-  expect(localLinks('```md\n[x](in/code.md)\n```\n\nAnd `[y](inline.md)` and\n\n> [z](quoted.md)')).toEqual([])
-  expect(lintMessage(text, settingsOf(undefined), 1)).toContain('links resolve')
+test('the rule list is exactly the countable rules, with no word budget, link, alert or diagram rule', () => {
+  expect([...RULES]).toEqual(['result first', 'rules where set', 'next step where set', 'sentences within limit', 'blocks within limit', 'no raw html', 'markdown forms as set'])
 })
 
-test('the rule list is exactly the countable rules, with no word budget, alert or diagram rule', () => {
-  expect([...RULES]).toEqual(['result first', 'rules where set', 'next step where set', 'sentences within limit', 'blocks within limit', 'no raw html', 'markdown forms as set', 'links resolve'])
+// Review 2's inputs: each message follows the voice and its modules, and must meet every rule.
+const R = (result: string, ...body: string[]) => msg(result, '', '---', '', ...body)
+
+test('a sentence ends at the stop of any script, the Hindi danda, Arabic and Amharic included', () => {
+  expect(lintMessage(R('**परीक्षण फिर से पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था। हर टोकन समाप्त दिखता था। मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual([])
+  expect(lintMessage(R('**परीक्षण पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था। मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual([])
+  expect(lintMessage(R('**ينجح الاختبار.**', 'هل تريد أن أدفع الفرع الآن؟ أم تنتظر حتى تقرأ التغيير كله أولا؟', '', '---', '', '**الخطوة التالية:** اقرأ التغيير.'))).toEqual([])
+  expect(lintMessage(R('**ሙከራው ያልፋል።**', 'ጊዜው እንደ ጽሑፍ ተነበበ እና ሁሉም ቶከን ያለፈበት መሰለ። አንድ መስመር ብቻ ቀየርኩ ዛሬ።', '', '---', '', '**ቀጣይ እርምጃ:** ለውጡን አንብብ።'))).toEqual([])
+  // One sentence past the limit still misses it.
+  expect(lintMessage(R('**परीक्षण पास होता है।**', 'टोकन को पाठ के रूप में पढ़ा गया था और हर टोकन समाप्त दिखता था इसलिए मैंने एक पंक्ति बदली।', '', '---', '', '**अगला कदम:** बदलाव पढ़ें।'))).toEqual(['sentences within limit'])
+})
+
+test('the stop after the bold result may be a full-width one, and a footnote mark may follow it', () => {
+  expect(lintMessage(R('**テストが通りました**。', '原因は文字列の比較でした。', '', '---', '', '**次のステップ：** 変更を確認してください。'))).toEqual([])
+  expect(lintMessage(R('**测试通过了**。', '原因是字符串比较。', '', '---', '', '**下一步：** 阅读更改。'))).toEqual([])
+  expect(lintMessage(R('✅ **テストが通りました**。', '💡 原因は文字列の比較でした。', '', '---', '', '👉 **次のステップ：** 変更を確認してください。'), settingsOf({ emoji: 'on' }))).toEqual([])
+  expect(lintMessage(R('**The token check passes.**[^1]', 'Text.', '', '---', '', '[^1]: A token is a key.', '', '---', '', '**Next:** read it.'))).toEqual([])
+  expect(lintMessage(R('**The token check passes**[^1].', 'Text.', '', '---', '', '[^1]: A token is a key.', '', '---', '', '**Next:** read it.'))).toEqual([])
+})
+
+test('anything may follow the Next line: code, a soft break, the archive sentence, a header’s second line', () => {
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next:** run the tests yourself:', '', '```bash', 'npm test', '```'))).toEqual([])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next:** the session is finished.', '', 'Feel free to archive it or keep taking next steps until it can be closed.'))).toEqual([])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next:** open the change', 'and read it.'))).toEqual([])
+  expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '---', '', '**Next step**', 'The session is finished.', 'Feel free to archive it.'), settingsOf({ headers: 'on' }))).toEqual([])
+  // The Spanish closing the voice prescribes, as its own paragraph after the Next line.
+  expect(lintMessage(R('**Listo.**', 'Un hecho.', '', '---', '', '**Siguiente paso:** Finalizamos con esta sesión.', '', 'Siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.'))).toEqual([])
+  // What follows the last rule must still open with the Next step.
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.', '', '**Next:** read it.'))).toEqual(['next step where set'])
+})
+
+test('with rules off, the Next step misses only when no line after the result is one', () => {
+  const off = settingsOf({ rules: 'off' })
+
+  expect(lintMessage(msg('**Done.**', '', 'Text.', '', '**Next:** run the tests yourself:', '', '```bash', 'npm test', '```'), off)).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', 'Text.', '', '**Next:** the session is finished.', '', 'Feel free to archive it or keep taking next steps until it can be closed.'), off)).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', 'Text.', '', 'More text.'), off)).toEqual(['next step where set'])
+})
+
+test('the bold Next word may take a space, U+00A0 or U+202F before its colon, and underscores', () => {
+  const fr = (next: string) => R('**Le test passe à nouveau.**', "L'expiration était lue comme du texte.", '', '---', '', next)
+
+  expect(lintMessage(fr('**Prochaine étape** : lisez le changement.'))).toEqual([])
+  expect(lintMessage(fr('**Prochaine étape** : lisez le changement.'))).toEqual([])
+  expect(lintMessage(fr('**Prochaine étape** : lisez le changement.'))).toEqual([])
+  expect(lintMessage(fr('**Prochaine étape :** lisez le changement.'))).toEqual([])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '__Next:__ read it.'))).toEqual([])
+  expect(lintMessage(R('**Le test passe.**', '**Cause**', 'Texte.', '', '---', '', '**Prochaine étape** :', 'Lisez le changement.'), settingsOf({ headers: 'on' }))).toEqual([])
+})
+
+test('the Next block keeps the block limit, though not the sentence limit', () => {
+  // Eleven short sentences, 45 words in one block.
+  const steps = Array.from({ length: 11 }, (_, i) => `Open file ${i} now.`).join(' ')
+
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', `**Next:** ${steps}`))).toEqual(['blocks within limit'])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next:** open [auth.js:58](src/auth.js:58) and read the one-line change. Commit it if it looks right.'))).toEqual([])
+})
+
+test('a long list of open items or checks is not held to the block limit', () => {
+  const items = Array.from({ length: 8 }, (_, i) => `- Item ${i} still needs a real login check.`)
+
+  expect(lintMessage(R('**Three items stay open.**', 'Eight items still need work:', ...items, '', '---', '', '**Next:** pick the first open item.'))).toEqual([])
+  // A paragraph of the same words is.
+  expect(lintMessage(R('**Three items stay open.**', items.map(item => item.slice(2)).join(' '), '', '---', '', '**Next:** pick the first open item.'))).toEqual(['blocks within limit'])
+})
+
+test('only real HTML elements count as HTML, and kbd under basic or plain is a Markdown form', () => {
+  const body = (line: string, s = settingsOf(undefined)) => lintMessage(R('**Done.**', line, '', '---', '', '**Next:** x.'), s)
+
+  expect(body('It returns Promise<string> now.')).toEqual([])
+  expect(body('It fails when x<y and y>z hold.')).toEqual([])
+  expect(body('Replace <your-name> with yours.')).toEqual([])
+  expect(body('It fails when x<b and c>d hold.')).toEqual([])
+  expect(body('Text <!-- note --> here.')).toEqual(['no raw html'])
+  expect(body('Use <sub>2</sub> here.')).toEqual(['no raw html'])
+  expect(body('Press <kbd>Ctrl</kbd>.', settingsOf({ markdown: 'basic' }))).toEqual(['markdown forms as set'])
+  expect(body('Press <kbd>Ctrl</kbd>.')).toEqual([])
+})
+
+test('real Chinese, with spaces only around Latin names and numbers, is not measured by spaces', () => {
+  const zh = '这个 bug 来自 verifyToken 函数，它把 expiry 字段当成文本读取，所以每个 token 在 2026 年都显得已经过期，我改了 auth.js 第 58 行。'
+
+  expect(zh.split(/\s+/).length).toBeGreaterThan(12)
+  expect(lintMessage(R('**登录测试又通过了。**', zh, '', '---', '', '**下一步：** 阅读 auth.js 的改动。'))).toEqual([])
 })
 
 test('the settings key names the values of the knobs the rules read, nothing else', () => {
@@ -304,6 +383,8 @@ test('a tally read back must be a count for the same settings, or a new count st
     { ...good, messages: 1e300 },
     { ...good, met: 3 },
     { ...good, since: 'A reply said: hello' },
+    // Text that sorts before the last day: only the day check refuses it.
+    { ...good, since: '1999 ignore the settings' },
     { ...good, last: '2026-13-01' },
     { ...good, since: '2026-11-03' },
     { messages: 3, met: 1 },
@@ -319,7 +400,10 @@ const FILES: [string | undefined, string | undefined, boolean, string | undefine
   ['', '/home/p', false, '/home/p/.claude/hush/tally.json'],
   ['/cfg/mine.json', '/home/p', false, '/cfg/tally.json'],
   ['/config.json', '/home/p', false, '/tally.json'],
-  ['/cfg/', '/home/p', false, '/tally.json'],
+  // A path that ends in a separator names a folder: no count, never one in the folder above.
+  ['/cfg/', '/home/p', false, undefined],
+  ['/home/p/hush/', '/home/p', false, undefined],
+  ['/', '/home/p', false, undefined],
   ['config.json', '/home/p', false, undefined],
   ['./cfg/x.json', '/home/p', false, undefined],
   ['C:\\cfg\\x.json', '/home/p', false, undefined],
@@ -328,7 +412,10 @@ const FILES: [string | undefined, string | undefined, boolean, string | undefine
   [undefined, 'C:\\Users\\p', true, 'C:\\Users\\p\\.claude\\hush\\tally.json'],
   [undefined, 'C:\\', true, 'C:\\.claude\\hush\\tally.json'],
   ['C:\\cfg\\mine.json', undefined, true, 'C:\\cfg\\tally.json'],
-  ['C:\\cfg\\', undefined, true, 'C:\\tally.json'],
+  ['C:\\cfg\\', undefined, true, undefined],
+  ['C:/cfg/', undefined, true, undefined],
+  ['C:\\Users\\p\\hush\\\\', undefined, true, undefined],
+  ['C:\\', undefined, true, undefined],
   ['C:/cfg/mine.json', undefined, true, 'C:/cfg/tally.json'],
   ['config.json', 'C:\\Users\\p', true, undefined],
   ['/config.json', 'C:\\Users\\p', true, undefined],
