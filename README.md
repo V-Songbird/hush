@@ -87,13 +87,19 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 | `HUSH_SIDECAR=off` | Never saves output to a file. A very large output gets the normal trimmed view instead of a digest, and a shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold. |
+| `HUSH_ADAPTIVE=off` | The caps on clean and failing runs keep their full size, however long the session grows. |
+| `HUSH_NOTE=off` | Hush no longer tells the assistant, once per session, what its notes in square brackets mean. The notes themselves stay. |
+| `HUSH_CAP_PASS=<lines>` | How many lines a long clean run keeps. The default is 60. |
+| `HUSH_CAP_FAIL=<lines>` | How many lines a long failing run keeps, and up to how many lines a listing, print or diff comes back whole. The default is 250. |
+| `HUSH_SIDECAR_MIN=<characters>` | The size from which output is saved to a file. The default is 15,000. |
+| `HUSH_SIDECAR_SHELL_MAX=<characters>` | The size from which a shell result counts as cut by Claude Code. By default Hush reads Claude Code's own cut. |
 | `HUSH_COMPACT=off` | Leaves compaction to Claude Code: Hush no longer asks the summary to keep paths and identifiers word for word, or lists the saved files. |
 | `HUSH_SUBAGENT=off` | Subagents start without Hush's brief. |
 | `HUSH_DEBUG=1` | Writes a local record of what Hush did to each command result (sizes in and out, and where the full copy went) to `hush-debug-<session>.jsonl` in your system temp folder. Hush never deletes these files. |
 | `HUSH_WRAP=1` | Lets Hush trim failing commands as well as passing ones. See below. |
 | `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. |
 
-`HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off` also takes `0` or `false`, in any letter case, and ignores spaces around the value. The switches shown as `1` take only `1` and ignore spaces around it.
+`HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off` also takes `0` or `false`, in any letter case, and ignores spaces around the value. The switches shown as `1` take only `1` and ignore spaces around it. The four that take a number read a whole number above zero; zero, a negative number or text leaves the default.
 
 **`HUSH_WRAP=1`** wraps each Bash and PowerShell command so its exit code survives, which lets Hush trim a failing build like a passing one. In `bypassPermissions` mode Hush wraps even without it. It is safe with `bypassPermissions` or blanket grants such as plain `Bash` or `PowerShell` in your allow rules. It is not safe with scoped allow rules such as `Bash(node*)`: Claude Code checks the wrapped command statement by statement, the wrapper's extra statements match no rule, and every wrapped command is denied. Start Claude Code with `HUSH_WRAP=1 claude` in bash, or `$env:HUSH_WRAP = '1'; claude` in PowerShell, which leaves it set for that window until `Remove-Item Env:HUSH_WRAP`. Every published number was measured with it set.
 
@@ -236,7 +242,7 @@ Each job has a fixed answer key of required facts, matched by code or judged by 
 
 #### Claude Opus 5, September 1, 2026
 
-Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: nine jobs, four runs per setup, 36 sessions each, in Claude Code with the `opus` alias (identified as Opus 5 by the published source) at medium effort, `HUSH_WRAP=1`. The hush sessions ran hush 1.11.1, the release current when the batch started; the records do not store a version. This is an earlier voice than the one measured above.
+Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: nine jobs, four runs per setup, 36 sessions each, in Claude Code with the `opus` alias (the records store the alias, not a model id; it is taken to be Opus 5) at medium effort, `HUSH_WRAP=1`. The hush sessions ran hush 1.11.1, the release current when the batch started; the records do not store a version. This is an earlier voice than the one measured above.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"date":"2026-09-01","reviewedAt":"2026-11-14"} -->
 | Claude Opus 5, 36 sessions each | Jobs right | Spoke at most once before the answer | Median final prose words | Sentences over 20 words | Words in blocks over 40 words, mean |
