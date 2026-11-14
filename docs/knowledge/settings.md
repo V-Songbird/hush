@@ -27,7 +27,7 @@ as a session grows — see [How hush works](how-it-works.md#what-happens-to-a-co
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written, and the [desktop mod](how-it-works.md#in-the-desktop-app-the-mod) draws, composes and counts nothing. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE=1` | Stops everything hush does. No trimming, no reminders, no files written, and the [desktop mod](how-it-works.md#in-the-desktop-app-the-mod) draws, composes and keeps nothing. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and everything around them: no trimmed output, no parked files, no command wrapping, nothing added at compaction, no cleanup when the session ends. The reminders and the subagent brief keep running. |
 | `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims keep running, and so does the writing voice. Your [message settings](#message-settings) still reach Claude. |
 | `HUSH_NUDGE=off` | Stops every reminder hush sends while Claude works: the turn reminder, the step reminder and the reminder for turns the harness starts. The subagent brief keeps running. |

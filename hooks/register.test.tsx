@@ -64,29 +64,29 @@ test('HUSH_DISABLE=1 leaves a mermaid reply to the app', async ($, on) => {
   await ui.unmount()
 })
 
-// The tally is the mod's one write to disk; HUSH_DISABLE=1 must leave it alone.
-const stores = async ($: Engine, on: On, disable?: string) => {
-  const keys: string[] = []
-  on('env.get', (_, e) => ({ value: e.name === 'HUSH_DISABLE' ? disable : undefined }))
-  on('session.cwd', () => ({ value: '/work' }))
+// The mod adds nothing to the person's command list, and a plain final message writes nothing.
+test('a session start registers no command, and a final message writes nothing', async ($, on) => {
+  const registered: string[] = []
+  const written: string[] = []
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.id', () => ({ value: 's1' }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', (_, e) => {
-    keys.push(e.key)
+    written.push(e.key)
 
     return { value: undefined }
   })
+  on('command.register', (_, e) => {
+    registered.push(e.name)
+
+    return { value: { command: e.name } }
+  })
   on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   await $.turn.complete({ answer: '**Done.**\n\n---\n\n**Next:** read it.', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' })
 
-  return keys
-}
-
-test('a final message adds to the tally', async ($, on) => {
-  expect((await stores($, on)).length).toBeGreaterThan(0)
-})
-
-test('HUSH_DISABLE=1 writes no tally', async ($, on) => {
-  expect(await stores($, on, '1')).toEqual([])
+  expect(registered).toEqual([])
+  expect(written).toEqual([])
 })
 
 // The app's own banner shows an icon and no title text, so the box carries no "Warning" label.
@@ -112,57 +112,20 @@ test('an alert icon draws in its alert colour, its box in the alert theme key', 
 // Every string the person reads comes from the catalog the `language` setting picks.
 const SPANISH = () => ({ value: { language: 'Español' } })
 const ALERTS = '**Result.**\n\n> [!TIP]\n> Another way.\n\nProse.\n\n> [!WARNING]\n> Not run.'
-const RUN = { command: 'hush-lint', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } } as never
 
-// The engine beneath, registered before the first `$` call: a session id, a store that holds
-// nothing, and the registered command, whose description it keeps.
-const beneath = (on: On) => {
-  const described: string[] = []
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('session.id', () => ({ value: 's1' }))
-  on('store.get', () => ({ value: undefined }))
-  on('command.register', (_, e) => {
-    described.push(e.description ?? '')
-
-    return { value: { command: 'hush-lint' } }
-  })
-
-  return described
-}
-
-const commandText = async ($: Engine) => {
-  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
-
-  return JSON.stringify(await $.command.run(RUN))
-}
-
-test('in a Spanish session every alert icon, the command and its report speak Spanish', async ($, on) => {
+test('in a Spanish session every alert icon speaks Spanish', async ($, on) => {
   on('settings.read', SPANISH)
-  const described = beneath(on)
   const ui = await mount($, on, ALERTS)
 
   expect((await ui.findAll({ type: 'Svg' })).map(svg => svg.props.alt)).toEqual(['Consejo', 'Advertencia'])
   await ui.unmount()
-
-  const text = await commandText($)
-  expect(described).toEqual([ES.command])
-  expect(text).toContain('El último prompt de Hush aún no se ha compuesto.')
-  expect(text).toContain('Con la sección de escritorio: ninguno revisado aún.')
-  expect(text).toContain('Sin ella: ninguno revisado aún.')
 })
 
-test('with no language set, the alerts, the command and its report speak English', async ($, on) => {
-  const described = beneath(on)
+test('with no language set, the alert icons speak English', async ($, on) => {
   const ui = await mount($, on, ALERTS)
 
   expect((await ui.findAll({ type: 'Svg' })).map(svg => svg.props.alt)).toEqual(['Tip', 'Warning'])
   await ui.unmount()
-
-  const text = await commandText($)
-  expect(described).toEqual([EN.command])
-  expect(text).toContain('The last Hush prompt has not been composed yet.')
-  expect(text).toContain('With the desktop section: none checked yet.')
-  expect(text).toContain('Without it: none checked yet.')
 })
 
 // A fold an earlier reply stored, found again at session start, and its first row drawn on
@@ -172,7 +135,6 @@ const foldedLine = async ($: Engine, on: On) => {
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 's1' }))
   on('store.get', (_, e) => ({ value: e.key === 'folds-2:s1' ? [FOLD] : undefined }))
-  on('command.register', () => ({ value: { command: 'hush-lint' } }))
   on('ui.render', ($, e) => $.ui.resolve(e).Text({ children: 'engine' }))
   await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never)
   const ui = await $.ui.mount({ plugin: 'hush', component: 'AssistantMessage', surface: 'desktop', props: { text: 'Now I check the store.', isFirstOfReply: true } } as never)

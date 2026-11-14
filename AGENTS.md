@@ -34,7 +34,7 @@ later; there is no install or build step. This repository is Foundry's hush subm
 | Path | Content |
 | --- | --- |
 | `hooks/` | The session hooks: `compress-tool-output`, `silence-nudge`, `precompact-summary`, `postcompact-rearm`, `preserve-exit-code`, `session-end-cleanup`, `subagent-brief`; `lib/` holds the gate, the harness, the sidecar store and the transforms |
-| `hooks/register.tsx` | The desktop mod, an optional hooks module beside the command hooks: `reply.ts` splits a reply, `fold.ts` folds progress texts, `lint.ts` keeps the `/hush-lint` totals, `voice.ts` adds the desktop section, `mermaid/` is the renderer ported from skins (MIT); state types in `types/index.d.ts` |
+| `hooks/register.tsx` | The desktop mod, an optional hooks module beside the command hooks: `reply.ts` splits a reply, `fold.ts` folds progress texts, `voice.ts` adds the desktop section, `mermaid/` is the renderer ported from skins (MIT); state types in `types/index.d.ts` |
 | `hooks/style-settings.js` | The message settings: their values, presets and saved file, the CLI `/hush:config` calls, and the SessionStart hook that sends each moved setting's module |
 | `commands/config.md` | `/hush:config`: the configurator in the desktop app, or the terminal questions |
 | `widgets/config.html` | The configurator widget and its sample-message preview; its knob list must match `hooks/style-settings.js` |

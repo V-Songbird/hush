@@ -40,8 +40,7 @@ hush now ships a mod, a hooks module that draws in the Claude desktop app's Code
 
 A reply with no Mermaid block and no alert is left to the app whole, and the terminal and every
 other surface are never touched. Visible text follows the `language` setting, Spanish or English.
-The mod also keeps a tally of how often final messages kept the voice's countable rules; the
-`/hush-lint` command prints it. Nothing leaves your machine. `HUSH_DISABLE=1` turns the mod off.
+The mod adds no command. Nothing leaves your machine. `HUSH_DISABLE=1` turns the mod off.
 
 The voice now allows `mermaid` blocks and those two alerts only in a session whose prompt has the
 mod's section headed "Forms this desktop session draws". The mod adds it only for Hush on the

@@ -22,20 +22,10 @@ test('hooks.json names one hooks module beside the command hooks, and it exists'
   assert.ok(Object.keys(hooks.hooks).length > 0, 'the command hooks stay registered');
 });
 
-test("the lint reads /hush:config's knobs with style-settings.js's values and defaults", () => {
-  const block = /const KNOBS = \{([\s\S]*?)\} as const/.exec(read('lint.ts'));
-  assert.ok(block, 'lint.ts keeps its KNOBS copy');
-  const copy = Object.fromEntries([...block[1].matchAll(/(\w+): \[([^\]]*)\]/g)].map(([, k, v]) => [k, [...v.matchAll(/'([^']*)'/g)].map((m) => m[1])]));
-  assert.deepStrictEqual(Object.keys(copy), ['next', 'rules', 'detail', 'markdown', 'sentences']);
-  for (const [k, values] of Object.entries(copy)) assert.deepStrictEqual(values, KNOBS[k], `knob ${k}`);
-});
-
-test('the voice names exactly the alert types the lint allows with the desktop section', () => {
-  const allowed = /SECTION_ALERTS: readonly AlertType\[\] = \[([^\]]*)\]/.exec(read('lint.ts'));
-  const lint = [...allowed[1].matchAll(/'(\w+)'/g)].map((m) => m[1]).sort();
-  const voice = [...new Set([...VOICE.matchAll(/\[!(\w+)\]/g)].map((m) => m[1].toLowerCase()))].filter((t) => t !== 'note').sort();
-  // `[!NOTE]` is the voice's example of a banned form; every other type it names is allowed.
-  assert.deepStrictEqual(voice, lint);
+test("the mod reads /hush:config's markdown setting with style-settings.js's values and default", () => {
+  const copy = /const MARKDOWN = \[([^\]]*)\] as const/.exec(read('voice.ts'));
+  assert.ok(copy, 'voice.ts keeps its MARKDOWN copy');
+  assert.deepStrictEqual([...copy[1].matchAll(/'([^']*)'/g)].map((m) => m[1]), KNOBS.markdown);
 });
 
 test('the voice lifts its ban only under the heading the mod composes', () => {

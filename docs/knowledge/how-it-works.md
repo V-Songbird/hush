@@ -290,10 +290,8 @@ drawing, the session is not `--bare`, and the `markdown` setting is `rich`. The 
 rule; the rule stays in the voice. A thread's prompt is fixed once sent, so a mod turned off
 mid-thread leaves the section in place until the next thread or compaction.
 
-On every surface, the mod checks each final message against the voice's countable rules, such as
-words per sentence and where "Next:" goes, under your message settings. It keeps the totals in
-Claude Code's per-plugin store on your machine, and `/hush-lint` prints them. It shows the reader
-nothing else. `HUSH_DISABLE=1` stops the whole mod.
+The mod keeps each session's folds in Claude Code's per-plugin store on your machine, so they
+come back when the session reopens. It adds no command. `HUSH_DISABLE=1` stops the whole mod.
 
 Its tests run with `claude plugin test .`; `node --test tests/*.test.js` checks the contracts
 between the mod and the rest of hush. The Mermaid renderer in `hooks/mermaid/` is ported from
@@ -310,7 +308,7 @@ skins under the MIT licence, with its notice beside it.
 | `style-settings` | When a session starts, and after compaction | Sends your message settings |
 | `subagent-brief` | When a subagent starts | The brief |
 | `session-end-cleanup` | When the session ends | Deletes the session's parked files |
-| `register.tsx` (the mod) | While Claude Code draws, composes the prompt and ends a turn | Draws Mermaid, alerts and the fold on the desktop; adds the desktop section; keeps the `/hush-lint` totals |
+| `register.tsx` (the mod) | While Claude Code draws, composes the prompt and ends a turn | Draws Mermaid, alerts and the fold on the desktop; adds the desktop section |
 
 ## The voice slot
 
