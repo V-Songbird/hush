@@ -48,9 +48,10 @@ export const READ = ['next', 'rules', 'markdown', 'emoji', 'headers'] as const
 /** The values of the knobs the rules read, such as `end-on-rich-off-off`: no text of a reply. */
 export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-')
 
-// A message is read as parts: each line outside code, trimmed, and each fenced or `$$` block as
-// one code part. Structure is read from these, so nothing inside code counts, and a quote
-// block's `>` keeps its lines from reading as a rule or a Next line.
+// A message is read as parts: each line outside code, trimmed, a leading direction mark (U+200E,
+// U+200F, U+061C) dropped, and each fenced or `$$` block as one code part. Structure is read from
+// these, so nothing inside code counts, and a quote block's `>` keeps its lines from reading as a
+// rule or a Next line.
 type Part = { kind: 'code' } | { kind: 'line'; text: string }
 
 const FENCE = /^(`{3,}|~{3,})/
@@ -60,7 +61,7 @@ function partsOf(text: string): Part[] {
   let fence = ''
 
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim()
+    const line = raw.trim().replace(/^[‎‏؜]+/, '').trimStart()
 
     if (fence !== '') {
       if (fence === '$$' ? line.endsWith('$$') : line.length >= fence.length && line === fence.charAt(0).repeat(line.length)) fence = ''
@@ -90,11 +91,11 @@ const RULE_LINE = /^(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/
 const EMOJI = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*\\s*'
 // French puts a space, U+00A0 or U+202F before a colon; Japanese and Chinese use a full-width one.
 const COLON = '[ \\u00A0\\u202F]?[:：]'
-// A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like) and the ellipsis,
-// which may follow the bold result.
-const STOP = '[\\p{STerm}…]'
-// A bold line; its stop and a footnote mark may follow the bold, in either order.
-const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|\\[\\^[^\\]\\s]+\\])*$`
+// A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like), the Greek question
+// mark and the ellipsis, which may follow the bold result.
+const STOP = '[\\p{STerm}\\u037E…]'
+// A bold line; its stop, a colon and a footnote mark may follow the bold, in any order.
+const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|${COLON}|\\[\\^[^\\]\\s]+\\])*$`
 // The bold result line; under emoji=on an emoji may open it ("before any bold").
 const RESULT = [new RegExp(`^${BOLD}`, 'u'), new RegExp(`^(?:${EMOJI})?${BOLD}`, 'u')] as const
 // The "Next:" line opens with its word in bold, in any language, with its colon inside the bold
@@ -106,14 +107,20 @@ const HEADER_WORD = `(?:\\*\\*[^*]{1,40}\\*\\*|__[^_]{1,40}__)(?:${COLON})?$`
 const HEADER = [new RegExp(`^${HEADER_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${HEADER_WORD}`, 'u')] as const
 
 /**
- * Whether the rules and the Next step sit where the settings put them:
- * - rules on: next=end has a rule under the result, and the Next step "below a rule of its
- *   own": what follows the last rule opens with "Next:", and anything may follow that line;
- *   next=top has "Next:" right under the result, then the code its step needs, then a rule;
- *   next=off has a rule under the result.
+ * Whether the rules and the Next step sit where the settings put them, one miss for each missing
+ * piece:
+ * - next=end, rules on: a rule under the result, and the Next step "below a rule of its own";
+ *   anything may follow the Next line. A Next line with no rule above it misses the rule, not the
+ *   step.
+ * - next=top: the Next step is every line from the one under the result to the first rule, so a
+ *   soft break, the closing sentence as its own paragraph, a header's lines and the code the step
+ *   needs all sit in it. With rules on, a rule ends it; a message with no rule at all is no miss,
+ *   since nothing tells whether a body follows the step.
+ * - next=off, rules on: a rule under the result.
  * - rules=off and markdown=plain have no rule outside code, and nothing marks where the Next step
  *   starts: only a message with no "Next:" line at all misses it.
- * - headers=on: a "Next step" header line, then the action, stands where "Next:" stands.
+ * - headers=on: a "Next step" header line, then the action or the code it needs, stands where
+ *   "Next:" stands.
  */
 function placement(lines: readonly Part[], s: Settings): { rules: boolean; next: boolean } {
   const emoji = s.emoji === 'on' ? 1 : 0
@@ -124,7 +131,7 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
   }
   const isRule = (i: number) => RULE_LINE.test(textAt(i) ?? '\n')
   const isInline = (i: number) => NEXT[emoji].test(textAt(i) ?? '')
-  const isHeader = (i: number) => HEADER[emoji].test(textAt(i) ?? '') && textAt(i + 1) !== undefined
+  const isHeader = (i: number) => HEADER[emoji].test(textAt(i) ?? '') && lines[i + 1] !== undefined
   const isNext = (i: number) => i >= 1 && (s.headers === 'on' ? isHeader(i) : isInline(i))
   const ruled = s.rules === 'on' && s.markdown !== 'plain'
   const n = lines.length
@@ -140,21 +147,15 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
     return { rules: ruled ? isRule(1) : !hasRule, next: !isShape }
   }
 
-  if (s.next === 'top') {
-    const topSize = s.headers === 'on' ? (isHeader(1) || !isInline(1) ? 2 : 1) : isInline(1) || !isHeader(1) ? 1 : 2
-    let i = 1 + topSize
+  if (s.next === 'top') return { rules: ruled || !hasRule, next: isNext(1) }
 
-    while (lines[i]?.kind === 'code') i++
+  const hasNext = indices.some(isNext)
 
-    return { rules: ruled ? i >= n || isRule(i) : !hasRule, next: isNext(1) }
-  }
+  if (!ruled) return { rules: !hasRule, next: hasNext }
 
-  const lastRule = ruled ? indices.filter(isRule).pop() : undefined
+  const isPlaced = indices.some(i => isNext(i) && isRule(i - 1))
 
-  if (lastRule !== undefined && lastRule >= 1) return { rules: isRule(1), next: isNext(lastRule + 1) }
-
-  // No rule to anchor the Next step: a miss only when no line after the result is one.
-  return { rules: !ruled ? !hasRule : false, next: indices.some(isNext) }
+  return { rules: isRule(1) && (isPlaced || !hasNext), next: hasNext }
 }
 
 /** The rules the answer misses. */

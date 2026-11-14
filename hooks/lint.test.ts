@@ -92,7 +92,8 @@ test('each rule follows the reader’s /hush:config settings', () => {
   const top = ['**Done.**', '', '**Siguiente paso:** run it.', '', '---', '', long, '', '[^1]: A note.', '', '&nbsp;'].join('\n')
 
   expect(lintMessage(top, settingsOf({ next: 'top', sentences: '20' }))).toEqual([])
-  expect(lintMessage(top)).toContain('next step where set')
+  // Under next=end the same Next line has no rule of its own above it: one miss, the rule's.
+  expect(lintMessage(top)).toEqual(['rules where set'])
 
   const bare = ['**Done.**', '', long].join('\n')
   expect(lintMessage(bare, settingsOf({ next: 'off', rules: 'off', sentences: '20' }))).toEqual([])
@@ -152,8 +153,95 @@ test('next=top allows the code the step needs between the Next line and the rule
   const text = '**The fix is ready.**\n\n**Next:** paste this into your shell.\n\n```bash\nnpm test\n```\n\n---\n\nThe expiry was read as text.'
 
   expect(lintMessage(text, settingsOf({ next: 'top' }))).toEqual([])
-  // Prose there is not code, so the rule is not where it belongs.
-  expect(lintMessage(text.replace('```bash\nnpm test\n```', 'Then wait.'), settingsOf({ next: 'top' }))).toEqual(['rules where set'])
+  // Prose there is part of the Next step too: the step runs to the first rule.
+  expect(lintMessage(text.replace('```bash\nnpm test\n```', 'Then wait.'), settingsOf({ next: 'top' }))).toEqual([])
+})
+
+// Review 3's H1 inputs under next=top: the step runs from the line under the result to the first rule.
+test('under next=top the Next step is every line up to the first rule', () => {
+  const top = settingsOf({ next: 'top' })
+  const finished = '**Done.**\n\n**Next:** the session is finished.\n\nFeel free to archive it or keep taking next steps until it can be finished.\n\n---\n\nThe parser read text.'
+
+  expect(lintMessage(finished, top)).toEqual([])
+  // The Spanish closing the voice prescribes, as its own paragraph.
+  expect(lintMessage('**Listo.**\n\n**Siguiente paso:** Finalizamos con esta sesión.\n\nSiéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.\n\n---\n\nUn hecho.', top)).toEqual([])
+  // The same closings with no rule, under rules=off and markdown=plain.
+  const unruled = finished.replace('\n\n---', '')
+  expect(lintMessage(unruled, settingsOf({ next: 'top', rules: 'off' }))).toEqual([])
+  expect(lintMessage(unruled, settingsOf({ next: 'top', markdown: 'plain' }))).toEqual([])
+  // A header with several lines under it, and a soft break inside the Next paragraph.
+  expect(lintMessage('**Done.**\n\n**Next step**\nThe session is finished.\nFeel free to archive it.\n\n---\n\n**Cause**\nThe parser read text.', settingsOf({ next: 'top', headers: 'on' }))).toEqual([])
+  expect(lintMessage('**Done.**\n\n**Next:** open the change\nand read it.\n\n---\n\nThe parser read text.', top)).toEqual([])
+})
+
+test('under next=top a message with no rule at all is no miss, and a rule under rules=off still is', () => {
+  // Nothing tells whether a body follows the step, so no rule cannot be counted missing.
+  expect(lintMessage('**Done.**\n\n**Next:** the session is finished.\n\nFeel free to archive it.', settingsOf({ next: 'top' }))).toEqual([])
+  expect(lintMessage('**Done.**\n\n**Next:** read it.\n\n---\n\nThe parser read text.', settingsOf({ next: 'top', rules: 'off' }))).toEqual(['rules where set'])
+})
+
+// Review 3's M2: one miss for each missing piece, under the piece's own name.
+test('a Next step with no rule above it misses the rule, and a missing Next line misses the step', () => {
+  expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.\n\n**Next:** read it.')).toEqual(['rules where set'])
+  expect(lintMessage('**Done.**\n\nThe parser read text.\n\n**Next:** read it.')).toEqual(['rules where set'])
+  expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.')).toEqual(['next step where set'])
+  // Under next=top, a missing Next line is the step's miss alone.
+  expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.', settingsOf({ next: 'top' }))).toEqual(['next step where set'])
+})
+
+// Review 3's LOW items.
+test('a Next step header may hold a code block, a colon may follow the bold result, and a direction mark opens a line', () => {
+  expect(lintMessage('**Done.**\n\n---\n\n**Cause**\nText.\n\n---\n\n**Next step**\n\n```bash\nnpm test\n```', settingsOf({ headers: 'on' }))).toEqual([])
+  expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Three tests still fail**:'))).toEqual([])
+  expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Trois tests échouent** :'))).toEqual([])
+  expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Να δοκιμάσω τη σύνδεση**;'))).toEqual([])
+  for (const mark of ['‎', '‏', '؜']) {
+    expect(lintMessage(`${mark}**تم إصلاح الاختبار.**\n\n---\n\nكان التاريخ نصا.\n\n---\n\n${mark}**الخطوة التالية:** اقرأ التغيير.`)).toEqual([])
+  }
+})
+
+test('the Next word in Spanish, French, German, Japanese and Arabic', () => {
+  for (const next of ['**Siguiente paso:** lee el cambio.', '**Prochaine étape** : lisez le changement.', '**Nächster Schritt:** lies die Änderung.', '**次のステップ：** 変更を読んでください。', '**الخطوة التالية:** اقرأ التغيير.']) {
+    expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', next))).toEqual([])
+    expect(lintMessage(msg('**Done.**', '', next, '', '---', '', 'Text.'), settingsOf({ next: 'top' }))).toEqual([])
+  }
+})
+
+test('a quote block is no structure: its rule is no rule and its Next line no Next line', () => {
+  expect(lintMessage(framed('The log said:', '', '> ---', '> **Next:** quoted'))).toEqual([])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '> **Next:** read it.'))).toEqual(['next step where set'])
+  expect(lintMessage(msg('**Done.**', '', 'Text.', '', '> ---', '', '**Next:** read it.'), settingsOf({ rules: 'off' }))).toEqual([])
+})
+
+// The voice's shape under every value of the knobs the rules read, with code, a table, a quote or
+// prose as the last body element.
+test('every combination of next, rules, emoji, headers and markdown meets every rule', () => {
+  const LAST: Record<string, string[]> = {
+    prose: ['The check passes.'],
+    code: ['```bash', 'npm test', '```'],
+    table: ['| Check | Result |', '|---|---|', '| `npm test` | passes |'],
+    quote: ["> src/auth.js:12:7  error  'token' is never used"],
+  }
+
+  for (const next of ['end', 'top', 'off'])
+    for (const rules of ['on', 'off'])
+      for (const emoji of ['off', 'on'])
+        for (const headers of ['off', 'on'])
+          for (const markdown of ['rich', 'basic', 'plain'])
+            for (const [name, last] of Object.entries(LAST)) {
+              const s = settingsOf({ next, rules, emoji, headers, markdown })
+              const ruled = rules === 'on' && markdown !== 'plain'
+              const cue = (e: string) => (emoji === 'on' && headers === 'off' ? `${e} ` : '')
+              const head = (e: string, word: string) => (headers === 'on' ? [`**${emoji === 'on' ? `${e} ` : ''}${word}**`] : [])
+              const result = `${emoji === 'on' ? '✅ ' : ''}**The login test passes again.**`
+              const step = headers === 'on' ? [...head('👉', 'Next step'), 'Open auth.js and read the change.'] : [`${cue('👉')}**Next:** open auth.js and read the change.`]
+              const body = [...head('💡', 'Cause'), `${cue('💡')}The expiry was read as text.`, '', ...last]
+              const rule = ruled ? ['---', ''] : []
+              const parts =
+                next === 'end' ? [result, '', ...rule, ...body, '', ...rule, ...step] : next === 'top' ? [result, '', ...step, '', ...rule, ...body] : [result, '', ...rule, ...body]
+
+              expect([name, s, lintMessage(msg(...parts), s)]).toEqual([name, s, []])
+            }
 })
 
 test('structure is read outside fenced code', () => {
@@ -211,8 +299,8 @@ test('anything may follow the Next line: code, a soft break, the archive sentenc
   expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '---', '', '**Next step**', 'The session is finished.', 'Feel free to archive it.'), settingsOf({ headers: 'on' }))).toEqual([])
   // The Spanish closing the voice prescribes, as its own paragraph after the Next line.
   expect(lintMessage(R('**Listo.**', 'Un hecho.', '', '---', '', '**Siguiente paso:** Finalizamos con esta sesión.', '', 'Siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.'))).toEqual([])
-  // What follows the last rule must still open with the Next step.
-  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.', '', '**Next:** read it.'))).toEqual(['next step where set'])
+  // A Next line with no rule of its own above it misses the rule, not the step.
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.', '', '**Next:** read it.'))).toEqual(['rules where set'])
 })
 
 test('with rules off, the Next step misses only when no line after the result is one', () => {
