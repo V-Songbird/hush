@@ -22,7 +22,7 @@ It quiets routine narration, shortens noisy tool output and shapes the final ans
 
 Hush is a writing voice plus a set of small trims. Everything runs on your machine, and nothing is sent anywhere.
 
-**The voice.** Claude Code calls it an output style. It tells the assistant to stay quiet between tool calls, then write one message at the end, in your language: the result in one bold line, the cause in one sentence, room only for checks that did not pass, and one exact next step, which also says whether the session can be archived. Most messages fit in about 250 words outside code, at most 12 words per sentence and 40 per block. It applies whenever the plugin is enabled and holds Claude Code's one output style slot; to use another style, disable or uninstall Hush.
+**The voice.** Claude Code calls it an output style. It tells the assistant to stay quiet between tool calls, then write one message at the end, in your language: the result in one bold line, the cause in one sentence, room only for checks that did not pass, and one exact next step that stands on its own and also says whether the session is finished, where the app can archive it. Passed checks give each command's counts as the runner printed them and name every failed test. Most messages fit in about 250 words outside code, at most 12 words per sentence and 40 per block. It applies whenever the plugin is enabled and holds Claude Code's one output style slot; to use another style, disable or uninstall Hush.
 
 **The trims.** When a command finishes, Hush looks at what came back:
 
@@ -53,15 +53,7 @@ A shortened view carries a note in square brackets, such as `[hush hook: 12 line
 
 **Where saved output goes.** A `hush-sidecar` folder in your system temp folder, one per session. On macOS and Linux only you can read it; on Windows that lock is not available, so treat it as readable by anything running as you. Hush deletes the folder when the session ends, and also removes session folders idle for a day.
 
-**The desktop mod.** Hush also ships an optional mod, code that Claude Code loads to draw in its interface. The command hooks above are the product: they behave the same whether or not the mod loads, for instance when mods are switched off. In the Claude desktop app's Code tab, the mod:
-
-- Draws the final message's `mermaid` blocks as pictures in the app's colors, light and dark. A block it cannot read, or one too crowded for the width, stays a code block.
-- Draws GitHub alerts: Warning, Caution and Important in a bordered box with an icon, Note and Tip as one line led by the icon.
-- Folds the progress texts written between tool calls into one dim line, "Show N progress messages", once the final message arrives. A press opens it. The line counts failed results and texts that name a failure.
-
-A message with no Mermaid block and no alert is left to the app whole, and the terminal and every other surface are never touched. The voice bans `mermaid` blocks and alerts because the app shows them as raw text; it allows four Mermaid kinds (`flowchart TD`, `flowchart LR`, `xychart-beta`, `pie`) and two alerts (Warning and Caution) only where the mod draws them: the desktop as the only surface and your `markdown` setting at `rich`.
-
-On every surface the mod also checks each final message against the voice's countable rules, such as words per sentence and where "Next:" goes, and keeps the totals on your machine; `/hush-lint` prints them. Its text follows Claude Code's `language` setting, Spanish or English. The Mermaid renderer is ported from [skins](https://github.com/hellosverre/claude-skins) and the alert icons are GitHub's Octicons, both MIT, with their licences in the plugin.
+**The desktop mod.** Hush also ships an optional mod, code that Claude Code loads to draw in its interface. The command hooks above are the product: they behave the same whether or not the mod loads, for instance when mods are switched off. In the Claude desktop app's Code tab only, once a final message arrives, the mod folds the progress texts written before it into one dim line above the message, "Show N progress messages". A press opens it. The line counts failed results and texts that name a failure, and its words follow Claude Code's `language` setting, Spanish or English. Every other reply, and every other surface, the terminal included, is left to the app whole. The mod adds no command and nothing leaves your machine.
 
 ## What you can do
 
@@ -71,7 +63,6 @@ On every surface the mod also checks each final message against the voice's coun
 | Inspect shortened output | A reference to the saved full result where available |
 | Change the answer's layout | `/hush:config`, described under [Settings](#settings) |
 | Turn off a session control | One environment variable per control, listed under [Settings](#settings) |
-| See how often messages kept the voice's rules | `/hush-lint`, wherever the mod is loaded |
 | Show what Hush kept out | A status-line script, below |
 
 ### Showing what Hush kept out
@@ -86,7 +77,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod draws, composes and counts nothing. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. Reminders and the subagent brief keep running, and the step reminder's small counter stays in your temp folder until your system clears it. |
 | `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims, the voice and your message settings keep running. |
 | `HUSH_NUDGE=off` | Stops every reminder sent while the assistant works. The subagent brief keeps running. |
@@ -137,7 +128,7 @@ No setting removes the floor: a blocker, a pending approval, an unverified claim
 | `caveats` | `each`, `floor` | Every risk and limit, or only the floor with a link to the rest; under `detail=bare` there is no link |
 | `records` | `line`, `off` | The closing line of docs and memory written |
 | `terms` | `footnote`, `inline`, `none` | How an unfamiliar term is explained |
-| `markdown` | `rich`, `basic`, `plain` | Every form the desktop app renders, common Markdown only, or terminal text. Only `rich` lets the desktop mod's `mermaid` blocks and alerts in |
+| `markdown` | `rich`, `basic`, `plain` | Every form the desktop app renders, common Markdown only, or terminal text |
 | `files` | `card`, `link` | A whole file comes as a file card above the message, or as a link in the text. A line in a file is always a link. Without the desktop app's file tool, every file is a link |
 | `sentences` | `12`, `20` | Words per sentence, tops |
 | `headers` | `off`, `on` | A short bold header opens each block and names its kind; with `emoji=on` the emoji sits in the header |
