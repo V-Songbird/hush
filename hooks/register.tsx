@@ -453,28 +453,31 @@ export const register: Register = on => {
     const width = cardWidth(e.viewport?.columns ?? 100)
     const { Box, Markdown, Svg } = $.ui.resolve(e)
     const s = await stringsOf($)
-    // The app's own renderer draws each prose part, as it draws a whole reply: `next` once per
-    // part with that part's text. The engine's `Markdown` element draws smaller and tighter
-    // than the app's reply text. Only the first part keeps the reply's `isFirstOfReply`.
-    const first = parts.findIndex(part => part.kind === 'markdown')
-    const prose = await Promise.all(
-      parts.map((part, i) =>
-        part.kind === 'markdown' ? next({ ...e, props: { ...e.props, text: cite(part.text).replace(/^\n+|\n+$/g, ''), isFirstOfReply: e.props.isFirstOfReply && i === first } }) : null,
-      ),
-    )
+    // A chart too crowded for this width keeps its source as a code block, in the prose.
+    const charts = parts.map(part => (part.kind === 'chart' ? themedChart(part.chart, width, s.chart) : null))
+    const isDrawn = (part: (typeof parts)[number], i: number) => part.kind === 'alert' || (part.kind === 'chart' && charts[i] !== null)
+
+    if (!parts.some(isDrawn)) {
+      return next(e)
+    }
+
+    // A message holds one engine drawing, and the first `next` call wins: a second call's text
+    // is dropped with no refusal (md-probe, 2026-11-02; seen again 2026-11-14). So the app's
+    // own renderer draws all the prose in one call, at its own size, after the drawings: every
+    // prose part, footnote line and over-wide chart's source, in authored order.
+    const prose = parts
+      .flatMap((part, i) =>
+        part.kind === 'markdown' ? [cite(part.text)] : part.kind === 'notes' ? [part.text] : part.kind === 'chart' && !isDrawn(part, i) ? [`\`\`\`mermaid\n${part.source}\n\`\`\``] : [],
+      )
+      .map(text => text.replace(/^\n+|\n+$/g, ''))
+      .filter(text => text.trim() !== '')
+      .join('\n\n')
+    const text = prose === '' ? null : await next({ ...e, props: { ...e.props, text: prose } })
 
     return (
       // A named step between a reply's blocks, which the desktop sizes on its own scale.
       <Box flexDirection="column" gap="md">
         {parts.map((part, i) => {
-          if (part.kind === 'markdown') {
-            return <Box key={`md${i}`}>{prose[i]}</Box>
-          }
-
-          if (part.kind === 'notes') {
-            return <Markdown key={`notes${i}`} text={hardBreaks(cite(part.text))} dimColor />
-          }
-
           if (part.kind === 'alert') {
             const alert = ALERTS[part.type]
             const line = (
@@ -498,15 +501,11 @@ export const register: Register = on => {
             )
           }
 
-          // A chart too crowded for this width keeps its source as a code block.
-          const built = themedChart(part.chart, width, s.chart)
+          const built = charts[i]
 
-          return built === null ? (
-            <Markdown key={`md${i}`} text={`\`\`\`mermaid\n${part.source}\n\`\`\``} />
-          ) : (
-            <Svg key={`chart${i}`} source={built.source} alt={built.alt} />
-          )
+          return !built ? null : <Svg key={`chart${i}`} source={built.source} alt={built.alt} />
         })}
+        {text === null ? null : <Box key="prose">{text}</Box>}
       </Box>
     )
   })

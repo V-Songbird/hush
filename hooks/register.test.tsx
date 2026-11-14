@@ -15,9 +15,11 @@ const mount = async (
   text: string,
   surface: 'desktop' | 'terminal' = 'desktop',
   disable?: string,
+  calls: string[] = [],
 ) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
+    calls.push(e.props.text)
 
     return <Text>{`engine: ${e.props.text}`}</Text>
   })
@@ -34,17 +36,42 @@ test('a reply with no chart or alert is the app’s whole', async ($, on) => {
   await ui.unmount()
 })
 
-test('a mermaid fence draws as a picture between prose the app draws itself', async ($, on) => {
-  const ui = await mount($, on, `**Result.**\n\n${FLOW}\n\nAfter.`)
+// A message holds one engine drawing, and the first `next` call wins: the drawings come first,
+// in authored order, then all the prose in one call to the app's own renderer.
+const SPLIT = `**Result.**\n\nP0.\n\n> [!WARNING]\n> Risk.\n\nP1.\n\n${FLOW}\n\nP2 is the last line.`
 
-  expect(await ui.find({ type: 'Svg' })).toBeDefined()
-  // Each prose part goes to the app's own renderer with its own text, not to a Markdown element.
-  expect((await ui.findAll({ type: 'Text', text: /^engine: / })).map(text => text.text)).toEqual(['engine: **Result.**', 'engine: After.'])
-  expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
+test('a split reply draws its drawings first, then all its prose in one app drawing', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, SPLIT, 'desktop', undefined, calls)
+  const tree = (await ui.find({ type: 'Box' })) as unknown as { children: { type: string; props?: { key?: string } }[] }
+
+  // Exactly one call reaches the app, with every prose part in authored order.
+  expect(calls).toEqual(['**Result.**\n\nP0.\n\nP1.\n\nP2 is the last line.'])
+  expect(await ui.find({ type: 'Markdown', text: /P0/ })).toBeUndefined()
+  // The warning, then the chart, then the prose.
+  expect(tree.children.map(child => `${child.type}:${child.props?.key ?? ''}`)).toEqual(['Box:alert1', 'Svg:', 'Box:prose'])
   // The blocks sit apart by a named step, not a count of cells.
   const outer = (await ui.findAll({ type: 'Box' }))[0]
   expect(outer?.props.gap).toBe('md')
   expect(outer?.props.rowGap).toBeUndefined()
+  await ui.unmount()
+})
+
+test('nothing is dropped: the prose is the reply without its drawn blocks', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, SPLIT, 'desktop', undefined, calls)
+  const words = (text: string) => text.split(/\s+/).filter(Boolean)
+  const withoutDrawn = SPLIT.replace(FLOW, '').replace('> [!WARNING]\n> Risk.', '')
+
+  expect(words(calls.join('\n'))).toEqual(words(withoutDrawn))
+  await ui.unmount()
+})
+
+test('a footnote reference and its note reach the app in the same drawing', async ($, on) => {
+  const calls: string[] = []
+  const ui = await mount($, on, `See this[^1].\n\n${FLOW}\n\n[^1]: The note.\n\n---\n\n**Next:** read it.`, 'desktop', undefined, calls)
+
+  expect(calls).toEqual(['See this¹.\n\n[1] The note.\n\n---\n\n**Next:** read it.'])
   await ui.unmount()
 })
 
