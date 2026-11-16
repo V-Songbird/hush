@@ -67,6 +67,49 @@ const TURN_DIAL =
 const AUTO =
   "hush: the harness started this turn, not the user. When such a turn brings nothing new, end it with no message or one short line. A failure, a blocker, a finished run or a pending decision still gets the full message.";
 
+// The session's pause switch. A prompt that is exactly "hush off" parks the
+// voice until "hush on": an output style cannot be switched off mid-session,
+// so while the pause holds, every turn carries PAUSED where the turn reminder
+// would go, and no step reminder fires. The trims belong to Core and keep
+// running; HUSH_DISABLE and HUSH_CORE are the switches for those. The flag
+// sits with the session's other scratch, so it survives a compaction and
+// session-end cleanup clears it.
+const PAUSE_OFF = /^\s*\/?(?:hush\s+off|stop\s+hush)\s*[.!]?\s*$/i;
+const PAUSE_ON = /^\s*\/?hush\s+on\s*[.!]?\s*$/i;
+const PAUSED =
+  "hush: the user paused Hush for this session with `hush off`. Until they send `hush on`, write the way you would with no output style: its rules on silence, length and layout do not apply. A blocker, a failed check, an unverified claim and a pending approval still get said.";
+const PAUSE_ACK = " This prompt is the switch itself: confirm in one line that Hush is paused and that `hush on` brings it back.";
+const RESUME_ACK = " The user just sent `hush on`: confirm in one line that Hush is back.";
+
+function pauseFile(sessionId) {
+  return path.join(sessionDir(sessionId), "paused");
+}
+function isPaused(sessionId) {
+  try {
+    return fs.existsSync(pauseFile(sessionId));
+  } catch {
+    return false;
+  }
+}
+// Returns "off", "on" or null for a prompt, and moves the flag to match.
+// Fail-open: when the flag cannot be written the pause does not take.
+function applyPause(sessionId, prompt) {
+  if (typeof prompt !== "string") return null;
+  try {
+    if (PAUSE_OFF.test(prompt)) {
+      fs.mkdirSync(sessionDir(sessionId), { recursive: true });
+      fs.writeFileSync(pauseFile(sessionId), "1");
+      return "off";
+    }
+    if (PAUSE_ON.test(prompt)) {
+      const was = isPaused(sessionId);
+      fs.rmSync(pauseFile(sessionId), { force: true });
+      return was ? "on" : null;
+    }
+  } catch { /* fail open */ }
+  return null;
+}
+
 // True when the transcript entry carrying this prompt is one the harness
 // wrote. UserPromptSubmit fires for those turns too, and its payload does not
 // say who opened the turn; the entry's origin does, read by isRealUserPrompt.
@@ -196,6 +239,20 @@ function main() {
   // is the only field used, and PostToolUse is the common case.
   readInputAsync((input) => {
     const event = input.hook_event_name === "UserPromptSubmit" ? "UserPromptSubmit" : "PostToolUse";
+    if (event === "UserPromptSubmit") {
+      const moved = applyPause(input.session_id, input.prompt);
+      if (isPaused(input.session_id)) {
+        emitContext(event, moved === "off" ? PAUSED + PAUSE_ACK : PAUSED);
+        return;
+      }
+      if (moved === "on") {
+        if (!MAX_MODE) resetReact(input.session_id);
+        emitContext(event, nudgeFor(event) + RESUME_ACK);
+        return;
+      }
+    } else if (isPaused(input.session_id)) {
+      return;
+    }
     if (event === "UserPromptSubmit" && !MAX_MODE) resetReact(input.session_id);
     if (event === "PostToolUse" && !MAX_MODE) {
       if (!reactShouldFire(input.session_id, input.transcript_path)) return;
@@ -212,4 +269,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, AUTO, countMidTurnText, isAutomatedTurn };
+module.exports = { nudgeFor, TURN, STEP, TOOL, TURN_DIAL, AUTO, PAUSED, countMidTurnText, isAutomatedTurn, isPaused };

@@ -13,10 +13,27 @@ This page lists everything you can set in Hush. Most people never change a setti
 
 ## Contents
 
+- [Pause the voice in one session](#pause-the-voice-in-one-session)
 - [Session controls](#session-controls)
 - [`HUSH_WRAP=1`](#hush_wrap1)
 - [The output style line](#the-output-style-line)
 - [Message settings](#message-settings)
+
+## Pause the voice in one session
+
+You can pause the voice without leaving the session.
+
+| You send | What happens |
+| --- | --- |
+| `hush off` | The assistant writes as it would with no output style, from that turn on. It confirms the pause in one line. |
+| `hush on` | The voice comes back. The assistant confirms it in one line. |
+
+The message must hold only those words. `stop hush` and `/hush off` work too. A longer sentence that contains them is an ordinary request.
+
+- The pause covers the session you send it in. A new session starts with the voice on.
+- The trims keep running. `HUSH_DISABLE=1` and `HUSH_CORE=off` stop those.
+- A blocker, a failed check, an unverified claim and a pending approval are still said.
+- The pause is a reminder sent on each turn. With `HUSH_QUIET=off` or `HUSH_NUDGE=off` no reminder is sent, so `hush off` does nothing.
 
 ## Session controls
 

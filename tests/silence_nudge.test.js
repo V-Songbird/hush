@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { runHook, hookOutput } = require('./helpers.js');
-const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, AUTO, countMidTurnText, isAutomatedTurn } = require('../hooks/silence-nudge.js');
+const { nudgeFor, STEP, TOOL, TURN, TURN_DIAL, AUTO, PAUSED, countMidTurnText, isAutomatedTurn, isPaused } = require('../hooks/silence-nudge.js');
 const { sessionDir } = require('../hooks/lib/sidecar-store.js');
 
 // The default's corrective counts mid-turn text blocks per session; a shared
@@ -346,6 +346,81 @@ test('the automated wording repeats the stock voice\'s rule for those turns', ()
   assert.strictEqual(STOCK_STYLE.split(rule).length - 1, 1, 'rule stated more than once');
   assert.ok(AUTO.includes(rule), AUTO);
 });
+
+// --- the pause switch ---------------------------------------------------------
+
+const say = (session, text, env) =>
+  hookOutput(runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: session, prompt: text }, env));
+const context = (out) => out.hookSpecificOutput.additionalContext;
+
+test('"hush off" pauses the voice and asks for a one-line confirmation', () => {
+  const s = freshSession();
+  const text = context(say(s, 'hush off'));
+  assert.ok(text.startsWith(PAUSED), text);
+  assert.match(text, /confirm in one line that Hush is paused/);
+  assert.ok(isPaused(s));
+});
+
+test('a paused session gets the pause text on every later turn, without the confirmation', () => {
+  const s = freshSession();
+  say(s, 'hush off');
+  assert.strictEqual(context(say(s, 'now explain the cache layer in depth')), PAUSED);
+});
+
+test('a paused session draws no step reminder, under the default or max', () => {
+  const s = freshSession();
+  say(s, 'hush off');
+  const tp = writeTranscript([prompt('go'), leak('Let me look.'), toolUse(), toolResult()]);
+  for (const env of [{}, { HUSH_NUDGE: 'max' }]) {
+    const r = runHook('silence-nudge.js', { hook_event_name: 'PostToolUse', session_id: s, transcript_path: tp }, env);
+    assert.strictEqual((r.stdout || '').trim(), '', JSON.stringify(env));
+  }
+});
+
+test('"hush on" ends the pause and brings the turn reminder back', () => {
+  const s = freshSession();
+  say(s, 'hush off');
+  const text = context(say(s, 'hush on'));
+  assert.ok(text.startsWith(TURN_DIAL), text);
+  assert.match(text, /confirm in one line that Hush is back/);
+  assert.ok(!isPaused(s));
+  assert.strictEqual(context(say(s, 'next task')), TURN_DIAL);
+});
+
+test('"hush on" with no pause is an ordinary prompt', () => {
+  assert.strictEqual(context(say(freshSession(), 'hush on')), TURN_DIAL);
+});
+
+test('the switch reads the whole prompt, in any case, with a slash or "stop hush"', () => {
+  for (const text of ['Hush Off', ' /hush off. ', 'stop hush', 'HUSH OFF!']) {
+    const s = freshSession();
+    say(s, text);
+    assert.ok(isPaused(s), text);
+  }
+  for (const text of ['turn hush off for the build step', 'hush off and then fix the test', 'what does hush off do?']) {
+    const s = freshSession();
+    assert.strictEqual(context(say(s, text)), TURN_DIAL, text);
+    assert.ok(!isPaused(s), text);
+  }
+});
+
+test('one session\'s pause leaves another session alone', () => {
+  say(freshSession(), 'hush off');
+  assert.strictEqual(context(say(freshSession(), 'go')), TURN_DIAL);
+});
+
+test('the pause keeps the items no setting removes', () => {
+  assert.match(PAUSED, /A blocker, a failed check, an unverified claim and a pending approval still get said/);
+});
+
+for (const off of [{ HUSH_NUDGE: 'off' }, { HUSH_QUIET: 'off' }, { HUSH_DISABLE: '1' }]) {
+  test(`${JSON.stringify(off)} leaves the pause switch off too`, () => {
+    const s = freshSession();
+    const r = runHook('silence-nudge.js', { hook_event_name: 'UserPromptSubmit', session_id: s, prompt: 'hush off' }, off);
+    assert.strictEqual((r.stdout || '').trim(), '');
+    assert.ok(!isPaused(s));
+  });
+}
 
 // --- cross-cutting ----------------------------------------------------------
 

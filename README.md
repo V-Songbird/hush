@@ -33,7 +33,7 @@ Hush quiets that narration and shortens noisy command output. Then it shapes the
 
 **You ask:** "The login test fails. Fix it."
 
-**You get:** one message at the end, shaped like this. It is an illustration, not a recorded session.
+**You get:** one message at the end, shaped like this. It is the voice's own example, shortened. A recorded session is under [The numbers](#the-numbers).
 
 ```text
 **The login test passes again. The token check compared text with a number.**
@@ -77,6 +77,8 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 | Read the result first | Short, plain answers that open with the result |
 | See output that was shortened | A reference to the saved full copy, where one exists |
 | Change the message's layout | `/hush:config`, described under [Settings](#settings) |
+| Get a long explanation | Ask for one. A request to explain lifts the length limit for that answer |
+| Pause the voice for one session | Send `hush off`. Send `hush on` to bring it back |
 | Turn off part of Hush | One environment variable per part, listed under [Settings](#settings) |
 | Show how much Hush kept out | A count you can read from your own status line script; see [the saved count](docs/knowledge/how-it-works.md#the-saved-count) |
 

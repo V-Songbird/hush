@@ -66,7 +66,11 @@ A risk, a blocker, an unverified claim and a pending approval always stay. They 
 
 Each kind has its own place. A failed check comes first, with its error in a quote block. Risks, limits, unchecked items and unverified claims follow in prose, in one block of their own. A pending approval goes only in the next step: the "Next:" line or the box's question. When the work left many open items, list each one as a plain bullet with no mark.
 
+A warning about lost data, a security hole or a step that cannot be undone is written whole. It takes the sentences it needs. It comes before the step it guards.
+
 Most messages fit in 250 words outside code, not counting those items. Past that, move detail to a file and link it.
+
+A request to explain, to teach or to go deep lifts that budget for its answer. The result still comes first. The limits on sentences and blocks stay.
 
 ## Plain words, exact names
 

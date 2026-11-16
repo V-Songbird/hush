@@ -57,6 +57,11 @@ Passed checks give each command's counts as the runner printed them. Every faile
 
 Most messages fit in about 250 words outside code. A sentence has at most 12 words, and a block at most 40. A block is the text between two blank lines.
 
+Two cases get more room:
+
+- You ask the assistant to explain, to teach or to go deep. That answer may pass 250 words. The result still comes first.
+- A warning about lost data, a security hole or a step that cannot be undone. It is written whole, before the step it guards.
+
 The voice applies whenever the plugin is enabled. It holds Claude Code's one output style slot. To use another output style, disable or uninstall Hush.
 
 ## What happens to a command's output
@@ -172,6 +177,8 @@ A rule read once fades as a session grows. So Hush repeats it when it has to:
 - One for a turn the harness starts, such as a task notification. When nothing is new, that turn ends with no message or one short line.
 
 A quiet session pays nothing extra.
+
+Send `hush off` to pause the voice for the session. Each turn then carries a pause reminder in place of the usual one. Send `hush on` to end it. [Pause the voice in one session](settings.md#pause-the-voice-in-one-session) has the details.
 
 ## Compaction and subagents
 
