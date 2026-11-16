@@ -58,6 +58,8 @@ const PRESETS = {
 const MODULES = path.join(__dirname, "..", "modules");
 const HEADER =
   "hush settings, chosen by the user with /hush:config. Each one replaces only the rule it names. The rest of the Hush style stays. No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.";
+// What set and reset print when every knob is at its default.
+const ALL_DEFAULT = "Every hush setting is at its default. The style file alone applies.";
 
 function configPath() {
   return process.env.HUSH_CONFIG_FILE || path.join(os.homedir(), ".claude", "hush", "config.json");
@@ -205,7 +207,7 @@ function cli(args) {
     }
     save(settings);
     const text = compose(settings);
-    process.stdout.write((text || "Every hush setting is at its default. The style file alone applies.") + "\n");
+    process.stdout.write((text || ALL_DEFAULT) + "\n");
     return 0;
   }
   process.stderr.write("usage: style-settings.js [show | tally | presets | set [preset=name] knob=value ... | reset]\n");
@@ -222,6 +224,7 @@ module.exports = {
   DEFAULTS,
   PRESETS,
   HEADER,
+  ALL_DEFAULT,
   TALLY_RULES,
   TALLY_KNOBS,
   TALLY_FIELDS,

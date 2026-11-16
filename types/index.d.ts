@@ -28,9 +28,10 @@ declare module 'claude-code' {
       /** The heads of the folds the person opened. */
       open: Shaped<string[]>
       /**
-       * The settings key (`lint.ts` settingsKey) the model was sent at the last SessionStart (a
-       * start, /clear, resume, fork or compaction), which the silent check counts under; `''` when
-       * the mod could not tell that the model got the saved settings.
+       * The session id and settings key (`lint.ts` settingsKey) the model was sent at the last
+       * SessionStart (a start, /clear, resume, fork or compaction), as `<id>\n<key>`, which the
+       * silent check counts under; `''` when the mod could not tell that the model got the saved
+       * settings, or since anything cast doubt on them.
        */
       inForce: string
     }

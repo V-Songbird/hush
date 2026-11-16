@@ -3,7 +3,7 @@ import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
 import { isDefault, settingsOf } from './lint'
-import { SETTINGS_HEADER } from './register'
+import { SETTINGS_DEFAULT, SETTINGS_HEADER } from './register'
 
 // The silent check through the mod: a final message adds to `tally.json` beside the settings
 // file. Each beneath hook stands for the engine: its files, its environment, its session, and
@@ -35,6 +35,14 @@ type Opts = {
    * `prefixed`, the settings with words before the header.
    */
   hook?: 'sends' | 'silent' | 'foreign' | 'prefixed'
+  /** The session's id, which a /clear, a resume or a fork changes. */
+  id?: string
+  /** How many prompts the session has had (`$.session.turns()`). */
+  turns?: number
+  /** Refuses every write of the mod's state, as another plugin's state.set hook may. */
+  denyState?: boolean
+  /** Runs while the SessionStart command hook beneath answers, as another session saving would. */
+  during?: () => void
 }
 
 const kit = ($: Engine, on: On, opts: Opts = {}) => {
@@ -66,7 +74,9 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
   on('session.surfaces', () => ({ value: (opts.surfaces ?? ['desktop']) as never }))
   on('session.root', () => ({ value: opts.root ?? '/work' }))
   on('fs.exists', (_, e) => ({ value: files.has(norm(e.path)) || unreadable.has(norm(e.path)) }))
-  on('session.id', () => ({ value: 's1' }))
+  on('session.id', () => ({ value: opts.id ?? 's1' }))
+  on('session.turns', () => ({ value: opts.turns ?? 0 }))
+  on('state.set', (_, e, next) => (opts.denyState ? ({ deny: 'refused' } as never) : next(e)))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('store.get', () => ({ value: undefined }))
   on('store.set', (_, e) => {
@@ -97,6 +107,8 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
     const settings = isDefault(settingsOf(saved)) ? [] : [`${SETTINGS_HEADER}\n\nNext step on top.`]
     const contexts = { sends: settings, silent: [], foreign: ['Another plugin’s context.'], prefixed: settings.map(text => `Session context: ${text}`) }[opts.hook ?? 'sends']
 
+    opts.during?.()
+
     return (contexts.length === 0 ? {} : { additionalContext: contexts }) as never
   })
 
@@ -109,6 +121,9 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
     start: () => $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never),
     sessionStart: (source = 'startup') => $.classic.SessionStart({ source } as never),
     finish: (answer = ANSWER, extra: object = {}) => $.turn.complete({ answer, durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer', ...extra } as never),
+    /** A tool's result as the model reads it, such as what `/hush:config set` prints. */
+    toolResult: (content: unknown, extra: object = {}) =>
+      $.session.append({ message: { type: 'user', role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tu1', content }] }, door: 'tool-result', uuid: 'r1', ...extra } as never),
   }
 }
 
@@ -411,6 +426,167 @@ test('a later start of the mod in the same session, as after a reload, keeps the
 
   k.files.set(norm(CONFIG), JSON.stringify({ next: 'top' }))
   await k.start()
+  await k.finish()
+
+  expect(k.writes).toEqual([])
+})
+
+// Review 4's sequences: at any doubt about the settings the model follows, the session counts
+// nothing until its next SessionStart. ANSWER is the default shape; under next=top it misses.
+const TOP = JSON.stringify({ next: 'top' })
+const TOP_SHAPE = '**Done.**\n\n**Next:** read it.\n\n---\n\nOne fact.'
+
+for (const source of ['clear', 'compact']) {
+  test(`HUSH_DISABLE=1 at a ${source} leaves no settings in force, even once it is unset (H2)`, async ($, on) => {
+    const opts: Opts = { env: { HOME }, files: { [CONFIG]: TOP } }
+    const k = await started($, on, opts)
+
+    // style-settings.js sends nothing under HUSH_DISABLE=1: the model now follows the defaults.
+    opts.env!.HUSH_DISABLE = '1'
+    opts.hook = 'silent'
+    await k.sessionStart(source)
+    delete opts.env!.HUSH_DISABLE
+    await k.finish()
+    await k.finish(TOP_SHAPE)
+
+    expect(k.writes).toEqual([])
+  })
+}
+
+test('HUSH_DISABLE=1 at a SessionStart leaves no settings in force under the defaults too (R8)', async ($, on) => {
+  const opts: Opts = { env: { HOME } }
+  const k = await started($, on, opts)
+
+  opts.env!.HUSH_DISABLE = '1'
+  await k.sessionStart('clear')
+  delete opts.env!.HUSH_DISABLE
+  await k.finish()
+
+  expect(k.writes).toEqual([])
+})
+
+test('a SessionStart whose settings cannot be read leaves no settings in force', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV, files: { [CONFIG]: TOP } }
+  const k = await started($, on, opts)
+
+  opts.envDeny = 'HUSH_CONFIG_FILE'
+  opts.hook = 'silent'
+  await k.sessionStart('compact')
+  opts.envDeny = undefined
+  await k.finish()
+
+  expect(k.writes).toEqual([])
+})
+
+test('a refused write of the settings in force at a SessionStart counts nothing until one succeeds (SEQ4)', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV, files: { [CONFIG]: TOP } }
+  const k = await started($, on, opts)
+
+  opts.denyState = true
+  opts.hook = 'silent'
+  await k.sessionStart('compact')
+  opts.denyState = false
+  await k.finish()
+  await k.finish(TOP_SHAPE)
+  expect(k.writes).toEqual([])
+
+  opts.hook = 'sends'
+  await k.sessionStart('compact')
+  await k.finish(TOP_SHAPE)
+  expect(read(k)).toMatchObject({ messages: 1, met: 1, settings: 'top-on-rich-off-off' })
+})
+
+test('settings saved while the SessionStart hook runs count nothing: the mod cannot tell which it sent (SEQ3)', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV, files: { [CONFIG]: TOP } }
+  const k = kit($, on, opts)
+
+  opts.during = () => k.files.set(norm(CONFIG), JSON.stringify({ next: 'off' }))
+  await k.start()
+  await k.sessionStart()
+  opts.during = undefined
+  await k.finish('**Done.**\n\n---\n\nOne fact.')
+
+  expect(k.writes).toEqual([])
+})
+
+test('one mismatch between the saved settings and the ones in force stops the count until the next SessionStart (H1)', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV })
+
+  // `/hush:config set next=top` here, which tells the model to follow it now; then another
+  // session runs `reset`, and the file matches the settings of this SessionStart again.
+  k.files.set(norm(CONFIG), TOP)
+  await k.finish(TOP_SHAPE)
+  k.files.delete(norm(CONFIG))
+  await k.finish(TOP_SHAPE)
+  await k.finish()
+  expect(k.writes).toEqual([])
+
+  await k.sessionStart('compact')
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 1, met: 1, settings: KEY })
+})
+
+for (const [name, content] of [
+  ['the settings reminder', `${SETTINGS_HEADER}\n\nNext step on top.`],
+  ['the reminder as text blocks', [{ type: 'text', text: `Saved.\n${SETTINGS_HEADER}\n\nNext step on top.` }]],
+  ['the defaults line', SETTINGS_DEFAULT],
+] as const) {
+  test(`a tool result that hands the model settings, ${name}, stops the count until the next SessionStart (H1)`, async ($, on) => {
+    const k = await started($, on, { env: HOME_ENV })
+
+    // `set` printed new settings, and the file was restored elsewhere before the turn ended.
+    await k.toolResult(content)
+    await k.finish()
+    await k.finish()
+    expect(k.writes).toEqual([])
+
+    await k.sessionStart('compact')
+    await k.finish()
+    expect(read(k)).toMatchObject({ messages: 1 })
+  })
+}
+
+test('a subagent’s tool result that hands it settings stops the count too', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV })
+
+  await k.toolResult(`${SETTINGS_HEADER}\n\nNext step on top.`, { agentId: 'a1' })
+  await k.finish()
+
+  expect(k.writes).toEqual([])
+})
+
+test('a tool result without the settings leaves the count on', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV })
+
+  await k.toolResult('212 passed, 0 failed')
+  await k.finish()
+
+  expect(read(k)).toMatchObject({ messages: 1 })
+})
+
+test('a later start of the mod once the session has had a prompt, as an enable after a disable, counts nothing until the next SessionStart (H3)', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV, files: { [CONFIG]: TOP } }
+  const k = await started($, on, opts)
+
+  // Hush disabled, a compaction no Hush hook saw (the model lost the settings), enabled again.
+  opts.turns = 3
+  await k.start()
+  await k.finish()
+  await k.finish(TOP_SHAPE)
+  expect(k.writes).toEqual([])
+
+  await k.sessionStart('compact')
+  await k.finish(TOP_SHAPE)
+  expect(read(k)).toMatchObject({ messages: 1, met: 1 })
+})
+
+test('settings held for another session id count nothing, as after a /clear no Hush hook saw (H3)', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV, files: { [CONFIG]: TOP } }
+  const k = await started($, on, opts)
+
+  opts.id = 's2'
+  await k.start()
+  await k.finish(TOP_SHAPE)
   await k.finish()
 
   expect(k.writes).toEqual([])

@@ -48,6 +48,10 @@ test('the mod knows the settings the SessionStart hook sends by the exact header
   const m = /export const SETTINGS_HEADER =\s*'([^']*)'/.exec(register);
   assert.ok(m, 'register.tsx keeps SETTINGS_HEADER');
   assert.strictEqual(m[1], settings.HEADER);
+  // What set and reset print for the defaults, which stops the mod's count as the header does.
+  const d = /export const SETTINGS_DEFAULT = '([^']*)'/.exec(register);
+  assert.ok(d, 'register.tsx keeps SETTINGS_DEFAULT');
+  assert.strictEqual(d[1], settings.ALL_DEFAULT);
 });
 
 test('the CLI names the count’s file exactly as the mod does, for the table the mod is tested on', () => {
