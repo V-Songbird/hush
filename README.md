@@ -4,7 +4,7 @@
     <img src="assets/banner-light.png" alt="Hush" width="900" />
   </picture>
   <h1>Hush</h1>
-  <p><strong>You asked for a change. Read what changed.</strong></p>
+  <p><strong>Every answer in the shape you choose.</strong></p>
 </div>
 
 <p align="center"><strong>Available on</strong></p>
@@ -21,11 +21,11 @@
 
 ## What is this?
 
-Hush is a plugin for Claude Code, an AI coding assistant. It runs on Claude Code only. It makes a session quieter to read.
+Hush is a plugin for Claude Code, an AI coding assistant. It runs on Claude Code only. It gives every answer the same shape, and you set that shape.
 
-You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. When it finishes, the result is hard to find.
+You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. When it finishes, the result is somewhere in the scroll.
 
-Hush quiets that narration and shortens noisy command output. Then it shapes the last message around three things: what changed, whether it worked, and what to do next.
+With Hush the steps fold away. One message comes at the end. It holds the same parts in the same order: what happened, why, what did not pass, and what to do next.
 
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
@@ -53,18 +53,20 @@ I did not try a real login in the browser.
 
 ## Why you'd want it
 
-- **The result comes first.** One bold line says what happened.
-- **Less to scroll past.** Routine narration between steps goes quiet.
-- **Long output stays out of the way.** A 300 KB log becomes a short digest, and the full copy stays on your machine.
+- **Yours to shape.** `/hush:config` sets the length, the parts and the layout. Pick a preset, or describe what you want in your own words.
+- **Steps folded, not lost.** The assistant works quietly. A 300 KB log becomes a short digest, and the full copy stays on your machine.
+- **A shape you can count on.** The result comes first, in one bold line. Steps come numbered. Things with the same fields come as a table.
+- **A floor no setting removes.** A blocker, a failed check and an unverified claim always stay.
 
 ## How it works
 
-Hush has two parts. Both run on your machine, and nothing is sent anywhere.
+Hush has three parts. All run on your machine, and nothing is sent anywhere.
 
 | Part | What it does |
 | --- | --- |
-| The voice | An output style, which is Claude Code's name for a writing style. It asks the assistant to stay quiet while it works, then write one message at the end. |
+| The voice | An output style, which is Claude Code's name for a writing style. It asks the assistant to stay quiet while it works, then write one message at the end. It gives each kind of content its form. |
 | The trims | Hooks, which are small programs Claude Code runs at set moments. These run when a command finishes. They shorten long output and keep every warning, error and failure line. |
+| The fold | An optional mod for the Claude desktop app. It folds a finished turn's progress texts into one line. One press shows them again. |
 
 A shortened view says so in square brackets. Very large output is saved to a file, so the assistant can read the rest.
 
@@ -74,9 +76,11 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 
 | You want to | What you get |
 | --- | --- |
-| Read the result first | Short, plain answers that open with the result |
+| Choose how much you read | `/hush:config` and one of four presets, from `minimal` to `explainer` |
+| Set one part at a time | 14 settings: the length, the sentence length, where the next step goes, emoji cues and more |
+| Describe it in your own words | `/hush:config only the result and the next step` |
+| See your choice before you save it | A configurator with a sample message, in the Claude desktop app |
 | See output that was shortened | A reference to the saved full copy, where one exists |
-| Change the message's layout | `/hush:config`, described under [Settings](#settings) |
 | Get a long explanation | Ask for one. A request to explain lifts the length limit for that answer |
 | Pause the voice for one session | Send `hush off`. Send `hush on` to bring it back |
 | Turn off part of Hush | One environment variable per part, listed under [Settings](#settings) |
@@ -88,7 +92,7 @@ Most people never change a setting. These three are the ones people reach for:
 
 | Setting | Values | What it does |
 | --- | --- | --- |
-| `/hush:config` | A command | Shapes the last message: its length, its parts and where the next step goes. |
+| `/hush:config` | A command | Shapes the last message. Its presets are `standard`, `minimal`, `explainer` and `terminal`. |
 | `HUSH_DISABLE` | `1` | Stops the trims and the reminders. The voice stays on until you disable or uninstall the plugin. |
 | `HUSH_WRAP` | `1` | Lets Hush trim the output of failing commands too. It is not safe with scoped allow rules such as `Bash(node*)`. |
 
@@ -129,7 +133,8 @@ In Claude Code, run these. Then start a new session:
 | Limit | What it means for you |
 | --- | --- |
 | A short answer can leave out a detail | Correctness comes before silence. Ask for depth when you need it, and check the result before you act on it. |
-| Quieter is not always cheaper | On Claude Opus 5.5, Hush sessions cost 9% more on average. See [The numbers](#the-numbers). |
+| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 9% more on average. See [The numbers](#the-numbers). |
+| The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
 | Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
 | The desktop mod is new | It is optional and draws only in the Claude desktop app's Code tab. No rendered check of it is published. |
@@ -152,12 +157,25 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 
 <p align="center"><img src="assets/hero.svg" alt="Words of play-by-play before the answer, one spike per session. Without Hush, 36 sessions average 15.4 words. With Hush, 36 sessions average 1.0 word." width="700"></p>
 
-Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin. Its final answers were about 27% shorter.
+Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin.
+
+The same batch shows how the shape held:
+
+| What was checked | With Hush | No plugin |
+| --- | --- | --- |
+| A fresh reader could say what happened, what to open and what to do next | 100% of answers | 94.4% |
+| The answer linked the file with a line number | 29 of 36 | 0 of 36 |
+| Words sitting in blocks over 40 words | 52.3% | 78.3% |
+| Sentences over 20 words | 0.5% | 10.9% |
+
+The shape is not perfect. Half of Hush's words still sat in long blocks.
 
 **On Opus 5.5, Hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%. Only the two jobs that print the most came out cheaper.
 
 <details>
 <summary>Watch the recorded demo: the same job with and without Hush, on Claude Opus 5.5</summary>
+
+Hush's answer is the longer one, 206 words against 179. It opens with the result and names the line that changed.
 
 <p align="center"><img src="assets/demo.svg" alt="The same job side by side. Without Hush, Claude sends 2 progress notes, then a 179-word answer. With Hush it stays quiet, then sends one 206-word answer." width="700"></p>
 

@@ -1,7 +1,7 @@
 {
   "name": "hush",
   "version": "2.6.0",
-  "description": "Quieter sessions for Claude Code: less narration, shorter tool output and concise answers focused on the result.",
+  "description": "Every answer in the shape you choose: one result-first message you configure, steps folded away, and long tool output trimmed without losing an error.",
   "license": "MIT",
   "author": {
     "name": "Victor Villegas",
@@ -11,5 +11,5 @@
   "repository": "https://github.com/V-Songbird/hush",
   "types": "./types/index.d.ts",
   "engines": { "claude-code": ">=2.1.323" },
-  "keywords":["tokens", "token-optimization", "output-style", "compression", "hooks", "terse", "cost"]
+  "keywords":["output-style", "structure", "readability", "customizable", "accessibility", "tool-output", "hooks"]
 }
