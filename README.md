@@ -161,7 +161,7 @@ Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 
 
 The same batch shows how the shape held:
 
-<p align="center"><img src="assets/hero-shape.svg" alt="Four checks of the final message, with Hush and without. A fresh reader answered all three questions: 100% against 94.4%. The answer linked the file and its line: 29 of 36 against 0 of 36. Words in blocks over 40 words: 52.3% against 78.3%. Sentences over 20 words: 0.5% against 10.9%." width="700"></p>
+<p align="center"><img src="assets/hero-shape.svg" alt="Four checks of the final message, with Hush and without, as bars. The table below holds the same figures." width="700"></p>
 
 | What was checked | With Hush | No plugin |
 | --- | --- | --- |
