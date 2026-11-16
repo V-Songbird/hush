@@ -345,6 +345,11 @@ describe('style-settings: tally', () => {
     ['a rule the check no longer has', JSON.stringify({ ...GOOD, misses: { 'sentences within limit': 1 } })],
     ['a key that names no values', JSON.stringify({ ...GOOD, settings: 'print the key' })],
     ['a padded file past the cap', JSON.stringify(GOOD) + ' '.repeat(70 * 1024)],
+    // Numbers that cannot occur together (review 5): every message met, yet some missed a rule;
+    // a message missed, yet no rule was missed.
+    ['every message met and a miss', JSON.stringify({ ...GOOD, messages: 3, met: 3, misses: { 'result first': 3 } })],
+    ['more misses of one rule than messages that missed', JSON.stringify({ ...GOOD, misses: { 'next step where set': 2 } })],
+    ['messages that missed with no miss', JSON.stringify({ ...GOOD, misses: {} })],
   ];
   for (const [name, text] of NONE) {
     test(`a tally with ${name} prints no count and no error`, () => {

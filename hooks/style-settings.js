@@ -138,7 +138,9 @@ function readTally() {
     !DAY.test(t.last) ||
     t.since > t.last ||
     !isObject(t.misses) ||
-    Object.entries(t.misses).some(([rule, n]) => !TALLY_RULES.includes(rule) || !isCount(n) || n > t.messages)
+    // A message that met every rule missed none, and one that did not missed at least one.
+    Object.entries(t.misses).some(([rule, n]) => !TALLY_RULES.includes(rule) || !isCount(n) || n > t.messages - t.met) ||
+    Object.values(t.misses).reduce((sum, n) => sum + n, 0) < t.messages - t.met
   )
     return none;
   return { messages: t.messages, met: t.met, misses: { ...t.misses }, since: t.since, last: t.last };
