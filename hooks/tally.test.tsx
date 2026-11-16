@@ -15,6 +15,9 @@ const TALLY = `${HOME}/.claude/hush/tally.json`
 const CONFIG = `${HOME}/.claude/hush/config.json`
 const KEY = 'end-on-rich-off-off'
 
+// The conversation a compaction leaves, in `$.session.messages()`'s shape.
+const SUMMARY = [{ role: 'user', text: 'Summary.', toolUses: [] }]
+
 // The engine may add a drive letter or turn a slash; a path is compared as `/dir/file`.
 const norm = (path: string) => path.replace(/^[A-Za-z]:/, '').replace(/\\/g, '/')
 
@@ -43,6 +46,10 @@ type Opts = {
   denyState?: boolean
   /** Runs while the SessionStart command hook beneath answers, as another session saving would. */
   during?: () => void
+  /** Rejects `$.session.turns()`, as another plugin's hook may. */
+  denyTurns?: boolean
+  /** A compaction the hooks beneath skip, as a classic PreCompact hook may. */
+  skipCompact?: boolean
 }
 
 const kit = ($: Engine, on: On, opts: Opts = {}) => {
@@ -75,7 +82,7 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
   on('session.root', () => ({ value: opts.root ?? '/work' }))
   on('fs.exists', (_, e) => ({ value: files.has(norm(e.path)) || unreadable.has(norm(e.path)) }))
   on('session.id', () => ({ value: opts.id ?? 's1' }))
-  on('session.turns', () => ({ value: opts.turns ?? 0 }))
+  on('session.turns', () => (opts.denyTurns ? ({ deny: 'refused' } as never) : { value: opts.turns ?? 0 }))
   on('state.set', (_, e, next) => (opts.denyState ? ({ deny: 'refused' } as never) : next(e)))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('store.get', () => ({ value: undefined }))
@@ -93,6 +100,7 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
   })
   on('turn.start', (_, e) => ({ turnId: e.turnId }) as never)
   on('turn.complete', () => ({ text: '' }))
+  on('session.compact', () => (opts.skipCompact ? { skip: 'off' } : { messages: SUMMARY }) as never)
   on('classic.SessionStart', () => {
     const env = opts.env ?? {}
     const config = env.HUSH_CONFIG_FILE || (env.USERPROFILE && opts.root?.includes('\\') ? `${env.USERPROFILE}\\.claude\\hush\\config.json` : `${env.HOME}/.claude/hush/config.json`)
@@ -124,6 +132,8 @@ const kit = ($: Engine, on: On, opts: Opts = {}) => {
     /** A tool's result as the model reads it, such as what `/hush:config set` prints. */
     toolResult: (content: unknown, extra: object = {}) =>
       $.session.append({ message: { type: 'user', role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tu1', content }] }, door: 'tool-result', uuid: 'r1', ...extra } as never),
+    /** A row by another door, its blocks as given. */
+    row: (door: string, content: unknown[], extra: object = {}) => $.session.append({ message: { type: 'user', role: 'user', content }, door, uuid: 'r2', ...extra } as never),
   }
 }
 
@@ -553,6 +563,107 @@ test('a subagent’s tool result that hands it settings stops the count too', as
   await k.finish()
 
   expect(k.writes).toEqual([])
+})
+
+// Review 5's M1: the settings can reach the model by any door, wrapped, and in nested blocks.
+const SET_TEXT = `${SETTINGS_HEADER}\n\nNext step on top.`
+const text = (t: string) => ({ type: 'text', text: t })
+
+for (const [name, door, content] of [
+  ['bash mode’s output', 'command', [text(`<bash-stdout>${SET_TEXT}</bash-stdout>`)]],
+  ['a prompt that pastes it', 'prompt', [text(SET_TEXT)]],
+  ['a queued prompt', 'queue', [text(SETTINGS_DEFAULT)]],
+  ['an attachment', 'attachment', [text(SET_TEXT)]],
+  ['another hook’s context', 'hook-context', [text(SET_TEXT)]],
+  ['a delivery', 'delivery', [text(SET_TEXT)]],
+  ['a tool’s message', 'tool-message', [text(SET_TEXT)]],
+  ['the model’s own response', 'response', [text(SET_TEXT)]],
+  ['a notice', 'notice', [text(SET_TEXT)]],
+  ['a header wrapped by a terminal, inside a word', 'command', [text(SETTINGS_HEADER.replace('/hush:config', '/hush:con\nfig').replace(' Each one', '\n  Each one'))]],
+  ['the defaults line wrapped', 'command', [text(SETTINGS_DEFAULT.replace(' at its', '\nat its'))]],
+  ['a tool result whose content is one block', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: text(SET_TEXT) }]],
+  ['a tool result with arrays in arrays', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: [[text('ok')], [[text(SETTINGS_DEFAULT)]]] }]],
+  ['a tool result with an image beside the text', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AA' } }, text(SETTINGS_DEFAULT)] }]],
+] as const) {
+  test(`settings that reach the model through ${name} stop the count until the next SessionStart (review 5 M1)`, async ($, on) => {
+    const k = await started($, on, { env: HOME_ENV })
+
+    await k.row(door, content as unknown as unknown[], door === 'hook-context' || door === 'attachment' ? { origin: { kind: 'hook', event: 'PostToolUse' } } : {})
+    await k.finish()
+    expect(k.writes).toEqual([])
+
+    await k.sessionStart('clear')
+    await k.finish()
+    expect(read(k)).toMatchObject({ messages: 1 })
+  })
+}
+
+for (const door of ['hook-context', 'attachment']) {
+  test(`Hush’s own SessionStart context by the ${door} door leaves the count on`, async ($, on) => {
+    const k = await started($, on, { env: HOME_ENV, files: { [CONFIG]: TOP } })
+
+    await k.row(door, [text(SET_TEXT)], { origin: { kind: 'hook', event: 'SessionStart' } })
+    await k.finish(TOP_SHAPE)
+
+    expect(read(k)).toMatchObject({ messages: 1, met: 1 })
+  })
+}
+
+test('a compaction stops the count until the SessionStart that follows it, and then counts again', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV })
+
+  // A subagent's own compaction leaves the main conversation's settings as they were.
+  await $.session.compact({ trigger: 'auto', agentId: 'a1', messages: SUMMARY } as never)
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 1 })
+
+  await $.session.compact({ trigger: 'manual', messages: SUMMARY } as never)
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 1 })
+
+  await k.row('compaction', [text(`Summary: ${SET_TEXT}`)])
+  await k.sessionStart('compact')
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 2, met: 2 })
+})
+
+test('a compaction another hook skips still stops the count, and the compaction answer goes on unchanged', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV, skipCompact: true })
+
+  expect(await $.session.compact({ trigger: 'manual', messages: SUMMARY } as never)).toMatchObject({ skip: 'off' })
+  await k.finish()
+
+  expect(k.writes).toEqual([])
+})
+
+// The engine hands the mod a copy of each row, so only a row nested past what the scan reads can
+// fail it; that failure is a doubt.
+test('a row nested too deep to read whole stops the count, and the row is kept (review 5 R11)', async ($, on) => {
+  const k = await started($, on, { env: HOME_ENV })
+  let deep: unknown = text('ok')
+
+  for (let i = 0; i < 40; i++) deep = [deep]
+
+  const row = await k.row('tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: deep }])
+  await k.finish()
+
+  expect(row).toMatchObject({ uuid: 'r2' })
+  expect(k.writes).toEqual([])
+})
+
+test('a later start of the mod whose prompt count the engine rejects counts nothing (review 5 R5)', async ($, on) => {
+  const opts: Opts = { env: HOME_ENV }
+  const k = await started($, on, opts)
+
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 1 })
+
+  opts.denyTurns = true
+  await k.start()
+  opts.denyTurns = false
+  await k.finish()
+
+  expect(read(k)).toMatchObject({ messages: 1 })
 })
 
 test('a tool result without the settings leaves the count on', async ($, on) => {

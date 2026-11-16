@@ -127,8 +127,31 @@ async function hold($: EngineInterface, value: string) {
   }
 }
 
-/** Whether a tool result hands the model settings: what `style-settings.js` set and reset print. */
-const isSettingsText = (text: string) => text.includes(SETTINGS_HEADER) || text.includes(SETTINGS_DEFAULT)
+// The settings texts with no whitespace: a terminal that wraps a line, even inside a word, still
+// shows them.
+const SETTINGS_TEXTS = [SETTINGS_HEADER, SETTINGS_DEFAULT].map(text => text.replace(/\s+/g, ''))
+
+/**
+ * Every text a row's blocks hold, nested `content` included: a string, one block, arrays in arrays.
+ * A row nested deeper than any the engine makes cannot be read whole, so it throws: a doubt.
+ */
+function textsOf(v: unknown, depth = 0): string[] {
+  if (typeof v === 'string') return [v]
+  if (depth > 16) throw new RangeError('a row nested too deep to read')
+  if (typeof v !== 'object' || v === null) return []
+  if (Array.isArray(v)) return v.flatMap(item => textsOf(item, depth + 1))
+
+  const { text, content } = v as { text?: unknown; content?: unknown }
+
+  return [...(typeof text === 'string' ? [text] : []), ...textsOf(content, depth + 1)]
+}
+
+/** Whether a row hands the model settings: what `style-settings.js` set and reset print, wrapped or not. */
+const isSettingsText = (texts: readonly string[]) => {
+  const text = texts.join('').replace(/\s+/g, '')
+
+  return SETTINGS_TEXTS.some(settings => text.includes(settings))
+}
 
 /**
  * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
@@ -329,6 +352,15 @@ export const register: Register = on => {
     return done
   })
 
+  // A compaction of the main conversation replaces what the model read, its settings included,
+  // until the SessionStart hook that follows it sends them again. It fires before the compaction,
+  // so before that SessionStart: nothing counts in between, nor after a compaction that is skipped.
+  on('session.compact', async ($, e, next) => {
+    if (e.agentId === undefined) await hold($, '')
+
+    return next(e)
+  })
+
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined && !(await isDisabled($))) {
       isReplying = true
@@ -344,17 +376,16 @@ export const register: Register = on => {
     const row = await next(e)
     const blocks = Array.isArray(e.message.content) ? e.message.content : []
 
-    // A tool result that hands the model settings, a subagent's included, stops the count. Only
-    // tool results: the SessionStart context arrives by another door.
-    if (e.door === 'tool-result') {
+    // A row that hands the model settings, by any door and a subagent's included, stops the count:
+    // a tool's result, bash mode's output, a pasted prompt, another hook's context. Two kinds are
+    // not read. A SessionStart hook's context, whichever door brings it, holds the settings
+    // `classic.SessionStart` already weighed. A compaction's summary is followed by a SessionStart,
+    // and `session.compact` stopped the count before it.
+    const origin = e.origin as { kind?: string; event?: string } | undefined
+
+    if (e.door !== 'compaction' && !(origin?.kind === 'hook' && origin.event === 'SessionStart')) {
       try {
-        const texts = blocks.flatMap(block => {
-          const content = block.type === 'tool_result' ? (block as { content?: unknown }).content : undefined
-
-          return typeof content === 'string' ? [content] : Array.isArray(content) ? content.map(part => (typeof part?.text === 'string' ? part.text : '')) : []
-        })
-
-        if (texts.some(isSettingsText)) await hold($, '')
+        if (isSettingsText(textsOf([e.message.content, (row as { message?: { content?: unknown } } | undefined)?.message?.content]))) await hold($, '')
       } catch {
         await hold($, '')
       }
