@@ -57,32 +57,78 @@ export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-'
 // nothing inside code counts, and a quote block's `>` keeps its lines from reading as a rule or a
 // Next line. A `$$` block still open at the end may not be math on every renderer, so its lines
 // are read as prose: what follows it is never hidden.
-type Part = { kind: 'code' } | { kind: 'line'; text: string }
+//
+// A fence opens after the marks of the blocks it sits in, as CommonMark nests it: quote marks, list
+// markers with a task box, a footnote label. A line that leaves those blocks, with fewer quote
+// marks or, in a list item, less indent than the item's text, ends the fence. A backtick or tilde
+// fence still open at the end leaves the count unable to tell what it hid (`open`).
+type Part = { kind: 'code' } | { kind: 'line'; text: string } | { kind: 'open' }
 
 const FENCE = /^(`{3,}|~{3,})/
-const clean = (raw: string) => raw.replace(/\p{Bidi_Control}/gu, '').trim()
+const QUOTE = /^ {0,3}> ?/
+const ITEM = /^[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)+/
+const BOX = /^(?:\[[ xX]\][ \t]+|\[\^[^\]\s]+\]:[ \t]*)/
+const BIDI = /\p{Bidi_Control}/gu
+const clean = (raw: string) => raw.replace(BIDI, '').trim()
+
+/**
+ * A line's quote marks, its indent inside them, the column its list item's text starts at, the line
+ * inside the quote marks, and what follows every mark.
+ */
+function nestOf(raw: string): { quotes: number; indent: number; column: number; quoted: string; rest: string } {
+  let quoted = raw.replace(BIDI, '')
+  let quotes = 0
+
+  for (let m = QUOTE.exec(quoted); m !== null; m = QUOTE.exec(quoted)) {
+    quoted = quoted.slice(m[0].length)
+    quotes++
+  }
+
+  const column = ITEM.exec(quoted)?.[0].length ?? 0
+
+  return { quotes, indent: quoted.length - quoted.trimStart().length, column, quoted, rest: quoted.slice(column).replace(BOX, '') }
+}
 
 function partsOf(lines: readonly string[]): Part[] {
   const parts: Part[] = []
   let fence = ''
+  // The blocks the open fence sits in: what a line needs to stay inside them.
+  let nest = { quotes: 0, column: 0 }
   // Where the open `$$` block starts: its line, and its place among the parts.
   let math = { line: 0, part: 0 }
 
   for (const [i, raw] of lines.entries()) {
     const line = clean(raw)
 
-    if (fence !== '') {
-      if (fence === '$$' ? line.endsWith('$$') : line.length >= fence.length && line === fence.charAt(0).repeat(line.length)) fence = ''
+    if (fence === '$$') {
+      if (line.endsWith('$$')) fence = ''
 
       continue
     }
 
-    const marks = FENCE.exec(line)?.[1] ?? ''
+    if (fence !== '') {
+      const at = nestOf(raw)
+      const inner = clean(at.quoted)
+      const isLeft = line === '' ? nest.quotes > 0 : at.quotes < nest.quotes || at.indent < nest.column
+
+      if (!isLeft) {
+        if (inner.length >= fence.length && inner === fence.charAt(0).repeat(inner.length)) fence = ''
+
+        continue
+      }
+
+      fence = ''
+    }
+
+    const at = nestOf(raw)
+    const opener = clean(at.rest)
+    const marks = FENCE.exec(opener)?.[1] ?? ''
 
     // A backtick fence's info string holds no backtick: "```x```" is inline code.
-    if (marks !== '' && !(marks.startsWith('`') && line.slice(marks.length).includes('`'))) {
+    if (marks !== '' && !(marks.startsWith('`') && opener.slice(marks.length).includes('`'))) {
       parts.push({ kind: 'code' })
       fence = marks
+      nest = { quotes: at.quotes, column: at.column }
     } else if (line.startsWith('$$')) {
       if (line.length < 4 || !line.endsWith('$$')) {
         fence = '$$'
@@ -95,7 +141,9 @@ function partsOf(lines: readonly string[]): Part[] {
     }
   }
 
-  return fence === '$$' ? [...parts.slice(0, math.part), { kind: 'line', text: clean(lines[math.line]) }, ...partsOf(lines.slice(math.line + 1))] : parts
+  if (fence === '$$') return [...parts.slice(0, math.part), { kind: 'line', text: clean(lines[math.line]) }, ...partsOf(lines.slice(math.line + 1))]
+
+  return fence === '' ? parts : [...parts, { kind: 'open' }]
 }
 
 const RULE_LINE = /^(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/
@@ -106,8 +154,8 @@ const EMOJI = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictogra
 const COLONS = '[:\\uFF1A\\u1365\\u1366\\u1804\\uA6F4\\uFE55\\uFE13]'
 const COLON = `[ \\u00A0\\u202F]?${COLONS}`
 // A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like), the Greek question
-// mark and the ellipsis, which may follow the bold result.
-const STOP = '[\\p{STerm}\\u037E…]'
+// mark and the semicolon it normalises to, and the ellipsis, which may follow the bold result.
+const STOP = '[\\p{STerm};\\u037E…]'
 // A bold line; its stop, a colon and a footnote mark may follow the bold, in any order.
 const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|${COLON}|\\[\\^[^\\]\\s]+\\])*$`
 // The bold result line; under emoji=on an emoji may open it ("before any bold").
@@ -171,17 +219,27 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
 
   if (s.next === 'top') return { rules: ruled || !hasRule, next: isNext(1) || isNext(r + 1) }
 
+  // next=top's shape: a Next line under the result, a rule after it, and no Next line below that
+  // rule. Above every rule the step is out of its place, whether it is the step or a landmark with
+  // the step missing; the rule sits where that shape puts it.
+  const below = indices.find(i => i > r + 1 && isRule(i))
+
+  if (ruled && !isUnder && isNext(r + 1) && below !== undefined && !indices.some(i => i > below && isNext(i))) return { rules: true, next: false }
+
   return { rules: ruled ? isUnder : !hasRule, next: indices.some(isNext) }
 }
 
 /** The rules the answer misses. */
 export function lintMessage(text: string, settings: Settings = settingsOf(undefined)): Rule[] {
   // The parts a reader sees, blank lines out, with a closing `&nbsp;` line skipped.
-  const lines = partsOf(text.split(/\r?\n/)).filter(part => part.kind === 'code' || part.text !== '')
+  const lines = partsOf(text.split(/\r?\n/)).filter(part => part.kind !== 'line' || part.text !== '')
+  const isOpen = lines[lines.length - 1]?.kind === 'open'
+
+  if (isOpen) lines.pop()
 
   while ((lines[lines.length - 1] as { text?: string } | undefined)?.text === '&nbsp;') lines.pop()
 
-  const placed = placement(lines, settings)
+  const placed = isOpen ? { rules: true, next: true } : placement(lines, settings)
   const first = lines[0]
   const checks: Record<Rule, boolean> = {
     'result first': first?.kind === 'line' && RESULT[settings.emoji === 'on' ? 1 : 0].test(first.text),
@@ -266,8 +324,15 @@ export function asTally(v: unknown, key: string): Tally | undefined {
   }
 
   const messages = t.messages
+  const missed = messages - t.met
 
-  if (Object.entries(misses).some(([rule, n]) => !(RULES as readonly string[]).includes(rule) || !isCount(n) || n > messages)) return undefined
+  // A message that met every rule missed none, and one that did not missed at least one.
+  if (
+    Object.entries(misses).some(([rule, n]) => !(RULES as readonly string[]).includes(rule) || !isCount(n) || n > missed) ||
+    Object.values(misses as Record<string, number>).reduce((sum, n) => sum + n, 0) < missed
+  ) {
+    return undefined
+  }
 
   return { messages, met: t.met, misses: { ...(misses as Tally['misses']) }, since: t.since, last: t.last, settings: key }
 }

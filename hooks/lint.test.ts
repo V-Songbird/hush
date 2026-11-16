@@ -92,8 +92,8 @@ test('each rule follows the reader’s /hush:config settings', () => {
   const top = ['**Done.**', '', '**Siguiente paso:** run it.', '', '---', '', long, '', '[^1]: A note.', '', '&nbsp;'].join('\n')
 
   expect(lintMessage(top, settingsOf({ next: 'top', sentences: '20' }))).toEqual([])
-  // Under next=end the same Next line has no rule of its own above it: one miss, the rule's.
-  expect(lintMessage(top)).toEqual(['rules where set'])
+  // Under next=end the same message has the step out of its place: one miss, the step's (review 5 M2).
+  expect(lintMessage(top)).toEqual(['next step where set'])
 
   const bare = ['**Done.**', '', long].join('\n')
   expect(lintMessage(bare, settingsOf({ next: 'off', rules: 'off', sentences: '20' }))).toEqual([])
@@ -184,7 +184,7 @@ test('under next=top a message with no rule at all is no miss, and a rule under 
 // Next line with no rule above it is told from a body's bold landmark only by its word, which a
 // count cannot read in every language, so with the rule under the result in place it misses
 // nothing; with that rule gone too, the rule misses.
-test('a Next step with no rule above it misses the rule, and a missing Next line misses the step', () => {
+test('a Next line with no rule above it misses nothing while the rule under the result stands, and a missing Next line misses the step', () => {
   expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.\n\n**Next:** read it.')).toEqual([])
   expect(lintMessage('**Done.**\n\nThe parser read text.\n\n**Next:** read it.')).toEqual(['rules where set'])
   expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.')).toEqual(['next step where set'])
@@ -498,6 +498,85 @@ test('under next=off the shape of a Next step, inline or as a header, misses aft
 
   expect(lintMessage(msg(GOOD, '', '&nbsp;', '', '&nbsp;'), off)).toEqual(['next step where set'])
   expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '---', '', '**Next step**', 'Open it.'), settingsOf({ next: 'off', headers: 'on' }))).toEqual(['next step where set'])
+})
+
+// Review 5's H1: a fence may open after a list marker, a quote mark or a footnote label, as
+// CommonMark nests it. Its closer must close it, never open a fence that hides the rest.
+test('a fence opened after a list marker, a quote mark, a task box or a footnote label closes at its own closer (review 5 H1)', () => {
+  const fenced = (...block: string[]) => framed(...block)
+
+  for (const block of [
+    ['- ```bash', '  npm test', '  ```'],
+    ['1. ```bash', '   npm test', '   ```'],
+    ['3) ```bash', '   npm test', '   ```'],
+    ['* ~~~', '  npm test', '  ~~~'],
+    ['+ ````md', '  ```', '  inner', '  ```', '  ````'],
+    ['- [ ] ```bash', '  npm test', '  ```'],
+    ['- [x] ```bash', '  npm test', '  ```'],
+    ['- step', '  - ```bash', '    npm test', '    ```'],
+    ['- - ```bash', '    npm test', '    ```'],
+    ['> - ```bash', '>   npm test', '>   ```'],
+    ['> ```js', '> const a = 1', '> ```'],
+    ['> > ```js', '> > const a = 1', '> > ```'],
+    ['[^1]: ```js', '    const a = 1', '    ```'],
+    ['- ```bash title="run it"', '  npm test', '  ```'],
+  ]) {
+    expect([block, lintMessage(fenced(...block))]).toEqual([block, []])
+  }
+  // rules=off: the rule inside the YAML is code, and the Next line after it is seen.
+  const off = settingsOf({ rules: 'off' })
+  expect(lintMessage(msg('**Done.**', '', '- ```yaml', '  a: 1', '  ---', '  ```', '', '**Next:** run it.'), off)).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', '1. ```yaml', '   a: 1', '   ```', '', '**Next:** run it.'), off)).toEqual([])
+})
+
+test('a line that leaves the list item or quote a fence opened in ends that fence, as CommonMark ends it', () => {
+  // The item's fence has no closer: the rule at the margin leaves the item, and the next fence
+  // opens and closes on its own.
+  expect(lintMessage(msg('**Done.**', '', '---', '', '- ```bash', '  x', '', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
+  // A quote ends at a blank line or a line with no quote mark.
+  expect(lintMessage(msg('**Done.**', '', '---', '', '> ```js', '> x', '', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', '---', '', '> ```js', '> x', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
+  // Inside the item, a blank line keeps the fence open.
+  expect(lintMessage(msg('**Done.**', '', '---', '', '- ```md', '', '  ---', '  **Note:** code', '  ```', '', '---', '', '**Next:** y'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
+})
+
+test('a fence still open at the end hides what the count cannot tell: no rule or step misses', () => {
+  for (const s of [settingsOf(undefined), settingsOf({ rules: 'off' }), settingsOf({ next: 'top' }), settingsOf({ next: 'off' }), settingsOf({ markdown: 'plain' })]) {
+    // An indented fence line is indented code, not a fence, at the top level; in a list it opens one.
+    expect(lintMessage(msg('**Done.**', '', '---', '', '    ```', '', '---', '', '**Next:** run it.'), s)).toEqual([])
+    expect(lintMessage(msg('**Done.**', '', '---', '', '```js', 'a', '', '---', '', '**Next:** run it.'), s)).toEqual([])
+    expect(lintMessage(msg('**Done.**', '', '---', '', '- a', '', '  ```js', '  b', '', '---', '', '**Next:** run it.'), s)).toEqual([])
+  }
+  // The result is still read: an unclosed fence above it is no bold result.
+  expect(lintMessage(msg('```js', '**Done.**', '', '---', '', '**Next:** run it.'))).toEqual(['result first'])
+})
+
+// Review 5's M2: under next=end a Next line right under the result, a rule after it and no Next
+// line after that rule is the step out of its place, next=top's shape: the step misses, and the
+// rule sits where that shape puts it.
+test('under next=end a Next step on top is the step’s miss, not the rule’s (review 5 M2)', () => {
+  expect(lintMessage('**Done.**\n\n**Next:** a\n\n---\n\nx')).toEqual(['next step where set'])
+  expect(lintMessage('Hi.\n\n**Done.**\n\n**Next:** a\n\n---\n\nx')).toEqual(['result first', 'next step where set'])
+  // With a Next line after the rule too, the step is in place, and the rule under the result is missing.
+  expect(lintMessage('**Done.**\n\n**Note:** a\n\n---\n\nx\n\n**Next:** b')).toEqual(['rules where set'])
+  // With no rule at all, nothing tells the step from a landmark: the rule misses, as before.
+  expect(lintMessage('**Done.**\n\n**Next:** a\n\nx')).toEqual(['rules where set'])
+})
+
+test('a semicolon after the bold result is a stop: U+037E, the Greek question mark, normalises to it', () => {
+  expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])
+  expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])
+})
+
+test('a tally whose numbers cannot occur together is no count', () => {
+  const good = { messages: 3, met: 1, misses: { 'result first': 2, 'next step where set': 1 }, since: '2026-11-01', last: '2026-11-02', settings: KEY }
+
+  expect(asTally(good, KEY)).toEqual(good)
+  // Every message met, yet three missed a rule; two messages missed, yet no rule was missed.
+  expect(asTally({ ...good, met: 3, misses: { 'result first': 3 } }, KEY)).toBeUndefined()
+  expect(asTally({ ...good, met: 2, misses: { 'result first': 2 } }, KEY)).toBeUndefined()
+  expect(asTally({ ...good, misses: {} }, KEY)).toBeUndefined()
+  expect(asTally({ ...good, misses: { 'result first': 1 } }, KEY)).toBeUndefined()
 })
 
 test('the count’s file is named as the CLI names it, and only for an absolute path', () => {
