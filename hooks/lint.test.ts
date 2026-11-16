@@ -180,9 +180,12 @@ test('under next=top a message with no rule at all is no miss, and a rule under 
   expect(lintMessage('**Done.**\n\n**Next:** read it.\n\n---\n\nThe parser read text.', settingsOf({ next: 'top', rules: 'off' }))).toEqual(['rules where set'])
 })
 
-// Review 3's M2: one miss for each missing piece, under the piece's own name.
+// Review 3's M2: one miss for each missing piece, under the piece's own name. Review 4's M2: a
+// Next line with no rule above it is told from a body's bold landmark only by its word, which a
+// count cannot read in every language, so with the rule under the result in place it misses
+// nothing; with that rule gone too, the rule misses.
 test('a Next step with no rule above it misses the rule, and a missing Next line misses the step', () => {
-  expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.\n\n**Next:** read it.')).toEqual(['rules where set'])
+  expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.\n\n**Next:** read it.')).toEqual([])
   expect(lintMessage('**Done.**\n\nThe parser read text.\n\n**Next:** read it.')).toEqual(['rules where set'])
   expect(lintMessage('**Done.**\n\n---\n\nThe parser read text.')).toEqual(['next step where set'])
   // Under next=top, a missing Next line is the step's miss alone.
@@ -311,8 +314,9 @@ test('anything may follow the Next line: code, a soft break, the archive sentenc
   expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '---', '', '**Next step**', 'The session is finished.', 'Feel free to archive it.'), settingsOf({ headers: 'on' }))).toEqual([])
   // The Spanish closing the voice prescribes, as its own paragraph after the Next line.
   expect(lintMessage(R('**Listo.**', 'Un hecho.', '', '---', '', '**Siguiente paso:** Finalizamos con esta sesión.', '', 'Siéntete libre de archivarla o seguir dando "Siguientes" pasos hasta que se pueda terminar.'))).toEqual([])
-  // A Next line with no rule of its own above it misses the rule, not the step.
-  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.', '', '**Next:** read it.'))).toEqual(['rules where set'])
+  // A Next line with no rule of its own above it cannot be told from a landmark of the body with
+  // the step missing (review 4's M2): no miss.
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.', '', '**Next:** read it.'))).toEqual([])
 })
 
 test('with rules off, the Next step misses only when no line after the result is one', () => {
@@ -421,6 +425,80 @@ const FILES: [string | undefined, string | undefined, boolean, string | undefine
   ['\\\\srv\\share\\x.json', undefined, true, '\\\\srv\\share\\tally.json'],
   ['\\\\srv\\share', undefined, true, undefined],
 ]
+
+// Review 4's H4: direction marks (Unicode's Bidi_Control set) anywhere in a line, and the colons
+// of other scripts.
+test('a direction mark, an embedding or an isolate anywhere in a line changes no structure', () => {
+  const rtl = '‏**نجح الاختبار مرة أخرى.**‏'
+  expect(lintMessage(R(rtl, 'كان التاريخ نصا.', '', '---‏', '', '‏**الخطوة التالية:** اقرأ التغيير.‏'))).toEqual([])
+  expect(lintMessage(R(rtl, '**السبب**‏', 'كان التاريخ نصا.', '', '---', '', '‏**الخطوة التالية**‏', 'اقرأ التغيير.'), settingsOf({ headers: 'on' }))).toEqual([])
+  // Hebrew in isolates, and a mark between the bold and its colon or stop.
+  expect(lintMessage(R('⁧**הבדיקה עוברת שוב.**⁩', 'התאריך נקרא כטקסט.', '', '⁦---⁩', '', '⁧**השלב הבא:**⁩ קרא את השינוי.'))).toEqual([])
+  expect(lintMessage(R('**نجح الاختبار**‏.', 'نص.', '', '---', '', '**الخطوة التالية**‏: اقرأ التغيير.'))).toEqual([])
+  // The embeddings and overrides U+202A-U+202E, and U+061C.
+  expect(lintMessage(R('‫**נכון.**‬', 'טקסט.', '', '؜---', '', '‮**הבא:**‬ קרא.'))).toEqual([])
+})
+
+test('the Next word may end with the colon of another script', () => {
+  // Ethiopic colon and preface colon, Mongolian colon, Bamum colon, small and vertical forms.
+  for (const colon of ['፥', '፦', '᠄', '꛴', '﹕', '︓']) {
+    expect(lintMessage(R('**ሙከራው ያልፋል።**', 'ጊዜው እንደ ጽሑፍ ተነበበ።', '', '---', '', `**ቀጣይ እርምጃ${colon}** ለውጡን አንብብ።`))).toEqual([])
+    expect(lintMessage(R('**ሙከራው ያልፋል።**', 'ጊዜው እንደ ጽሑፍ ተነበበ።', '', '---', '', `**ቀጣይ እርምጃ**${colon} ለውጡን አንብብ።`))).toEqual([])
+  }
+})
+
+// Review 4's M2 and M1: a miss is counted under a rule's name only when the code can tell it.
+test('a bold landmark at the end is no Next line without its rule: which one is missing cannot be told', () => {
+  expect(lintMessage(R('**Done.**', 'One.', '', '**auth.js:** one line changed.'))).toEqual([])
+  expect(lintMessage(R('**Done.**', '**auth.js:** one line changed.', '', 'The check passes.'))).toEqual([])
+})
+
+test('a line above the bold result misses result first only, when the rule follows the result', () => {
+  expect(lintMessage(msg('Here it is.', '', framed('One fact.')))).toEqual(['result first'])
+  expect(lintMessage(msg('Here it is.', '', '**Done.**', '', '**Next:** read it.', '', '---', '', 'One fact.'), settingsOf({ next: 'top' }))).toEqual(['result first'])
+  expect(lintMessage(msg('Here it is.', '', '**Done.**', '', '---', '', 'One fact.'), settingsOf({ next: 'off' }))).toEqual(['result first'])
+  // headers=on, next=top, no bold result: the header right under the first line is still the step.
+  expect(lintMessage(msg('Here it is.', '', '**Next step**', 'Open it.', '', '---', '', '**Cause**', 'Text.'), settingsOf({ next: 'top', headers: 'on' }))).toEqual(['result first'])
+})
+
+test('under headers=on the next step misses only when no header follows the result', () => {
+  const on = settingsOf({ headers: 'on' })
+
+  // No Next step, or a Next step with no rule above: the header word cannot tell which.
+  expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '**Checks**', 'Passed.'), on)).toEqual([])
+  expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '**Next step**', 'Open it.'), on)).toEqual([])
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', 'More text.'), on)).toEqual(['next step where set'])
+  // A header with nothing under it is no block.
+  expect(lintMessage(R('**Done.**', 'Text.', '', '---', '', '**Next step**'), on)).toEqual(['next step where set'])
+  expect(lintMessage('**Done.**\n\n**Next step**', settingsOf({ headers: 'on', next: 'top' }))).toEqual(['next step where set'])
+})
+
+// Review 4's surviving mutations.
+test('three underscores make a rule as three hyphens do', () => {
+  expect(lintMessage(GOOD.replaceAll('---', '___'))).toEqual([])
+  expect(lintMessage(GOOD.replaceAll('---', '_ _ _'))).toEqual([])
+})
+
+test('inline code that opens a line, and one-line $$ math, open no block', () => {
+  expect(lintMessage(framed('```x``` is inline.'))).toEqual([])
+  expect(lintMessage(framed('$$a + b$$'))).toEqual([])
+  // A later $$ line would close what a one-line $$ opened.
+  expect(lintMessage(msg('**Done.**', '', '---', '', '$$a$$', '', '---', '', '**Next:** read it.', '', '$$'))).toEqual([])
+})
+
+test('a $$ that opens no block closed before the end is prose, so nothing after it hides', () => {
+  expect(lintMessage(framed('$$$ is the price tier.'))).toEqual([])
+  expect(lintMessage(framed('$$', 'a + b'))).toEqual([])
+  // A closed $$ block still hides what it holds.
+  expect(lintMessage(msg('**Done.**', '', '$$', '---', '$$', '', 'Text.'), settingsOf({ next: 'off', rules: 'off' }))).toEqual([])
+})
+
+test('under next=off the shape of a Next step, inline or as a header, misses after any &nbsp; lines', () => {
+  const off = settingsOf({ next: 'off' })
+
+  expect(lintMessage(msg(GOOD, '', '&nbsp;', '', '&nbsp;'), off)).toEqual(['next step where set'])
+  expect(lintMessage(R('**Done.**', '**Cause**', 'Text.', '', '---', '', '**Next step**', 'Open it.'), settingsOf({ next: 'off', headers: 'on' }))).toEqual(['next step where set'])
+})
 
 test('the count’s file is named as the CLI names it, and only for an absolute path', () => {
   for (const [named, home, isWindows, want] of FILES) {

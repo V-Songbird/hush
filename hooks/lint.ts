@@ -51,20 +51,25 @@ export const READ = ['next', 'rules', 'markdown', 'emoji', 'headers'] as const
 /** The values of the knobs the rules read, such as `end-on-rich-off-off`: no text of a reply. */
 export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-')
 
-// A message is read as parts: each line outside code, trimmed, a leading direction mark (U+200E,
-// U+200F, U+061C) dropped, and each fenced or `$$` block as one code part. Structure is read from
-// these, so nothing inside code counts, and a quote block's `>` keeps its lines from reading as a
-// rule or a Next line.
+// A message is read as parts: each line outside code, trimmed, with every direction mark dropped
+// (Unicode's Bidi_Control set: U+061C, U+200E, U+200F, U+202A-U+202E, U+2066-U+2069, which draw
+// nothing), and each fenced or `$$` block as one code part. Structure is read from these, so
+// nothing inside code counts, and a quote block's `>` keeps its lines from reading as a rule or a
+// Next line. A `$$` block still open at the end may not be math on every renderer, so its lines
+// are read as prose: what follows it is never hidden.
 type Part = { kind: 'code' } | { kind: 'line'; text: string }
 
 const FENCE = /^(`{3,}|~{3,})/
+const clean = (raw: string) => raw.replace(/\p{Bidi_Control}/gu, '').trim()
 
-function partsOf(text: string): Part[] {
+function partsOf(lines: readonly string[]): Part[] {
   const parts: Part[] = []
   let fence = ''
+  // Where the open `$$` block starts: its line, and its place among the parts.
+  let math = { line: 0, part: 0 }
 
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim().replace(/^[‎‏؜]+/, '').trimStart()
+  for (const [i, raw] of lines.entries()) {
+    const line = clean(raw)
 
     if (fence !== '') {
       if (fence === '$$' ? line.endsWith('$$') : line.length >= fence.length && line === fence.charAt(0).repeat(line.length)) fence = ''
@@ -79,21 +84,27 @@ function partsOf(text: string): Part[] {
       parts.push({ kind: 'code' })
       fence = marks
     } else if (line.startsWith('$$')) {
-      parts.push({ kind: 'code' })
+      if (line.length < 4 || !line.endsWith('$$')) {
+        fence = '$$'
+        math = { line: i, part: parts.length }
+      }
 
-      if (line.length < 4 || !line.endsWith('$$')) fence = '$$'
+      parts.push({ kind: 'code' })
     } else {
       parts.push({ kind: 'line', text: line })
     }
   }
 
-  return parts
+  return fence === '$$' ? [...parts.slice(0, math.part), { kind: 'line', text: clean(lines[math.line]) }, ...partsOf(lines.slice(math.line + 1))] : parts
 }
 
 const RULE_LINE = /^(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/
 const EMOJI = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*\\s*'
-// French puts a space, U+00A0 or U+202F before a colon; Japanese and Chinese use a full-width one.
-const COLON = '[ \\u00A0\\u202F]?[:：]'
+// The colons of living scripts, from Unicode's punctuation named COLON: full-width (Japanese,
+// Chinese), the Ethiopic colon and preface colon, the Mongolian and Bamum colons, and the small and
+// vertical forms. French puts a space, U+00A0 or U+202F before a colon.
+const COLONS = '[:\\uFF1A\\u1365\\u1366\\u1804\\uA6F4\\uFE55\\uFE13]'
+const COLON = `[ \\u00A0\\u202F]?${COLONS}`
 // A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like), the Greek question
 // mark and the ellipsis, which may follow the bold result.
 const STOP = '[\\p{STerm}\\u037E…]'
@@ -103,7 +114,7 @@ const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|
 const RESULT = [new RegExp(`^${BOLD}`, 'u'), new RegExp(`^(?:${EMOJI})?${BOLD}`, 'u')] as const
 // The "Next:" line opens with its word in bold, in any language, with its colon inside the bold
 // or after it.
-const NEXT_WORD = `(?:\\*\\*[^*]{1,40}?[:：]\\*\\*|\\*\\*[^*]{1,40}\\*\\*${COLON}|__[^_]{1,40}?[:：]__|__[^_]{1,40}__${COLON})`
+const NEXT_WORD = `(?:\\*\\*[^*]{1,40}?${COLONS}\\*\\*|\\*\\*[^*]{1,40}\\*\\*${COLON}|__[^_]{1,40}?${COLONS}__|__[^_]{1,40}__${COLON})`
 const NEXT = [new RegExp(`^${NEXT_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${NEXT_WORD}`, 'u')] as const
 // A section header (headers=on): a short bold line of its own; its emoji may sit in or before it.
 const HEADER_WORD = `(?:\\*\\*[^*]{1,40}\\*\\*|__[^_]{1,40}__)(?:${COLON})?$`
@@ -112,9 +123,13 @@ const HEADER = [new RegExp(`^${HEADER_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${
 /**
  * Whether the rules and the Next step sit where the settings put them, one miss for each missing
  * piece:
- * - next=end, rules on: a rule under the result, and the Next step "below a rule of its own";
- *   anything may follow the Next line. A Next line with no rule above it misses the rule, not the
- *   step.
+ * - The result is the first line. When it is not, and the line under it is a bold line, that
+ *   line is read as the result for the rule under it, so one line too many above the result
+ *   misses result first alone.
+ * - next=end, rules on: a rule under the result, and a "Next:" line, or a header under
+ *   headers=on, somewhere after it. A bold label with no rule above it may be a Next line that
+ *   lost its rule or a landmark of the body with the step missing; a count cannot tell which, so
+ *   it misses neither. Anything may follow the Next line.
  * - next=top: the Next step is every line from the one under the result to the first rule, so a
  *   soft break, the closing sentence as its own paragraph, a header's lines and the code the step
  *   needs all sit in it. With rules on, a rule ends it; a message with no rule at all is no miss,
@@ -123,7 +138,8 @@ const HEADER = [new RegExp(`^${HEADER_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${
  * - rules=off and markdown=plain have no rule outside code, and nothing marks where the Next step
  *   starts: only a message with no "Next:" line at all misses it.
  * - headers=on: a "Next step" header line, then the action or the code it needs, stands where
- *   "Next:" stands.
+ *   "Next:" stands. The header's word cannot be told from another block's, so under next=end only
+ *   a message with no header after the result misses the step.
  */
 function placement(lines: readonly Part[], s: Settings): { rules: boolean; next: boolean } {
   const emoji = s.emoji === 'on' ? 1 : 0
@@ -140,6 +156,9 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
   const n = lines.length
   const indices = Array.from({ length: n }, (_, i) => i)
   const hasRule = indices.some(isRule)
+  // The result's place: the second line when the first is not one and the second is.
+  const r = !RESULT[emoji].test(textAt(0) ?? '') && RESULT[emoji].test(textAt(1) ?? '') ? 1 : 0
+  const isUnder = isRule(1) || isRule(r + 1)
 
   if (s.next === 'off') {
     // No Next line "in any language": a count cannot tell the word, so only the shape the voice
@@ -147,24 +166,18 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
     const endAt = s.headers === 'on' ? (isHeader(n - 2) || !isInline(n - 1) ? n - 2 : n - 1) : isInline(n - 1) || !isHeader(n - 2) ? n - 1 : n - 2
     const isShape = ruled && endAt - 1 > 1 && isRule(endAt - 1) && (isInline(endAt) || isHeader(endAt))
 
-    return { rules: ruled ? isRule(1) : !hasRule, next: !isShape }
+    return { rules: ruled ? isUnder : !hasRule, next: !isShape }
   }
 
-  if (s.next === 'top') return { rules: ruled || !hasRule, next: isNext(1) }
+  if (s.next === 'top') return { rules: ruled || !hasRule, next: isNext(1) || isNext(r + 1) }
 
-  const hasNext = indices.some(isNext)
-
-  if (!ruled) return { rules: !hasRule, next: hasNext }
-
-  const isPlaced = indices.some(i => isNext(i) && isRule(i - 1))
-
-  return { rules: isRule(1) && (isPlaced || !hasNext), next: hasNext }
+  return { rules: ruled ? isUnder : !hasRule, next: indices.some(isNext) }
 }
 
 /** The rules the answer misses. */
 export function lintMessage(text: string, settings: Settings = settingsOf(undefined)): Rule[] {
   // The parts a reader sees, blank lines out, with a closing `&nbsp;` line skipped.
-  const lines = partsOf(text).filter(part => part.kind === 'code' || part.text !== '')
+  const lines = partsOf(text.split(/\r?\n/)).filter(part => part.kind === 'code' || part.text !== '')
 
   while ((lines[lines.length - 1] as { text?: string } | undefined)?.text === '&nbsp;') lines.pop()
 
