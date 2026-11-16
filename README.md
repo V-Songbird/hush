@@ -57,6 +57,30 @@ A shortened view carries a note in square brackets, such as `[hush hook: 12 line
 
 A text whose first words appear elsewhere in the session, a subagent's included, stays drawn. So does every text after a prompt you queued during the turn, and every text before a compaction. Each session keeps its folds across a reopen, for the eight newest sessions. Every other reply, and every other surface, the terminal included, is left to the app whole. The mod adds no command and nothing leaves your machine.
 
+The mod also checks each final message in silence, against three rules of the message's structure, under your `/hush:config` settings:
+
+- **Result first.** The message opens with the bold result.
+- **Rules where set.** The horizontal rules sit where your settings put them, and there are none with rules off or plain Markdown.
+- **Next step where set.** The "Next:" line, or the "Next step" header, sits where your settings put it: at the end, at the top under the result, or nowhere.
+
+Each count sees only part of its rule. Where a rule cannot tell, it counts no miss. So a miss is certain, and a message counted as met may still break the rule. Code and `$$` math are never read, and a quote's lines never make a rule or a Next line. A code fence outside a quote still open at the end hides what follows it, so then only result first can miss. Each count means this:
+
+- **Result first**, under every setting: the first line outside code is not a whole bold line. It misses a message with text, or code, above the bold result. A bold result followed by a stop, a colon, a closing quote or a footnote mark passes. So does one turned into a heading by a `---` right under it.
+- **Rules where set**, with rules on and `next` at `end` or `off`: no rule stands right under the result. The rule above the next step and the rule above footnotes are not checked. A next step on top, with the rule under it, counts as the step's miss instead.
+- **Rules where set**, with rules on and `next` at `top`: never misses.
+- **Rules where set**, with rules off or plain Markdown: a rule line stands anywhere outside code. A `---` right under a line of text may be that text's heading, so it is not counted.
+- **Next step where set**, with `next` at `end` and headers off: no line after the result opens with a bold word of at most 40 characters and a colon. With rules on, it also misses when the only such line sits right under the result, with a rule below it. Any bold label with a colon, such as `**Cause:**`, passes. Whether the step comes last, and below a rule of its own, is not checked. A Next word longer than 40 characters is not seen, so that message counts a false miss.
+- **Next step where set**, with `next` at `end` and headers on: no short bold line with a line under it follows the result, or the only such lines sit right under the result, with a rule below them. Any later section header passes, so this almost never misses.
+- **Next step where set**, with `next` at `top`: the line under the result is not a "Next:" line, or not a "Next step" header with headers on.
+- **Next step where set**, with `next` off and rules on: the message closes with a rule, then a line shaped like a "Next:" line or a header. A closing `&nbsp;` line is skipped.
+- **Next step where set**, with `next` off and rules off or plain Markdown: never misses.
+
+Nothing about the text itself is counted: not its length, its sentences, its blocks, its HTML, its Markdown forms or its links. Those depend on the language and on what the message says, and a count cannot tell them for certain.
+
+A session counts only under the settings the model really got. Hush's SessionStart hook sends them when a session starts, and again at a `/clear`, a resume, a fork and a compaction. The mod counts a session only when it saw that hook send the saved settings, or when your settings are the defaults, which the hook does not send, and the file read the same before and after the hook. A change and a change back while the hook runs go unseen. At any doubt about the settings the model follows, the session counts nothing until that hook runs again: once a turn ends while the saved settings the rules read differ from the ones the model got, even if they match again later; once the settings text `/hush:config` prints, as `set` and `reset` do, reaches the session by any way but the SessionStart hook: a command's output, bash mode, a pasted prompt, another hook's text, even wrapped across lines, or a read of Hush's own source that holds it; from the moment a compaction starts, or is computed ahead, until the SessionStart hook that follows it, and after a compaction that is then skipped; when `HUSH_DISABLE=1` is set as the hook runs; when the hook failed or timed out; and when the mod starts again in a session that has had a prompt, as when you enable Hush mid-session or the mod reloads. A session the mod saw no SessionStart for counts nothing, and a settings file that exists but cannot be read counts nothing while it stays so. Nor do a `claude -p` run, a subagent's reply, a reply of a single line or with no text, and a turn that was stopped, refused or failed.
+
+It changes nothing in the reply, draws nothing, and nothing leaves your machine. It keeps only numbers in `tally.json`: how many messages it checked, how many followed every rule, how many missed each rule, the first and last day in UTC, and the values of the settings the rules read. It never keeps a word of a reply. `tally.json` sits in the folder of your settings file: `~/.claude/hush/`, or the folder of `HUSH_CONFIG_FILE` when you set it to an absolute path, a project folder included. A `HUSH_CONFIG_FILE` that is not absolute, that ends in a separator, or that sits on a network share gets no count. The count belongs to one set of the settings the rules read. The first message counted under other settings starts a new count in its place, and so does deleting the file; a change and a change back with no message counted between keep the old count. A clock set back before the count's first day starts it again. `/hush:config` tells you the count kept under your current settings, even one kept before you turned the mod off. With a settings file it cannot parse, it shows the count kept under the defaults, which the SessionStart hook then sends. If the file cannot be written, the check stops without a sound. Two sessions that end together may lose one count.
+
 ## What you can do
 
 | You want to | Outcome |
@@ -79,7 +103,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The writing voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the mod folds and counts nothing. The writing voice stays on until you disable or uninstall the plugin. |
 | `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. Reminders and the subagent brief keep running, and the step reminder's small counter stays in your temp folder until your system clears it. |
 | `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims, the voice and your message settings keep running. |
 | `HUSH_NUDGE=off` | Stops every reminder sent while the assistant works. The subagent brief keeps running. |
@@ -97,7 +121,7 @@ Most people never touch these. Hush trims one way, always: no levels, no profile
 | `HUSH_SUBAGENT=off` | Subagents start without Hush's brief. |
 | `HUSH_DEBUG=1` | Writes a local record of what Hush did to each command result (sizes in and out, and where the full copy went) to `hush-debug-<session>.jsonl` in your system temp folder. Hush never deletes these files. |
 | `HUSH_WRAP=1` | Lets Hush trim failing commands as well as passing ones. See below. |
-| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. |
+| `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. The mod keeps its count, `tally.json`, in the same folder, and keeps none when the path is not absolute, ends in a separator or sits on a network share. |
 
 `HUSH_DISABLE` beats every other switch, and `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop: with `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing. Every switch shown as `off` also takes `0` or `false`, in any letter case, and ignores spaces around the value. The switches shown as `1` take only `1` and ignore spaces around it. The four that take a number read a whole number above zero; zero, a negative number or text leaves the default.
 
@@ -115,7 +139,7 @@ Installing Hush does not write Claude Code's Output style setting, and the voice
 
 #### Message settings
 
-`/hush:config` shapes the final message. In the Claude desktop app it opens a configurator with a sample message and its word count. In a terminal it asks seven questions, or eight if you say you read in the desktop app. You can also describe what you want in your own words, as in `/hush:config only the result and the next step`. Settings no choice covers, such as `why` and `records`, keep their saved values. Your choice is saved in `~/.claude/hush/config.json`.
+`/hush:config` shapes the final message. In the Claude desktop app it opens a configurator with a sample message and its word count. In a terminal it asks seven questions, or eight if you say you read in the desktop app. You can also describe what you want in your own words, as in `/hush:config only the result and the next step`. Settings no choice covers, such as `why` and `records`, keep their saved values. Your choice is saved in `~/.claude/hush/config.json`. When the mod has checked messages under your current settings, the command also tells you how many followed them. With no mod, or before the first message, it says nothing about it.
 
 No setting removes the floor: a blocker, a pending approval, an unverified claim or anything left unchecked always stays in the message. A failed check opens its block with the error quoted word for word, and failed and unchecked items stay under every `checks` value.
 

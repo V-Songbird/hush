@@ -3,11 +3,16 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Folds, FoldWords, Stored } from './fold'
+import { TALLY_MAX, asTally, countFiles, isDefault, lintMessage, settingsKey, settingsOf, tally } from './lint'
+import type { Settings } from './lint'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
 // the reply's final message arrives (`fold.ts`). Every other reply, and every other surface, the
 // terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
+// It also checks each final message of a session someone reads, on any surface, in silence
+// (`lint.ts`): a count kept in `tally.json` beside the settings file, which `/hush:config`
+// reads. It changes nothing in the reply.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
@@ -49,6 +54,140 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
     return (await $.env.get('HUSH_DISABLE'))?.trim() === '1'
   } catch {
     return false
+  }
+}
+
+/**
+ * The settings saved now and the count's file beside them, or undefined when the check cannot
+ * know them: then nothing is counted. Only a missing settings file means the defaults; one that
+ * exists but cannot be read or parsed is unknown. A rejection is the caller's to swallow.
+ */
+async function savedSettings($: EngineInterface): Promise<{ settings: Settings; key: string; isDefault: boolean; tally: string } | undefined> {
+  // The project root tells the platform: a POSIX path opens with one `/`, a Windows one with a
+  // drive or `\\`. Anything else, an empty root included, is neither. The home is the one
+  // `os.homedir()` reads, as /hush:config's CLI does.
+  const root = await $.session.root()
+  const isWindows = /^(?:[A-Za-z]:[\\/]|[\\/]{2})/.test(root)
+
+  if (!isWindows && !/^\/(?!\/)/.test(root)) return undefined
+
+  const named = await $.env.get('HUSH_CONFIG_FILE')
+  const home = named ? undefined : isWindows ? await $.env.get('USERPROFILE') : await $.env.get('HOME')
+  const files = countFiles(named, home, isWindows)
+
+  if (files === undefined) return undefined
+
+  let saved: unknown
+
+  try {
+    saved = JSON.parse(String(await $.fs.read(files.config)))
+  } catch {
+    if (await $.fs.exists(files.config)) return undefined
+  }
+
+  const settings = settingsOf(saved)
+
+  return { settings, key: settingsKey(settings), isDefault: isDefault(settings), tally: files.tally }
+}
+
+/** The first words of what `hooks/style-settings.js` sends the model; tests/desktop_mod.test.js keeps the two equal. */
+export const SETTINGS_HEADER =
+  'hush settings, chosen by the user with /hush:config. Each one replaces only the rule it names. The rest of the Hush style stays. No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.'
+/** What `style-settings.js` set and reset print for the defaults; tests/desktop_mod.test.js keeps the two equal. */
+export const SETTINGS_DEFAULT = 'Every hush setting is at its default. The style file alone applies.'
+
+// The session id and settings key the model was sent, `<id>\n<key>`, which the check counts under.
+// Hush's SessionStart command hook sends the saved settings under SETTINGS_HEADER at a start, a
+// /clear, a resume, a fork and a compaction, and sends nothing for the defaults. It runs beneath
+// the hooks modules, so its text is in what `next(e)` answers. The saved key is held only when
+// what the model got matches what is saved, read the same before and after the hook: that text
+// for settings off their defaults, no such text for the defaults. Anything else holds `''`, which
+// matches no settings, so the session counts nothing.
+//
+// At any doubt about the settings the model follows, `''` stays until the next SessionStart:
+// HUSH_DISABLE=1 at a SessionStart, settings that cannot be read there, saved settings that
+// differ from the held ones at a turn's end, a tool result that hands the model settings (what
+// `/hush:config set` and `reset` print), a later start of the mod once the session has had a
+// prompt (an enable after a disable, a reload, a worker respawn), and another session id. A
+// session the mod saw no SessionStart for holds nothing and counts nothing.
+const IN_FORCE = { plugin: 'hush', key: 'inForce' } as const
+
+// A write of IN_FORCE the engine refused: the value held may be stale, so nothing counts until a
+// write succeeds. A module variable, so a hot reload clears it; the start that follows a reload
+// once the session has had a prompt writes `''` itself.
+let isRefused = false
+
+/** Holds `value` as the settings in force; a refusal stops the count instead. */
+async function hold($: EngineInterface, value: string) {
+  try {
+    await $.state.set(IN_FORCE, value)
+    isRefused = false
+  } catch {
+    isRefused = true
+  }
+}
+
+// The settings texts with no whitespace: a terminal that wraps a line, even inside a word, still
+// shows them.
+const SETTINGS_TEXTS = [SETTINGS_HEADER, SETTINGS_DEFAULT].map(text => text.replace(/\s+/g, ''))
+
+/**
+ * Every text a row's blocks hold, nested `content` included: a string, one block, arrays in arrays.
+ * A row nested deeper than any the engine makes cannot be read whole, so it throws: a doubt.
+ */
+function textsOf(v: unknown, depth = 0): string[] {
+  if (typeof v === 'string') return [v]
+  if (depth > 16) throw new RangeError('a row nested too deep to read')
+  if (typeof v !== 'object' || v === null) return []
+  if (Array.isArray(v)) return v.flatMap(item => textsOf(item, depth + 1))
+
+  const { text, content } = v as { text?: unknown; content?: unknown }
+
+  return [...(typeof text === 'string' ? [text] : []), ...textsOf(content, depth + 1)]
+}
+
+/** Whether a row hands the model settings: what `style-settings.js` set and reset print, wrapped or not. */
+const isSettingsText = (texts: readonly string[]) => {
+  const text = texts.join('').replace(/\s+/g, '')
+
+  return SETTINGS_TEXTS.some(settings => text.includes(settings))
+}
+
+/**
+ * Counts one final message in `tally.json`: its rules met or missed, never its words. It reads,
+ * adds and writes in one go, so two sessions ending together may lose a count; the count is a
+ * guide, not a record. A failure anywhere, a read-only home included, is swallowed: the check
+ * never breaks the turn or the fold.
+ *
+ * Only a session someone reads is counted: one that draws on a surface, the terminal's REPL or
+ * an app. A `claude -p` run draws on none. A one-line answer is left out: a turn nobody asked
+ * for may end with one short line, and the voice asks no structure of it. Saved settings that
+ * differ from the ones the model was sent stop the count until the next SessionStart; settings
+ * that cannot be read skip the turn.
+ */
+async function checkAnswer($: EngineInterface, answer: string) {
+  try {
+    if (!answer.trim().includes('\n') || isRefused || (await $.session.surfaces()).length === 0) return
+
+    const held = (await $.state.get(IN_FORCE)).value
+
+    if (!held) return
+
+    const now = await savedSettings($)
+
+    if (now === undefined) return
+
+    if (held !== `${await $.session.id()}\n${now.key}`) {
+      await hold($, '')
+
+      return
+    }
+
+    const prev = asTally(await $.fs.read(now.tally).then(text => (String(text).length > TALLY_MAX ? undefined : (JSON.parse(String(text)) as unknown))).catch(() => undefined), now.key)
+
+    await $.fs.write(now.tally, JSON.stringify(tally(prev, lintMessage(answer, now.settings), new Date().toISOString().slice(0, 10), now.key)) + '\n')
+  } catch {
+    // Nothing to report: the check is silent.
   }
 }
 
@@ -174,12 +313,50 @@ async function drawFolded(
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    // A start once the session has had a prompt is an enable, a reload or a respawn: a SessionStart
+    // may have passed while the mod was off. The first start of a session has no prompt yet.
+    try {
+      if ((await $.state.get(IN_FORCE)).value && (await $.session.turns()) !== 0) await hold($, '')
+    } catch {
+      await hold($, '')
+    }
+
     if (await isDisabled($)) return next(e)
 
     // Each session sees its own folds: the saved ones, or none, never another session's.
     const saved = await $.store.get(`${STORE}${await $.session.id()}`)
     await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
     await update($, opened, () => [])
+
+    return next(e)
+  })
+
+  // The settings the model was sent, for the check (IN_FORCE). The answer goes on unchanged.
+  on('classic.SessionStart', async ($, e, next) => {
+    // Read before and after the hook beneath: settings saved meanwhile leave the sent ones unknown.
+    const before = await savedSettings($).catch(() => undefined)
+    const done = await next(e)
+    let value = ''
+
+    try {
+      const now = await savedSettings($)
+      const isSent = (done.additionalContext ?? []).some(text => typeof text === 'string' && text.startsWith(SETTINGS_HEADER))
+
+      if (!(await isDisabled($)) && now !== undefined && now.key === before?.key && isSent === !now.isDefault) value = `${await $.session.id()}\n${now.key}`
+    } catch {
+      // Nothing known: `''` is held, and the session counts nothing.
+    }
+
+    await hold($, value)
+
+    return done
+  })
+
+  // A compaction of the main conversation replaces what the model read, its settings included,
+  // until the SessionStart hook that follows it sends them again. It fires before the compaction,
+  // so before that SessionStart: nothing counts in between, nor after a compaction that is skipped.
+  on('session.compact', async ($, e, next) => {
+    if (e.agentId === undefined) await hold($, '')
 
     return next(e)
   })
@@ -198,6 +375,21 @@ export const register: Register = on => {
   on('session.append', async ($, e, next) => {
     const row = await next(e)
     const blocks = Array.isArray(e.message.content) ? e.message.content : []
+
+    // A row that hands the model settings, by any door and a subagent's included, stops the count:
+    // a tool's result, bash mode's output, a pasted prompt, another hook's context. Two kinds are
+    // not read. A SessionStart hook's context, whichever door brings it, holds the settings
+    // `classic.SessionStart` already weighed. A compaction's summary is followed by a SessionStart,
+    // and `session.compact` stopped the count before it.
+    const origin = e.origin as { kind?: string; event?: string } | undefined
+
+    if (e.door !== 'compaction' && !(origin?.kind === 'hook' && origin.event === 'SessionStart')) {
+      try {
+        if (isSettingsText(textsOf([e.message.content, (row as { message?: { content?: unknown } } | undefined)?.message?.content]))) await hold($, '')
+      } catch {
+        await hold($, '')
+      }
+    }
 
     // A subagent's texts are never a reply's, but the app may draw them: their words turn loose,
     // so a main fold never hides one. Nothing is gathered for the subagent.
@@ -270,6 +462,8 @@ export const register: Register = on => {
       startReply()
     } else {
       await closeReply($)
+
+      if (e.reason === 'answer') await checkAnswer($, e.answer)
     }
 
     return done

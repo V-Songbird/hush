@@ -12,6 +12,16 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" show`
 
+   Then read the count the optional mod keeps of how well final messages follow these settings:
+
+   `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" tally`
+
+   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count under the current settings: no message was checked under them yet (the mod may be off or not installed), `HUSH_DISABLE=1` is set, or the count's file is missing or not one. A count kept earlier under the current settings still prints after the mod is turned off; `last` is the day, in UTC, of its last message. A session counts only under the settings Hush's SessionStart hook sent it, and stops counting at any doubt about them until that hook runs again, so a count may lag behind a change. The count holds numbers only, never a word of a message.
+
+   Each count sees only part of its rule, and counts no miss where it cannot tell. So a miss is certain, and `met` may hold messages that broke a rule. Under `next=top` with rules on, `rules where set` never misses. Under `next=off` with `rules=off` or `markdown=plain`, `next step where set` never misses. Under `next=end` with `headers=on`, it almost never does. The README lists what each count sees.
+
+   The count sentences: when `messages` is above 0, up to three short sentences in the user's language, one fact each. The first says how many final messages were checked since `since`. The second says how many followed every rule. The third names the rule missed most, when there is one. Name it in plain words: `result first` is the bold result opening the message, `rules where set` the horizontal rules, `next step where set` the next step's place. Never present a rule that cannot miss under the current settings as one the messages followed. When `messages` is 0, there are no count sentences, and never call it an error. Step 3 and step 7 each say where they go.
+
 2. If the user wrote what they want after the command ("$ARGUMENTS"), map those words to the choices in the table below. Those values replace the current ones in the next step.
 
 3. If a tool that renders an inline widget is in this session, such as `show_widget`, show the configurator:
@@ -21,7 +31,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
    - In the line `const CUR={};`, put the settings from steps 1 and 2 as JSON.
    - In the line `const ROOT='';`, put `${CLAUDE_PLUGIN_ROOT}` with forward slashes.
    - If the user does not write in English, translate every string value inside the `T` object into their language. Keep `{root}`, `{args}`, `TOKEN`, `<br>`, and the text inside braces and backticks. Change nothing else in the file.
-   - Render the result with that tool, then end the turn with one line: change the settings, watch the preview, and press the save button.
+   - Render the result with that tool, then end the turn with one line: the count sentences, if there are any, then change the settings, watch the preview, and press the save button. Keep all of it on that one line.
 
    The save button sends a message that asks to run the `set` command with the chosen values. When that message arrives, run it and go to step 6.
 
@@ -51,3 +61,5 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 7. Reply with the values that differ from the default. Say how to undo them:
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" reset`
+
+   When you came here through step 4, run `tally` again before this reply, since it prints only the count kept under the current settings, and put the count sentences, if there are any, in this reply's body, before its next step. After the configurator of step 3, its closing line already carried them.
