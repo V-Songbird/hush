@@ -563,6 +563,35 @@ test('under next=end a Next step on top is the step’s miss, not the rule’s (
   expect(lintMessage('**Done.**\n\n**Next:** a\n\nx')).toEqual(['rules where set'])
 })
 
+// Review 5's probe2 false-miss hunts that still missed.
+test('a skin tone, a zero-width space, a hard break, a closing quote and a bold footnote label change no structure', () => {
+  const end = (result: string, next: string) => msg(result, '', '---', '', 'x', '', '---', '', next)
+
+  expect(lintMessage(end('✅ **Done.**', '👉🏽 **Next:** read.'), settingsOf({ emoji: 'on' }))).toEqual([])
+  expect(lintMessage(end('**Done.**', '​**Next:** read.'))).toEqual([])
+  expect(lintMessage(end('﻿**Done.**', '⁠**Next:** read.'))).toEqual([])
+  expect(lintMessage(end('**Done.**\\', '**Next:** read.'))).toEqual([])
+  expect(lintMessage(end('**Done.**”', '**Next:** read.'))).toEqual([])
+  expect(lintMessage(end('**Done.**»', '**Next:** read.'))).toEqual([])
+  // Under next=off a footnote whose label is bold is no Next line.
+  expect(lintMessage(msg('**Done.**', '', '---', '', 'Body[^a].', '', '---', '', '**[^a]:** x', '', '&nbsp;'), settingsOf({ next: 'off' }))).toEqual([])
+})
+
+// A `---` right under a line of text may be that line's setext heading, not a rule: the count
+// cannot tell, so it is no rule where a rule would miss, and a rule where its absence would.
+test('a hyphen line right under text is no rule where a rule would miss, and still a rule where it is wanted', () => {
+  expect(lintMessage(msg('**Done.**', '', 'x', '---', 'y', '', '**Next:** a'), settingsOf({ rules: 'off' }))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', 'x', '---', 'y'), settingsOf({ rules: 'off', next: 'off' }))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', 'x', '---', 'y', '', '**Next:** a'), settingsOf({ next: 'top', rules: 'off' }))).toEqual(['next step where set'])
+  expect(lintMessage(msg('**Done.**', '---', '', 'x', '', '---', '', '**Next:** a'))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', '---', '', 'x', '---', '**Next:** a'), settingsOf({ next: 'off' }))).toEqual([])
+  // Spaced hyphens, stars and underscores are never a heading's underline: still a rule.
+  expect(lintMessage(msg('**Done.**', '', 'x', '- - -', 'y', '', '**Next:** a'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
+  expect(lintMessage(msg('**Done.**', '', 'x', '***', 'y', '', '**Next:** a'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
+  // After a blank line it is a rule.
+  expect(lintMessage(msg('**Done.**', '', 'x', '', '---', '', 'y', '', '**Next:** a'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
+})
+
 test('a semicolon after the bold result is a stop: U+037E, the Greek question mark, normalises to it', () => {
   expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])
   expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])

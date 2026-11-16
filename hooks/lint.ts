@@ -53,7 +53,9 @@ export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-'
 
 // A message is read as parts: each line outside code, trimmed, with every direction mark dropped
 // (Unicode's Bidi_Control set: U+061C, U+200E, U+200F, U+202A-U+202E, U+2066-U+2069, which draw
-// nothing), and each fenced or `$$` block as one code part. Structure is read from these, so
+// nothing) and the zero-width space, word joiner and byte order mark dropped, and each fenced or
+// `$$` block as one code part. A hyphen line right under a line of text may be that text's setext
+// heading: it is `loose`, a rule only where its absence would miss. Structure is read from these, so
 // nothing inside code counts, and a quote block's `>` keeps its lines from reading as a rule or a
 // Next line. A `$$` block still open at the end may not be math on every renderer, so its lines
 // are read as prose: what follows it is never hidden.
@@ -62,13 +64,13 @@ export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-'
 // markers with a task box, a footnote label. A line that leaves those blocks, with fewer quote
 // marks or, in a list item, less indent than the item's text, ends the fence. A backtick or tilde
 // fence still open at the end leaves the count unable to tell what it hid (`open`).
-type Part = { kind: 'code' } | { kind: 'line'; text: string } | { kind: 'open' }
+type Part = { kind: 'code' } | { kind: 'line'; text: string; loose?: true } | { kind: 'open' }
 
 const FENCE = /^(`{3,}|~{3,})/
 const QUOTE = /^ {0,3}> ?/
 const ITEM = /^[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)+/
 const BOX = /^(?:\[[ xX]\][ \t]+|\[\^[^\]\s]+\]:[ \t]*)/
-const BIDI = /\p{Bidi_Control}/gu
+const BIDI = /[\p{Bidi_Control}​⁠﻿]/gu
 const clean = (raw: string) => raw.replace(BIDI, '').trim()
 
 /**
@@ -136,6 +138,8 @@ function partsOf(lines: readonly string[]): Part[] {
       }
 
       parts.push({ kind: 'code' })
+    } else if (/^-{3,}$/.test(line) && i > 0 && clean(lines[i - 1]) !== '') {
+      parts.push({ kind: 'line', text: line, loose: true })
     } else {
       parts.push({ kind: 'line', text: line })
     }
@@ -147,7 +151,7 @@ function partsOf(lines: readonly string[]): Part[] {
 }
 
 const RULE_LINE = /^(?:(?:-[ \t]*){3,}|(?:\*[ \t]*){3,}|(?:_[ \t]*){3,})$/
-const EMOJI = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic})*\\s*'
+const EMOJI = '\\p{Extended_Pictographic}\\p{Emoji_Modifier}?(?:\\uFE0F|\\u200D\\p{Extended_Pictographic}\\p{Emoji_Modifier}?)*\\s*'
 // The colons of living scripts, from Unicode's punctuation named COLON: full-width (Japanese,
 // Chinese), the Ethiopic colon and preface colon, the Mongolian and Bamum colons, and the small and
 // vertical forms. French puts a space, U+00A0 or U+202F before a colon.
@@ -156,8 +160,9 @@ const COLON = `[ \\u00A0\\u202F]?${COLONS}`
 // A sentence's end in any script (`\p{STerm}`: . ! ? 。 । ؟ ። and the like), the Greek question
 // mark and the semicolon it normalises to, and the ellipsis, which may follow the bold result.
 const STOP = '[\\p{STerm};\\u037E…]'
-// A bold line; its stop, a colon and a footnote mark may follow the bold, in any order.
-const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|${COLON}|\\[\\^[^\\]\\s]+\\])*$`
+// A bold line; its stop, a colon, a closing quote and a footnote mark may follow the bold, in any
+// order, and a backslash hard break may end it.
+const BOLD = `(?:\\*\\*(?=\\S)(?:.*\\S)?\\*\\*|__(?=\\S)(?:.*\\S)?__)(?:${STOP}|${COLON}|\\p{Pf}|["']|\\[\\^[^\\]\\s]+\\])*\\\\?$`
 // The bold result line; under emoji=on an emoji may open it ("before any bold").
 const RESULT = [new RegExp(`^${BOLD}`, 'u'), new RegExp(`^(?:${EMOJI})?${BOLD}`, 'u')] as const
 // The "Next:" line opens with its word in bold, in any language, with its colon inside the bold
@@ -197,13 +202,16 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
     return part?.kind === 'line' ? part.text : undefined
   }
   const isRule = (i: number) => RULE_LINE.test(textAt(i) ?? '\n')
-  const isInline = (i: number) => NEXT[emoji].test(textAt(i) ?? '')
+  // A rule that is no heading's underline: where a rule makes a miss, only such a rule counts.
+  const isFirm = (i: number) => isRule(i) && !(lines[i] as { loose?: true }).loose
+  // A bold footnote label, `**[^a]:**`, is no Next line.
+  const isInline = (i: number) => NEXT[emoji].test(textAt(i) ?? '') && !/^(?:\*\*|__)\[\^/.test(textAt(i) ?? '')
   const isHeader = (i: number) => HEADER[emoji].test(textAt(i) ?? '') && lines[i + 1] !== undefined
   const isNext = (i: number) => i >= 1 && (s.headers === 'on' ? isHeader(i) : isInline(i))
   const ruled = s.rules === 'on' && s.markdown !== 'plain'
   const n = lines.length
   const indices = Array.from({ length: n }, (_, i) => i)
-  const hasRule = indices.some(isRule)
+  const hasRule = indices.some(isFirm)
   // The result's place: the second line when the first is not one and the second is.
   const r = !RESULT[emoji].test(textAt(0) ?? '') && RESULT[emoji].test(textAt(1) ?? '') ? 1 : 0
   const isUnder = isRule(1) || isRule(r + 1)
@@ -212,7 +220,7 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
     // No Next line "in any language": a count cannot tell the word, so only the shape the voice
     // gives "Next:", a rule of its own above a closing bold label, is a miss.
     const endAt = s.headers === 'on' ? (isHeader(n - 2) || !isInline(n - 1) ? n - 2 : n - 1) : isInline(n - 1) || !isHeader(n - 2) ? n - 1 : n - 2
-    const isShape = ruled && endAt - 1 > 1 && isRule(endAt - 1) && (isInline(endAt) || isHeader(endAt))
+    const isShape = ruled && endAt - 1 > 1 && isFirm(endAt - 1) && (isInline(endAt) || isHeader(endAt))
 
     return { rules: ruled ? isUnder : !hasRule, next: !isShape }
   }
@@ -222,7 +230,7 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
   // next=top's shape: a Next line under the result, a rule after it, and no Next line below that
   // rule. Above every rule the step is out of its place, whether it is the step or a landmark with
   // the step missing; the rule sits where that shape puts it.
-  const below = indices.find(i => i > r + 1 && isRule(i))
+  const below = indices.find(i => i > r + 1 && isFirm(i))
 
   if (ruled && !isUnder && isNext(r + 1) && below !== undefined && !indices.some(i => i > below && isNext(i))) return { rules: true, next: false }
 
