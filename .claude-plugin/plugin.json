@@ -9,6 +9,7 @@
   },
   "homepage": "https://github.com/V-Songbird/hush",
   "repository": "https://github.com/V-Songbird/hush",
+  "icon": "./assets/icon-on-light.png",
   "types": "./types/index.d.ts",
   "engines": { "claude-code": ">=2.1.323" },
   "keywords":["output-style", "structure", "readability", "customizable", "accessibility", "tool-output", "hooks"]
