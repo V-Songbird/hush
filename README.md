@@ -21,7 +21,7 @@
 
 ## What is this?
 
-Hush is a Claude Code plugin that makes a session quieter to read.
+Hush is a plugin for Claude Code, an AI coding assistant. It runs on Claude Code only. It makes a session quieter to read.
 
 You ask the assistant to fix a failing test. It reads files, runs commands and explains each step. When it finishes, the result is hard to find.
 
@@ -29,7 +29,11 @@ Hush quiets that narration and shortens noisy command output. Then it shapes the
 
 <p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
 
-With Hush, a turn ends in one message shaped like this one. It is an example of the shape, not a recorded session:
+*Ember is the mascot of the Foundry plugins. The scene is an illustration, not a measurement.*
+
+**You ask:** "The login test fails. Fix it."
+
+**You get:** one message at the end, shaped like this. It is an illustration, not a recorded session.
 
 ```text
 **The login test passes again. The token check compared text with a number.**
@@ -60,7 +64,7 @@ Hush has two parts. Both run on your machine, and nothing is sent anywhere.
 | Part | What it does |
 | --- | --- |
 | The voice | An output style, which is Claude Code's name for a writing style. It asks the assistant to stay quiet while it works, then write one message at the end. |
-| The trims | Small programs that run when a command finishes. They shorten long output and keep every warning, error and failure line. |
+| The trims | Hooks, which are small programs Claude Code runs at set moments. These run when a command finishes. They shorten long output and keep every warning, error and failure line. |
 
 A shortened view says so in square brackets. Very large output is saved to a file, so the assistant can read the rest.
 
@@ -80,11 +84,11 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 
 Most people never change a setting. These three are the ones people reach for:
 
-| Setting | What it does |
-| --- | --- |
-| `/hush:config` | Shapes the last message: its length, its parts and where the next step goes. In the Claude desktop app it shows a live preview. |
-| `HUSH_DISABLE=1` | Stops the trims and the reminders. The voice stays on until you disable or uninstall the plugin. |
-| `HUSH_WRAP=1` | Lets Hush trim the output of failing commands too. It is not safe with scoped allow rules such as `Bash(node*)`. |
+| Setting | Values | What it does |
+| --- | --- | --- |
+| `/hush:config` | A command | Shapes the last message: its length, its parts and where the next step goes. |
+| `HUSH_DISABLE` | `1` | Stops the trims and the reminders. The voice stays on until you disable or uninstall the plugin. |
+| `HUSH_WRAP` | `1` | Lets Hush trim the output of failing commands too. It is not safe with scoped allow rules such as `Bash(node*)`. |
 
 No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.
 
@@ -105,38 +109,34 @@ Inside Claude Code, run:
 
 Then start a new session.
 
-To check that it loaded, run `/hush:config`. The configurator opens, or the questions start in a terminal. If Claude Code answers that the command is unknown, the plugin did not load: start a new session and try again.
+To check that it worked, run `claude plugin list` in a terminal. The list names `hush`. Then run `/hush:config` inside Claude Code: the configurator opens, or its questions start in a terminal.
 
 Hush names Claude Code 2.1.323 in its manifest. An older Claude Code may still install it, and Hush is not tested there.
 
 ### Update
 
-Inside Claude Code, run:
+In Claude Code, run these. Then start a new session:
 
 ```text
 /plugin marketplace update foundry
 /plugin update hush@foundry
 ```
 
-Then start a new session.
-
 ## Good to know
 
-**Correctness comes before silence.** A short answer can leave out a detail you wanted. Ask for depth when you need it, and check the result before you act on it.
-
-**Quieter is not always cheaper.** On Claude Opus 5.5, Hush sessions cost 9% more on average. See [The numbers](#the-numbers).
-
-**The voice takes Claude Code's one output style slot.** To use another output style, disable or uninstall Hush.
-
-**Saved output is temporary.** Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you.
-
-**The desktop mod is new.** It is optional and draws only in the Claude desktop app's Code tab. No rendered check of it is published here.
+| Limit | What it means for you |
+| --- | --- |
+| A short answer can leave out a detail | Correctness comes before silence. Ask for depth when you need it, and check the result before you act on it. |
+| Quieter is not always cheaper | On Claude Opus 5.5, Hush sessions cost 9% more on average. See [The numbers](#the-numbers). |
+| The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
+| Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
+| The desktop mod is new | It is optional and draws only in the Claude desktop app's Code tab. No rendered check of it is published. |
 
 ## The numbers
 
-Each test session is a real Claude Code session in its own throwaway folder. Every job ends with a check, and a short answer that breaks the job counts as a failure.
+Each figure comes from recorded test sessions. The figures describe those runs, not yours, and results vary between runs.
 
-These figures describe recorded sessions. They do not promise the same behavior in yours, and results vary between runs.
+Each test session is a real Claude Code session in its own throwaway folder. Every job ends with a check, and a short answer that breaks the job counts as a failure.
 
 ### Claude Code results
 
@@ -148,16 +148,16 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 | Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.421 |
 | Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.458 |
 
-<p align="center"><img src="assets/hero.svg" alt="One spike per recorded session on Claude Opus 5.5 for words of play-by-play before the answer: 36 sessions without hush average 15.4 words and 28 speak at most once; 36 sessions of the same nine jobs with hush average 1.0 word, and all 36 speak at most once." width="700"></p>
+<p align="center"><img src="assets/hero.svg" alt="Words of play-by-play before the answer, one spike per session. Without Hush, 36 sessions average 15.4 words. With Hush, 36 sessions average 1.0 word." width="700"></p>
 
 Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin. Its final answers were about 27% shorter.
 
 **On Opus 5.5, Hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%. Only the two jobs that print the most came out cheaper.
 
 <details>
-<summary>Watch the recorded demo: one real session each on Claude Opus 5.5, paced by each session's recorded time</summary>
+<summary>Watch the recorded demo: the same job with and without Hush, on Claude Opus 5.5</summary>
 
-<p align="center"><img src="assets/demo.svg" alt="The same job side by side: to get a red pricing suite green, Claude without hush sends 2 progress notes, then a 179-word answer; with hush it stays quiet, then sends one 206-word answer. Both leave the suite green." width="700"></p>
+<p align="center"><img src="assets/demo.svg" alt="The same job side by side. Without Hush, Claude sends 2 progress notes, then a 179-word answer. With Hush it stays quiet, then sends one 206-word answer." width="700"></p>
 
 </details>
 
