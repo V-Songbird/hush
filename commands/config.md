@@ -16,7 +16,7 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" tally`
 
-   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count: the mod is off or not installed, `HUSH_DISABLE=1` is set, no message was checked under the current settings yet, or the count's file is not one. A session counts only under the settings Hush's SessionStart hook sent it, so a count may lag behind a change. The count holds numbers only, never a word of a message.
+   It prints one JSON line: `messages` checked, `met` that followed every rule, `misses` per rule, and the days `since` and `last`. `{"messages":0}` means no count under the current settings: no message was checked under them yet (the mod may be off or not installed), `HUSH_DISABLE=1` is set, or the count's file is missing or not one. A count kept earlier under the current settings still prints after the mod is turned off; `last` is the day, in UTC, of its last message. A session counts only under the settings Hush's SessionStart hook sent it, and stops counting at any doubt about them until that hook runs again, so a count may lag behind a change. The count holds numbers only, never a word of a message.
 
    The count sentence: when `messages` is above 0, one plain sentence in the user's language. Say how many final messages were checked since `since`, how many followed every rule, and the rule missed most, when there is one. Name it in plain words: `result first` is the bold result opening the message, `rules where set` the horizontal rules, `next step where set` the next step's place. When `messages` is 0, there is no count sentence, and never call it an error. Step 3 and step 7 each say where it goes.
 
@@ -60,4 +60,4 @@ No setting removes a blocker, a pending approval, an unverified claim or anythin
 
    `node "${CLAUDE_PLUGIN_ROOT}/hooks/style-settings.js" reset`
 
-   When you came here through step 4, run `tally` again before this reply, since a changed setting the check reads starts a new count, and put the count sentence, if there is one, in this reply's body, before its next step. After the configurator of step 3, its closing line already carried it.
+   When you came here through step 4, run `tally` again before this reply, since it prints only the count kept under the current settings, and put the count sentence, if there is one, in this reply's body, before its next step. After the configurator of step 3, its closing line already carried it.
