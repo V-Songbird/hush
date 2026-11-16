@@ -60,42 +60,24 @@ export const settingsKey = (s: Settings): string => READ.map(k => s[k]).join('-'
 // Next line. A `$$` block still open at the end may not be math on every renderer, so its lines
 // are read as prose: what follows it is never hidden.
 //
-// A fence opens after the marks of the blocks it sits in, as CommonMark nests it: quote marks, list
-// markers with a task box, a footnote label. A line that leaves those blocks, with fewer quote
-// marks or, in a list item, less indent than the item's text, ends the fence. A backtick or tilde
-// fence still open at the end leaves the count unable to tell what it hid (`open`).
+// A fence opens after list markers, a task box or a footnote label, as CommonMark nests it. A line
+// with less indent than the list item's text leaves the item and ends its fence. A fence inside a
+// quote is left alone: every line of it opens with `>`, so it reads as no rule and no Next line, and
+// the first line without `>` is read as it stands. A backtick or tilde fence still open at the end
+// leaves the count unable to tell what it hid (`open`).
 type Part = { kind: 'code' } | { kind: 'line'; text: string; loose?: true } | { kind: 'open' }
 
 const FENCE = /^(`{3,}|~{3,})/
-const QUOTE = /^ {0,3}> ?/
 const ITEM = /^[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)+/
 const BOX = /^(?:\[[ xX]\][ \t]+|\[\^[^\]\s]+\]:[ \t]*)/
 const BIDI = /[\p{Bidi_Control}​⁠﻿]/gu
 const clean = (raw: string) => raw.replace(BIDI, '').trim()
 
-/**
- * A line's quote marks, its indent inside them, the column its list item's text starts at, the line
- * inside the quote marks, and what follows every mark.
- */
-function nestOf(raw: string): { quotes: number; indent: number; column: number; quoted: string; rest: string } {
-  let quoted = raw.replace(BIDI, '')
-  let quotes = 0
-
-  for (let m = QUOTE.exec(quoted); m !== null; m = QUOTE.exec(quoted)) {
-    quoted = quoted.slice(m[0].length)
-    quotes++
-  }
-
-  const column = ITEM.exec(quoted)?.[0].length ?? 0
-
-  return { quotes, indent: quoted.length - quoted.trimStart().length, column, quoted, rest: quoted.slice(column).replace(BOX, '') }
-}
-
 function partsOf(lines: readonly string[]): Part[] {
   const parts: Part[] = []
   let fence = ''
-  // The blocks the open fence sits in: what a line needs to stay inside them.
-  let nest = { quotes: 0, column: 0 }
+  // The column the open fence's list item text starts at: a line needs that indent to stay in it.
+  let column = 0
   // Where the open `$$` block starts: its line, and its place among the parts.
   let math = { line: 0, part: 0 }
 
@@ -108,13 +90,11 @@ function partsOf(lines: readonly string[]): Part[] {
       continue
     }
 
-    if (fence !== '') {
-      const at = nestOf(raw)
-      const inner = clean(at.quoted)
-      const isLeft = line === '' ? nest.quotes > 0 : at.quotes < nest.quotes || at.indent < nest.column
+    const bare = raw.replace(BIDI, '')
 
-      if (!isLeft) {
-        if (inner.length >= fence.length && inner === fence.charAt(0).repeat(inner.length)) fence = ''
+    if (fence !== '') {
+      if (line === '' || bare.length - bare.trimStart().length >= column) {
+        if (line.length >= fence.length && line === fence.charAt(0).repeat(line.length)) fence = ''
 
         continue
       }
@@ -122,15 +102,15 @@ function partsOf(lines: readonly string[]): Part[] {
       fence = ''
     }
 
-    const at = nestOf(raw)
-    const opener = clean(at.rest)
+    const item = ITEM.exec(bare)?.[0].length ?? 0
+    const opener = clean(bare.slice(item).replace(BOX, ''))
     const marks = FENCE.exec(opener)?.[1] ?? ''
 
     // A backtick fence's info string holds no backtick: "```x```" is inline code.
     if (marks !== '' && !(marks.startsWith('`') && opener.slice(marks.length).includes('`'))) {
       parts.push({ kind: 'code' })
       fence = marks
-      nest = { quotes: at.quotes, column: at.column }
+      column = item
     } else if (line.startsWith('$$')) {
       if (line.length < 4 || !line.endsWith('$$')) {
         fence = '$$'

@@ -536,6 +536,13 @@ test('a line that leaves the list item or quote a fence opened in ends that fenc
   // A quote ends at a blank line or a line with no quote mark.
   expect(lintMessage(msg('**Done.**', '', '---', '', '> ```js', '> x', '', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
   expect(lintMessage(msg('**Done.**', '', '---', '', '> ```js', '> x', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
+  // A task box and a footnote label open the fence the item's closer closes, so the next fence
+  // pairs with its own closer and hides neither the rule nor the Next line.
+  for (const opener of ['- [ ] ```bash', '[^1]: ```bash']) {
+    expect(lintMessage(msg('**Done.**', '', '---', '', opener, '  npm test', '  ```', '', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
+  }
+  // A quote's lines all open with `>`: its fence hides nothing, and an unclosed one is no open fence.
+  expect(lintMessage(msg('**Done.**', '', '---', '', 'x', '', '> ```js', '> y'))).toEqual(['next step where set'])
   // Inside the item, a blank line keeps the fence open.
   expect(lintMessage(msg('**Done.**', '', '---', '', '- ```md', '', '  ---', '  **Note:** code', '  ```', '', '---', '', '**Next:** y'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
 })
@@ -561,6 +568,8 @@ test('under next=end a Next step on top is the step’s miss, not the rule’s (
   expect(lintMessage('**Done.**\n\n**Note:** a\n\n---\n\nx\n\n**Next:** b')).toEqual(['rules where set'])
   // With no rule at all, nothing tells the step from a landmark: the rule misses, as before.
   expect(lintMessage('**Done.**\n\n**Next:** a\n\nx')).toEqual(['rules where set'])
+  // Nor does a hyphen line that may be a heading's underline.
+  expect(lintMessage('**Done.**\n\n**Next:** a\nx\n---\n\ny')).toEqual(['rules where set'])
 })
 
 // Review 5's probe2 false-miss hunts that still missed.

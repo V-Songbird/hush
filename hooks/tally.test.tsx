@@ -581,6 +581,7 @@ for (const [name, door, content] of [
   ['a notice', 'notice', [text(SET_TEXT)]],
   ['a header wrapped by a terminal, inside a word', 'command', [text(SETTINGS_HEADER.replace('/hush:config', '/hush:con\nfig').replace(' Each one', '\n  Each one'))]],
   ['the defaults line wrapped', 'command', [text(SETTINGS_DEFAULT.replace(' at its', '\nat its'))]],
+  ['the defaults line split across two blocks', 'command', [text('Every hush setting is at'), text(' its default. The style file alone applies.')]],
   ['a tool result whose content is one block', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: text(SET_TEXT) }]],
   ['a tool result with arrays in arrays', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: [[text('ok')], [[text(SETTINGS_DEFAULT)]]] }]],
   ['a tool result with an image beside the text', 'tool-result', [{ type: 'tool_result', tool_use_id: 'tu1', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AA' } }, text(SETTINGS_DEFAULT)] }]],
@@ -625,6 +626,12 @@ test('a compaction stops the count until the SessionStart that follows it, and t
   await k.sessionStart('compact')
   await k.finish()
   expect(read(k)).toMatchObject({ messages: 2, met: 2 })
+
+  // The types leave open whether the summary row comes before or after that SessionStart: after
+  // it, the settings it quotes must not stop the count the SessionStart just started.
+  await k.row('compaction', [text(`Summary: ${SET_TEXT}`)])
+  await k.finish()
+  expect(read(k)).toMatchObject({ messages: 3, met: 3 })
 })
 
 test('a compaction another hook skips still stops the count, and the compaction answer goes on unchanged', async ($, on) => {
