@@ -27,7 +27,7 @@ You ask the assistant to fix a failing test. It reads files, runs commands and e
 
 With Hush the steps fold away. One message comes at the end. It holds the same parts in the same order: what happened, why, what did not pass, and what to do next.
 
-<p align="center"><img src="assets/mascot.svg" alt="Ember quiets the speech bubbles and log pile, then returns to calm typing." width="700"></p>
+<p align="center"><img src="assets/mascot.svg" alt="Ember types under three progress messages and a log. Hush folds the messages into one line, a card offers the shape of the answer, and Ember answers calmly." width="700"></p>
 
 *Ember is the mascot of the Foundry plugins. The scene is an illustration, not a measurement.*
 
@@ -160,6 +160,8 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin.
 
 The same batch shows how the shape held:
+
+<p align="center"><img src="assets/hero-shape.svg" alt="Four checks of the final message, with Hush and without. A fresh reader answered all three questions: 100% against 94.4%. The answer linked the file and its line: 29 of 36 against 0 of 36. Words in blocks over 40 words: 52.3% against 78.3%. Sentences over 20 words: 0.5% against 10.9%." width="700"></p>
 
 | What was checked | With Hush | No plugin |
 | --- | --- | --- |
