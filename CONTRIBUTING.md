@@ -34,11 +34,13 @@ widgets/
 └── config.html         # the /hush:config configurator and its preview
 CONTRIBUTING.md
 LICENSE                 # MIT
-README.md               # the one user-facing page: mechanism, settings and evidence
+README.md               # the front page: what Hush does, install, limits and the lead results
 SECURITY.md
+assets/                 # the README and docs art, copied from the brand kit
+docs/knowledge/         # how-it-works.md, settings.md and benchmarks.md
 ```
 
-The README holds the mechanism, every setting and the published measurements. Every published number belongs to the voice shipped when its batch ran, measured with `HUSH_WRAP=1`, and names its host, model and date. Hush has no Codex package and the README says so.
+The README is the front page. `docs/knowledge/how-it-works.md` holds the whole mechanism, `settings.md` every setting and `benchmarks.md` every published measurement. A fact lives in one place: the README states the short form and links the page. Every published number belongs to the voice shipped when its batch ran, measured with `HUSH_WRAP=1`, and names its host, model and date. Hush has no Codex package and the README says so.
 
 ---
 

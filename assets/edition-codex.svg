@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Codex">
+  <style>.ink{fill:#252820;stroke:#252820}.prompt{stroke:#fff}@media(prefers-color-scheme:dark){.ink{fill:#eee9de;stroke:#eee9de}.prompt{stroke:#252820}}</style>
+  <path class="ink" d="M32 19Q63 16 96 20Q109 21 109 35L108 95Q108 108 94 109L33 108Q20 108 19 94L20 34Q20 20 32 19Z" stroke-width="4" stroke-linejoin="round" />
+  <g class="prompt" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 45L57 62 39 80M68 80L88 79" />
+  </g>
+</svg>
