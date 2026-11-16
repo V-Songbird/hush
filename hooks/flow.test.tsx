@@ -8,7 +8,11 @@ import { FOLDS_KEPT, SESSIONS_KEPT } from './register'
 // Whole replies through the mod: turn.start, the rows the session stores, turn.complete, then a
 // row drawn on the desktop. Each beneath hook stands for the engine: its store, its own row.
 
-type Row = { type: 'user' | 'assistant' | 'attachment'; content: unknown[]; door?: string; name?: string; isMeta?: true; agentId?: string }
+type Row = { type: 'user' | 'assistant' | 'attachment'; content: unknown[]; door?: string; name?: string; isMeta?: true; agentId?: string; origin?: string }
+
+// The row that opens a turn: the person's prompt, or the harness's own.
+const asks = (text = 'Fix it.'): Row => ({ type: 'user', door: 'prompt', origin: 'composer', content: [{ type: 'text', text }] })
+const notifies = (origin = 'task-notification'): Row => ({ type: 'user', door: 'prompt', origin, isMeta: true, content: [{ type: 'text', text: '<task-notification>' }] })
 
 const say = (text: string, agentId?: string): Row => ({ type: 'assistant', content: [{ type: 'text', text }], agentId })
 const call = (id: string, agentId?: string): Row => ({ type: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: {} }], agentId })
@@ -50,9 +54,9 @@ const kit = ($: Engine, on: On, saved: Record<string, unknown> = {}) => {
     async turn(rows: Row[], mid?: () => void) {
       const turnId = `t${++n}`
       await $.turn.start({ turnId } as never)
-      for (const { agentId, door, ...message } of rows) {
+      for (const { agentId, door, origin, ...message } of rows) {
         const role = message.type === 'attachment' ? undefined : message.type
-        await $.session.append({ message: { ...message, role }, door: door ?? (message.type === 'assistant' ? 'response' : 'tool-result'), uuid: `u${n}-${Math.random()}`, origin: { kind: 'model', model: 'm' }, agentId } as never)
+        await $.session.append({ message: { ...message, role }, door: door ?? (message.type === 'assistant' ? 'response' : 'tool-result'), uuid: `u${n}-${Math.random()}`, origin: origin === undefined ? { kind: 'model', model: 'm' } : { kind: origin }, agentId } as never)
       }
       mid?.()
       await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId, reason: 'answer' })
@@ -135,6 +139,69 @@ test('the prompt that starts a turn does not stop its fold', async ($, on) => {
   await k.turn([{ type: 'user', door: 'prompt', content: [{ type: 'text', text: 'Fix it.' }] }, say('Looking.'), ...work('a'), say('Done.')])
 
   expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+})
+
+// A turn the harness opens continues the reply before it: that reply's last text was a status line.
+test('a status line folds once a task notification continues the reply', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('The suite runs in the background.')])
+  expect(await k.draw('The suite runs in the background.')).toBe('whole')
+
+  await k.turn([notifies(), ...work('b'), say('Local checks pass; waiting on CI.')])
+  await k.turn([notifies('scheduled-trigger'), ...work('c'), say('**All published.**')])
+
+  expect(await k.draw('Looking.')).toBe('Show 3 progress messages')
+  expect(await k.draw('The suite runs in the background.')).toBe('hidden')
+  expect(await k.draw('Local checks pass; waiting on CI.')).toBe('hidden')
+  expect(await k.draw('**All published.**')).toBe('whole')
+  expect((k.store.get(`${KEY}s1`) as { folds: unknown[] }).folds.length).toBe(1)
+})
+
+test('a status line after tool calls alone folds once the reply is continued', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), ...work('a'), say('Running in the background.')])
+  await k.turn([notifies(), ...work('b'), say('**Done.**')])
+
+  expect(await k.draw('Running in the background.')).toBe('Show 1 progress message')
+  expect(await k.draw('**Done.**')).toBe('whole')
+})
+
+test('an answer stays whole when the person opens the next turn', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('First answer.')])
+  await k.turn([asks('And the docs?'), say('Reading.'), ...work('b'), say('Second answer.')])
+
+  expect(await k.draw('First answer.')).toBe('whole')
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+  expect(await k.draw('Reading.')).toBe('Show 1 progress message')
+})
+
+test('a continuing turn that ends on a tool call leaves the fold before it as it was', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Waiting.')])
+  await k.turn([notifies(), ...work('b')])
+
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+  expect(await k.draw('Waiting.')).toBe('whole')
+})
+
+test('a reopened session draws the last answer whole, and a later notification does not fold it', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Waiting.')])
+  await k.start()
+  await k.turn([notifies(), say('Checking.'), ...work('b'), say('**Done.**')])
+
+  expect(await k.draw('Waiting.')).toBe('whole')
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+  expect(await k.draw('Checking.')).toBe('Show 1 progress message')
+})
+
+test('a status line equal to an older progress text is drawn whole while it waits', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Checking the tests.'), ...work('b'), say('Final A.')])
+  await k.turn([asks('Again.'), ...work('c'), say('Checking the tests.')])
+
+  expect(await k.draw('Checking the tests.')).toBe('whole')
 })
 
 // What the mod gathers, and from whom.

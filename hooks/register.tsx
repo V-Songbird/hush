@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput } from 'claude-code'
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
-import type { Folds, FoldWords, Stored } from './fold'
+import type { Fold, Folds, FoldWords, Stored } from './fold'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
 // On the desktop app, it folds the progress texts written between tool calls into one line once
@@ -70,6 +70,15 @@ let isMixed = false
 // A subagent's words turned loose since the last save.
 let hasUnsaved = false
 let stored: Stored = { items: [], errors: 0 }
+// A turn the harness opened, on a task notification or a scheduled trigger, continues the reply
+// before it: that reply's last text was a status line, not the answer, so it joins the fold once
+// the continuing turn ends. `pending` is the last finished reply and the heads it has not turned
+// loose yet. They are held back in `$.state`, so they can still fold, and written loose to the
+// store, so a reopened session, which has no `pending`, draws them whole.
+type Pending = { stored: Stored; fold: Fold | null; held: string[] }
+let pending: Pending | null = null
+let isContinued = false
+const HARNESS = ['task-notification', 'scheduled-trigger']
 
 function startReply() {
   stored = { items: [], errors: 0 }
@@ -95,24 +104,42 @@ async function save($: EngineInterface, all: Folds) {
 
   // Deleted first, so `keys()`, in insertion order, lists sessions oldest written first.
   await $.store.delete(key)
-  await $.store.set(key, fitted(all, SESSION_BUDGET))
+  await $.store.set(key, fitted({ ...all, loose: withHeads(all.loose, pending?.held ?? []) }, SESSION_BUDGET))
   hasUnsaved = false
 }
 
 /**
  * The reply stopped: fold what came before its final message, keep it past a reload. A reply cut
  * by a compaction folds nothing: its first rows may no longer be drawn, so all its texts turn loose.
+ * A reply the harness continued folds again with the turn that continued it, in one fold.
  */
 async function closeReply($: EngineInterface, isCut = false) {
-  const fold = isMixed || isCut ? null : foldOf(stored)
-  const loose = looseOf(stored, fold)
+  const canFold = !(isMixed || isCut)
+  const before = canFold && isContinued ? pending : null
+  const whole: Stored = before === null ? stored : { items: [...before.stored.items, ...stored.items], errors: before.stored.errors + stored.errors }
+  // A continuing turn that ends on a tool call makes no fold: the one before it stays.
+  const fold = canFold ? (foldOf(whole) ?? before?.fold ?? null) : null
+  const old = before?.fold ?? null
+  const held = looseOf(whole, fold)
+  // The heads that turn loose now: the last reply's, unless this turn continued it, and this
+  // reply's own when nothing may continue it.
+  const loose = [...(before === null ? (pending?.held ?? []) : []), ...(canFold ? [] : held)]
+  const isNew = fold !== null && fold !== old
+  pending = canFold ? { stored: whole, fold, held } : null
+  isContinued = false
   startReply()
 
-  if (fold === null && loose.length === 0) {
+  if (!isNew && loose.length === 0 && held.length === 0) {
     return
   }
 
-  const all = await update($, folds, s => kept({ folds: [...s.folds, ...(fold === null ? [] : [fold])], loose: withHeads(s.loose, loose) }, FOLDS_KEPT))
+  const all = await update($, folds, s => {
+    const rest = isNew && old !== null ? s.folds.filter(f => !(f.head === old.head && f.final === old.final)) : s.folds
+    // A held head an earlier fold also holds turns loose at once: held back, that fold would hide its row.
+    const taken = held.filter(head => rest.some(f => f.texts.includes(head)))
+
+    return kept({ folds: [...rest, ...(isNew ? [fold] : [])], loose: withHeads(s.loose, [...loose, ...taken]) }, FOLDS_KEPT)
+  })
 
   if (all.folds.length > 0) {
     // A store that refuses the write leaves this session's folds in `$.state` until it ends.
@@ -180,6 +207,8 @@ export const register: Register = on => {
     const saved = await $.store.get(`${STORE}${await $.session.id()}`)
     await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
     await update($, opened, () => [])
+    pending = null
+    isContinued = false
 
     return next(e)
   })
@@ -214,6 +243,11 @@ export const register: Register = on => {
       }
 
       return row
+    }
+
+    // The row that opens a turn says who opened it, whichever side of `turn.start` it arrives on.
+    if ((e.door === 'prompt' || e.door === 'queue') && stored.items.length === 0) {
+      isContinued = HARNESS.includes((e.origin as { kind?: string }).kind ?? '')
     }
 
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
