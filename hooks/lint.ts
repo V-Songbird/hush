@@ -70,7 +70,7 @@ type Part = { kind: 'code' } | { kind: 'line'; text: string; loose?: true } | { 
 const FENCE = /^(`{3,}|~{3,})/
 const ITEM = /^[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)+/
 const BOX = /^(?:\[[ xX]\][ \t]+|\[\^[^\]\s]+\]:[ \t]*)/
-const BIDI = /[\p{Bidi_Control}​⁠﻿]/gu
+const BIDI = new RegExp('[\\p{Bidi_Control}\\u200B\\u2060\\uFEFF]', 'gu')
 const clean = (raw: string) => raw.replace(BIDI, '').trim()
 
 function partsOf(lines: readonly string[]): Part[] {
@@ -201,7 +201,8 @@ function placement(lines: readonly Part[], s: Settings): { rules: boolean; next:
     // No Next line "in any language": a count cannot tell the word, so only the shape the voice
     // gives "Next:", a rule of its own above a closing bold label, is a miss.
     const endAt = s.headers === 'on' ? (isHeader(n - 2) || !isInline(n - 1) ? n - 2 : n - 1) : isInline(n - 1) || !isHeader(n - 2) ? n - 1 : n - 2
-    const isShape = ruled && endAt - 1 > 1 && isFirm(endAt - 1) && (isInline(endAt) || isHeader(endAt))
+    // A header over a footnote heads notes, not a step.
+    const isShape = ruled && endAt - 1 > 1 && isFirm(endAt - 1) && (isInline(endAt) || isHeader(endAt)) && !textAt(endAt + 1)?.startsWith('[^')
 
     return { rules: ruled ? isUnder : !hasRule, next: !isShape }
   }

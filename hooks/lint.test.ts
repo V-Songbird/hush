@@ -582,6 +582,9 @@ test('a skin tone, a zero-width space, a hard break, a closing quote and a bold 
   expect(lintMessage(end('**Done.**\\', '**Next:** read.'))).toEqual([])
   expect(lintMessage(end('**Done.**”', '**Next:** read.'))).toEqual([])
   expect(lintMessage(end('**Done.**»', '**Next:** read.'))).toEqual([])
+  // Under next=off a closing header over a footnote is a notes block, not a Next step header.
+  expect(lintMessage(msg('**Done.**', '', '---', '', 'Body.', '', '---', '', '**Notes**', '[^1]: x'), settingsOf({ next: 'off', headers: 'on' }))).toEqual([])
+  expect(lintMessage(msg('**Done.**', '', '---', '', 'Body.', '', '---', '', '**Next step**', 'Open it.'), settingsOf({ next: 'off', headers: 'on' }))).toEqual(['next step where set'])
   // Under next=off a footnote whose label is bold is no Next line.
   expect(lintMessage(msg('**Done.**', '', '---', '', 'Body[^a].', '', '---', '', '**[^a]:** x', '', '&nbsp;'), settingsOf({ next: 'off' }))).toEqual([])
 })
