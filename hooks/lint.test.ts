@@ -502,7 +502,7 @@ test('under next=off the shape of a Next step, inline or as a header, misses aft
 
 // Review 5's H1: a fence may open after a list marker, a quote mark or a footnote label, as
 // CommonMark nests it. Its closer must close it, never open a fence that hides the rest.
-test('a fence opened after a list marker, a quote mark, a task box or a footnote label closes at its own closer (review 5 H1)', () => {
+test('a fence opened after a list marker, a task box or a footnote label closes at its own closer, and a quoted one hides nothing (review 5 H1)', () => {
   const fenced = (...block: string[]) => framed(...block)
 
   for (const block of [
@@ -529,7 +529,7 @@ test('a fence opened after a list marker, a quote mark, a task box or a footnote
   expect(lintMessage(msg('**Done.**', '', '1. ```yaml', '   a: 1', '   ```', '', '**Next:** run it.'), off)).toEqual([])
 })
 
-test('a line that leaves the list item or quote a fence opened in ends that fence, as CommonMark ends it', () => {
+test('a line that leaves the list item a fence opened in ends that fence, as CommonMark ends it', () => {
   // The item's fence has no closer: the rule at the margin leaves the item, and the next fence
   // opens and closes on its own.
   expect(lintMessage(msg('**Done.**', '', '---', '', '- ```bash', '  x', '', '---', '', '**Next:** y', '', '```sh', 'z', '```'))).toEqual([])
