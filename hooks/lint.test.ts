@@ -592,6 +592,25 @@ test('a hyphen line right under text is no rule where a rule would miss, and sti
   expect(lintMessage(msg('**Done.**', '', 'x', '', '---', '', 'y', '', '**Next:** a'), settingsOf({ rules: 'off' }))).toEqual(['rules where set'])
 })
 
+// The README and /hush:config say these counts never miss under these settings.
+test('the counts the documentation says never miss do not miss', () => {
+  const broken = [
+    'plain\n\nmore',
+    '**Done.**\n\nx\n\n---\n\n---\n\ny',
+    '**Done.**\n\n---\n\nx\n\n---\n\n**Next:** a',
+    '**Done.**\n\n**Next:** a\n\nb\n\n---\n\n---\n\nc',
+    'x\n---\n\n**Cause:** y\n\n***\n\n_ _ _',
+  ]
+
+  for (const text of broken) {
+    expect(lintMessage(text, settingsOf({ next: 'top' }))).not.toContain('rules where set')
+    expect(lintMessage(text, settingsOf({ next: 'off', rules: 'off' }))).not.toContain('next step where set')
+    expect(lintMessage(text, settingsOf({ next: 'off', markdown: 'plain' }))).not.toContain('next step where set')
+    expect(lintMessage(`${text}\n\n\`\`\`js\nopen`, settingsOf({ next: 'off' }))).not.toContain('rules where set')
+    expect(lintMessage(`${text}\n\n\`\`\`js\nopen`)).not.toContain('next step where set')
+  }
+})
+
 test('a semicolon after the bold result is a stop: U+037E, the Greek question mark, normalises to it', () => {
   expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])
   expect(lintMessage(GOOD.replace('**The login test passes again.**', '**Περνά το τεστ**;'))).toEqual([])

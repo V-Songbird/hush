@@ -182,7 +182,8 @@ const HEADER = [new RegExp(`^${HEADER_WORD}`, 'u'), new RegExp(`^(?:${EMOJI})?${
  * - next=end, rules on: a rule under the result, and a "Next:" line, or a header under
  *   headers=on, somewhere after it. A bold label with no rule above it may be a Next line that
  *   lost its rule or a landmark of the body with the step missing; a count cannot tell which, so
- *   it misses neither. Anything may follow the Next line.
+ *   it misses neither. Anything may follow the Next line. A Next line right under the result,
+ *   above every rule, is next=top's shape: the step's miss alone.
  * - next=top: the Next step is every line from the one under the result to the first rule, so a
  *   soft break, the closing sentence as its own paragraph, a header's lines and the code the step
  *   needs all sit in it. With rules on, a rule ends it; a message with no rule at all is no miss,
