@@ -7,10 +7,14 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { HOOKS_DIR, SPAWN_TIMEOUT_MS } = require('./helpers');
-const { KNOBS, DEFAULTS, PRESETS, HEADER, parse } = require('../hooks/style-settings');
+const { KNOBS, DEFAULTS, PRESETS, HEADER, APP_HEADER, parse } = require('../hooks/style-settings');
 
 const SCRIPT = path.join(HOOKS_DIR, 'style-settings.js');
 const MODULES = path.join(HOOKS_DIR, '..', 'modules');
+// The whole voice: the style file, then the part the settings hook adds on
+// every host but the terminal.
+const wholeVoice = () =>
+  fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8') + '\n' + fs.readFileSync(path.join(HOOKS_DIR, 'voice-app.md'), 'utf-8');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hush-style-settings-'));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
@@ -96,7 +100,7 @@ describe('style-settings: modules', () => {
 
   test('checks give room only to what did not pass, with no marks, and the message comes after wrap_up', () => {
     const root = path.join(HOOKS_DIR, '..');
-    const style = fs.readFileSync(path.join(root, 'output-styles', 'hush.md'), 'utf-8');
+    const style = wholeVoice();
     assert.ok(style.includes('Checks give room only to what did not pass.'));
     assert.ok(style.includes("Give each command's counts as the runner printed them: passed, failed, skipped. Name every failed test."));
     assert.ok(style.includes('A count you did not read in the output is worked out. Say so.'));
@@ -104,7 +108,7 @@ describe('style-settings: modules', () => {
     for (const s of ['Then its counts as the runner printed them: passed, failed, skipped.', 'A count you did not read in the output is worked out. Say so.', 'Name every failed test.']) assert.ok(each.includes(s), s);
     assert.ok(style.includes('Write the message after `wrap_up`, never before it.'));
     assert.ok(!style.includes('write the message first'));
-    const files = [path.join(root, 'output-styles', 'hush.md'), path.join(root, 'widgets', 'config.html'), path.join(root, 'commands', 'config.md')];
+    const files = [path.join(root, 'output-styles', 'hush.md'), path.join(HOOKS_DIR, 'voice-app.md'), path.join(root, 'widgets', 'config.html'), path.join(root, 'commands', 'config.md')];
     for (const f of fs.readdirSync(MODULES)) files.push(path.join(MODULES, f));
     for (const f of files) {
       const text = fs.readFileSync(f, 'utf-8');
@@ -113,7 +117,7 @@ describe('style-settings: modules', () => {
   });
 
   test('the voice asks at every turn end whether the session can be archived, and the check rides on the Next line', () => {
-    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    const style = wholeVoice();
     const once = 'Every turn that answers the user ends with one check.';
     assert.strictEqual(style.split(once).length - 1, 1);
     for (const s of [
@@ -134,7 +138,7 @@ describe('style-settings: modules', () => {
   });
 
   test('the Next line stands on its own, and chapters name their moments', () => {
-    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    const style = wholeVoice();
     for (const s of [
       'The line stands on its own. Name an earlier item by its content, never by its place.',
       '| A chapter, `mark_chapter` | A turning point in a long session, listed below |',
@@ -215,6 +219,44 @@ describe('style-settings hook', () => {
     fs.writeFileSync(config, '{ not json');
     const r = run([], { config, input: 'not json {{{' });
     assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout, '');
+  });
+
+  test('a terminal session with default settings gets nothing', () => {
+    const r = run([], { config: freshConfig(), env: { CLAUDE_CODE_ENTRYPOINT: 'cli' } });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout, '');
+  });
+
+  for (const entry of ['claude-desktop', 'sdk-ts', '']) {
+    test(`entrypoint ${JSON.stringify(entry)} gets the voice's app part, whole`, () => {
+      const r = run([], { config: freshConfig(), env: { CLAUDE_CODE_ENTRYPOINT: entry } });
+      const text = JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+      const part = fs.readFileSync(path.join(HOOKS_DIR, 'voice-app.md'), 'utf-8').trim();
+      assert.strictEqual(text, `${APP_HEADER}\n\n${part}`);
+    });
+  }
+
+  test('the app part comes before the settings, which still replace the rules they name', () => {
+    const config = freshConfig();
+    fs.writeFileSync(config, JSON.stringify({ ...DEFAULTS, rules: 'off' }));
+    const r = run([], { config, env: { CLAUDE_CODE_ENTRYPOINT: 'claude-desktop' } });
+    const text = JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+    assert.ok(text.startsWith(APP_HEADER));
+    assert.ok(text.indexOf(HEADER) > text.indexOf('## Signals outside the message'));
+  });
+
+  test('the style file and the app part hold each section once between them', () => {
+    const style = fs.readFileSync(path.join(HOOKS_DIR, '..', 'output-styles', 'hush.md'), 'utf-8');
+    const part = fs.readFileSync(path.join(HOOKS_DIR, 'voice-app.md'), 'utf-8');
+    for (const heading of ['## Show it when words cost more', '## Signals outside the message']) {
+      assert.ok(part.includes(heading), heading);
+      assert.ok(!style.includes(heading), heading);
+    }
+  });
+
+  test('HUSH_DISABLE=1 stops the app part too', () => {
+    const r = run([], { config: freshConfig(), env: { HUSH_DISABLE: '1', CLAUDE_CODE_ENTRYPOINT: 'claude-desktop' } });
     assert.strictEqual(r.stdout, '');
   });
 

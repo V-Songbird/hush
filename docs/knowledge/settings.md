@@ -43,7 +43,7 @@ Each control is an environment variable. Set it before you start Claude Code.
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The voice stays on until you disable or uninstall the plugin. Outside a terminal it loses [its app part](how-it-works.md#the-app-part). |
 | `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. Reminders and the subagent brief keep running. The step reminder's small counter stays in your temp folder until your system clears it. |
 | `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims, the voice and your message settings keep running. |
 | `HUSH_NUDGE=off` | Stops every reminder sent while the assistant works. The subagent brief keeps running. |
@@ -176,7 +176,7 @@ The box exists only in the desktop app. In a terminal the "Next:" line carries t
 
 ### How a setting reaches the assistant
 
-At session start, and after compaction, a hook hands any setting you changed to the assistant as a short reminder. With every setting at its default it adds nothing. Only `HUSH_DISABLE=1` stops it.
+At session start, and after compaction, a hook hands any setting you changed to the assistant as a short reminder. In a terminal, with every setting at its default, it adds nothing. On every other host the same hook also sends [the voice's app part](how-it-works.md#the-app-part). Only `HUSH_DISABLE=1` stops it.
 
 A missing or broken settings file falls back to the defaults.
 

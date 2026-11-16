@@ -64,6 +64,14 @@ Two cases get more room:
 
 The voice applies whenever the plugin is enabled. It holds Claude Code's one output style slot. To use another output style, disable or uninstall Hush.
 
+### The app part
+
+Two sections of the voice cover visuals and the desktop app's own signals, such as widgets, panes, the task list and the next-step box. A terminal session has none of those tools.
+
+So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every host but the interactive terminal. A terminal session then carries about a fifth less of the voice in each request: 16.7 KB, not 20.9 KB.
+
+Hush tells a terminal by `CLAUDE_CODE_ENTRYPOINT=cli`. Any other value gets the whole voice. `HUSH_DISABLE=1` stops the hook, and with it the app part.
+
 ## What happens to a command's output
 
 When a command finishes, Hush looks at what came back:

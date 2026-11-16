@@ -100,6 +100,24 @@ function compose(settings) {
   return parts.length ? [HEADER, ...parts].join("\n\n") : "";
 }
 
+// The voice's two sections on visuals and on the app's own signals (widgets,
+// panes, the task list, the next-step box) name tools a terminal session does
+// not have. They live in voice-app.md, not in the style file, so a terminal
+// session does not carry them in every request. Every other host gets them
+// here, at session start and again after compaction. Only the interactive
+// terminal is skipped: an entrypoint this code does not know keeps the whole
+// voice.
+const APP_PART = path.join(__dirname, "voice-app.md");
+const APP_HEADER =
+  "hush voice, app part: these two sections are part of the Hush output style and carry the same weight as it. They sit between its sections \"Structure that carries weight\" and \"How you sound\".";
+function inTerminal() {
+  return String(process.env.CLAUDE_CODE_ENTRYPOINT || "").trim() === "cli";
+}
+function appPart() {
+  if (inTerminal()) return "";
+  return `${APP_HEADER}\n\n${fs.readFileSync(APP_PART, "utf8").trim()}`;
+}
+
 function save(settings) {
   const file = configPath();
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -110,7 +128,7 @@ function hook() {
   try {
     if (isOn("HUSH_DISABLE")) return;
     readInput(); // the payload carries nothing these settings need
-    const text = compose(load());
+    const text = [appPart(), compose(load())].filter(Boolean).join("\n\n");
     if (text) emitContext("SessionStart", text);
   } catch {
     /* fail-open: a session starts without settings rather than not at all */
@@ -147,4 +165,4 @@ if (require.main === module) {
   else hook();
 }
 
-module.exports = { KNOBS, DEFAULTS, PRESETS, HEADER, load, parse, compose, configPath };
+module.exports = { KNOBS, DEFAULTS, PRESETS, HEADER, APP_HEADER, appPart, load, parse, compose, configPath };
