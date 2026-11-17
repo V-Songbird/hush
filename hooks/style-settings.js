@@ -100,18 +100,20 @@ function compose(settings) {
   return parts.length ? [HEADER, ...parts].join("\n\n") : "";
 }
 
-// The voice's two sections on visuals and on the app's own signals (widgets,
-// panes, the task list, the next-step box) name tools a terminal session does
-// not have. They live in voice-app.md, not in the style file, so a terminal
-// session does not carry them in every request. Every other host gets them
-// here, at session start and again after compaction. Only the interactive
-// terminal is skipped: an entrypoint this code does not know keeps the whole
-// voice.
+// The voice's sections on what the desktop app draws and opens (footnotes,
+// math, file cards, app links, widgets, panes, the task list, the next-step
+// box) name forms and tools a terminal session does not have. They live in
+// voice-app.md, not in the style file, so a terminal session does not carry
+// them in every request. Every other host gets them here, at session start
+// and again after compaction. Only the interactive terminal (cli) and print
+// mode, `claude -p` (sdk-cli), are skipped: an entrypoint this code does not
+// know keeps the whole voice.
 const APP_PART = path.join(__dirname, "voice-app.md");
 const APP_HEADER =
-  "hush voice, app part: these two sections are part of the Hush output style and carry the same weight as it. They sit between its sections \"Structure that carries weight\" and \"How you sound\".";
+  "hush voice, app part: these sections are part of the Hush output style and carry the same weight as it. They add what the Claude desktop app draws and opens. They sit between its sections \"Structure that carries weight\" and \"How you sound\".";
+const NO_APP = new Set(["cli", "sdk-cli"]);
 function inTerminal() {
-  return String(process.env.CLAUDE_CODE_ENTRYPOINT || "").trim() === "cli";
+  return NO_APP.has(String(process.env.CLAUDE_CODE_ENTRYPOINT || "").trim());
 }
 function appPart() {
   if (inTerminal()) return "";

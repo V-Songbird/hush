@@ -14,6 +14,7 @@ This page lists everything you can set in Hush. Most people never change a setti
 ## Contents
 
 - [Pause the voice in one session](#pause-the-voice-in-one-session)
+- [Scripts and agent pipelines](#scripts-and-agent-pipelines)
 - [Session controls](#session-controls)
 - [`HUSH_WRAP=1`](#hush_wrap1)
 - [The output style line](#the-output-style-line)
@@ -34,6 +35,16 @@ The message must hold only those words. `stop hush` and `/hush off` work too. A 
 - The trims keep running. `HUSH_DISABLE=1` and `HUSH_CORE=off` stop those.
 - A blocker, a failed check, an unverified claim and a pending approval are still said.
 - The pause is a reminder sent on each turn. With `HUSH_QUIET=off` or `HUSH_NUDGE=off` no reminder is sent, so `hush off` does nothing.
+
+## Scripts and agent pipelines
+
+A script that runs `claude -p` from a plain shell gets the voice without [its app part](how-it-works.md#the-app-part). One started from inside a desktop session gets the app part too. When nobody reads the reply, such as an agent in a pipeline, the voice only adds cost. To run one session without it, turn the plugin off for that run:
+
+```bash
+claude -p --settings '{"enabledPlugins":{"hush@foundry":false}}' "Your prompt"
+```
+
+That run also loses the trims. Neither `"outputStyle": "default"` nor `HUSH_DISABLE=1` drops the voice. Claude Code 2.1.326 applies a plugin's forced output style before it reads `outputStyle`.
 
 ## Session controls
 
@@ -176,7 +187,7 @@ The box exists only in the desktop app. In a terminal the "Next:" line carries t
 
 ### How a setting reaches the assistant
 
-At session start, and after compaction, a hook hands any setting you changed to the assistant as a short reminder. In a terminal, with every setting at its default, it adds nothing. On every other host the same hook also sends [the voice's app part](how-it-works.md#the-app-part). Only `HUSH_DISABLE=1` stops it.
+At session start, and after compaction, a hook hands any setting you changed to the assistant as a short reminder. In a terminal or `claude -p`, with every setting at its default, it adds nothing. On every other host the same hook also sends [the voice's app part](how-it-works.md#the-app-part). Only `HUSH_DISABLE=1` stops it.
 
 A missing or broken settings file falls back to the defaults.
 
