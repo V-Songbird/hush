@@ -222,10 +222,20 @@ describe('style-settings hook', () => {
     assert.strictEqual(r.stdout, '');
   });
 
-  test('a terminal session with default settings gets nothing', () => {
-    const r = run([], { config: freshConfig(), env: { CLAUDE_CODE_ENTRYPOINT: 'cli' } });
-    assert.strictEqual(r.status, 0);
-    assert.strictEqual(r.stdout, '');
+  for (const entry of ['cli', 'sdk-cli', ' sdk-cli ']) {
+    test(`entrypoint ${JSON.stringify(entry)} (terminal or claude -p) with default settings gets nothing`, () => {
+      const r = run([], { config: freshConfig(), env: { CLAUDE_CODE_ENTRYPOINT: entry } });
+      assert.strictEqual(r.status, 0);
+      assert.strictEqual(r.stdout, '');
+    });
+  }
+
+  test('claude -p still gets moved settings, without the app part', () => {
+    const config = freshConfig();
+    fs.writeFileSync(config, JSON.stringify({ ...DEFAULTS, next: 'top' }));
+    const text = JSON.parse(run([], { config, env: { CLAUDE_CODE_ENTRYPOINT: 'sdk-cli' } }).stdout).hookSpecificOutput.additionalContext;
+    assert.ok(text.startsWith(HEADER));
+    assert.ok(!text.includes(APP_HEADER));
   });
 
   for (const entry of ['claude-desktop', 'sdk-ts', '']) {

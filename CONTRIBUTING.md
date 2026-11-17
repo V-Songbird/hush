@@ -24,7 +24,7 @@ commands/
 hooks/
 ├── hooks.json          # Hook event wiring (SessionStart, PreToolUse, PostToolUse, etc.)
 ├── *.js                # one script per hook
-├── voice-app.md        # the voice's two app-only sections, sent by style-settings.js outside a terminal
+├── voice-app.md        # the voice's app-only sections, sent by style-settings.js outside a terminal and claude -p
 └── lib/                # gate, harness, sidecar store and transforms
 modules/                # one rule per moved message setting, <setting>-<value>.md
 output-styles/

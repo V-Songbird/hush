@@ -66,11 +66,16 @@ The voice applies whenever the plugin is enabled. It holds Claude Code's one out
 
 ### The app part
 
-Two sections of the voice cover visuals and the desktop app's own signals, such as widgets, panes, the task list and the next-step box. A terminal session has none of those tools.
+Four sections of the voice cover what the desktop app draws and opens:
 
-So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every host but the interactive terminal. A terminal session then carries about a fifth less of the voice in each request: 16.7 KB, not 20.9 KB.
+- Footnotes, math, `search_tree`, `<kbd>` and local images.
+- File cards and the links the app opens as places, such as a session or a Terminal tab.
+- Visuals, such as widgets and panes.
+- The app's own signals, such as the task list and the next-step box.
 
-Hush tells a terminal by `CLAUDE_CODE_ENTRYPOINT=cli`. Any other value gets the whole voice. `HUSH_DISABLE=1` stops the hook, and with it the app part.
+A terminal session has none of those, and neither does `claude -p`. So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every other host. The style file is 11.1 KB and the app part 7.3 KB.
+
+Hush tells the two apart by `CLAUDE_CODE_ENTRYPOINT`: `cli` is the terminal and `sdk-cli` is `claude -p`. Any other value gets the whole voice. A `claude -p` started from inside a desktop session inherits that session's value, so it gets the app part too. `HUSH_DISABLE=1` stops the hook, and with it the app part.
 
 ## What happens to a command's output
 
