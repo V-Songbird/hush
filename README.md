@@ -83,7 +83,7 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 | See output that was shortened | A reference to the saved full copy, where one exists |
 | Get a long explanation | Ask for one. A request to explain lifts the length limit for that answer |
 | Pause the voice for one session | Send `hush off`. Send `hush on` to bring it back |
-| Turn off part of Hush | One environment variable per part, listed under [Settings](#settings) |
+| Turn off part of Hush | One environment variable per part, listed on [Hush settings](docs/knowledge/settings.md) |
 | Show how much Hush kept out | A count you can read from your own status line script; see [the saved count](docs/knowledge/how-it-works.md#the-saved-count) |
 
 ### Settings
@@ -133,11 +133,11 @@ In Claude Code, run these. Then start a new session:
 | Limit | What it means for you |
 | --- | --- |
 | A short answer can leave out a detail | Correctness comes before silence. Ask for depth when you need it, and check the result before you act on it. |
-| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 9% more on average. See [The numbers](#the-numbers). |
+| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 9% more on average. The current voice has no measured cost. See [The numbers](#the-numbers). |
 | The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
 | Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
-| The desktop mod is new | It is optional and draws only in the Claude desktop app's Code tab. No rendered check of it is published. |
+| The desktop mod is optional | It draws only in the Claude desktop app. No rendered check of it is published. |
 
 ## The numbers
 
@@ -147,7 +147,7 @@ Each test session is a real Claude Code session in its own throwaway folder. Eve
 
 ### Claude Code results
 
-This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice released as [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0), not the current one.
+This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current voice has no measured result.
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-14"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
@@ -183,7 +183,7 @@ Hush's answer is the longer one, 206 words against 179. It opens with the result
 
 </details>
 
-[Hush benchmarks](docs/knowledge/benchmarks.md) has every batch: the 40-word block rule, Claude Sonnet 5.5, the earlier voices, and where Hush loses.
+[Hush benchmarks](docs/knowledge/benchmarks.md) has the method, a second batch on Claude Opus 5, and every place Hush loses.
 
 ## Going deeper
 

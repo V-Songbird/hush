@@ -1,6 +1,6 @@
 # Contributing
 
-This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/foundry) and is maintained by a single author. Contributions are welcome in the form of bug reports, suggestions, and pull requests.
+Hush is part of the [Foundry marketplace](https://github.com/V-Songbird/foundry) and has a single maintainer. Contributions are welcome in the form of bug reports, suggestions, and pull requests.
 
 ---
 
@@ -13,17 +13,18 @@ This plugin is part of the [Foundry Collection](https://github.com/V-Songbird/fo
 
 ## Structure
 
-`main` holds the plugin: one package for Claude Code, developed and released from this branch. Hush has no Codex package.
+`main` holds the plugin: one package for Claude Code. Hush has no Codex or Antigravity package.
 
 ```
 .claude-plugin/
 └── plugin.json        # name, version, description, author, keywords
-.github/workflows/      # test.yml: the suite on Linux and Windows
+.github/workflows/      # test.yml: the manifest check, the nav check and the suite, on Linux and Windows
 commands/
 └── config.md          # /hush:config
 hooks/
-├── hooks.json          # Hook event wiring (SessionStart, PreToolUse, PostToolUse, etc.)
+├── hooks.json          # Hook event wiring (SessionStart, PreToolUse, PostToolUse, etc.) and the desktop mod
 ├── *.js                # one script per hook
+├── register.tsx        # the desktop mod, with fold.ts, which decides what folds
 ├── voice-app.md        # the voice's app-only sections, sent by style-settings.js outside a terminal and claude -p
 └── lib/                # gate, harness, sidecar store and transforms
 modules/                # one rule per moved message setting, <setting>-<value>.md
@@ -31,6 +32,8 @@ output-styles/
 └── hush.md             # the shipped voice
 scripts/                # git-hooks/: the commit gates
 tests/                  # node:test suite, with contract/ and fixtures/
+types/
+└── index.d.ts          # the mod's types
 widgets/
 └── config.html         # the /hush:config configurator and its preview
 CONTRIBUTING.md
@@ -41,7 +44,7 @@ assets/                 # the README and docs art, copied from the brand kit
 docs/knowledge/         # how-it-works.md, settings.md and benchmarks.md
 ```
 
-The README is the front page. `docs/knowledge/how-it-works.md` holds the whole mechanism, `settings.md` every setting and `benchmarks.md` every published measurement. A fact lives in one place: the README states the short form and links the page. Every published number belongs to the voice shipped when its batch ran, measured with `HUSH_WRAP=1`, and names its host, model and date. Hush has no Codex package and the README says so.
+The README is the front page. `docs/knowledge/how-it-works.md` holds the whole mechanism, `settings.md` every setting and `benchmarks.md` every published measurement. A fact lives in one place: the README states the short form and links the page. Every published number names the voice release it measured, its host, its model and its date, and was measured with `HUSH_WRAP=1`. Hush has no Codex or Antigravity package and the README says so.
 
 ---
 
@@ -53,7 +56,7 @@ The README is the front page. `docs/knowledge/how-it-works.md` holds the whole m
 
 ## Tests
 
-If this plugin has scripted behavior, run its tests before submitting:
+Run the tests before submitting:
 
 ```
 node --test tests/*.test.js
@@ -73,15 +76,15 @@ Run this once after cloning:
 git config core.hooksPath scripts/git-hooks
 ```
 
-This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blocks the commit on failure. It no-ops if this plugin has no `tests/` directory. It also blocks a commit that stages a Markdown file while the root `README.md` lacks its navigation line, or while a link to a heading anchor in any tracked Markdown file no longer resolves.
+This enables a `pre-commit` hook that runs `node --test tests/*.test.js` and blocks the commit on failure. It also blocks a commit that stages a Markdown file while the root `README.md` lacks its navigation line, or while a link to a heading anchor in any tracked Markdown file no longer resolves.
 
-hush, razor and foreman keep byte-identical copies of `pre-commit`. A change to one goes into all three.
+Hush, Razor and Foreman keep byte-identical copies of `pre-commit`. A change to one goes into all three.
 
 ---
 
 ## Release notes
 
-Release notes live on the [releases page](https://github.com/V-Songbird/hush/releases), written in plain prose when a release is cut. The release commit bumps the version in `.claude-plugin/plugin.json`. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and carries no version for hush.
+Release notes live on the [releases page](https://github.com/V-Songbird/hush/releases), written in plain prose when a release is cut. The release commit bumps the version in `.claude-plugin/plugin.json`. The [Foundry](https://github.com/V-Songbird/foundry) catalog pins the released `main` commit and repeats that version.
 
 ---
 
