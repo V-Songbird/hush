@@ -108,6 +108,7 @@ Some output comes back whole, up to 250 lines:
 - line-range prints: `sed -n`, `head` and `tail`
 - `git diff` and `git show`
 - whole reads of source files
+- `grep -n` of named files
 - JSON or a numeric table, when the run did not fail
 
 They have no warning lines for a trim to keep. Cutting them only makes the assistant fetch them again.
@@ -118,7 +119,7 @@ When your prompt asks for every item of something, such as "list every warning",
 
 ## Reads and searches
 
-The Read tool gets the failing-run trim on logs and on files nobody writes by hand. Those are lockfiles, minified bundles, and anything under `node_modules` or `dist`.
+The Read tool gets the failing-run trim on logs and on files nobody writes by hand. Those are lockfiles, minified bundles, source maps, and anything under `node_modules`, `dist`, `.next` or `__pycache__`.
 
 Other files come back untouched. So does any read with an offset or a limit.
 
@@ -152,7 +153,7 @@ If a saved file is gone, the assistant is told to run the command again.
 
 Claude Code guards the output of a failing command. So Hush may trim it only in two cases:
 
-- The session no longer asks you to approve each step.
+- The session runs in `bypassPermissions` mode, where Claude Code asks for no approval.
 - You set `HUSH_WRAP=1`.
 
 Otherwise failing output arrives in full. [Hush settings](settings.md#hush_wrap1) explains `HUSH_WRAP=1` and when it is not safe.
@@ -186,7 +187,7 @@ The folder is named for the session id, in lowercase on Windows.
 A rule read once fades as a session grows. So Hush repeats it when it has to:
 
 - A short reminder at the start of each of your turns.
-- A shorter one the first time chatter slips through.
+- A shorter one after the assistant writes text between tool calls, at most once per turn.
 - One for a turn the harness starts, such as a task notification. When nothing is new, that turn ends with no message or one short line.
 
 A quiet session pays nothing extra.
@@ -203,11 +204,11 @@ An output style never reaches a subagent, which is a helper session the assistan
 
 Hush also ships an optional mod. A mod is code that Claude Code loads to draw in its interface. Every hook above runs as before without it.
 
-The mod works in the Claude desktop app's Code tab only. Once a final message arrives, it folds the progress texts written between tool calls into one grey line: "Show N progress messages". One press shows them in place.
+The mod works in the Claude desktop app only. Once a final message arrives, it folds the progress texts written between tool calls into one line: "Show N progress messages". One press shows them in place.
 
-The line counts failed results and texts that name a failure. Its words follow Claude Code's `language` setting, Spanish or English.
+The line counts failed results and texts that carry a warning. Its words follow Claude Code's `language` setting, Spanish or English.
 
-A turn can end on a status line, such as "the suite runs in the background". When a task notification or a scheduled task then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A turn you open yourself never folds the answer before it.
+A turn can end on a status line, such as "the suite runs in the background". When a task notification or a scheduled task then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A notification that arrives while the turn still runs does not stop the fold either. A turn you open yourself never folds the answer before it.
 
 Some texts stay drawn:
 
@@ -217,4 +218,4 @@ Some texts stay drawn:
 
 Each session keeps its folds when you reopen it, for the eight newest sessions. Every other reply and every other surface, the terminal included, is left to the app whole.
 
-The mod adds no command, and nothing leaves your machine. It is new, and no rendered check of it is published.
+The mod adds no command, and nothing leaves your machine. No rendered check of it is published. `HUSH_DISABLE=1` turns it off.

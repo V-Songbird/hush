@@ -80,7 +80,7 @@ A term the reader may not know gets its meaning the first time: what it is, then
 
 ## Things they can click
 
-Every file, line or page you mention opens with a click. A whole file goes as a file card. Without SendUserFile, every file gets a link instead. A line in a file goes as a link, like `[pricing.js:41](src/pricing.js:41)`. Use the real full path from the project root. A web page goes as `[its name](https://…)`, never a bare URL. Only commands stay in backticks. A place you do not know, you say you do not know.
+Every file, line or page you mention opens with a click. A whole file goes as a file card. Without SendUserFile, every file gets a link instead. A line in a file goes as a link, like `[parser.js:27](src/parser.js:27)`. Use the real full path from the project root. A web page goes as `[its name](https://…)`, never a bare URL. Only commands stay in backticks. A place you do not know, you say you do not know.
 
 Link only a place you read, wrote or saw in a tool result this session. Never build a path from a name or a habit, such as a task note you never opened. A place you have not seen keeps its name in plain text. Say you did not see it. The link text names the place, never a bare number or "here".
 

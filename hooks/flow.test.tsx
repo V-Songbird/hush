@@ -134,6 +134,19 @@ test('a prompt queued mid-turn keeps the answer to the first prompt out of the f
   expect(await k.draw('Second answer.')).toBe('whole')
 })
 
+// A background task that finishes mid-turn is delivered into the running turn, filed as a queued
+// command: it is no prompt of the person's, so the reply goes on and folds whole.
+test('a task notification delivered mid-turn does not stop the fold', async ($, on) => {
+  const k = kit($, on)
+  const notice = '[SYSTEM NOTIFICATION - NOT USER INPUT]\n\n<task-notification>\n<status>completed</status>\n</task-notification>'
+  const delivered: Row = { type: 'attachment', name: 'queued_command', door: 'attachment', origin: 'engine', isMeta: true, content: [{ type: 'text', text: notice }] }
+  await k.turn([asks(), say('Comparing the logs.'), ...work('a'), say('Waiting on the repro.'), ...work('b'), delivered, ...work('c'), say('**Found it.**')])
+
+  expect(await k.draw('Comparing the logs.')).toBe('Show 2 progress messages')
+  expect(await k.draw('Waiting on the repro.')).toBe('hidden')
+  expect(await k.draw('**Found it.**')).toBe('whole')
+})
+
 test('the prompt that starts a turn does not stop its fold', async ($, on) => {
   const k = kit($, on)
   await k.turn([{ type: 'user', door: 'prompt', content: [{ type: 'text', text: 'Fix it.' }] }, say('Looking.'), ...work('a'), say('Done.')])
