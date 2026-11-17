@@ -252,7 +252,11 @@ export const register: Register = on => {
 
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
     if (isReplying) {
-      const isPrompt = e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command')
+      const text = blocks.map(block => (block.type === 'text' && typeof block.text === 'string' ? block.text : '')).join('')
+      // A task notification delivered into the running turn is filed as a queued command, under
+      // the engine's origin; only its text tells it from the person's queued prompt.
+      const isHarness = HARNESS.includes((e.origin as { kind?: string }).kind ?? '') || text.includes('<task-notification>')
+      const isPrompt = e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command' && !isHarness)
 
       // The prompt that starts the turn arrives before anything is gathered and ends nothing.
       if (isPrompt && stored.items.length > 0) {
@@ -273,8 +277,6 @@ export const register: Register = on => {
         if (e.message.type === 'assistant' && block.type === 'tool_use') stored.items.push({ kind: 'tool' })
         if (block.type === 'tool_result' && block.is_error === true) stored.errors++
       }
-
-      const text = blocks.map(block => (block.type === 'text' && typeof block.text === 'string' ? block.text : '')).join('')
 
       if (e.message.type === 'user' && e.message.isMeta === true && isReprompt(text)) {
         await closeReply($)
