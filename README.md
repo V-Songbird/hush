@@ -86,6 +86,10 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 | Turn off part of Hush | One environment variable per part, listed on [Hush settings](docs/knowledge/settings.md) |
 | Show how much Hush kept out | A count you can read from your own status line script; see [the saved count](docs/knowledge/how-it-works.md#the-saved-count) |
 
+<p align="center"><img src="assets/presets.svg" alt="One answer under three presets, as the configurator's sample shows it. Minimal is 22 words: the next-step box is the whole reply. Standard is 103 words and ends on the next step. Explainer is 118 words, explains the term in place and has no next step." width="700"></p>
+
+The picture is the configurator's own sample message, not a recorded session.
+
 ### Settings
 
 Most people never change a setting. These three are the ones people reach for:
