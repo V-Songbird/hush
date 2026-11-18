@@ -32,7 +32,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/pause.js"],
             "timeout": 10
           }
         ]
@@ -94,16 +94,6 @@
             "type": "command",
             "command": "node",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/compress-tool-output.js"],
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/silence-nudge.js"],
             "timeout": 5
           }
         ]

@@ -5,13 +5,13 @@
 //   HUSH_CORE=off   Core off — compression, exit-code preservation, the
 //                   compaction note, its re-arm, and session-end cleanup all
 //                   stop; Quiet keeps injecting.
-//   HUSH_QUIET=off  Quiet off — the turn nudge and the subagent brief both
+//   HUSH_QUIET=off  Quiet off — the pause switch and the subagent brief both
 //                   stop; Core keeps compressing, writing sidecars, and
 //                   recording transforms.
 //   HUSH_DISABLE=1  beats both, in every combination.
 //
 // Precedence is pinned here too: a surface switch beats every per-hook flag
-// inside that surface (HUSH_NUDGE=1 cannot resurrect a Quiet that is off),
+// inside that surface (HUSH_SUBAGENT=on cannot resurrect a Quiet that is off),
 // while per-hook flags keep deciding their own hook whenever their surface
 // is on.
 //
@@ -80,7 +80,6 @@ function snapshot(dir) {
 const BASE = {
   HUSH_DEBUG: '1',
   HUSH_WRAP: '1',
-  HUSH_NUDGE: 'max',
   HUSH_COMPACT: 'on',
   HUSH_SUBAGENT: 'on',
   HUSH_SIDECAR: 'on',
@@ -169,17 +168,12 @@ function cases() {
       writes: true,
       silent: true,
     })),
-    mk(() => ({
+    // The pause hook speaks only for the switch itself, so the payload is one.
+    mk((session) => ({
       surface: 'quiet',
-      name: 'silence-nudge.js',
-      label: 'silence-nudge.js (UserPromptSubmit)',
-      input: { hook_event_name: 'UserPromptSubmit' },
-    })),
-    mk(() => ({
-      surface: 'quiet',
-      name: 'silence-nudge.js',
-      label: 'silence-nudge.js (PostToolUse)',
-      input: { hook_event_name: 'PostToolUse' },
+      name: 'pause.js',
+      input: { hook_event_name: 'UserPromptSubmit', session_id: session, prompt: 'hush off' },
+      writes: true,
     })),
     mk(() => ({
       surface: 'quiet',
@@ -249,7 +243,7 @@ describe('Core and Quiet are independent capability switches', () => {
 
 describe('HUSH_DISABLE=1 beats every Core/Quiet combination', () => {
   const core = ALL.find((c) => c.name === 'compress-tool-output.js');
-  const quiet = ALL.find((c) => c.label === 'silence-nudge.js (PostToolUse)');
+  const quiet = ALL.find((c) => c.name === 'pause.js');
   const overlays = [
     ...COMBOS.map((combo) => ({ name: combo.name, env: combo.env })),
     { name: 'both explicitly on', env: { HUSH_CORE: '1', HUSH_QUIET: '1' } },
@@ -271,15 +265,10 @@ describe('HUSH_DISABLE=1 beats every Core/Quiet combination', () => {
 });
 
 describe('a surface switch outranks the per-hook flags inside it', () => {
-  const nudge = ALL.find((c) => c.label === 'silence-nudge.js (PostToolUse)');
+  const pause = ALL.find((c) => c.name === 'pause.js');
   const brief = ALL.find((c) => c.name === 'subagent-brief.js');
   const compact = ALL.find((c) => c.name === 'precompact-summary.js');
   const compress = ALL.find((c) => c.name === 'compress-tool-output.js');
-
-  test('HUSH_NUDGE=max does not resurrect a Quiet that is off', () => {
-    assertActive(nudge, { HUSH_NUDGE: 'max' });
-    assertInert(nudge, { HUSH_NUDGE: 'max', HUSH_QUIET: 'off' });
-  });
 
   test('an on-valued per-hook flag does not resurrect either surface', () => {
     assertActive(brief, { HUSH_SUBAGENT: 'on' });
@@ -289,10 +278,10 @@ describe('a surface switch outranks the per-hook flags inside it', () => {
   });
 
   test('per-hook flags still decide their own hook while the surface is on', () => {
-    assertInert(nudge, { HUSH_NUDGE: 'off' });
+    assertInert(brief, { HUSH_SUBAGENT: 'off' });
     assertInert(compact, { HUSH_COMPACT: 'off' });
     // ...and only their own hook: the rest of each surface keeps working.
-    assertActive(brief, { HUSH_NUDGE: 'off' });
+    assertActive(pause, { HUSH_SUBAGENT: 'off' });
     assertActive(compress, { HUSH_COMPACT: 'off' });
   });
 });

@@ -89,7 +89,7 @@ function runHookIn(name, tempDir, stdinData, env) {
 // only thing that can be producing the silence. HUSH_DISABLE is pinned off
 // here too: an ambient HUSH_DISABLE=1 in the developer's shell would otherwise
 // make every enabled control run inert. The disabled runs override it to '1'.
-const LOUD = { HUSH_DEBUG: '1', HUSH_WRAP: '1', HUSH_NUDGE: 'max', HUSH_DISABLE: '0' };
+const LOUD = { HUSH_DEBUG: '1', HUSH_WRAP: '1', HUSH_DISABLE: '0' };
 
 function writeFixture(name, content) {
   const file = path.join(FIXTURES, name);
@@ -135,16 +135,13 @@ function cases() {
     },
     writes: true,
   });
+  // The pause hook speaks only for the switch itself, so the payload is one.
+  const pauseSession = freshSessionId();
   c.push({
-    name: 'silence-nudge.js',
-    session: freshSessionId(),
-    input: { hook_event_name: 'UserPromptSubmit' },
-  });
-  c.push({
-    name: 'silence-nudge.js',
-    label: 'silence-nudge.js (PostToolUse)',
-    session: freshSessionId(),
-    input: { hook_event_name: 'PostToolUse' },
+    name: 'pause.js',
+    session: pauseSession,
+    input: { hook_event_name: 'UserPromptSubmit', session_id: pauseSession, prompt: 'hush off' },
+    writes: true,
   });
   c.push({
     name: 'preserve-exit-code.js',

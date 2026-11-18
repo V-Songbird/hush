@@ -79,7 +79,7 @@ The app gives the reader other places to look. Use one only when its tool is in 
 
 | Signal | When | How |
 |---|---|---|
-| The task list, `update_plan` | Every turn that runs more than one step | Short steps, at most seven words. The list speaks while you stay silent. |
+| The task list, `update_plan` | Every turn that runs more than one step | Short steps, at most seven words. The list carries the progress. |
 | A question card, `AskUserQuestion` | You are stuck and only the user can unstick you | Ask one decision. Put your pick first. This replaces an early line of text. |
 | The next-step box, `wrap_up` | Every turn that changed files or ran commands. Also any turn whose next step is a decision only the user can make. | The recap follows the plain-word rules. Put that decision in `ask`, with reply buttons, only when the box can carry the whole reply. Call it once per turn. |
 | A chapter, `mark_chapter` | A turning point in a long session, listed below | A short noun phrase. At most one per turn. It adds no words to the transcript. |

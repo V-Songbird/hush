@@ -34,7 +34,7 @@ The message must hold only those words. `stop hush` and `/hush off` work too. A 
 - The pause covers the session you send it in. A new session starts with the voice on.
 - The trims keep running. `HUSH_DISABLE=1` and `HUSH_CORE=off` stop those.
 - A blocker, a failed check, an unverified claim and a pending approval are still said.
-- The pause is a reminder sent on each turn. With `HUSH_QUIET=off` or `HUSH_NUDGE=off` no reminder is sent, so `hush off` does nothing.
+- The pause is a reminder sent on each turn. With `HUSH_QUIET=off` no reminder is sent, so `hush off` does nothing.
 
 ## Scripts and agent pipelines
 
@@ -55,9 +55,8 @@ Each control is an environment variable. Set it before you start Claude Code.
 | Variable | What it does |
 | --- | --- |
 | `HUSH_DISABLE=1` | Stops everything Hush does: no trimming, no reminders, no files written, and the desktop mod folds nothing. The voice stays on until you disable or uninstall the plugin. Outside a terminal it loses [its app part](how-it-works.md#the-app-part). |
-| `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. Reminders and the subagent brief keep running. The step reminder's small counter stays in your temp folder until your system clears it. |
-| `HUSH_QUIET=off` | Stops every reminder and the subagent brief. The trims, the voice and your message settings keep running. |
-| `HUSH_NUDGE=off` | Stops every reminder: the one at the start of a turn, the step reminder, the one for turns the harness starts, and the pause reminder. The subagent brief keeps running. |
+| `HUSH_CORE=off` | Stops the trims and what goes with them: no trimmed output, no saved files, no command wrapping, nothing added at compaction, no cleanup at session end. The pause switch and the subagent brief keep running. A pause's small flag file stays in your temp folder until your system clears it. |
+| `HUSH_QUIET=off` | Stops the pause switch and the subagent brief. The trims, the voice and your message settings keep running. |
 | `HUSH_SIDECAR=off` | Never saves output to a file. A very large output gets the normal trimmed view, not a digest. A shortened Grep list has no full copy to read back. |
 | `HUSH_GREP=off` | Grep match lists arrive whole, however long. |
 | `HUSH_TEMPLATE=off` | Runs of same-shape lines are no longer folded. Exact repeats still fold. |
@@ -79,7 +78,6 @@ Each control is an environment variable. Set it before you start Claude Code.
 
 | Variable | What it does |
 | --- | --- |
-| `HUSH_NUDGE=max` | The quietest and most expensive setting. It sends the step reminder twice after every tool call, besides the turn reminder. |
 | `HUSH_DEBUG=1` | Writes a local record of what Hush did to each command result to `hush-debug-<session>.jsonl` in your system temp folder. The record holds the sizes in and out, and where the full copy went. Hush never deletes these files. |
 | `HUSH_WRAP=1` | Lets Hush trim failing commands as well as passing ones. See [`HUSH_WRAP=1`](#hush_wrap1). |
 | `HUSH_CONFIG_FILE=<path>` | Where `/hush:config` saves your message settings. The default is `~/.claude/hush/config.json`. |
@@ -87,7 +85,9 @@ Each control is an environment variable. Set it before you start Claude Code.
 ### Which switch wins
 
 - `HUSH_DISABLE` beats every other switch.
-- `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop. With `HUSH_QUIET=off`, `HUSH_NUDGE=max` does nothing.
+- `HUSH_CORE` and `HUSH_QUIET` beat every switch inside what they stop. With `HUSH_QUIET=off`, `HUSH_SUBAGENT` changes nothing.
+
+`HUSH_NUDGE` set the level of the silence reminders, which Hush no longer sends. A value you still have set does nothing.
 
 ### Accepted values
 

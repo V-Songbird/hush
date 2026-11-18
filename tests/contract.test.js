@@ -30,7 +30,7 @@ const FIXTURES = path.join(__dirname, 'contract', 'fixtures');
 const GOLDEN = path.join(__dirname, 'contract', 'golden');
 
 // Every scenario gets its own temp root, so a sidecar directory, a session
-// note sentinel and a react counter from one scenario can never leak into the
+// note sentinel and a pause flag from one scenario can never leak into the
 // next — and so the goldens are the same on a machine whose temp dir is
 // somewhere else. The root is spelled out of the bytes again on the way back.
 const ROOTS = [];
@@ -47,7 +47,7 @@ function cleanRoots() {
 }
 
 // A payload hush handles is mostly bulk, and bulk does not belong inline in a
-// fixture. These seven tokens are the only substitutions; everything else
+// fixture. These six tokens are the only substitutions; everything else
 // in a fixture file is literal.
 //
 //   {{SESSION}}      the scenario's session id
@@ -56,7 +56,6 @@ function cleanRoots() {
 //   {{REPEAT:n}}     n lines of one shape with a varying number — collapsible
 //   {{FAILING:n}}    n lines with error and warning lines seeded through them
 //   {{GREP:n}}       n `file:line:text` match lines across twenty files
-//   {{TRANSCRIPT}}   the scenario's transcript path, filled by runScenario
 function expand(text, { session, root }) {
   return text
     .replace(/\{\{SESSION\}\}/g, session)
@@ -181,32 +180,11 @@ const SCENARIOS = [
     silent: true,
   },
   {
-    name: 'userpromptsubmit-nudge',
-    hook: 'silence-nudge.js',
-    must: ['"hookEventName":"UserPromptSubmit"', '"additionalContext"'],
-  },
-  {
-    // The default nudge is reactive: it fires only after a mid-turn text
-    // block has actually appeared in the transcript.
-    name: 'posttooluse-nudge-leak',
-    hook: 'silence-nudge.js',
-    transcript: 'leaky',
-    must: ['"hookEventName":"PostToolUse"', '"additionalContext"'],
-  },
-  {
-    name: 'posttooluse-nudge-quiet',
-    hook: 'silence-nudge.js',
-    transcript: 'quiet',
-    silent: true,
-  },
-  {
-    // The line Claude Code asked for is not chatter. Claude Code does not
-    // document the attachment type that marks it, so a rename there shows up
-    // here as a corrective where this golden holds nothing.
-    name: 'posttooluse-nudge-host-status',
-    hook: 'silence-nudge.js',
-    transcript: 'hostStatus',
-    silent: true,
+    // The fixture's prompt is the switch itself: an ordinary prompt gets
+    // nothing from this hook.
+    name: 'userpromptsubmit-pause',
+    hook: 'pause.js',
+    must: ['"hookEventName":"UserPromptSubmit"', '"additionalContext"', 'paused Hush for this session'],
   },
   {
     // Claude Code builds compaction instructions from raw stdout here, not
@@ -233,42 +211,10 @@ const SCENARIOS = [
   },
 ];
 
-// A transcript fixture only matters to silence-nudge, which counts assistant
-// text blocks since the last human prompt. Three shapes: one that leaked, one
-// that stayed quiet, and one whose only text is the status line Claude Code
-// asked for, recorded as Claude Code 2.1.280 writes the request.
-const TRANSCRIPTS = {
-  leaky: [
-    { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
-    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: "I'll look at the tests now." }] } },
-    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: {} }] } },
-  ],
-  quiet: [
-    { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
-    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: {} }] } },
-  ],
-  hostStatus: [
-    { type: 'user', message: { role: 'user', content: 'fix the failing suite' } },
-    { type: 'attachment', attachment: { type: 'silent_turn_reminder', text: 'Give a short status line, then continue.' } },
-    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Running the suite.' }] } },
-    { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Bash', input: {} }] } },
-  ],
-};
-
-function writeTranscript(root, kind) {
-  const file = path.join(root, `${kind}.jsonl`);
-  fs.writeFileSync(file, TRANSCRIPTS[kind].map((e) => JSON.stringify(e)).join('\n') + '\n');
-  return file;
-}
-
 function runScenario(scenario) {
   const root = tmpRoot(scenario.name);
   const session = `contract-${scenario.name}`;
-  let payload = loadFixture(scenario.name, { session, root });
-  if (scenario.transcript) {
-    const file = writeTranscript(root, scenario.transcript).replace(/\\/g, '\\\\');
-    payload = payload.replace(/\{\{TRANSCRIPT\}\}/g, file);
-  }
+  const payload = loadFixture(scenario.name, { session, root });
   // TMPDIR/TMP/TEMP together cover os.tmpdir() on every platform this runs on.
   const env = {
     ...process.env,

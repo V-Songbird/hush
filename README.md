@@ -54,7 +54,7 @@ I did not try a real login in the browser.
 ## Why you'd want it
 
 - **Yours to shape.** `/hush:config` sets the length, the parts and the layout. Pick a preset, or describe what you want in your own words.
-- **Steps folded, not lost.** The assistant works quietly. A 300 KB log becomes a short digest, and the full copy stays on your machine.
+- **Steps folded, not lost.** A 300 KB log becomes a short digest, and the full copy stays on your machine.
 - **A shape you can count on.** The result comes first, in one bold line. Steps come numbered. Things with the same fields come as a table.
 - **A floor no setting removes.** A blocker, a failed check and an unverified claim always stay.
 
@@ -64,7 +64,7 @@ Hush has three parts. All run on your machine, and nothing is sent anywhere.
 
 | Part | What it does |
 | --- | --- |
-| The voice | An output style, which is Claude Code's name for a writing style. It asks the assistant to stay quiet while it works, then write one message at the end. It gives each kind of content its form. |
+| The voice | An output style, which is Claude Code's name for a writing style. It asks the assistant for one message at the end of the work. It gives each kind of content its form. |
 | The trims | Hooks, which are small programs Claude Code runs at set moments. These run when a command finishes. They shorten long output and keep every warning, error and failure line. |
 | The fold | An optional mod for the Claude desktop app. It folds a finished turn's progress texts into one line. One press shows them again. |
 
@@ -97,7 +97,7 @@ Most people never change a setting. These three are the ones people reach for:
 | Setting | Values | What it does |
 | --- | --- | --- |
 | `/hush:config` | A command | Shapes the last message. Its presets are `standard`, `minimal`, `explainer` and `terminal`. |
-| `HUSH_DISABLE` | `1` | Stops the trims and the reminders. The voice stays on until you disable or uninstall the plugin. |
+| `HUSH_DISABLE` | `1` | Stops the trims, the pause switch and the subagent brief. The voice stays on until you disable or uninstall the plugin. |
 | `HUSH_WRAP` | `1` | Lets Hush trim the output of failing commands too. It is not safe with scoped allow rules such as `Bash(node*)`. |
 
 No setting removes a blocker, a pending approval, an unverified claim or anything left unchecked.
@@ -136,7 +136,7 @@ In Claude Code, run these. Then start a new session:
 
 | Limit | What it means for you |
 | --- | --- |
-| A short answer can leave out a detail | Correctness comes before silence. Ask for depth when you need it, and check the result before you act on it. |
+| A short answer can leave out a detail | Correctness comes before brevity. Ask for depth when you need it, and check the result before you act on it. |
 | Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 9% more on average. The current voice has no measured cost. See [The numbers](#the-numbers). |
 | The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
@@ -162,6 +162,8 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 <p align="center"><img src="assets/hero.svg" alt="Words of play-by-play before the answer, one spike per session. Without Hush, 36 sessions average 15.4 words. With Hush, 36 sessions average 1.0 word." width="700"></p>
 
 Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin.
+
+That voice asked the assistant to write nothing between steps. The current voice does not ask for that, so expect progress notes while it works. In the Claude desktop app, the fold hides them once the answer arrives.
 
 The same batch shows how the shape held:
 
