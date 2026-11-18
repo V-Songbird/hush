@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "What each part of Hush does to a session: the voice, the output trims, saved output, failing commands, the reminders, compaction, subagents and the desktop mod; read before changing a hook, the mod or the shipped voice, and to predict what Hush will do to a command's output."
+summary: "What each part of Hush does to a session: the voice, the output trims, saved output, failing commands, the pause, compaction, subagents and the desktop mod; read before changing a hook, the mod or the shipped voice, and to predict what Hush will do to a command's output."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -27,7 +27,7 @@ Everything runs on your machine. Nothing is sent anywhere.
 - [Failing commands](#failing-commands)
 - [Where saved output goes](#where-saved-output-goes)
 - [The saved count](#the-saved-count)
-- [The reminders](#the-reminders)
+- [The pause](#the-pause)
 - [Compaction and subagents](#compaction-and-subagents)
 - [The desktop mod](#the-desktop-mod)
 
@@ -42,7 +42,7 @@ The trims are the product. Each one runs the same with or without the desktop mo
 
 ## The voice
 
-The voice asks the assistant to stay quiet between tool calls. Then it writes one message at the end, in your language.
+The voice asks the assistant for one message at the end of the work, in your language. It does not ask for silence between tool calls. Progress notes written on the way are left alone, and [the desktop mod](#the-desktop-mod) folds them.
 
 That message holds, in order:
 
@@ -73,7 +73,7 @@ Four sections of the voice cover what the desktop app draws and opens:
 - Visuals, such as widgets and panes.
 - The app's own signals, such as the task list and the next-step box.
 
-A terminal session has none of those, and neither does `claude -p`. So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every other host. The style file is 11.1 KB and the app part 7.3 KB.
+A terminal session has none of those, and neither does `claude -p`. So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every other host. The style file is 10.1 KB and the app part 7.3 KB.
 
 Hush tells the two apart by `CLAUDE_CODE_ENTRYPOINT`: `cli` is the terminal and `sdk-cli` is `claude -p`. Any other value gets the whole voice. A `claude -p` started from inside a desktop session inherits that session's value, so it gets the app part too. `HUSH_DISABLE=1` stops the hook, and with it the app part.
 
@@ -182,17 +182,11 @@ Claude Code has one status line, and Hush does not take it. Read the count from 
 
 The folder is named for the session id, in lowercase on Windows.
 
-## The reminders
+## The pause
 
-A rule read once fades as a session grows. So Hush repeats it when it has to:
+Send `hush off` to pause the voice for the session. An output style cannot be switched off mid-session, so each turn then carries a short pause reminder. Send `hush on` to end it.
 
-- A short reminder at the start of each of your turns.
-- A shorter one after the assistant writes text between tool calls, at most once per turn.
-- One for a turn the harness starts, such as a task notification. When nothing is new, that turn ends with no message or one short line.
-
-A quiet session pays nothing extra.
-
-Send `hush off` to pause the voice for the session. Each turn then carries a pause reminder in place of the usual one. Send `hush on` to end it. [Pause the voice in one session](settings.md#pause-the-voice-in-one-session) has the details.
+Outside a pause, Hush adds nothing to your turns. Earlier releases sent a reminder to stay silent on each turn. Release notes say when that ended. [Pause the voice in one session](settings.md#pause-the-voice-in-one-session) has the details.
 
 ## Compaction and subagents
 

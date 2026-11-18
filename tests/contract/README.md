@@ -33,14 +33,13 @@ generators and nothing else:
 | --- | --- |
 | `{{SESSION}}` | the scenario's session id |
 | `{{TMP}}` | the scenario's temp root, forward-slashed |
-| `{{TRANSCRIPT}}` | the scenario's transcript fixture, when it declares one |
 | `{{UNIQUE:n}}` | `n` lines of varying shape — survives template collapse |
 | `{{REPEAT:n}}` | `n` lines of one shape — collapsible |
 | `{{FAILING:n}}` | `n` lines with error, warning and failure lines seeded in |
 | `{{GREP:n}}` | `n` `file:line:text` match lines across twenty files |
 
 Every scenario runs against its own temp root, so a sidecar directory, a
-session-note sentinel and a react counter can never leak between scenarios.
+session-note sentinel and a pause flag can never leak between scenarios.
 That root is spelled back out of the emitted bytes as `{{TMP}}`, which is the
 only normalization applied — it lets a golden name a parked file without
 pinning the machine it was generated on.

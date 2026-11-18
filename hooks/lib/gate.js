@@ -7,16 +7,16 @@
 //   HUSH_CORE=off    Core surface off — tool-output compression, exit-code
 //                    preservation, the compaction note and its re-arm, and
 //                    session-end cleanup
-//   HUSH_QUIET=off   Quiet surface off — the turn reminders (turn, step and
-//                    harness-started turn) and the subagent brief
+//   HUSH_QUIET=off   Quiet surface off — the pause switch (`hush off`) and
+//                    the subagent brief
 //
 // A surface switch beats every per-hook flag inside that surface, so
-// HUSH_NUDGE=1 cannot resurrect a Quiet that is off. Per-hook flags still
+// HUSH_SUBAGENT=on cannot resurrect a Quiet that is off. Per-hook flags still
 // decide their own hook while the surface is on.
 //
 // Both surfaces default on: an unset variable is on, and only the off tokens
 // below turn one off. isOff reads the surface switches and every per-hook off
-// flag (HUSH_NUDGE, HUSH_SUBAGENT, HUSH_COMPACT, HUSH_TEMPLATE, HUSH_SIDECAR,
+// flag (HUSH_SUBAGENT, HUSH_COMPACT, HUSH_TEMPLATE, HUSH_SIDECAR,
 // HUSH_ADAPTIVE, HUSH_GREP, HUSH_NOTE) the same way: surrounding whitespace is
 // ignored, so " off" turns a switch off. isOn reads the switches set to 1
 // (HUSH_DISABLE, HUSH_WRAP, HUSH_DEBUG) the same way: " 1" is 1, and nothing else is.
