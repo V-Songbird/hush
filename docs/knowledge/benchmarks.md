@@ -29,7 +29,7 @@ Both batches measured a voice that asked the assistant to write nothing between 
 - Nine jobs span how much a session prints, from a plan with no edits to a 300 KB outage log.
 - Every job ends with a check. A short answer that breaks the job counts as a failure.
 - Prices are the bill read back from the API.
-- The costs of the November 17, 2026 batches were corrected on November 23, 2026. The first published figures added up the running total of each multi-call session, so they ran about 1.7 times too high.
+- The costs of the September 28 and November 17, 2026 batches were corrected on November 23, 2026. The first published figures added up the running total of each multi-call session, so they ran about 1.7 times too high.
 - Prose words exclude fenced code.
 
 The raw records, the definitions behind these figures and the benchmark harness are kept outside this repository. They are not distributed with the plugin.
@@ -41,8 +41,8 @@ Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four ru
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"date":"2026-09-28","reviewedAt":"2026-11-14"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
 | --- | --- | --- | --- | --- | --- |
-| Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.421 |
-| Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.458 |
+| Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.255 |
+| Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.275 |
 
 <p align="center"><img src="../../assets/hero.svg" alt="One spike per recorded session on Claude Opus 5.5 for words of play-by-play before the answer: 36 sessions without hush average 15.4 words and 28 speak at most once; 36 sessions of the same nine jobs with hush average 1.0 word, and all 36 speak at most once." width="700"></p>
 
@@ -55,7 +55,7 @@ Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four ru
 
 Hush said nothing at all before the answer in 34 of 36 sessions, against 12 of 36 without a plugin, and sent 1.0 word of play-by-play per session against 15.4. The medians are 369 and 270.5, rounded, about 27% shorter. Sentences were shorter too: 0.5% ran past 20 words against 10.9%. Runnable content appeared in all 36 answers of both setups; that text heuristic does not check that a command is correct or complete.
 
-**On Opus 5.5, Hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%, and four of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper: the 57 KB log by 19% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, so Hush has less to remove. Everything the assistant wrote per session was 6% higher, 3,654 tokens against 3,453, while what the commands printed fell 9%, 22.2k characters against 24.4k. Treat a per-job cost difference under about 16% in this batch as noise.
+**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher. Seven of the nine jobs cost more, by 9% to 32%, and three of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper: the 57 KB log by 19% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, so Hush has less to remove. Everything the assistant wrote per session was 6% higher, 3,654 tokens against 3,453, while what the commands printed fell 9%, 22.2k characters against 24.4k. Treat a per-job cost difference under about 16% in this batch as noise.
 
 Most of that gap is the voice's own text, which rides in every request. Both setups made about seven requests per session. The tokens sent across them were 11% higher with Hush, 184,489 against 166,730. That is about 2,500 more per request. The batch ran a 5.8 KB voice. Today's voice is 17.4 KB in the desktop app, and no batch has measured its cost. A terminal session or `claude -p` carries 10.1 KB of it; [the app part](how-it-works.md#the-app-part) says why.
 
@@ -204,7 +204,7 @@ Each loss below is measured in a batch on this page. They are gathered here so n
 
 | Loss | Batch |
 | --- | --- |
-| Hush cost 9% more per session on average, and more on seven of nine jobs | Claude Opus 5.5, voice 1.13.0 |
+| Hush cost 8% more per session on average, and more on seven of nine jobs | Claude Opus 5.5, voice 1.13.0 |
 | Hush wrote more prose words on three jobs: the red test suite, the notification router and the half-done rename | Claude Opus 5.5, voice 1.13.0 |
 | Hush cost more on the three quietest jobs, by 1%, 4% and 10% | Claude Opus 5, voice 1.11.1 |
 | Runnable content appeared in 34 of 36 Hush answers, against all 36 without a plugin | Claude Opus 5, voice 1.11.1 |
