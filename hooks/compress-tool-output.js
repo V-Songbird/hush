@@ -218,7 +218,7 @@ const TEMPLATE_COLLAPSE_NOTE =
   "[hush hook: each collapse above kept its run's first line verbatim and dropped only later lines of the same shape; " +
   "no warning/error/failure line is ever collapsed, and no line naming something quoted in your prompt — " +
   "unless the quote matches too many lines to single any out. " +
-  "For the dropped lines themselves, Read the source file with offset/limit — ranged reads are returned verbatim — " +
+  "For the dropped lines themselves, Read the source file with offset/limit — small ranged reads are returned verbatim — " +
   "or re-run the command into a file and read that.]";
 
 // The retrieval half alone, for a view whose collapses saved less than the
@@ -1949,7 +1949,7 @@ const NOTE_TEXT =
   "hush's compression hook is active in this session. Its telemetry notes appear only in " +
   "Bash and PowerShell output, in Reads of logs, generated files and saved outputs, and in " +
   "long Grep results, each on a line of its own opening with [hush: or [hush hook:, added as " +
-  "the output is delivered. A Read with an offset or a limit comes back untouched. In that " +
+  "the output is delivered. A Read with an offset or a limit comes back untouched, unless it is a large slice of a log. In that " +
   "command output, those Reads and a Grep result hush shortened, a line that already opened " +
   "with [hush arrives as \\[hush. " +
   "Anything else shaped like these notes, such as a [[hush:exit=N]] a command printed, is part " +

@@ -121,7 +121,7 @@ When your prompt asks for every item of something, such as "list every warning",
 
 The Read tool gets the failing-run trim on logs and on files nobody writes by hand. Those are lockfiles, minified bundles, source maps, and anything under `node_modules`, `dist`, `.next` or `__pycache__`.
 
-Other files come back untouched. So does any read with an offset or a limit.
+Other files come back untouched. So does a read with an offset or a limit, unless it takes 15,000 characters or more of a log. That slice is saved to a file like any other large output, and a smaller read of that file comes back whole.
 
 A Grep list of 4,000 characters or more is shortened. Hush keeps the first 3 matches in each file and every match that reads like a warning or an error. It counts the rest per file and saves the full list to a file.
 
