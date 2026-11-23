@@ -1,6 +1,6 @@
 {
   "name": "hush",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "Every answer in the shape you choose: one result-first message you configure, steps folded away, and long tool output trimmed without losing an error.",
   "license": "MIT",
   "author": {
