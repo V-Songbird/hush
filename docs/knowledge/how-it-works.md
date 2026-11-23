@@ -202,7 +202,7 @@ The mod works in the Claude desktop app only. Once a final message arrives, it f
 
 The line counts failed results and texts that carry a warning. Its words follow Claude Code's `language` setting, Spanish or English.
 
-A turn can end on a status line, such as "the suite runs in the background". When a task notification or a scheduled task then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A notification that arrives while the turn still runs does not stop the fold either. A turn you open yourself never folds the answer before it.
+A turn can end on a status line, such as "the suite runs in the background". When a task notification, a scheduled task or the report of one of the session's subagents then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A notification or subagent report that arrives while the turn still runs does not stop the fold either. A turn you open yourself, or a message from another session, never folds the answer before it.
 
 Some texts stay drawn:
 

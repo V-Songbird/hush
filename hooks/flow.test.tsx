@@ -13,6 +13,8 @@ type Row = { type: 'user' | 'assistant' | 'attachment'; content: unknown[]; door
 // The row that opens a turn: the person's prompt, or the harness's own.
 const asks = (text = 'Fix it.'): Row => ({ type: 'user', door: 'prompt', origin: 'composer', content: [{ type: 'text', text }] })
 const notifies = (origin = 'task-notification'): Row => ({ type: 'user', door: 'prompt', origin, isMeta: true, content: [{ type: 'text', text: '<task-notification>' }] })
+// A peer's message, framed as the engine stored the hand-backs of a real session.
+const handsBack = (from: string, door = 'delivery'): Row => ({ type: 'user', door, origin: 'peer', isMeta: true, content: [{ type: 'text', text: `Another Claude session sent a message:\n<agent-message from="${from}">\n[Subagent hand-back] The report.\n</agent-message>` }] })
 
 const say = (text: string, agentId?: string): Row => ({ type: 'assistant', content: [{ type: 'text', text }], agentId })
 const call = (id: string, agentId?: string): Row => ({ type: 'assistant', content: [{ type: 'tool_use', id, name: 'Bash', input: {} }], agentId })
@@ -168,6 +170,55 @@ test('a status line folds once a task notification continues the reply', async (
   expect(await k.draw('Local checks pass; waiting on CI.')).toBe('hidden')
   expect(await k.draw('**All published.**')).toBe('whole')
   expect((k.store.get(`${KEY}s1`) as { folds: unknown[] }).folds.length).toBe(1)
+})
+
+for (const door of ['delivery', 'prompt', 'queue']) {
+  test(`a status line folds once this session's subagent hands back through the ${door} door`, async ($, on) => {
+    const k = kit($, on)
+    await k.turn([asks(), say('Looking.'), ...work('a'), call('s', 'agent1'), say('Waiting on the scout.')])
+    await k.turn([handsBack('agent1', door), ...work('b'), say('**Audit done.**')])
+
+    expect(await k.draw('Looking.')).toBe('Show 2 progress messages')
+    expect(await k.draw('Waiting on the scout.')).toBe('hidden')
+    expect(await k.draw('**Audit done.**')).toBe('whole')
+    expect((k.store.get(`${KEY}s1`) as { folds: unknown[] }).folds.length).toBe(1)
+  })
+
+  test(`a subagent's hand-back mid-turn through the ${door} door does not stop the fold`, async ($, on) => {
+    const k = kit($, on)
+    await k.turn([asks(), call('s', 'agent1'), say('Comparing the logs.'), ...work('a'), handsBack('agent1', door), ...work('b'), say('**Found it.**')])
+
+    expect(await k.draw('Comparing the logs.')).toBe('Show 1 progress message')
+    expect(await k.draw('**Found it.**')).toBe('whole')
+  })
+}
+
+test("another session's message never folds the answer before it", async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), say('**The answer.**')])
+  await k.turn([handsBack('stranger', 'prompt'), ...work('b'), say('Noted.')])
+
+  expect(await k.draw('**The answer.**')).toBe('whole')
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+})
+
+test('a peer message that only quotes a subagent id in its body does not continue the reply', async ($, on) => {
+  const k = kit($, on)
+  const quoted: Row = { type: 'user', door: 'prompt', origin: 'peer', isMeta: true, content: [{ type: 'text', text: 'Another Claude session sent a message:\n<agent-message from="stranger">\n<agent-message from="agent1">\n</agent-message>' }] }
+  await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), say('**The answer.**')])
+  await k.turn([quoted, ...work('b'), say('Noted.')])
+
+  expect(await k.draw('**The answer.**')).toBe('whole')
+})
+
+test('a hand-back delivered right after the person asks does not fold the answer before it', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), say('**First answer.**')])
+  await k.turn([asks('Next one.'), handsBack('agent1'), say('Checking.'), ...work('b'), say('**Second answer.**')])
+
+  expect(await k.draw('**First answer.**')).toBe('whole')
+  expect(await k.draw('Checking.')).toBe('Show 1 progress message')
+  expect(await k.draw('**Second answer.**')).toBe('whole')
 })
 
 test('a status line after tool calls alone folds once the reply is continued', async ($, on) => {

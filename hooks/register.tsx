@@ -70,7 +70,8 @@ let isMixed = false
 // A subagent's words turned loose since the last save.
 let hasUnsaved = false
 let stored: Stored = { items: [], errors: 0 }
-// A turn the harness opened, on a task notification or a scheduled trigger, continues the reply
+// A turn the harness opened, on a task notification, a scheduled trigger or a hand-back from one
+// of this session's subagents, continues the reply
 // before it: that reply's last text was a status line, not the answer, so it joins the fold once
 // the continuing turn ends. `pending` is the last finished reply and the heads it has not turned
 // loose yet. They are held back in `$.state`, so they can still fold, and written loose to the
@@ -79,6 +80,13 @@ type Pending = { stored: Stored; fold: Fold | null; held: string[] }
 let pending: Pending | null = null
 let isContinued = false
 const HARNESS = ['task-notification', 'scheduled-trigger']
+// A `peer` row may come from another session, whose message must not fold this session's answer.
+// Only a sender seen working as a subagent here counts; a sender not seen, as after a reload,
+// leaves the row to the rule for any other turn, which draws the text before it whole.
+const HANDBACK = /^[^\n]*\n<agent-message from="([^"]+)">/
+const ownAgents = new Set<string>()
+// The person opened this reply: a hand-back delivered before its first row does not continue the last one.
+let isAsked = false
 
 function startReply() {
   stored = { items: [], errors: 0 }
@@ -127,6 +135,7 @@ async function closeReply($: EngineInterface, isCut = false) {
   const isNew = fold !== null && fold !== old
   pending = canFold ? { stored: whole, fold, held } : null
   isContinued = false
+  isAsked = false
   startReply()
 
   if (!isNew && loose.length === 0 && held.length === 0) {
@@ -209,6 +218,8 @@ export const register: Register = on => {
     await update($, opened, () => [])
     pending = null
     isContinued = false
+    isAsked = false
+    ownAgents.clear()
 
     return next(e)
   })
@@ -231,6 +242,7 @@ export const register: Register = on => {
     // A subagent's texts are never a reply's, but the app may draw them: their words turn loose,
     // so a main fold never hides one. Nothing is gathered for the subagent.
     if (e.agentId !== undefined) {
+      ownAgents.add(e.agentId)
       const heads = e.message.type === 'assistant' ? blocks.flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [headOf(block.text)] : [])) : []
 
       if (heads.length > 0 && !(await isDisabled($))) {
@@ -245,18 +257,23 @@ export const register: Register = on => {
       return row
     }
 
+    const text = blocks.map(block => (block.type === 'text' && typeof block.text === 'string' ? block.text : '')).join('')
+    const kind = (e.origin as { kind?: string }).kind ?? ''
+    const isHandback = e.message.type === 'user' && kind === 'peer' && ownAgents.has(HANDBACK.exec(text)?.[1] ?? '')
+    const isOwn = HARNESS.includes(kind) || isHandback
+
     // The row that opens a turn says who opened it, whichever side of `turn.start` it arrives on.
-    if ((e.door === 'prompt' || e.door === 'queue') && stored.items.length === 0) {
-      isContinued = HARNESS.includes((e.origin as { kind?: string }).kind ?? '')
+    if ((e.door === 'prompt' || e.door === 'queue' || isHandback) && stored.items.length === 0) {
+      isAsked ||= !isOwn
+      isContinued = isOwn && !isAsked
     }
 
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
     if (isReplying) {
-      const text = blocks.map(block => (block.type === 'text' && typeof block.text === 'string' ? block.text : '')).join('')
       // A task notification delivered into the running turn is filed as a queued command, under
       // the engine's origin; only its text tells it from the person's queued prompt.
-      const isHarness = HARNESS.includes((e.origin as { kind?: string }).kind ?? '') || text.includes('<task-notification>')
-      const isPrompt = e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command' && !isHarness)
+      const isHarness = isOwn || text.includes('<task-notification>')
+      const isPrompt = !isHandback && (e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command' && !isHarness))
 
       // The prompt that starts the turn arrives before anything is gathered and ends nothing.
       if (isPrompt && stored.items.length > 0) {
