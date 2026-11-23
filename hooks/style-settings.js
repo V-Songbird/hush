@@ -117,7 +117,9 @@ function inTerminal() {
 }
 function appPart() {
   if (inTerminal()) return "";
-  return `${APP_HEADER}\n\n${fs.readFileSync(APP_PART, "utf8").trim()}`;
+  // The rarer forms load on demand; the model needs their absolute path.
+  const forms = path.join(__dirname, "voice-app-forms.md").replace(/\\/g, "/");
+  return `${APP_HEADER}\n\n${fs.readFileSync(APP_PART, "utf8").trim().replaceAll("{{forms}}", forms)}`;
 }
 
 function save(settings) {

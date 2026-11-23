@@ -26,6 +26,7 @@ hooks/
 ├── *.js                # one script per hook
 ├── register.tsx        # the desktop mod, with fold.ts, which decides what folds
 ├── voice-app.md        # the voice's app-only sections, sent by style-settings.js outside a terminal and claude -p
+├── voice-app-forms.md  # the app's rarer forms, read on demand from the path voice-app.md names
 └── lib/                # gate, harness, sidecar store and transforms
 modules/                # one rule per moved message setting, <setting>-<value>.md
 output-styles/
