@@ -73,7 +73,7 @@ Four sections of the voice cover what the desktop app draws and opens:
 - Visuals, such as widgets and panes.
 - The app's own signals, such as the task list and the next-step box.
 
-A terminal session has none of those, and neither does `claude -p`. So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every other host. The style file is 5.4 KB and the app part 2.0 KB. The rarer forms, such as math and `search_tree`, sit in `hooks/voice-app-forms.md`. The assistant reads that file only before it first uses one.
+A terminal session has none of those, and neither does `claude -p`. So those sections are not in the style file. A hook sends them at session start, and again after compaction, on every other host. The style file is 5.4 KB and the app part 2.8 KB.
 
 Hush tells the two apart by `CLAUDE_CODE_ENTRYPOINT`: `cli` is the terminal and `sdk-cli` is `claude -p`. Any other value gets the whole voice. A `claude -p` started from inside a desktop session inherits that session's value, so it gets the app part too. `HUSH_DISABLE=1` stops the hook, and with it the app part.
 

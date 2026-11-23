@@ -242,11 +242,10 @@ describe('style-settings hook', () => {
     test(`entrypoint ${JSON.stringify(entry)} gets the voice's app part, whole`, () => {
       const r = run([], { config: freshConfig(), env: { CLAUDE_CODE_ENTRYPOINT: entry } });
       const text = JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
-      const forms = path.join(HOOKS_DIR, 'voice-app-forms.md').replace(/\\/g, '/');
-      assert.ok(fs.existsSync(forms));
-      const part = fs.readFileSync(path.join(HOOKS_DIR, 'voice-app.md'), 'utf-8').trim().replaceAll('{{forms}}', forms);
+      const part = fs.readFileSync(path.join(HOOKS_DIR, 'voice-app.md'), 'utf-8').trim();
       assert.strictEqual(text, `${APP_HEADER}\n\n${part}`);
-      assert.ok(!text.includes('{{forms}}'));
+      // The app's forms must arrive inline: a Read of a plugin file is denied or prompts outside the project.
+      assert.ok(text.includes('```search_tree'));
     });
   }
 
