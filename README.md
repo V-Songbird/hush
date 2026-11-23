@@ -137,7 +137,7 @@ In Claude Code, run these. Then start a new session:
 | Limit | What it means for you |
 | --- | --- |
 | A short answer can leave out a detail | Correctness comes before brevity. Ask for depth when you need it, and check the result before you act on it. |
-| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 9% more on average. The current voice has no measured cost. See [The numbers](#the-numbers). |
+| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 8% more on average. The current voice has no measured cost. See [The numbers](#the-numbers). |
 | The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
 | Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
@@ -156,8 +156,8 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-14"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
 | --- | --- | --- | --- | --- | --- |
-| Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.421 |
-| Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.458 |
+| Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.255 |
+| Claude Opus 5.5 | hush | 36/36 | 36/36 | 271 | $0.275 |
 
 <p align="center"><img src="assets/hero.svg" alt="Words of play-by-play before the answer, one spike per session. Without Hush, 36 sessions average 15.4 words. With Hush, 36 sessions average 1.0 word." width="700"></p>
 
@@ -178,7 +178,7 @@ The same batch shows how the shape held:
 
 The shape is not perfect. Half of Hush's words still sat in long blocks.
 
-**On Opus 5.5, Hush costs more.** The average bill per session was 9% higher. Seven of the nine jobs cost more, by 4% to 32%. Only the two jobs that print the most came out cheaper.
+**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher. Seven of the nine jobs cost more, by 9% to 32%. Only the two jobs that print the most came out cheaper.
 
 <details>
 <summary>Watch the recorded demo: the same job with and without Hush, on Claude Opus 5.5</summary>
