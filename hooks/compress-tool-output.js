@@ -768,11 +768,52 @@ function pytestFailureIdx(lines) {
   return out;
 }
 
+// node --test, spec reporter: the `✖ <test>` lines under `✖ failing tests:`
+// and the `ℹ` counts printed just above that header. ✖ alone is no failure
+// mark (ESLint's summary opens with it), so only this section makes it one.
+const NODE_SPEC_HEADER = "✖ failing tests:";
+const NODE_SPEC_NAME_RE = /^✖ \S/;
+const NODE_SPEC_COUNT_RE = /^ℹ (?:tests|pass|fail|cancelled|skipped|todo) \d+$/;
+
+function nodeSpecIdx(lines) {
+  const header = lines.indexOf(NODE_SPEC_HEADER);
+  if (header === -1) return { names: [], counts: [] };
+  const names = [];
+  const counts = [];
+  for (let i = header + 1; i < lines.length; i++) if (NODE_SPEC_NAME_RE.test(lines[i])) names.push(i);
+  for (let i = header - 1; i >= 0 && header - i <= 10; i--) if (NODE_SPEC_COUNT_RE.test(lines[i])) counts.unshift(i);
+  return { names, counts };
+}
+
+// node --test, TAP reporter: the `not ok` line of each failed test. A failed
+// suite prints its own `not ok` with `type: 'suite'` in the YAML block after
+// it; that line repeats a failure already named, so it is left out.
+const TAP_VERSION_RE = /^TAP version \d+$/;
+const TAP_NOT_OK_RE = /^\s*not ok \d+ - /;
+const TAP_SUITE_RE = /^\s*type: 'suite'$/;
+const TAP_YAML_END_RE = /^\s*\.\.\.$/;
+const TAP_YAML_MAX = 12;
+
+function tapFailedTestIdx(lines) {
+  // A stray `not ok` in another tool's log must not replace its signal sample.
+  if (!lines.some((line) => TAP_VERSION_RE.test(line))) return [];
+  const out = [];
+  lines.forEach((line, i) => {
+    if (!TAP_NOT_OK_RE.test(line)) return;
+    for (let j = i + 1; j < lines.length && j - i <= TAP_YAML_MAX && !TAP_YAML_END_RE.test(lines[j]); j++) {
+      if (TAP_SUITE_RE.test(lines[j])) return;
+    }
+    out.push(i);
+  });
+  return out;
+}
+
 // Lines kept for where they sit next to a failure rather than for their
 // words. capLines and the sidecar digest keep the same set, and a failing
 // run's template collapse spares it.
 function contextIdx(lines) {
   return [
+    ...nodeSpecIdx(lines).names,
     ...firstFrameIdx(lines),
     ...goFailureIdx(lines, false, REPORT_LINES_MAX),
     ...blockIdx(lines, JEST_BLOCK),
@@ -1388,6 +1429,7 @@ function hostCutAt() {
 const DIGEST_HEAD = 20;
 const DIGEST_TAIL = 15;
 const DIGEST_SIGNAL_SAMPLE = 10; // first N + last N signal lines
+const DIGEST_FIRST_FAILURE_DETAIL = 3; // signal lines after a node --test run's first failed test
 const OTHER_SIGNAL_CAP = 15; // max line numbers listed in the "not shown" line
 
 // Every line that reached signalIdx (the keep vocabulary, isKeepLine, and the
@@ -1469,11 +1511,21 @@ function buildSidecarDigest(cleaned, relevanceTokens, cut) {
   // them inside that preview window, so the visible slice answers the question
   // and no raw re-read is needed. Line numbers stay real (out of order is
   // fine — they exist for targeted offset/limit reads, not for reading order).
-  const lead = [
-    ...signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE),
-    ...signalIdx.slice(-DIGEST_SIGNAL_SAMPLE),
-    ...relevanceLineIdx(lines, relevanceTokens),
-  ];
+  // A node --test failure prints several signal lines (error, code, name), so
+  // a plain sample names only a few tests. There the sample is the failed
+  // tests' own lines, plus the counts and the first failure's detail.
+  const nodeSpec = nodeSpecIdx(lines);
+  const failedTests = nodeSpec.names.length ? nodeSpec.names : tapFailedTestIdx(lines);
+  const failedSet = new Set(failedTests);
+  const sample = failedTests.length
+    ? [
+        ...failedTests.slice(0, DIGEST_SIGNAL_SAMPLE),
+        ...failedTests.slice(-DIGEST_SIGNAL_SAMPLE),
+        ...nodeSpec.counts,
+        ...signalIdx.filter((i) => i > failedTests[0] && !failedSet.has(i)).slice(0, DIGEST_FIRST_FAILURE_DETAIL),
+      ]
+    : [...signalIdx.slice(0, DIGEST_SIGNAL_SAMPLE), ...signalIdx.slice(-DIGEST_SIGNAL_SAMPLE)];
+  const lead = [...sample, ...relevanceLineIdx(lines, relevanceTokens)];
   const leadSet = new Set(lead);
   const leadSorted = [...leadSet].sort((a, b) => a - b);
 
@@ -1904,7 +1956,8 @@ const NOTE_TEXT =
   "of that output. " +
   "Omission is deterministic: a capped or collapsed view cuts a line only if it matches no " +
   "warning/error/failure pattern. A very large output may instead be saved to a file, and the " +
-  `digest in its place shows only the first and last ${DIGEST_SIGNAL_SAMPLE} of the signal lines it counts; ` +
+  `digest in its place shows only the first and last ${DIGEST_SIGNAL_SAMPLE} of the signal lines it counts, ` +
+  "or, for a node --test run, of its failed tests, with its counts and first error; " +
   "the file it names holds every line. The underlying files and command outputs are unchanged.";
 
 // Empty sentinel file, atomically claimed with wx so two hook fires racing on
@@ -2179,4 +2232,5 @@ module.exports = {
   NOTE_TEXT,
   compressGrep,
   containsSecret,
+  buildSidecarDigest,
 };

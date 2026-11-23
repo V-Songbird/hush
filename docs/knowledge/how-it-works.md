@@ -88,7 +88,7 @@ When a command finishes, Hush looks at what came back:
 | A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: stack frames and the values a test runner prints for a failed check. |
 | Very large, 15,000 characters or more | Saves the output to a file on your machine and hands the assistant a digest. |
 
-The digest holds the first 20 and last 15 lines. It also holds the first and last 10 warning, error and failure lines with their line numbers, and a count of each.
+The digest holds the first 20 and last 15 lines. It also holds the first and last 10 warning, error and failure lines with their line numbers, and a count of each. For a `node --test` run, those 10 and 10 are its failed tests, shown with the run's counts and the first failure's error.
 
 The saved file lets the assistant read the rest, but only when it decides it needs to. Without the file, a 300 KB log would be sent again on every later turn.
 
