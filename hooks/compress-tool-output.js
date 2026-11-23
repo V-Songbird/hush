@@ -2031,12 +2031,21 @@ function main() {
     // slice — often after a capped view's own marker invited it — and that
     // slice must come back verbatim or the follow-up loop never resolves.
     // Logs, generated files and hush's own sidecars all need it for the same
-    // reason, so a ranged Read of any watched path passes through untouched.
+    // reason, so a ranged Read of a watched path passes through untouched.
+    // One exception: a log slice of sidecar size is a bulk read, not navigation.
+    // It gets the digest, and its saved copy stays reachable by a ranged Read.
     const isRangeRead = !!(data.tool_input && (data.tool_input.offset !== undefined || data.tool_input.limit !== undefined));
     if (file && typeof file.content === "string") {
       const decision = { tool: "Read", bytesIn: file.content.length, bytesOut: file.content.length, retrieval: sideRead };
-      if (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead)) {
-        const out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision, undefined, true);
+      const bulkLogRange = isRangeRead && !sideRead && isLogPath(filePath) && file.content.length >= SIDECAR_MIN_CHARS;
+      if (bulkLogRange || (!isRangeRead && (isLogPath(filePath) || isGeneratedPath(filePath) || sideRead))) {
+        let out = compress(file.content, undefined, true, enumerate, relevance, scale, data.session_id, sideRead, undefined, decision, undefined, true);
+        // L<n> in this view counts from the slice, so a Read of the source file
+        // must add the slice's start.
+        if (bulkLogRange && out !== file.content) {
+          const start = file.startLine || data.tool_input.offset || 1;
+          out = `[hush hook: this view covers a range that starts at line ${start} of ${filePath}. Its L<n> numbers count from that line.]\n${out}`;
+        }
         decision.bytesOut = out.length;
         // Whatever this view left out is still on disk, at the path Read was
         // given — the sidecar path (set by compress) wins when there is one.

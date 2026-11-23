@@ -2024,6 +2024,31 @@ describe('unit + e2e: reads OF sidecar files are capped, never re-sidecared', ()
       assert.strictEqual(hookOutput(r), null, 'nothing to shrink, hook stays silent');
     } finally { fs.rmSync(f, { force: true }); }
   });
+
+  const slice = (n) => Array.from({ length: n }, (_, i) => (i === 137 ? 'FATAL disk full at item 137' : `10:00:00 INFO worker handled request number ${i} ok`)).join(NL);
+  const rangedRead = (file_path, content, session_id = rangeSession) => runHook('compress-tool-output.js', {
+    tool_name: 'Read',
+    session_id,
+    tool_input: { file_path, offset: 401, limit: 800 },
+    tool_response: { type: 'text', file: { filePath: file_path, content, numLines: content.split(NL).length, startLine: 401, totalLines: 2000 } },
+  }, { HUSH_SIDECAR: '' });
+
+  test('e2e: a bulk ranged log Read becomes a digest whose saved copy is the exact slice', () => {
+    const content = slice(800);
+    const out = hookOutput(rangedRead('/var/logs/app.log', content)).hookSpecificOutput.updatedToolOutput.file.content;
+    assert.ok(out.length < content.length / 4, 'the digest is under a quarter of the slice');
+    assert.match(out, /starts at line 401 of \/var\/logs\/app\.log/);
+    assert.ok(out.includes('L138: FATAL disk full at item 137'), 'the signal line survives with its slice number');
+    const saved = out.match(/saved in full to ([^;]+);/)[1].trim();
+    assert.strictEqual(fs.readFileSync(saved, 'utf8'), content);
+  });
+
+  test('e2e: a ranged Read stays whole below the bulk size, on source, and on a sidecar', () => {
+    assert.strictEqual(hookOutput(rangedRead('/var/logs/app.log', slice(40))), null, 'a navigating log range');
+    assert.strictEqual(hookOutput(rangedRead('/repo/src/app.js', slice(800))), null, 'source stays byte-exact');
+    const f = path.join(sideDir, 'test-bulkrange.txt');
+    assert.strictEqual(hookOutput(rangedRead(f, slice(800))), null, 'the digest route to the saved copy stays open');
+  });
 });
 
 describe('signal-first digest + compound-error signal matching', () => {
