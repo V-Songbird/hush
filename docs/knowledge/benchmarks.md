@@ -29,6 +29,7 @@ Both batches measured a voice that asked the assistant to write nothing between 
 - Nine jobs span how much a session prints, from a plan with no edits to a 300 KB outage log.
 - Every job ends with a check. A short answer that breaks the job counts as a failure.
 - Prices are the bill read back from the API.
+- The costs of the November 17, 2026 batches were corrected on November 23, 2026. The first published figures added up the running total of each multi-call session, so they ran about 1.7 times too high.
 - Prose words exclude fenced code.
 
 The raw records, the definitions behind these figures and the benchmark harness are kept outside this repository. They are not distributed with the plugin.
@@ -89,10 +90,10 @@ Until release 2.6.6 the voice asked for silence between tool calls, and two remi
 
 | Setup | Jobs right | Words before the answer, mean | Average bill per session |
 | --- | --- | --- | --- |
-| Hush 2.6.6 | 35/36 | 4 | $0.1656 |
-| The same without the silence request | 36/36 | 4 | $0.1693 |
+| Hush 2.6.6 | 35/36 | 4 | $0.0943 |
+| The same without the silence request | 36/36 | 4 | $0.0970 |
 
-Paired by job, the copy without the request cost $0.0036 more per session, give or take $0.0060, and wrote 149 more output tokens, give or take 246. Both differences sit inside their spread. On that model the request had no measured effect, so it was removed.
+Paired by job, the copy without the request cost $0.0027 more per session, give or take $0.0054, and wrote 149 more output tokens, give or take 246. Both differences sit inside their spread. On that model the request had no measured effect, so it was removed.
 
 This is one model. No batch measured the removal on Claude Opus or a larger model. The removed reminders were written for those models, so expect more progress notes there.
 
@@ -108,17 +109,17 @@ Hush is the most expensive setup in both groups. It is not the one that gets the
 
 | Setup, 36 sessions each | Jobs right | Average bill per session | Output tokens per session |
 | --- | --- | --- | --- |
-| No plugin | 33/36 | $0.1355 | 2,797 |
-| Chisle | 32/36 | $0.1278 | 2,369 |
-| Hush 2.6.6 | 35/36 | $0.1656 | 2,678 |
+| No plugin | 33/36 | $0.0794 | 2,797 |
+| Chisle | 32/36 | $0.0727 | 2,369 |
+| Hush 2.6.6 | 35/36 | $0.0943 | 2,678 |
 
 | Setup, 27 sessions each | Jobs right | Average bill per session | Output tokens per session | Final message words, mean |
 | --- | --- | --- | --- | --- |
-| caveman | 24/27 | $0.1318 | 2,454 | 305 |
-| i-have-adhd | 27/27 | $0.1397 | 2,546 | 262 |
-| Hush 2.6.6 | 26/27 | $0.1687 | 2,687 | 236 |
+| caveman | 24/27 | $0.0757 | 2,454 | 305 |
+| i-have-adhd | 27/27 | $0.0834 | 2,546 | 262 |
+| Hush 2.6.6 | 26/27 | $0.0969 | 2,687 | 236 |
 
-Paired by job, each of the three cost less than Hush, and each gap is larger than its spread: Chisle by $0.0378, give or take $0.0265, caveman by $0.0369, give or take $0.0267, and i-have-adhd by $0.0290, give or take $0.0286. Chisle also wrote 309 fewer output tokens, give or take 302. The output-token gaps of the other two sit inside their spread. The differences in jobs right are one to three sessions, too few to rank the setups.
+Paired by job, each of the three cost less than Hush, and each gap is larger than its spread: Chisle by $0.0216, give or take $0.0078, caveman by $0.0212, give or take $0.0055, and i-have-adhd by $0.0135, give or take $0.0085. Chisle also wrote 309 fewer output tokens, give or take 302. The output-token gaps of the other two sit inside their spread. The differences in jobs right are one to three sessions, too few to rank the setups.
 
 What Hush buys with that bill is the shape of the final message. These are counts over the text of each final message, by fixed rules:
 
@@ -207,6 +208,6 @@ Each loss below is measured in a batch on this page. They are gathered here so n
 | Hush wrote more prose words on three jobs: the red test suite, the notification router and the half-done rename | Claude Opus 5.5, voice 1.13.0 |
 | Hush cost more on the three quietest jobs, by 1%, 4% and 10% | Claude Opus 5, voice 1.11.1 |
 | Runnable content appeared in 34 of 36 Hush answers, against all 36 without a plugin | Claude Opus 5, voice 1.11.1 |
-| Hush cost 22% more per session than no plugin, and 21% to 30% more than each of three other plugins | Claude Sonnet 5.5, Hush 2.6.6 |
+| Hush cost 19% more per session than no plugin, and 16% to 30% more than each of three other plugins | Claude Sonnet 5.5, Hush 2.6.6 |
 | i-have-adhd got 27 of 27 jobs right, against 26 of 27 for Hush | Claude Sonnet 5.5, Hush 2.6.6 |
 | Chisle wrote 309 fewer output tokens per session than Hush, give or take 302 | Claude Sonnet 5.5, Hush 2.6.6 |
