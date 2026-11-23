@@ -18,7 +18,7 @@ Hush is part of the [Foundry marketplace](https://github.com/V-Songbird/foundry)
 ```
 .claude-plugin/
 └── plugin.json        # name, version, description, author, keywords
-.github/workflows/      # test.yml: the manifest check, the nav check and the suite, on Linux and Windows
+.github/workflows/      # test.yml: the manifest check, the nav check and the suite, on Linux and Windows, and the private-details scan of pull requests
 commands/
 └── config.md          # /hush:config
 hooks/
