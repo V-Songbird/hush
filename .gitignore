@@ -17,6 +17,7 @@ AGENTS.override.md
 # Plugin-local session state written at run time, never published
 .assay/
 .foreman/
+ROADMAP.jsonl
 .scribe/
 
 # Dependency cache and operating-system metadata
