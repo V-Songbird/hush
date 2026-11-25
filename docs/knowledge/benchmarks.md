@@ -1,6 +1,6 @@
 ---
 type: knowledge
-summary: "Every published Hush measurement on Claude Code: the 1.13.0 voice on Claude Opus 5.5 that the README shows, the 1.11.1 voice on Claude Opus 5, the 2.9.0 and 2.9.1 voices on Claude Sonnet 5.5, Hush 2.6.6 next to three other plugins on Claude Sonnet 5.5, and where Hush loses; read before changing a published number."
+summary: "Every published Hush measurement: the 1.13.0 voice on Claude Opus 5.5 that the README shows, the 1.11.1 voice on Claude Opus 5, the 2.9.0 and 2.9.1 voices on Claude Sonnet 5.5, Hush 2.6.6 next to three other plugins on Claude Sonnet 5.5 through the Claude Agent SDK, and where Hush loses; read before changing a published number."
 related_files:
   - README.md
   - output-styles/hush.md
@@ -10,7 +10,7 @@ related_files:
 
 This page holds every measurement Hush publishes, with its method and its limits. The README shows the first batch only, under [The numbers](../../README.md#the-numbers).
 
-All results are from Claude Code. Results vary between runs, and none of them promises the same behavior in your sessions. Each batch names the release whose voice it measured. The batches of November 23, 2026 measured releases 2.9.0 and 2.9.1, for cost and jobs right only. Later releases, the current one included, have no measured result.
+The results are from Claude Code sessions, except the batches of November 17, 2026. Those ran through the Claude Agent SDK, not a Claude Code session. Results vary between runs, and none of them promises the same behavior in your sessions. Each batch names the release whose voice it measured. The batches of November 23, 2026 measured releases 2.9.0 and 2.9.1, for cost and jobs right only. Later releases, the current one included, have no measured result.
 
 The first two batches measured a voice that asked the assistant to write nothing between tool calls, with reminders that repeated it. The current voice does not ask for that. So the columns "Spoke at most once before the answer" and the words of play-by-play describe those releases, not this one. [The silence request](#the-silence-request) says why it was removed.
 
@@ -26,7 +26,7 @@ The first two batches measured a voice that asked the assistant to write nothing
 
 ## How a session is measured
 
-- Each test session is a real Claude Code session in its own throwaway folder.
+- Each test session runs in its own throwaway folder. It is a real Claude Code session, except in the batches of November 17, 2026, which used the Claude Agent SDK.
 - Nine jobs span how much a session prints, from a plan with no edits to a 300 KB outage log.
 - Every job ends with a check. A short answer that breaks the job counts as a failure.
 - Prices are the bill read back from the API.
@@ -119,7 +119,7 @@ These batches measured cost and jobs right only. Later releases, the current one
 
 ## The silence request
 
-Until release 2.6.6 the voice asked for silence between tool calls, and two reminders repeated the request. A batch on November 17, 2026 compared Hush 2.6.6 with a copy that had neither the request nor the reminders: nine jobs, four runs per setup, 36 sessions each, through the Agent SDK with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`).
+Until release 2.6.6 the voice asked for silence between tool calls, and two reminders repeated the request. A batch on November 17, 2026 compared Hush 2.6.6 with a copy that had neither the request nor the reminders: nine jobs, four runs per setup, 36 sessions each. It ran through the Claude Agent SDK, not a Claude Code session, with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`).
 
 | Setup | Jobs right | Words before the answer, mean | Average bill per session |
 | --- | --- | --- | --- |
@@ -132,7 +132,7 @@ This is one model. No batch measured the removal on Claude Opus or a larger mode
 
 ## Next to three other plugins
 
-Three other plugins also shape how Claude Code writes. The batches of November 17, 2026 ran each one on the same nine jobs as Hush 2.6.6, through the Agent SDK with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`). Each plugin ran from a local clone, and its hook text reached every one of its sessions.
+Three other plugins also shape how Claude Code writes. The batches of November 17, 2026 ran each one on the same nine jobs as Hush 2.6.6. They ran through the Claude Agent SDK, not a Claude Code session, with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`). Each plugin ran from a local clone, and its hook text reached every one of its sessions.
 
 - Chisle, at commit `cf0b24f`.
 - [caveman](https://github.com/JuliusBrussee/caveman), at commit `ec83e5b` of August 4, 2026.
@@ -227,7 +227,7 @@ In this pair the i-have-adhd answer is shorter and cheaper, and it names a defau
 ### What this does not show
 
 - No reader was measured. Nothing here says which answer a person with ADHD, or anyone else, understands faster.
-- It is one model, through the Agent SDK, with three or four runs per job.
+- It is one model, with three or four runs per job. It ran through the Claude Agent SDK, not a Claude Code session.
 - The three plugins ran at the commits named above. A later release of any of them may behave differently.
 - The counts read the text of a message. They do not check that a link opens or that a next step is the right one.
 
