@@ -9,7 +9,7 @@ related_files:
 
 # Hush settings
 
-This page lists everything you can set in Hush. Most people never change a setting: Hush trims one way, with no levels and no profiles. The short form is in the README, under [Settings](../../README.md#settings).
+This page lists everything you can set in Hush. Most people never change a setting: Hush trims one way, with no levels and no profiles. The short form is in the README, under [How to use it](../../README.md#how-to-use-it).
 
 ## Contents
 
@@ -161,6 +161,8 @@ A failed check opens its block with the error quoted word for word. Failed and u
 | `minimal` | The bold result, the next step, and only what no setting removes |
 | `explainer` | No next step, up to 400 words, terms explained in place, sentences up to 20 words |
 | `terminal` | Plain text for a terminal; the box never asks |
+
+<p align="center"><img src="../../assets/presets.svg" alt="One answer under three presets, as the configurator's sample message shows it, not a recorded session. Minimal is 22 words: the next-step box is the whole reply. Standard is 103 words and ends on the next step. Explainer is 118 words, explains the term in place and has no next step." width="700"></p>
 
 ### Each setting
 

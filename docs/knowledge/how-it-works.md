@@ -11,13 +11,14 @@ related_files:
 
 # How Hush works
 
-This page says what Hush does to a Claude Code session, part by part. It is for a user who wants to predict what Hush will do. The short form is in the README, under [How it works](../../README.md#how-it-works).
+This page says what Hush does to a Claude Code session, part by part. It is for a user who wants to predict what Hush will do. The short form is in the README, under [What does it do?](../../README.md#what-does-it-do)
 
 Everything runs on your machine. Nothing is sent anywhere.
 
 ## Contents
 
 - [The three parts](#the-three-parts)
+- [What you can do](#what-you-can-do)
 - [The voice](#the-voice)
 - [What happens to a command's output](#what-happens-to-a-commands-output)
 - [Output that comes back whole](#output-that-comes-back-whole)
@@ -40,6 +41,20 @@ Everything runs on your machine. Nothing is sent anywhere.
 | The fold | An optional mod for the Claude desktop app. [The desktop mod](#the-desktop-mod) says what it folds. |
 
 The trims are the product. Each one runs the same with or without the desktop mod.
+
+## What you can do
+
+| You want to | What you get |
+| --- | --- |
+| Choose how much you read | `/hush:config` and one of four presets, from `minimal` to `explainer` |
+| Set one part at a time | 14 settings: the length, the sentence length, where the next step goes, emoji cues and more |
+| Describe it in your own words | `/hush:config only the result and the next step` |
+| See your choice before you save it | A configurator with a sample message, in the Claude desktop app |
+| See output that was shortened | A reference to the saved full copy, where one exists |
+| Get a long explanation | Ask for one. A request to explain lifts the length limit for that answer |
+| Pause the voice for one session | Send `hush off`. Send `hush on` to bring it back |
+| Turn off part of Hush | One environment variable per part, listed on [Hush settings](settings.md) |
+| Show how much Hush kept out | A count you can read from your own status line script; see [the saved count](#the-saved-count) |
 
 ## The voice
 
