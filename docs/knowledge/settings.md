@@ -123,11 +123,11 @@ In PowerShell the variable stays set for that window. To clear it:
 Remove-Item Env:HUSH_WRAP
 ```
 
-Every published number was measured with `HUSH_WRAP=1` set.
+The Claude Opus 5.5 and Claude Opus 5 batches on [Hush benchmarks](benchmarks.md) were measured with `HUSH_WRAP=1` set. The Claude Sonnet 5.5 batches do not record it.
 
 ## The output style line
 
-Installing Hush does not write Claude Code's Output style setting, and the voice does not need it. Every published number was also measured with this line in `~/.claude/settings.json`:
+Installing Hush does not write Claude Code's Output style setting, and the voice does not need it. To set the style yourself, put this line in `~/.claude/settings.json`. [Hush benchmarks](benchmarks.md) does not record whether the measured sessions had it:
 
 ```json
 {

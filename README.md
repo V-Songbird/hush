@@ -33,7 +33,7 @@ With Hush the steps fold away. One message comes at the end. It holds the same p
 
 **You ask:** "The login test fails. Fix it."
 
-**You get:** one message at the end, shaped like this. It is the voice's own example, shortened. A recorded session is under [The numbers](#the-numbers).
+**You get:** one message at the end, the voice's own example shortened. A recorded session is under [The numbers](#the-numbers).
 
 ```text
 **The login test passes again. The token check compared text with a number.**
@@ -53,9 +53,9 @@ I did not try a real login in the browser.
 
 ## Why you'd want it
 
-- **Yours to shape.** `/hush:config` sets the length, the parts and the layout. Pick a preset, or describe what you want in your own words.
+- **Yours to shape.** `/hush:config` sets the length, the parts and the layout.
 - **Steps folded, not lost.** A 300 KB log becomes a short digest, and the full copy stays on your machine.
-- **A shape you can count on.** The result comes first, in one bold line. Steps come numbered. Things with the same fields come as a table.
+- **A shape you can count on.** The result comes first, then steps as a numbered list and same-field things as a table.
 - **A floor no setting removes.** A blocker, a failed check and an unverified claim always stay.
 
 ## How it works
@@ -68,9 +68,7 @@ Hush has three parts. All run on your machine, and nothing is sent anywhere.
 | The trims | Hooks, which are small programs Claude Code runs at set moments. These run when a command finishes. They shorten long output and keep every warning, error and failure line. |
 | The fold | An optional mod for the Claude desktop app. It folds a finished turn's progress texts into one line. One press shows them again. |
 
-A shortened view says so in square brackets. Very large output is saved to a file, so the assistant can read the rest.
-
-Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits and where saved output goes.
+Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits, the bracketed notes and where saved output goes.
 
 ## What you can do
 
@@ -86,13 +84,11 @@ Read [how Hush works](docs/knowledge/how-it-works.md) for each trim, its limits 
 | Turn off part of Hush | One environment variable per part, listed on [Hush settings](docs/knowledge/settings.md) |
 | Show how much Hush kept out | A count you can read from your own status line script; see [the saved count](docs/knowledge/how-it-works.md#the-saved-count) |
 
-<p align="center"><img src="assets/presets.svg" alt="One answer under three presets, as the configurator's sample shows it. Minimal is 22 words: the next-step box is the whole reply. Standard is 103 words and ends on the next step. Explainer is 118 words, explains the term in place and has no next step." width="700"></p>
-
-The picture is the configurator's own sample message, not a recorded session.
+<p align="center"><img src="assets/presets.svg" alt="One answer under three presets, as the configurator's sample message shows it, not a recorded session. Minimal is 22 words: the next-step box is the whole reply. Standard is 103 words and ends on the next step. Explainer is 118 words, explains the term in place and has no next step." width="700"></p>
 
 ### Settings
 
-Most people never change a setting. These three are the ones people reach for:
+Most people never change a setting. These three come up most:
 
 | Setting | Values | What it does |
 | --- | --- | --- |
@@ -119,9 +115,9 @@ Inside Claude Code, run:
 
 Then start a new session.
 
-To check that it worked, run `claude plugin list` in a terminal. The list names `hush`. Then run `/hush:config` inside Claude Code: the configurator opens, or its questions start in a terminal.
+To check that it worked, run `claude plugin list` in a terminal. The list names `hush`. Then run `/hush:config`: the configurator opens, or its questions start in a terminal.
 
-Hush names Claude Code 2.1.323 in its manifest. An older Claude Code may still install it, and Hush is not tested there.
+An older Claude Code may still install Hush, but it is not tested there.
 
 ### Update
 
@@ -137,7 +133,7 @@ In Claude Code, run these. Then start a new session:
 | Limit | What it means for you |
 | --- | --- |
 | A short answer can leave out a detail | Correctness comes before brevity. Ask for depth when you need it, and check the result before you act on it. |
-| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, Hush sessions cost 8% more on average. The current voice has no measured cost. See [The numbers](#the-numbers). |
+| Hush is not a token saver | The voice rides in every request, and Hush cost more than no plugin on Claude Opus 5.5 and Claude Sonnet 5.5. The current release is not measured; [Hush benchmarks](docs/knowledge/benchmarks.md#where-hush-loses) gives each batch's model, date and size. |
 | The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
 | Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
@@ -151,9 +147,9 @@ Each test session is a real Claude Code session in its own throwaway folder. Eve
 
 ### Claude Code results
 
-This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current voice has no measured result.
+This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current release has no measured result. A later batch measured only cost and jobs right for [2.9.0](https://github.com/V-Songbird/hush/releases/tag/v2.9.0) and [2.9.1](https://github.com/V-Songbird/hush/releases/tag/v2.9.1).
 
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-14"} -->
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-23"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
 | --- | --- | --- | --- | --- | --- |
 | Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.255 |
@@ -163,7 +159,7 @@ This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort.
 
 Both setups got all 36 jobs right. Hush said nothing before the answer in 34 of 36 sessions, against 12 of 36 without a plugin.
 
-That voice asked the assistant to write nothing between steps. The current voice does not ask for that, so expect progress notes while it works. In the Claude desktop app, the fold hides them once the answer arrives.
+That voice asked for silence between steps. The current voice does not, so expect progress notes. In the desktop app, the fold hides them.
 
 The same batch shows how the shape held:
 
@@ -176,20 +172,20 @@ The same batch shows how the shape held:
 | Words sitting in blocks over 40 words | 52.3% | 78.3% |
 | Sentences over 20 words | 0.5% | 10.9% |
 
-The shape is not perfect. Half of Hush's words still sat in long blocks.
+Half of Hush's words still sat in long blocks.
 
-**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher. Seven of the nine jobs cost more, by 9% to 32%. Only the two jobs that print the most came out cheaper.
+**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher. Seven of the nine jobs cost more.
 
 <details>
 <summary>Watch the recorded demo: the same job with and without Hush, on Claude Opus 5.5</summary>
 
-Hush's answer is the longer one, 206 words against 179. It opens with the result and names the line that changed.
+Hush's answer is the longer one, 206 words against 179.
 
 <p align="center"><img src="assets/demo.svg" alt="The same job side by side. Without Hush, Claude sends 2 progress notes, then a 179-word answer. With Hush it stays quiet, then sends one 206-word answer." width="700"></p>
 
 </details>
 
-[Hush benchmarks](docs/knowledge/benchmarks.md) has the method, a second batch on Claude Opus 5, and every place Hush loses.
+[Hush benchmarks](docs/knowledge/benchmarks.md) has the method, the other batches and every place Hush loses.
 
 ## Going deeper
 

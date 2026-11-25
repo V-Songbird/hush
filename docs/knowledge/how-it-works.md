@@ -17,7 +17,7 @@ Everything runs on your machine. Nothing is sent anywhere.
 
 ## Contents
 
-- [The two parts](#the-two-parts)
+- [The three parts](#the-three-parts)
 - [The voice](#the-voice)
 - [What happens to a command's output](#what-happens-to-a-commands-output)
 - [Output that comes back whole](#output-that-comes-back-whole)
@@ -31,12 +31,13 @@ Everything runs on your machine. Nothing is sent anywhere.
 - [Compaction and subagents](#compaction-and-subagents)
 - [The desktop mod](#the-desktop-mod)
 
-## The two parts
+## The three parts
 
 | Part | What it is |
 | --- | --- |
 | The voice | An output style. That is Claude Code's name for a writing style the assistant follows. |
 | The trims | Hooks. A hook is a small program Claude Code runs at a set moment, such as when a command finishes. |
+| The fold | An optional mod for the Claude desktop app. [The desktop mod](#the-desktop-mod) says what it folds. |
 
 The trims are the product. Each one runs the same with or without the desktop mod.
 
@@ -88,6 +89,10 @@ When a command finishes, Hush looks at what came back:
 | A long failing run | Keeps up to 250 lines the same way. It also keeps what sits next to a failure: stack frames and the values a test runner prints for a failed check. |
 | Very large, 15,000 characters or more | Saves the output to a file on your machine and hands the assistant a digest. |
 
+A passing summary that only counts zero failures or errors, such as "0 failed", "Failures: 0, Errors: 0" or "# fail 0", is not a failure line, but "ERROR 0: connection refused" still is.
+
+For a failing Go test, Hush keeps at most 10 of that test's own `file:line` message lines.
+
 The digest holds the first 20 and last 15 lines. It also holds the first and last 10 warning, error and failure lines with their line numbers, and a count of each. For a `node --test` run, those 10 and 10 are its failed tests, shown with the run's counts and the first failure's error.
 
 The saved file lets the assistant read the rest, but only when it decides it needs to. Without the file, a 300 KB log would be sent again on every later turn.
@@ -124,6 +129,8 @@ The Read tool gets the failing-run trim on logs and on files nobody writes by ha
 Other files come back untouched. So does a read with an offset or a limit, unless it takes 15,000 characters or more of a log. That slice is saved to a file like any other large output, and a smaller read of that file comes back whole.
 
 A Grep list of 4,000 characters or more is shortened. Hush keeps the first 3 matches in each file and every match that reads like a warning or an error. It counts the rest per file and saves the full list to a file.
+
+Hush keeps a match as a warning or error match by its text after `path:line:`, never by its file path, and keeps a match that names something your prompt quoted whatever its path.
 
 ## Long sessions
 
