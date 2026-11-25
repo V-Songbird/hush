@@ -8,7 +8,7 @@ related_files:
 
 # Hush benchmarks
 
-This page holds every measurement Hush publishes, with its method and its limits. The README shows the first batch only, under [The numbers](../../README.md#the-numbers).
+This page holds every measurement Hush publishes, with its method and its limits. The README shows the first batch only, under [Does it work?](../../README.md#does-it-work)
 
 The results are from Claude Code sessions, except the batches of November 17, 2026. Those ran through the Claude Agent SDK, not a Claude Code session. Results vary between runs, and none of them promises the same behavior in your sessions. Each batch names the release whose voice it measured. The batches of November 23, 2026 measured releases 2.9.0 and 2.9.1, for cost and jobs right only. Later releases, the current one included, have no measured result.
 
@@ -39,7 +39,7 @@ The raw records, the definitions behind these figures and the benchmark harness 
 
 Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four runs per setup, 36 sessions each, in Claude Code with Claude Opus 5.5 (model id `claude-opus-5-5`) at the default effort. Hush ran with `HUSH_WRAP=1`, set in bash as `HUSH_WRAP=1 claude` and in PowerShell as `$env:HUSH_WRAP = '1'; claude`. This measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0).
 
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"date":"2026-09-28","reviewedAt":"2026-11-23"} -->
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-23"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
 | --- | --- | --- | --- | --- | --- |
 | Claude Opus 5.5 | No plugin | 36/36 | 28/36 | 369 | $0.255 |
@@ -77,11 +77,20 @@ Hush's gain is partly separate from length. In three jobs, the red test suite, t
 
 A fresh Claude Sonnet session that got only the request and the final message answered all three questions (what happened, what to open or run, what to do next) for 100% of Hush answers and 94.4% of no-plugin answers; the two no-plugin misses came from the notification router job. This test moves a few points between runs on its own. A message linked the file to open with a line number in 29 of 36 Hush sessions and none of 36 without a plugin.
 
+<p align="center"><img src="../../assets/hero-shape.svg" alt="Four checks of the final message, with Hush and without, as bars. The table below holds the same figures." width="700"></p>
+
+| What was checked | With Hush | No plugin |
+| --- | --- | --- |
+| A fresh reader could say what happened, what to open and what to do next | 100% of answers | 94.4% |
+| The answer linked the file with a line number | 29 of 36 | 0 of 36 |
+| Words sitting in blocks over 40 words | 52.3% | 78.3% |
+| Sentences over 20 words | 0.5% | 10.9% |
+
 ## Claude Opus 5, September 1, 2026
 
 Batch `rivalA-762f888b`, started September 1, 2026 at 07:34 UTC: nine jobs, four runs per setup, 36 sessions each, in Claude Code with the `opus` alias (the records store the alias, not a model id; it is taken to be Opus 5) at medium effort, `HUSH_WRAP=1`. The hush sessions ran hush [1.11.1](https://github.com/V-Songbird/hush/releases/tag/v1.11.1); the records do not store a version, so that is the release this batch is taken to measure.
 
-<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"date":"2026-09-01","reviewedAt":"2026-11-14"} -->
+<!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-01","reviewedAt":"2026-11-14"} -->
 | Claude Opus 5, 36 sessions each | Jobs right | Spoke at most once before the answer | Median final prose words | Sentences over 20 words | Words in blocks over 40 words, mean |
 | --- | --- | --- | --- | --- | --- |
 | No plugin | 36/36 | 14/36 | 367 | 19.2% | 67.8% |
