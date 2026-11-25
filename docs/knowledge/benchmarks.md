@@ -119,7 +119,7 @@ These batches measured cost and jobs right only. Later releases, the current one
 
 ## The silence request
 
-Until release 2.6.6 the voice asked for silence between tool calls, and two reminders repeated the request. A batch on November 17, 2026 compared Hush 2.6.6 with a copy that had neither the request nor the reminders: nine jobs, four runs per setup, 36 sessions each, through the Agent SDK with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`).
+Until release 2.6.6 the voice asked for silence between tool calls, and two reminders repeated the request. A batch on November 17, 2026 compared Hush 2.6.6 with a copy that had neither the request nor the reminders: nine jobs, four runs per setup, 36 sessions each. It ran through the Claude Agent SDK, not a Claude Code session, with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`).
 
 | Setup | Jobs right | Words before the answer, mean | Average bill per session |
 | --- | --- | --- | --- |
@@ -132,7 +132,7 @@ This is one model. No batch measured the removal on Claude Opus or a larger mode
 
 ## Next to three other plugins
 
-Three other plugins also shape how Claude Code writes. The batches of November 17, 2026 ran each one on the same nine jobs as Hush 2.6.6, through the Agent SDK with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`). Each plugin ran from a local clone, and its hook text reached every one of its sessions.
+Three other plugins also shape how Claude Code writes. The batches of November 17, 2026 ran each one on the same nine jobs as Hush 2.6.6. They ran through the Claude Agent SDK, not a Claude Code session, with Claude Sonnet 5.5 (model id `claude-sonnet-5-5`). Each plugin ran from a local clone, and its hook text reached every one of its sessions.
 
 - Chisle, at commit `cf0b24f`.
 - [caveman](https://github.com/JuliusBrussee/caveman), at commit `ec83e5b` of August 4, 2026.
@@ -227,7 +227,7 @@ In this pair the i-have-adhd answer is shorter and cheaper, and it names a defau
 ### What this does not show
 
 - No reader was measured. Nothing here says which answer a person with ADHD, or anyone else, understands faster.
-- It is one model, through the Agent SDK, with three or four runs per job.
+- It is one model, with three or four runs per job. It ran through the Claude Agent SDK, not a Claude Code session.
 - The three plugins ran at the commits named above. A later release of any of them may behave differently.
 - The counts read the text of a message. They do not check that a link opens or that a next step is the right one.
 
