@@ -147,7 +147,7 @@ Each test session is a real Claude Code session in its own throwaway folder. Eve
 
 ### Claude Code results
 
-This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current release has no measured result. A later batch measured only the cost of [2.9.0](https://github.com/V-Songbird/hush/releases/tag/v2.9.0) and [2.9.1](https://github.com/V-Songbird/hush/releases/tag/v2.9.1).
+This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current release has no measured result. A later batch measured only cost and jobs right for [2.9.0](https://github.com/V-Songbird/hush/releases/tag/v2.9.0) and [2.9.1](https://github.com/V-Songbird/hush/releases/tag/v2.9.1).
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-23"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |

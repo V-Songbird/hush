@@ -59,7 +59,7 @@ The README is the front page. The pages under `docs/knowledge/` hold the detail 
 
 **Published figures follow one rule.** Each result names its host, model, date and sample size. Losses and limits stay, a host with no results shows `Not measured`, and a result from one host never stands for another.
 
-**Every published number names its release and was measured with `HUSH_WRAP=1`.** Name the voice release it measured, its host, its model and its date. Hush has no Codex or Antigravity package, and the README says so.
+**Every published number names the voice release it measured, or says the release is assumed.** Name its host, model and date too. Measure with `HUSH_WRAP=1` and record it; the Claude Opus 5.5 and Claude Opus 5 batches do, and the Claude Sonnet 5.5 batches do not.
 
 ---
 
