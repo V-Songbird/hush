@@ -56,9 +56,22 @@ Batch `o55-451-495ce18f`, started September 28, 2026: nine fixture jobs, four ru
 
 Hush said nothing at all before the answer in 34 of 36 sessions, against 12 of 36 without a plugin, and sent 1.0 word of play-by-play per session against 15.4. The medians are 369 and 270.5, rounded, about 27% shorter. Sentences were shorter too: 0.5% ran past 20 words against 10.9%. Runnable content appeared in all 36 answers of both setups; that text heuristic does not check that a command is correct or complete.
 
-**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher. Seven of the nine jobs cost more, by 9% to 32%, and three of those are above about 16%, the largest gap that batch showed between two near-identical setups. Only the two jobs whose commands print the most came out cheaper: the 57 KB log by 19% and the 380 commits by 4%. Opus 5.5 already writes less without a plugin, so Hush has less to remove. Everything the assistant wrote per session was 6% higher, 3,654 tokens against 3,453, while what the commands printed fell 9%, 22.2k characters against 24.4k. Treat a per-job cost difference under about 16% in this batch as noise.
+**On Opus 5.5, Hush costs more.** The average bill per session was 8% higher.
 
-Most of that gap is the voice's own text, which rides in every request. Both setups made about seven requests per session. The tokens sent across them were 11% higher with Hush, 184,489 against 166,730. That is about 2,500 more per request. The batch ran a 5.8 KB voice. Today's voice is 8.2 KB in the desktop app. A terminal session or `claude -p` carries 5.4 KB of it; [the app part](how-it-works.md#the-app-part) says why.
+- Seven of the nine jobs cost more, by 9% to 32%.
+- Three of those are above about 16%, the largest gap that batch showed between two near-identical setups.
+- Only the two jobs whose commands print the most came out cheaper: the 57 KB log by 19% and the 380 commits by 4%.
+- Opus 5.5 already writes less without a plugin, so Hush has less to remove.
+- Everything the assistant wrote per session was 6% higher, 3,654 tokens against 3,453.
+- What the commands printed fell 9%, 22.2k characters against 24.4k.
+
+Treat a per-job cost difference under about 16% in this batch as noise.
+
+Most of that gap is the voice's own text, which rides in every request. Both setups made about seven requests per session.
+
+The tokens sent across them were 11% higher with Hush, 184,489 against 166,730. That is about 2,500 more per request.
+
+The batch ran a 5.8 KB voice. Today's voice is 8.2 KB in the desktop app. A terminal session or `claude -p` carries 5.4 KB of it; [the app part](how-it-works.md#the-app-part) says why.
 
 Hush's gain is partly separate from length. In three jobs, the red test suite, the notification router and the half-done rename, Hush wrote more prose words on average, and in the first two every Hush session was longer than every no-plugin session. Hush messages still held 52.3% of their words in blocks over 40 words on average, against 78.3% without a plugin.
 
@@ -87,7 +100,20 @@ That batch does not separate structure from length: Hush's range of words per se
 
 ## Claude Sonnet 5.5, voices 2.9.0 and 2.9.1
 
-**A shorter voice cost about 10% less than Hush 2.8.1.** The batch ran on 2026-11-23 with Claude Code 2.1.330, Sonnet 5.5 and the desktop entrypoint: nine jobs, four runs each, 36 sessions per setup. The mean bill was 0.1563 USD against 0.1747, and the 95% interval of that ratio is 0.828 to 0.985. Both versions passed 36 of 36. The shorter voice still cost 10.7% more than no plugin, at 0.1412 USD. That build was 2.9.0 without its one-line format fix. Hush 2.9.1 puts 0.9 KB of the app's forms back, because 2.9.0 could not load them. A second batch the same day, with the same setup, measured 2.9.1 itself against 2.8.1: 0.1588 USD against 0.1764, 10.0% less, and both passed 36 of 36. Its 95% interval is 0.823 to 1.036, so that batch alone does not rule out no change.
+**A shorter voice cost about 10% less than Hush 2.8.1.** The first batch ran on November 23, 2026 with Claude Code 2.1.330, Sonnet 5.5 and the desktop entrypoint. It had nine jobs, four runs each, so 36 sessions per setup.
+
+- The mean bill was 0.1563 USD against 0.1747. The 95% interval of that ratio is 0.828 to 0.985.
+- Both versions passed 36 of 36.
+- The shorter voice still cost 10.7% more than no plugin, at 0.1412 USD.
+- That build was [2.9.0](https://github.com/V-Songbird/hush/releases/tag/v2.9.0) without its one-line format fix.
+
+[Hush 2.9.1](https://github.com/V-Songbird/hush/releases/tag/v2.9.1) puts 0.9 KB of the app's forms back, because 2.9.0 could not load them.
+
+A second batch the same day, with the same setup, measured 2.9.1 itself against 2.8.1:
+
+- The mean bill was 0.1588 USD against 0.1764, which is 10.0% less.
+- Both passed 36 of 36.
+- Its 95% interval is 0.823 to 1.036, so that batch alone does not rule out no change.
 
 These batches measured cost and jobs right only. Later releases, the current one included, have no measured result.
 

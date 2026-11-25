@@ -133,7 +133,7 @@ In Claude Code, run these. Then start a new session:
 | Limit | What it means for you |
 | --- | --- |
 | A short answer can leave out a detail | Correctness comes before brevity. Ask for depth when you need it, and check the result before you act on it. |
-| Hush is not a token saver | The voice rides in every request. On Claude Opus 5.5, release 1.13.0 cost 8% more on average. On Claude Sonnet 5.5, release 2.9.0 cost 10.7% more. The current release is not measured. See [The numbers](#the-numbers). |
+| Hush is not a token saver | The voice rides in every request, and Hush cost more than no plugin on Claude Opus 5.5 and Claude Sonnet 5.5. The current release is not measured; [Hush benchmarks](docs/knowledge/benchmarks.md#where-hush-loses) gives each batch's model, date and size. |
 | The shape is asked for, not enforced | The assistant follows the voice most of the time, not always. [The numbers](#the-numbers) say how often. |
 | The voice takes the one output style slot | To use another output style in Claude Code, disable or uninstall Hush. |
 | Saved output is temporary | Hush deletes it when the session ends. On Windows, treat the saved files as readable by anything that runs as you. |
@@ -147,7 +147,7 @@ Each test session is a real Claude Code session in its own throwaway folder. Eve
 
 ### Claude Code results
 
-This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current release has no measured result. A later batch measured only the cost of 2.9.0 and 2.9.1.
+This batch ran on September 28, 2026 with Claude Opus 5.5 at the default effort. It has nine jobs and four runs per setup, so 36 sessions each. It measures the voice of release [1.13.0](https://github.com/V-Songbird/hush/releases/tag/v1.13.0). The current release has no measured result. A later batch measured only the cost of [2.9.0](https://github.com/V-Songbird/hush/releases/tag/v2.9.0) and [2.9.1](https://github.com/V-Songbird/hush/releases/tag/v2.9.1).
 
 <!-- foundry:evidence {"platform":"Claude","status":"measured","models":["Claude Opus 5.5"],"source":"docs/knowledge/benchmarks.md","date":"2026-09-28","reviewedAt":"2026-11-23"} -->
 | Model | Setup | Jobs right | Spoke at most once before the answer | Median final prose words | Average bill per session |
