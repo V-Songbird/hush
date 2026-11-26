@@ -3,11 +3,12 @@ import type { EngineInterface, Register, RenderElement, RenderInput } from 'clau
 
 import { NO_HEADS, fitted, foldOf, hasHead, headOf, isReprompt, kept, labelOf, looseOf, placeOf, textOf, withHeads } from './fold'
 import type { Fold, Folds, FoldWords, Stored } from './fold'
+import type { LiveState } from '../types'
 
 // Hush's mod, optional: the command hooks in hooks.json are the product and never depend on it.
-// On the desktop app, it folds the progress texts written between tool calls into one line once
-// the reply's final message arrives (`fold.ts`). Every other reply, and every other surface, the
-// terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
+// On the desktop app, it folds the progress texts written between tool calls into one line, all
+// but the newest while Claude works and all of them once the reply's final message arrives
+// (`fold.ts`). Every other reply, and every other surface, the terminal included, is left to the app. It adds no command. HUSH_DISABLE=1 turns it off.
 
 /** What the mod says, by language. English is the complete base. */
 export const EN = {
@@ -58,6 +59,9 @@ async function isDisabled($: EngineInterface): Promise<boolean> {
 const EMPTY: Folds = { folds: [], loose: NO_HEADS }
 const folds = atom({ plugin: 'hush', key: 'folds' } as const, EMPTY, { shape: 'folds-4' })
 const opened = atom({ plugin: 'hush', key: 'open' } as const, [], { shape: 'open-1' })
+// The reply being written, folded all but its newest text; it never reaches the store.
+const NO_LIVE: LiveState = { fold: null, old: null }
+const live = atom({ plugin: 'hush', key: 'live' } as const, NO_LIVE, { shape: 'live-1' })
 const STORE = 'folds-4:'
 export const FOLDS_KEPT = 300
 // The store is one JSON file of at most 4 MiB in all, shared with every other key the mod keeps:
@@ -71,8 +75,7 @@ let isMixed = false
 let hasUnsaved = false
 let stored: Stored = { items: [], errors: 0 }
 // A turn the harness opened, on a task notification, a scheduled trigger or a hand-back from one
-// of this session's subagents, continues the reply
-// before it: that reply's last text was a status line, not the answer, so it joins the fold once
+// of this session's subagents, and the part after a re-prompt, continue the reply before it: that reply's last text was a status line, not the answer, so it joins the fold once
 // the continuing turn ends. `pending` is the last finished reply and the heads it has not turned
 // loose yet. They are held back in `$.state`, so they can still fold, and written loose to the
 // store, so a reopened session, which has no `pending`, draws them whole.
@@ -83,7 +86,10 @@ const HARNESS = ['task-notification', 'scheduled-trigger']
 // A `peer` row may come from another session, whose message must not fold this session's answer.
 // Only a sender seen working as a subagent here counts; a sender not seen, as after a reload,
 // leaves the row to the rule for any other turn, which draws the text before it whole.
-const HANDBACK = /^[^\n]*\n<agent-message from="([^"]+)">/
+// The engine frames it as a turn's prompt ("Another Claude session sent a message:"), inside a
+// reminder when it lands in a running turn ("... while you were working:"), or bare on the
+// queue row before such a prompt; only the first `agent-message` counts, never one quoted below it.
+const HANDBACK = /^(?:<system-reminder[^\n]*\n)?(?:[^\n<][^\n]*\n)?<agent-message from="([^"]+)">/
 const ownAgents = new Set<string>()
 // The person opened this reply: a hand-back delivered before its first row does not continue the last one.
 let isAsked = false
@@ -138,7 +144,9 @@ async function closeReply($: EngineInterface, isCut = false) {
   isAsked = false
   startReply()
 
+  // The reply's fold replaces its live one only after it is written, so no row flickers whole.
   if (!isNew && loose.length === 0 && held.length === 0) {
+    await update($, live, () => NO_LIVE)
     return
   }
 
@@ -149,6 +157,7 @@ async function closeReply($: EngineInterface, isCut = false) {
 
     return kept({ folds: [...rest, ...(isNew ? [fold] : [])], loose: withHeads(s.loose, [...loose, ...taken]) }, FOLDS_KEPT)
   })
+  await update($, live, () => NO_LIVE)
 
   if (all.folds.length > 0) {
     // A store that refuses the write leaves this session's folds in `$.state` until it ends.
@@ -156,9 +165,28 @@ async function closeReply($: EngineInterface, isCut = false) {
   }
 }
 
+/**
+ * While Claude works, every text of the reply but the newest folds, so only the newest shows. Like
+ * a finished fold, but on what was stored so far: none after a queued prompt, and none that would
+ * take a text the last reply still holds back, which a turn it does not continue leaves drawn.
+ */
+async function showLive($: EngineInterface) {
+  const before = isContinued ? pending : null
+  const items = [...(before?.stored.items ?? []), ...stored.items]
+  const newest = items.findLastIndex(item => item.kind === 'text' && item.head !== '')
+  const fold = isMixed || newest < 0 ? null : foldOf({ items: items.slice(0, newest + 1), errors: (before?.stored.errors ?? 0) + stored.errors })
+  const isClash = before === null && fold !== null && fold.texts.some(head => pending?.held.includes(head))
+
+  await update($, live, () => ({ fold: isClash ? null : fold, old: before?.fold ?? null }))
+}
+
 /** The fold a row belongs to, read while drawing so a new fold or a press draws it again. */
 async function foldAt($: EngineInterface, text: string) {
-  const at = placeOf(await read($, folds), text)
+  const all = await read($, folds)
+  const { fold, old } = await read($, live)
+  // The reply being written stands in for the fold of the reply it continues.
+  const view = fold === null ? all : { ...all, folds: [...all.folds.filter(f => !(old !== null && f.head === old.head && f.final === old.final)), fold] }
+  const at = placeOf(view, text)
 
   return at === undefined ? undefined : { ...at, isOpen: (await read($, opened)).includes(at.fold.head) }
 }
@@ -216,6 +244,7 @@ export const register: Register = on => {
     const saved = await $.store.get(`${STORE}${await $.session.id()}`)
     await update($, folds, () => (isFolds(saved) ? saved : EMPTY))
     await update($, opened, () => [])
+    await update($, live, () => NO_LIVE)
     pending = null
     isContinued = false
     isAsked = false
@@ -259,8 +288,10 @@ export const register: Register = on => {
 
     const text = blocks.map(block => (block.type === 'text' && typeof block.text === 'string' ? block.text : '')).join('')
     const kind = (e.origin as { kind?: string }).kind ?? ''
-    const isHandback = e.message.type === 'user' && kind === 'peer' && ownAgents.has(HANDBACK.exec(text)?.[1] ?? '')
-    const isOwn = HARNESS.includes(kind) || isHandback
+    // A hand-back reaches the turn as a `peer` user row, as a `peer` queued command while the turn
+    // runs, or as an `engine` queue row first; a notification's queue row is `engine` too.
+    const isHandback = e.message.type !== 'assistant' && (kind === 'peer' || kind === 'engine') && ownAgents.has(HANDBACK.exec(text)?.[1] ?? '')
+    const isOwn = HARNESS.includes(kind) || isHandback || (kind === 'engine' && text.includes('<task-notification>'))
 
     // The row that opens a turn says who opened it, whichever side of `turn.start` it arrives on.
     if ((e.door === 'prompt' || e.door === 'queue' || isHandback) && stored.items.length === 0) {
@@ -271,9 +302,10 @@ export const register: Register = on => {
     // `isReplying` stays false under HUSH_DISABLE=1, so nothing is gathered.
     if (isReplying) {
       // A task notification delivered into the running turn is filed as a queued command, under
-      // the engine's origin; only its text tells it from the person's queued prompt.
+      // the engine's origin; only its text tells it from the person's queued prompt. Each delivery
+      // is followed by an `engine` queue row with its bare text, which is no prompt either.
       const isHarness = isOwn || text.includes('<task-notification>')
-      const isPrompt = !isHandback && (e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command' && !isHarness))
+      const isPrompt = !isOwn && (e.door === 'prompt' || e.door === 'queue' || (e.message.type === 'attachment' && e.message.name === 'queued_command' && !isHarness))
 
       // The prompt that starts the turn arrives before anything is gathered and ends nothing.
       if (isPrompt && stored.items.length > 0) {
@@ -295,8 +327,14 @@ export const register: Register = on => {
         if (block.type === 'tool_result' && block.is_error === true) stored.errors++
       }
 
+      if (e.message.type === 'assistant' && blocks.some(block => block.type === 'text')) {
+        await showLive($)
+      }
+
+      // A re-prompt sends Claude back to the same work: what came before it was a status line.
       if (e.message.type === 'user' && e.message.isMeta === true && isReprompt(text)) {
         await closeReply($)
+        isContinued = true
       }
     }
 
@@ -321,6 +359,7 @@ export const register: Register = on => {
 
     if (await isDisabled($)) {
       startReply()
+      await update($, live, () => NO_LIVE)
     } else {
       await closeReply($)
     }

@@ -53,14 +53,14 @@ const kit = ($: Engine, on: On, saved: Record<string, unknown> = {}) => {
     store,
     env,
     start: () => $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as never),
-    async turn(rows: Row[], mid?: () => void) {
+    async turn(rows: Row[], mid?: () => unknown) {
       const turnId = `t${++n}`
       await $.turn.start({ turnId } as never)
       for (const { agentId, door, origin, ...message } of rows) {
         const role = message.type === 'attachment' ? undefined : message.type
         await $.session.append({ message: { ...message, role }, door: door ?? (message.type === 'assistant' ? 'response' : 'tool-result'), uuid: `u${n}-${Math.random()}`, origin: origin === undefined ? { kind: 'model', model: 'm' } : { kind: origin }, agentId } as never)
       }
-      mid?.()
+      await mid?.()
       await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId, reason: 'answer' })
     },
     /** Everything a text row draws, as JSON. */
@@ -278,15 +278,109 @@ test('a subagent’s rows never join the main reply’s fold', async ($, on) => 
   expect(await k.draw('Main.')).toBe('Show 1 progress message')
 })
 
-test('a Stop hook re-prompt closes the reply before it: each part folds before its own final', async ($, on) => {
+// A `/goal` re-prompt sends Claude back to the same work: each part's last text was a status
+// line, so only the last part's final stays drawn. In 100 recent sessions, re-prompts left about
+// 160 texts drawn while each part folded alone.
+test('a Stop hook re-prompt continues the reply: only the last final stays drawn', async ($, on) => {
   const k = kit($, on)
-  const reprompt: Row = { type: 'user', isMeta: true, door: 'hook-context', content: [{ type: 'text', text: 'Stop hook feedback:\n[goal]: not yet' }] }
-  await k.turn([say('Try one.'), ...work('a'), say('First final.'), reprompt, say('Try two.'), ...work('b'), say('Second final.')])
+  const reprompt: Row = { type: 'user', isMeta: true, door: 'note', content: [{ type: 'text', text: 'Stop hook feedback:\n[goal]: not yet' }] }
+  await k.turn([say('Try one.'), ...work('a'), say('First final.'), reprompt, say('Second final.'), reprompt, say('Try three.'), ...work('b'), say('Third final.')])
 
-  expect(await k.draw('First final.')).toBe('whole')
-  expect(await k.draw('Try one.')).toBe('Show 1 progress message')
-  expect(await k.draw('Try two.')).toBe('Show 1 progress message')
-  expect(await k.draw('Second final.')).toBe('whole')
+  expect(await k.draw('Try one.')).toBe('Show 4 progress messages')
+  expect(await k.draw('First final.')).toBe('hidden')
+  expect(await k.draw('Second final.')).toBe('hidden')
+  expect(await k.draw('Try three.')).toBe('hidden')
+  expect(await k.draw('Third final.')).toBe('whole')
+  expect((k.store.get(`${KEY}s1`) as { folds: unknown[] }).folds.length).toBe(1)
+})
+
+// Rows in the shapes a probe mod logged from the desktop engine on 2026-11-03.
+test("a subagent's hand-back queued into the running turn does not stop the fold", async ($, on) => {
+  const k = kit($, on)
+  const delivered: Row = { type: 'attachment', name: 'queued_command', door: 'delivery', origin: 'peer', content: [{ type: 'text', text: '<system-reminder id="f957289796072fd3">\nAnother Claude session sent a message while you were working:\n<agent-message from="agent1">\n[Subagent hand-back] The report.\n</agent-message>\n</system-reminder>' }] }
+  await k.turn([asks(), call('s', 'agent1'), say('Comparing the logs.'), ...work('a'), delivered, say('Reading the report.'), ...work('b'), say('**Found it.**')])
+
+  expect(await k.draw('Comparing the logs.')).toBe('Show 2 progress messages')
+  expect(await k.draw('Reading the report.')).toBe('hidden')
+  expect(await k.draw('**Found it.**')).toBe('whole')
+})
+
+// In 100 recent sessions this row mixed about 630 replies, most after a background command ended.
+test("the engine's queue row after a delivery into the running turn does not stop the fold", async ($, on) => {
+  const k = kit($, on)
+  const notice: Row = { type: 'attachment', name: 'queued_command', door: 'delivery', origin: 'task-notification', content: [{ type: 'text', text: '<task-notification>\n<status>completed</status>\n</task-notification>' }] }
+  const handBack: Row = { type: 'attachment', name: 'queued_command', door: 'delivery', origin: 'peer', content: [{ type: 'text', text: '<system-reminder id="x">\nAnother Claude session sent a message while you were working:\n<agent-message from="agent1">\n</agent-message>\n</system-reminder>' }] }
+  const queueRow = (text: string): Row => ({ type: 'user', door: 'queue', origin: 'engine', content: [{ type: 'text', text }] })
+  await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), notice, queueRow('<task-notification>\n<status>completed</status>\n</task-notification>'), say('Reading the log.'), ...work('b'), handBack, queueRow('<agent-message from="agent1">\n</agent-message>'), ...work('c'), say('**Found it.**')])
+
+  expect(await k.draw('Looking.')).toBe('Show 2 progress messages')
+  expect(await k.draw('Reading the log.')).toBe('hidden')
+  expect(await k.draw('**Found it.**')).toBe('whole')
+})
+
+test("a prompt the person queued into the running turn still keeps the answer before it whole", async ($, on) => {
+  const k = kit($, on)
+  const delivered: Row = { type: 'attachment', name: 'queued_command', door: 'delivery', origin: 'composer', content: [{ type: 'text', text: '<system-reminder>\nThe user sent a new message while you were working:\n<agent-message from="agent1">\n</system-reminder>' }] }
+  await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), delivered, say('The answer is 42.'), ...work('b'), say('Docs updated.')])
+
+  expect(await k.draw('The answer is 42.')).toBe('whole')
+})
+
+// The engine files an idle notification or hand-back first as a `queue` row from the engine,
+// then as the turn's prompt.
+for (const [name, opener] of [
+  ['task notification', [{ type: 'user', door: 'queue', origin: 'engine', content: [{ type: 'text', text: '<task-notification>\n<status>completed</status>\n</task-notification>' }] }, notifies()]],
+  ['hand-back', [{ type: 'user', door: 'queue', origin: 'engine', content: [{ type: 'text', text: '<agent-message from="agent1">\n[Subagent hand-back] The report.\n</agent-message>' }] }, handsBack('agent1', 'prompt')]],
+] as [string, Row[]][]) {
+  test(`a status line folds once a ${name} filed through the queue continues the reply`, async ($, on) => {
+    const k = kit($, on)
+    await k.turn([asks(), call('s', 'agent1'), say('Looking.'), ...work('a'), say('Waiting on the run.')])
+    await k.turn([...opener, ...work('b'), say('**Done.**')])
+
+    expect(await k.draw('Looking.')).toBe('Show 2 progress messages')
+    expect(await k.draw('Waiting on the run.')).toBe('hidden')
+    expect(await k.draw('**Done.**')).toBe('whole')
+  })
+}
+
+test('while the reply runs, every text but the newest folds', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Reading.'), ...work('b'), say('Checking.'), ...work('c')], async () => {
+    expect(await k.draw('Looking.')).toBe('Show 2 progress messages')
+    expect(await k.draw('Reading.')).toBe('hidden')
+    expect(await k.draw('Checking.')).toBe('whole')
+  })
+  // It ended on a tool call, with no final message: nothing folds.
+  expect(await k.draw('Looking.')).toBe('whole')
+  expect(await k.draw('Checking.')).toBe('whole')
+})
+
+test('while a continuing turn runs, its fold takes in the reply before it', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Waiting.')])
+  await k.turn([notifies(), say('Checking.'), ...work('b')], async () => {
+    expect(await k.draw('Looking.')).toBe('Show 2 progress messages')
+    expect(await k.draw('Waiting.')).toBe('hidden')
+    expect(await k.draw('Checking.')).toBe('whole')
+  })
+  expect(await k.draw('Looking.')).toBe('Show 1 progress message')
+  expect(await k.draw('Waiting.')).toBe('whole')
+})
+
+test('while the reply runs after a queued prompt, nothing folds', async ($, on) => {
+  const k = kit($, on)
+  const queued: Row = { type: 'attachment', name: 'queued_command', door: 'attachment', content: [{ type: 'text', text: 'And the docs?' }] }
+  await k.turn([asks(), say('Looking.'), ...work('a'), queued, say('The answer is 42.'), ...work('b'), say('Reading the docs.'), ...work('c')], async () => {
+    expect(await k.draw('The answer is 42.')).toBe('whole')
+  })
+})
+
+test('a live fold never takes the text the last reply ended on', async ($, on) => {
+  const k = kit($, on)
+  await k.turn([asks(), say('Looking.'), ...work('a'), say('Checking the tests.')])
+  await k.turn([asks('Again.'), say('Checking the tests.'), ...work('b'), say('Reading.'), ...work('c')], async () => {
+    expect(await k.draw('Checking the tests.')).toBe('whole')
+  })
 })
 
 test('a failed tool result counts on the line', async ($, on) => {

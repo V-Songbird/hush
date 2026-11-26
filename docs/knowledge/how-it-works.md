@@ -220,11 +220,11 @@ An output style never reaches a subagent, which is a helper session the assistan
 
 Hush also ships an optional mod. A mod is code that Claude Code loads to draw in its interface. Every hook above runs as before without it.
 
-The mod works in the Claude desktop app only. Once a final message arrives, it folds the progress texts written between tool calls into one line: "Show N progress messages". One press shows them in place.
+The mod works in the Claude desktop app only. While a reply runs, every progress text but the newest folds into one line: "Show N progress messages". Once the final message arrives, the newest joins them, and only the final stays drawn. One press shows them in place.
 
 The line counts failed results and texts that carry a warning. Its words follow Claude Code's `language` setting, Spanish or English.
 
-A turn can end on a status line, such as "the suite runs in the background". When a task notification, a scheduled task or the report of one of the session's subagents then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A notification or subagent report that arrives while the turn still runs does not stop the fold either. A turn you open yourself, or a message from another session, never folds the answer before it.
+A turn can end on a status line, such as "the suite runs in the background". When a task notification, a scheduled task, the report of one of the session's subagents or a Stop hook's re-prompt, such as `/goal`'s, then continues the work, that line folds too. It joins the same fold once the continuing turn ends. A notification or subagent report that arrives while the turn still runs does not stop the fold either. A turn you open yourself, or a message from another session, never folds the answer before it.
 
 Some texts stay drawn:
 

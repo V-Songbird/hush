@@ -20,11 +20,20 @@ export type FoldsState = {
   loose: string
 }
 
+export type LiveState = {
+  /** The reply still being written: every text but the newest, or null. */
+  fold: FoldState | null
+  /** The fold of the reply it continues, which `fold` replaces while it is drawn. */
+  old: FoldState | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
     hush: {
       /** The session's folds and the texts they must not take. */
       folds: Shaped<FoldsState>
+      /** The fold of the reply being written, kept only in this session's state. */
+      live: Shaped<LiveState>
       /** The heads of the folds the person opened. */
       open: Shaped<string[]>
     }
