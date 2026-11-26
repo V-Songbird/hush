@@ -1,9 +1,10 @@
-// The final-only view: after Claude stops, the texts it wrote between tool calls before that
-// reply's final message fold into one line that opens with a press. Tool rows never join; the
-// app's own header folds them. A reply stops at a hook's re-prompt (`<Event> hook feedback:`), at
-// a prompt queued during the turn, at a compaction and at the end of a turn. A turn the harness
-// opens, on a task notification or a scheduled trigger, continues the reply before it: the two
-// fold as one, so the earlier turn's last text, a status line, folds too (`register.tsx`).
+// The final-only view: while Claude works, the texts it wrote between tool calls fold into one
+// line that opens with a press, all but the newest; after it stops, the texts before that reply's
+// final message fold. Tool rows never join; the app's own header folds them. A reply stops at a
+// hook's re-prompt (`<Event> hook feedback:`), at a prompt queued during the turn, at a compaction
+// and at the end of a turn. A re-prompt, or a turn the harness opens on a task notification, a
+// scheduled trigger or a subagent's hand-back, continues the reply before it: the two fold as one,
+// so the earlier part's last text, a status line, folds too (`register.tsx`).
 //
 // The fold is built from what the conversation stored, in stored order, never from what the
 // desktop drew: the app draws a hidden window's rows only when the person comes back, so draw
